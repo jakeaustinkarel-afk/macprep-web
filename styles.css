@@ -749,3 +749,60 @@ body {
 .user-profile-badge strong {
     color: var(--clinical-blue);
 }
+
+/* ==========================================================================
+   ISOLATED AUTH PAGE THEMES AND BROAD SHEET FIXES
+   ========================================================================== */
+.auth-page-bg {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.auth-brand-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.auth-brand-header h1 {
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    background: linear-gradient(90deg, #ffffff, var(--clinical-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-window-container {
+    width: 100%;
+    max-width: 460px;
+}
+
+.auth-back-home {
+    margin-top: 25px;
+    text-align: center;
+    font-size: 0.85rem;
+}
+.auth-back-home a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+.auth-back-home a:hover {
+    color: #fff;
+}
+
+/* Checkbox Checkmark Fix Alignment Rules */
+.check-label {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100%;
+}
+.check-meta {
+    text-align: left !important;
+}

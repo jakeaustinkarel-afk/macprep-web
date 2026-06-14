@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP MASTERFRONTEND SYSTEM INTERFACE SCREEN CONTROLLER
+// MACPREP PRODUCTION CLIENT - CLEAN ROUTING ENVIRONMENT
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -7,133 +7,65 @@ let workstationQuestions = [];
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
-// Device Core Profile Session Variables
+// Persistent Profile Handshakes
 let currentUserEmail = null;
 let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Screen Tracking Pointers
+document.addEventListener('DOMContentLoaded', async () => {
     const onboardingHub = document.getElementById('onboardingHub');
-    const signInScreen = document.getElementById('signInScreen');
-    const signUpScreen = document.getElementById('signUpScreen');
     const activeWorkstationGrid = document.getElementById('activeWorkstationGrid');
-    
-    // Core Layout Trigger Anchors
     const launchBtn = document.getElementById('launchWorkstationBtn');
-    const homeLogoLink = document.getElementById('homeLogoLink');
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
-    const tierBadgeBtn = document.getElementById('tierBadgeBtn');
     const paywallModal = document.getElementById('paywallModal');
     const closePaywallBtn = document.getElementById('closePaywallBtn');
-
-    // Authentication Form Flow Trigger Anchors
-    const navSignInBtn = document.getElementById('navSignInBtn');
-    const navSignUpBtn = document.getElementById('navSignUpBtn');
-    const switchToSignUpLink = document.getElementById('switchToSignUpLink');
-    const switchToSignInLink = document.getElementById('switchToSignInLink');
-    
-    const executeLoginBtn = document.getElementById('executeLoginBtn');
-    const executeRegisterBtn = document.getElementById('executeRegisterBtn');
-    const loginEmailInput = document.getElementById('loginEmailInput');
-    const loginPasswordInput = document.getElementById('loginPasswordInput');
-    const registerEmailInput = document.getElementById('registerEmailInput');
-    const registerPasswordInput = document.getElementById('registerPasswordInput');
     const headerAuthContainer = document.getElementById('headerAuthContainer');
+    const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
 
-    // ==========================================================================
-    // MULTI-VIEW HIGH FIDELITY SCREEN ROUTER ACTION LINES
-    // ==========================================================================
-    function showTargetViewScreen(targetScreen) {
-        onboardingHub.classList.add('hidden');
-        signInScreen.classList.add('hidden');
-        signUpScreen.classList.add('hidden');
-        activeWorkstationGrid.classList.add('hidden');
-        targetScreen.classList.remove('hidden');
-    }
+    // Automatically check for saved multi-platform profile details on reload
+    currentUserEmail = localStorage.getItem('macprep_user_email');
+    const savedPremium = localStorage.getItem('macprep_premium_unlocked');
+    isPremiumAccountUnlocked = (savedPremium === 'true');
 
-    if (navSignInBtn) navSignInBtn.addEventListener('click', () => showTargetViewScreen(signInScreen));
-    if (navSignUpBtn) navSignUpBtn.addEventListener('click', () => showTargetViewScreen(signUpScreen));
-    if (switchToSignUpLink) switchToSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showTargetViewScreen(signUpScreen); });
-    if (switchToSignInLink) switchToSignInLink.addEventListener('click', (e) => { e.preventDefault(); showTargetViewScreen(signInScreen); });
-
-    if (homeLogoLink) {
-        homeLogoLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            showTargetViewScreen(onboardingHub);
+    if (currentUserEmail) {
+        // Redraw Header Action Items to confirm login profile sync
+        headerAuthContainer.innerHTML = `
+            <div class="user-profile-badge">
+                <span>Active Profile: <strong>${currentUserEmail}</strong></span>
+                <button id="authLogoutBtn" class="nav-text-link" style="margin-left: 12px; color: #ef4444;">Sign Out</button>
+            </div>
+        `;
+        
+        document.getElementById('authLogoutBtn').addEventListener('click', () => {
+            localStorage.clear();
+            location.reload();
         });
-    }
 
-    // Process True Server Registration Actions Loop
-    if (executeRegisterBtn) {
-        executeRegisterBtn.addEventListener('click', () => handleAuthTransaction('register'));
-    }
-
-    // Process True Server Sign In Actions Loop
-    if (executeLoginBtn) {
-        executeLoginBtn.addEventListener('click', () => handleAuthTransaction('login'));
-    }
-
-    async function handleAuthTransaction(mode) {
-        const email = mode === 'login' ? loginEmailInput.value.trim() : registerEmailInput.value.trim();
-        const password = mode === 'login' ? loginPasswordInput.value.trim() : registerPasswordInput.value.trim();
-
-        if (!email || !password || !email.includes('@')) {
-            alert("Please input a valid username and verification password.");
-            return;
-        }
-
+        // Trigger dynamic server sync to load historical metrics across devices
         try {
-            const response = await fetch('/api/authenticate', {
+            const syncResponse = await fetch('/api/sync-profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: mode, email, password })
+                body: JSON.stringify({ email: currentUserEmail })
             });
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || "Transaction aborted by database constraint validation.");
+            const syncData = await syncResponse.json();
+            if (syncData.success) {
+                totalQuestionsAnsweredCount = syncData.profile.answered_count || 0;
+                userQuestionHistoryArray = syncData.profile.history || [];
+                
+                syncWelcomeNotice.innerHTML = `⚡ Cross-Platform Sync Active: Welcome back, <strong>${currentUserEmail}</strong>. Your ${userQuestionHistoryArray.length} completed items have been synchronized onto this browser cleanly.`;
+                syncWelcomeNotice.classList.remove('hidden');
             }
-
-            // Successfully authenticated -> Map properties to memory
-            currentUserEmail = data.profile.email;
-            isPremiumAccountUnlocked = data.profile.premium_unlocked;
-            totalQuestionsAnsweredCount = data.profile.answered_count || 0;
-            userQuestionHistoryArray = data.profile.history || [];
-
-            // Re-render header actions state block cleanly
-            headerAuthContainer.innerHTML = `
-                <div class="user-profile-badge">
-                    <span>Active Profile: <strong>${currentUserEmail}</strong></span>
-                    <button id="authLogoutBtn" class="nav-text-link" style="margin-left: 10px; color: #ef4444;">Sign Out</button>
-                </div>
-            `;
-            
-            // Rebind dynamically generated sign out listeners cleanly
-            document.getElementById('authLogoutBtn').addEventListener('click', () => location.reload());
-
-            // Adjust Badges Based on Live Roles Parameters
-            if (isPremiumAccountUnlocked) {
-                tierBadgeBtn.innerText = "TIER: PREMIUM MEMBER (UNLOCKED)";
-                tierBadgeBtn.style.color = "#00ff88";
-                tierBadgeBtn.style.borderColor = "#00ff88";
-            } else {
-                tierBadgeBtn.innerText = `TIER: MEMBER (${totalQuestionsAnsweredCount}/100 FREE)`;
-            }
-
-            alert(data.message || " Handshake Verified!");
-            showTargetViewScreen(onboardingHub);
-
-        } catch (err) {
-            alert(`Authentication Error: ${err.message}`);
+        } catch (e) {
+            console.warn("Profile cache sync deferred.");
         }
     }
 
-    // Launch Workspace Terminal Hook Action
     if (launchBtn) {
         launchBtn.addEventListener('click', async () => {
-            showTargetViewScreen(activeWorkstationGrid);
+            onboardingHub.classList.add('hidden');
+            activeWorkstationGrid.classList.remove('hidden');
             await fetchProductionQuestionMatrix();
             initializeVitalsMonitor();
             renderActiveQuestion();
@@ -183,8 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (tierBadgeBtn) tierBadgeBtn.addEventListener('click', () => paywallModal.classList.remove('hidden'));
-    if (closePaywallBtn) closePaywallBtn.addEventListener('click', () => paywallModal.classList.add('hidden'));
+    if (closePaywallBtn) {
+        closePaywallBtn.addEventListener('click', () => paywallModal.classList.add('hidden'));
+    }
 
     function initializeVitalsMonitor() {
         document.getElementById('hudHR').innerText = "72";
@@ -246,7 +179,7 @@ window.switchCalc = function(calcId) {
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// Math Suite Engine Handlers
+// Math Modules
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account // MACPrep</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-page-bg">
+
+    <div class="auth-brand-header">
+        <h1>MACPrep</h1>
+        <div class="subtitle">Anesthesia Workspace & Board Prep Matrix</div>
+    </div>
+
+    <main class="auth-window-container">
+        <div class="auth-box-panel">
+            <h2>Create Account</h2>
+            <p class="auth-subtitle">Register a permanent system profile to protect your progress tracking history.</p>
+            
+            <form id="registerForm" onsubmit="handleFormAuth(event, 'register')">
+                <div class="form-group">
+                    <label for="registerEmail">Institutional Email</label>
+                    <input type="email" id="registerEmail" autocomplete="username email" required placeholder="name@institution.com">
+                </div>
+                <div class="form-group" style="margin: 15px 0 25px 0;">
+                    <label for="registerPassword">Security Password</label>
+                    <input type="password" id="registerPassword" autocomplete="new-password" required placeholder="••••••••">
+                </div>
+                
+                <button type="submit" id="registerSubmitBtn" class="btn btn-primary btn-large" style="width: 100%;">
+                    Register Secure Profile
+                </button>
+            </form>
+            
+            <p class="auth-switch-text">Already have an account? <a href="login.html">Sign in here</a></p>
+            <p class="auth-back-home"><a href="index.html">← Return to Dashboard Configuration</a></p>
+        </div>
+    </main>
+
+    <script>
+        async function handleFormAuth(event, mode) {
+            event.preventDefault();
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+            const btn = document.getElementById('registerSubmitBtn');
+
+            try {
+                btn.innerText = "Registering Secure Profile...";
+                const response = await fetch('/api/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: mode, email, password })
+                });
+                const data = await response.json();
+
+                if (!response.ok || !data.success) throw new Error(data.error || "Registration rejected.");
+
+                localStorage.setItem('macprep_user_email', data.profile.email);
+                localStorage.setItem('macprep_premium_unlocked', false);
+                
+                alert("Account Profile Created Successfully!");
+                window.location.href = 'index.html';
+            } catch (err) {
+                alert(`Registration Fault: ${err.message}`);
+                btn.innerText = "Register Secure Profile";
+            }
+        }
+    </script>
+</body>
+</html>
