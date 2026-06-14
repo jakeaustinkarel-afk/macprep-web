@@ -235,3 +235,12 @@ body {
     .vitals-metric { flex-basis: 40%; }
     .question-stem { font-size: 1.1rem; }
 }
+
+/* Fix: Maintain broadsheet aesthetic on interactive logo link elements */
+.logo-link {
+    text-decoration: none;
+    color: var(--text-main);
+}
+.logo-link:hover h1 {
+    opacity: 0.8;
+}
