@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="broadsheet-header">
+    <header class="console-header">
         <div class="logo-area">
             <a href="#" id="homeLogoLink" class="logo-link">
                 <h1>MACPrep</h1>
@@ -25,31 +25,29 @@
         
         <div class="setup-grid">
             <div class="setup-card">
-                <h3>1. Select Practice Mode</h3>
+                <h3>1. Practice Mode</h3>
                 <div class="radio-group">
                     <label class="radio-label">
                         <input type="radio" name="prepMode" value="adaptive" checked>
-                        <span><strong>Adaptive Drill:</strong> Questions scale in difficulty based on performance metrics.</span>
+                        <span><strong>Adaptive Drill:</strong> Complexity scales dynamically based on performance arrays.</span>
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="prepMode" value="timed">
-                        <span><strong>Simulated Exam:</strong> Hard time limits mirroring true certification day.</span>
+                        <span><strong>Simulated Exam:</strong> Strict timing constraints mapping true national certification blocks.</span>
                     </label>
                 </div>
             </div>
 
             <div class="setup-card">
-                <h3>2. Set Core Topic Focus</h3>
+                <h3>2. Core Topic Focus Blueprint</h3>
                 <div class="select-wrapper">
                     <select id="topicFocus">
-                        <option value="all" selected>All Subspecialties (Comprehensive Blueprint Matrix)</option>
-                        
-                        <optgroup label="Basic Sciences & Principles">
+                        <option value="all" selected>All Subspecialties (Comprehensive Review Matrix)</option>
+                        <optgroup label="Basic Sciences & Core Principles">
                             <option value="physics">Anesthesia Physics, Equipment & Monitor Technology</option>
                             <option value="pharmacology">General Pharmacology & Inhalational Pharmacokinetics</option>
                             <option value="anatomy-physiology">Advanced Anatomy, Physiology & Organ Systems</option>
                         </optgroup>
-
                         <optgroup label="Clinical Subspecialties">
                             <option value="cardiothoracic">Cardiothoracic & Vascular Anesthesia</option>
                             <option value="neuroanesthesia">Neuroanesthesia & Neuromonitoring Arrays</option>
@@ -57,8 +55,7 @@
                             <option value="pediatrics">Pediatric Subspecialty Management</option>
                             <option value="regional-neuraxial">Regional Anesthesia & Neuraxial Blocks</option>
                         </optgroup>
-
-                        <optgroup label="Advanced Practice & Crisis Management">
+                        <optgroup label="Crisis Management & Advanced Practice">
                             <option value="co-morbidities">Pathophysiology & Complex Co-morbidities</option>
                             <option value="crisis-complications">Anesthetic Complications & Crisis Management</option>
                             <option value="critical-care">Critical Care Medicine & PACU Surveillance</option>
@@ -67,12 +64,12 @@
                 </div>
             </div>
 
-            <div class="setup-card">
-                <h3>3. Question Volume</h3>
+            <div class="setup-card full-width">
+                <h3>3. Question Volume Selection</h3>
                 <div class="radio-group-horizontal">
-                    <label class="chip-label"><input type="radio" name="qVolume" value="10" checked><span>10 Qs</span></label>
-                    <label class="chip-label"><input type="radio" name="qVolume" value="25"><span>25 Qs</span></label>
-                    <label class="chip-label"><input type="radio" name="qVolume" value="50"><span>50 Qs</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="10" checked><span>10 Questions</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="25"><span>25 Questions</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="50"><span>50 Questions</span></label>
                     <label class="chip-label"><input type="radio" name="qVolume" value="all"><span>Max Matrix</span></label>
                 </div>
             </div>
@@ -86,24 +83,31 @@
     <main class="workstation-grid hidden" id="activeWorkstationGrid">
         <section class="main-content">
             <div class="telemetry-ribbon" id="telemetryRibbon">
-                <div class="vitals-metric"><span class="label">HR</span> <span class="value" id="hudHR">--</span> <span class="unit">bpm</span></div>
-                <div class="vitals-metric"><span class="label">NIBP</span> <span class="value" id="hudBP">--/--</span> <span class="unit">mmHg</span></div>
-                <div class="vitals-metric"><span class="label">MAP</span> <span class="value" id="hudMAP">--</span> <span class="unit">mmHg</span></div>
-                <div class="vitals-metric"><span class="label">RR</span> <span class="value" id="hudRR">--</span> <span class="unit">/min</span></div>
-                <div class="vitals-metric"><span class="label">EtCO₂</span> <span class="value" id="hudETCO2">--</span> <span class="unit">mmHg</span></div>
+                <div class="vitals-metric"><span class="label">HR</span> <span class="value" id="hudHR">--</span><span class="unit">bpm</span></div>
+                <div class="vitals-metric"><span class="label">NIBP</span> <span class="value" id="hudBP">--/--</span><span class="unit">mmHg</span></div>
+                <div class="vitals-metric"><span class="label">MAP</span> <span class="value" id="hudMAP">--</span><span class="unit">mmHg</span></div>
+                <div class="vitals-metric"><span class="label">RR</span> <span class="value" id="hudRR">--</span><span class="unit">/min</span></div>
+                <div class="vitals-metric"><span class="label">EtCO₂</span> <span class="value" id="hudETCO2">--</span><span class="unit">mmHg</span></div>
             </div>
 
             <div class="question-canvas">
                 <div class="meta-row">
-                    <span class="modality-tag" id="questionModality">Loading...</span>
-                    <span class="difficulty-tag" id="questionDifficulty">HARD</span>
+                    <span class="modality-tag" id="questionModality">SYSTEM TRACK</span>
+                    <span class="difficulty-tag" id="questionDifficulty">BOARD LEVEL</span>
                 </div>
-                <p class="question-stem" id="questionStem">Synchronizing question matrix...</p>
-                <div class="choices-stack" id="choicesContainer"></div>
+                <p class="question-stem" id="questionStem">Loading evaluation matrix parameters...</p>
+                
+                <div class="choices-stack" id="choicesContainer">
+                    </div>
 
                 <div class="action-row">
                     <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
                     <button class="btn btn-primary" id="nextBtn">Next Question</button>
+                </div>
+
+                <div class="explanation-box hidden" id="explanationBox">
+                    <h3>Rationale & Psychometric Trail</h3>
+                    <p id="explanationText"></p>
                 </div>
             </div>
         </section>
@@ -116,10 +120,71 @@
                     <button class="tab-btn" onclick="switchCalc('pediatric')">Peds Fluid</button>
                     <button class="tab-btn" onclick="switchCalc('anion')">Anion Gap</button>
                 </div>
+
                 <div class="calc-tab-content" id="calc-abl">
                     <h3>Allowable Blood Loss (ABL)</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Weight (kg)</label>
+                            <input type="number" id="ablWeight" value="70">
+                        </div>
+                        <div class="form-group">
+                            <label>EBV Factor</label>
+                            <select id="ablEbvFactor">
+                                <option value="70" selected>Adult Male (70 mL/kg)</option>
+                                <option value="65">Adult Female (65 mL/kg)</option>
+                                <option value="80">Pediatric (80 mL/kg)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Initial Hct (%)</label>
+                            <input type="number" id="ablInitialHct" value="42">
+                        </div>
+                        <div class="form-group">
+                            <label>Minimum Hct (%)</label>
+                            <input type="number" id="ablMinHct" value="30">
+                        </div>
+                    </div>
                     <button class="btn btn-calc" onclick="calculateABL()">Derive Target Volume</button>
                     <div class="calc-result" id="ablResult">Result: -- mL</div>
+                </div>
+
+                <div class="calc-tab-content hidden" id="calc-pediatric">
+                    <h3>Pediatric Fluid & Tube Sizing</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Age (Years)</label>
+                            <input type="number" id="pedsAge" value="4">
+                        </div>
+                        <div class="form-group">
+                            <label>Weight (kg)</label>
+                            <input type="number" id="pedsWeight" value="16">
+                        </div>
+                    </div>
+                    <button class="btn btn-calc" onclick="calculatePedsMetrics()">Derive Parameters</button>
+                    <div class="calc-result" id="pedsResult">Fluid: -- mL/hr | ETT: -- mm</div>
+                </div>
+
+                <div class="calc-tab-content hidden" id="calc-anion">
+                    <h3>Anion Gap & Base Mismatch</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sodium (Na⁺)</label>
+                            <input type="number" id="agNa" value="140">
+                        </div>
+                        <div class="form-group">
+                            <label>Chloride (Cl⁻)</label>
+                            <input type="number" id="agCl" value="104">
+                        </div>
+                        <div class="form-group">
+                            <label>Bicarb (HCO₃⁻)</label>
+                            <input type="number" id="agHco3" value="24">
+                        </div>
+                    </div>
+                    <button class="btn btn-calc" onclick="calculateAnionGap()">Calculate Anion Gap</button>
+                    <div class="calc-result" id="agResult">Anion Gap: -- mEq/L</div>
                 </div>
             </div>
         </aside>
