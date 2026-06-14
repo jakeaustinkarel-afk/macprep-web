@@ -386,3 +386,50 @@ async function pushClientProgressStateToSupabaseCloud() {
         console.warn("Cloud persistence links deferred.", err.message);
     }
 }
+
+/**
+ * 💊 BLUEPRINT PILLED EXTRAPOLATION INTERCEPTOR
+ * Intercepts category selection views to query the updated database taxonomy names
+ */
+function initializeSpecialtyMatrixFilters() {
+    const pillsContainer = document.getElementById('modality-pills-container');
+    if (!pillsContainer) return;
+
+    pillsContainer.addEventListener('click', async (e) => {
+        const activePill = e.target.closest('.modality-pill');
+        if (!activePill) return;
+
+        // Toggle active visual states
+        document.querySelectorAll('.modality-pill').forEach(p => p.classList.remove('active'));
+        activePill.classList.add('active');
+
+        const selectedTargetSpecialty = activePill.getAttribute('data-specialty');
+        console.log(`📡 Filtering active board stream pool by category token: ${selectedTargetSpecialty}`);
+
+        try {
+            // Append category parameters cleanly to the REST pathway endpoint URL
+            let targetRequestPath = '/api/questions/free';
+            if (selectedTargetSpecialty !== 'ALL') {
+                targetRequestPath += `?specialty=${encodeURIComponent(selectedTargetSpecialty)}`;
+            }
+
+            const response = await fetch(targetRequestPath);
+            if (!response.ok) throw new Error("Database network stream fault.");
+            const data = await response.json();
+
+            if (data.questions) {
+                globalQuestionPool = data.questions;
+                currentQuestionIndex = 0; // reset layout head indicator
+                renderTacticalFlagRibbon();
+                loadActiveQuestionVignette();
+            }
+        } catch (err) {
+            console.error("Filter matrix failure path:", err);
+        }
+    });
+}
+
+// Hook filter managers smoothly into active document threads
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSpecialtyMatrixFilters();
+});
