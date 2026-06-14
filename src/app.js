@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workspace Controller
- * Unified One-Track Engine & Network-Synced Safe Resume Cache Engine
+ * Fully Randomized Data Stream with Logo Escape Navigation Routing
  */
 
 // Global State Variables
@@ -22,22 +22,57 @@ let metricsCertainButIncorrect = 0;
 let metricsEducatedGuesses = 0;
 let metricsBlindGuesses = 0;
 
-const localFallbackQuestion = {
-    id: "q_fallback_001",
-    specialty: "PHARM",
-    waveformType: "NORMAL",
-    stem: "[LOCAL OFFLINE ENGINE ACTIVE] A 44-year-old patient undergoing a long abdominal reconstruction receives a continuous infusion of cisatracurium. Following 4 hours of unmonitored infusion, the clinician notices prolonged paralysis significantly outlasting the predicted offset curve. Which physiological mechanism best explains this prolonged neuromuscular blockade?",
-    choices: [
-        { originalLabel: "A", text: "Delayed elimination secondary to advanced hepatic cirrhosis or severe renal insufficiency pathways." },
-        { originalLabel: "B", text: "Thermal instability or acidosis shifting Hofmann elimination kinetics away from the baseline degradation velocity." },
-        { originalLabel: "C", text: "True atypical plasma cholinesterase variations inherited via homozygous recessive pseudocholinesterase mutations." },
-        { originalLabel: "D", text: "Competitive antagonism at pre-junctional nicotinic receptors causing irreversible structural channel closure." },
-        { originalLabel: "E", text: "Downregulation of acetylcholinesterase activity at the synaptic cleft due to hypokalemic alkalosis." }
-    ],
-    correctAnswer: "B",
-    explanation: "Cisatracurium undergoes Hofmann elimination, a non-organ-dependent chemical degradation process that is strictly dependent on normal physiological temperature and pH. A drop in core temperature (hypothermia) or a reduction in pH (acidosis) slows down this spontaneous clearance pathway.",
-    telemetry: { hr: 74, bp: "115/72", spo2: 99, etco2: 36 }
-};
+// Expanded Multi-Question Fallback Mock Pool for Bulletproof Random Local Execution Loop
+const fallbackQuestionMatrixPool = [
+    {
+        id: "q_fallback_001",
+        specialty: "PHARM",
+        waveformType: "NORMAL",
+        stem: "[CURRICULUM NODE ACTIVE] A 44-year-old patient undergoing a long abdominal reconstruction receives a continuous infusion of cisatracurium. Following 4 hours of unmonitored infusion, the clinician notices prolonged paralysis significantly outlasting the predicted offset curve. Which physiological mechanism best explains this prolonged neuromuscular blockade?",
+        choices: [
+            { originalLabel: "A", text: "Delayed elimination secondary to advanced hepatic cirrhosis or severe renal insufficiency pathways." },
+            { originalLabel: "B", text: "Thermal instability or acidosis shifting Hofmann elimination kinetics away from the baseline degradation velocity." },
+            { originalLabel: "C", text: "True atypical plasma cholinesterase variations inherited via homozygous recessive pseudocholinesterase mutations." },
+            { originalLabel: "D", text: "Competitive antagonism at pre-junctional nicotinic receptors causing irreversible structural channel closure." },
+            { originalLabel: "E", text: "Downregulation of acetylcholinesterase activity at the synaptic cleft due to hypokalemic alkalosis." }
+        ],
+        correctAnswer: "B",
+        explanation: "Cisatracurium undergoes Hofmann elimination, a non-organ-dependent chemical degradation process that is strictly dependent on normal physiological temperature and pH. A drop in core temperature (hypothermia) or a reduction in pH (acidosis) slows down this spontaneous clearance pathway.",
+        telemetry: { hr: 74, bp: "115/72", spo2: 99, etco2: 36 }
+    },
+    {
+        id: "q_fallback_002",
+        specialty: "PHYSICS",
+        waveformType: "EMBOLISM_DROP",
+        stem: "[CURRICULUM NODE ACTIVE] During mechanical volume-controlled ventilation in an orthognathic surgical procedure, the active capnography sweep layout demonstrates a sudden, precipitous drop in end-tidal carbon dioxide content down toward zero within three respiratory cycles. The peak airway pressure gauge displays zero variation. What mechanical or patient scenario does this tracking log pinpoint?",
+        choices: [
+            { originalLabel: "A", text: "Sudden development of a progressive, hidden tension pneumothorax with venous pooling collapse." },
+            { originalLabel: "B", text: "Complete separation or structural disconnection of the endotracheal tube from the circuit Y-piece connector interface." },
+            { originalLabel: "C", text: "A massive intraoperative pulmonary air embolism event causing acute right ventricular outlet lock." },
+            { originalLabel: "D", text: "Exhaustion or sudden channeling inside the barium hydroxide lime carbon dioxide absorber container canisters." },
+            { originalLabel: "E", text: "Acute severe bronchospasm forcing baseline gas flow traps completely below sample extraction lines." }
+        ],
+        correctAnswer: "B",
+        explanation: "A sudden, catastrophic loss of ETCO2 tracking that drops to zero or near-zero across 2-3 breaths with a concurrent loss of system circuit airway pressure is the classic clinical sign of an immediate breathing circuit disconnection line fault.",
+        telemetry: { hr: 112, bp: "84/48", spo2: 92, etco2: 8 }
+    },
+    {
+        id: "q_fallback_003",
+        specialty: "CRISIS",
+        waveformType: "NORMAL",
+        stem: "[CURRICULUM NODE ACTIVE] Within twenty minutes of induction and volatile halogenated anesthesia gas delivery, an adult patient demonstrates a rapid, uncontrolled rise in core body temperature tracking up toward 39.2°C, progressive masseter muscle rigidity, and a profound sinus tachycardia surge. What core medication must be mobilized instantly?",
+        choices: [
+            { originalLabel: "A", text: "Continuous intravenous Esmolol infusion targeted to reverse sympathetic neural overdrive patterns." },
+            { originalLabel: "B", text: "Rapid infusion of Dantrolene sodium targeting ryanodine receptor (RyR1) structural calcium release channels." },
+            { originalLabel: "C", text: "High-dose Physostigmine delivery to reverse severe central anticholinergic toxic syndromes." },
+            { originalLabel: "D", text: "Intravenous administration of Amiodarone to stabilize active ventricular conduction rows." },
+            { originalLabel: "E", text: "Immediate formulation setup for high-volume Sodium Bicarbonate systemic baseline buffer neutralization." }
+        ],
+        correctAnswer: "B",
+        explanation: "This state profiles Malignant Hyperthermia (MH), a hypermetabolic skeletal muscle crisis triggered by volatile gases or succinylcholine. The primary intervention is rapid administration of Dantrolene to block intracellular calcium release.",
+        telemetry: { hr: 134, bp: "148/92", spo2: 97, etco2: 58 }
+    }
+];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeBibliographyData();
@@ -46,10 +81,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCalculatorLogics();
     setupThemeAndScalingLogics();
     setupGlobalKeyboardHotkeys();
+    setupLogoNavigationEscape(); // Initialize Logo Hook
     
-    // Check for persistent background sessions on initial boot
     loadSessionStateFromCache();
 });
+
+/**
+ * 🩺 LOGO ESCAPE NAVIGATION FUNCTION
+ * Clicking the brand text instantly cleans state tracks and routes user home
+ */
+function setupLogoNavigationEscape() {
+    const logo = document.getElementById('brand-logo');
+    if (logo) {
+        logo.addEventListener('click', () => {
+            clearInterval(examTimerInterval);
+            clearInterval(dynamicWaveformInterval);
+            clearSessionStateCache(); // Clear storage track
+            
+            // Re-route views cleanly
+            document.getElementById('pane-dashboard-home').classList.remove('hidden');
+            document.getElementById('pane-active-testing').classList.add('hidden');
+            document.getElementById('pane-conversion-paywall').classList.add('hidden');
+            document.getElementById('header-exit-btn').classList.add('hidden');
+            document.getElementById('timer-zone').classList.add('hidden');
+            
+            console.log("⚓ Navigation Home Screen Route Restored via Brand Header Logo Trigger.");
+        });
+    }
+}
 
 async function initializeBibliographyData() {
     try {
@@ -151,9 +210,6 @@ function setupDashboardEventHandlers() {
     }
 }
 
-/**
- * 📡 ASYNCHRONOUS DATA INGESTION ENGINE
- */
 async function loadActiveSessionQuestion() {
     const stemText = document.getElementById('question-stem-text');
     const choicesStack = document.getElementById('choices-stack-container');
@@ -170,14 +226,17 @@ async function loadActiveSessionQuestion() {
         const data = await response.json();
         
         if (data.questions && data.questions.length > 0) {
+            // Pick a fully randomized item element out of the cloud response stream pool
             const randomIndex = Math.floor(Math.random() * data.questions.length);
             currentLiveQuestion = data.questions[randomIndex];
         } else {
-            throw new Error('No items found inside this modality.');
+            throw new Error('Empty response set returned.');
         }
     } catch (err) {
-        console.warn('Deploying offline backup asset card.', err);
-        currentLiveQuestion = localFallbackQuestion;
+        console.warn('Deploying randomized offline backup question node matrix elements.', err);
+        // Force true local fallback indexing array randomization loop bypass
+        const randomLocalIndex = Math.floor(Math.random() * fallbackQuestionMatrixPool.length);
+        currentLiveQuestion = fallbackQuestionMatrixPool[randomLocalIndex];
     }
 
     if (stemText) stemText.textContent = currentLiveQuestion.stem;
@@ -228,7 +287,6 @@ async function loadActiveSessionQuestion() {
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     startWaveformSimulationAnimation(currentLiveQuestion.waveformType || "NORMAL");
 
-    // CRITICAL TIMING TIMESTAMPS FIXED: State saves strictly *after* variables clear and allocate into viewports
     saveSessionStateToCache();
 }
 
@@ -326,7 +384,6 @@ function setupWorkspaceTabHandlers() {
             }
             document.getElementById('pane-conversion-paywall').classList.remove('hidden');
         } else {
-            // CRITICAL ORDER OF OPERATIONS ENFORCEMENT: Await network payload arrival *before* allowing local cache writes
             await loadActiveSessionQuestion();
             startWorkspaceCountdownTimer();
         }
