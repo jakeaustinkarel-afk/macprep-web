@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP SYSTEM ROUTER ENGINE - CLINICAL CONSOLE DATA LOGIC
+// MACPREP MASTER CONSOLE ROUTER & CLINICAL ENGINE
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
     const onboardingHub = document.getElementById('onboardingHub');
@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
             onboardingHub.classList.add('hidden');
             activeWorkstationGrid.classList.remove('hidden');
             
-            // Instantly render real-time telemetry monitors and questions data
             initializeVitalsMonitor();
             instantiateQuestionPayload();
         });
@@ -66,4 +65,73 @@ window.switchCalc = function(calcId) {
     
     document.getElementById(`calc-${calcId}`).classList.remove('hidden');
     event.currentTarget.classList.add('active');
+};
+
+// ==========================================================================
+// MATHEMATICAL CALCULATOR RUNTIME SUBROUTINES
+// ==========================================================================
+
+// 1. Allowable Blood Loss (ABL) Engine
+window.calculateABL = function() {
+    const weight = parseFloat(document.getElementById('ablWeight').value);
+    const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);
+    const initialHct = parseFloat(document.getElementById('ablInitialHct').value);
+    const minHct = parseFloat(document.getElementById('ablMinHct').value);
+    const resultBox = document.getElementById('ablResult');
+
+    if (isNaN(weight) || isNaN(initialHct) || isNaN(minHct) || initialHct <= minHct) {
+        resultBox.innerText = "Error: Invalid Input Metrics";
+        return;
+    }
+
+    const totalEbv = weight * ebvFactor;
+    const abl = Math.round((totalEbv * (initialHct - minHct)) / initialHct);
+    resultBox.innerHTML = `Estimated EBV: ${Math.round(totalEbv)} mL<br><strong>Max Allowable Loss: ${abl} mL</strong>`;
+};
+
+// 2. Pediatric Fluid & Tube Metrics Engine (4-2-1 Rule + Motoyama Cuffed ETT)
+window.calculatePedsMetrics = function() {
+    const age = parseFloat(document.getElementById('pedsAge').value);
+    const weight = parseFloat(document.getElementById('pedsWeight').value);
+    const resultBox = document.getElementById('pedsResult');
+
+    if (isNaN(age) || isNaN(weight)) {
+        resultBox.innerText = "Error: Invalid Input Metrics";
+        return;
+    }
+
+    // 4-2-1 Fluid Maintenance Rule Calculation
+    let hourlyRate = 0;
+    if (weight <= 10) {
+        hourlyRate = weight * 4;
+    } else if (weight <= 20) {
+        hourlyRate = 40 + ((weight - 10) * 2);
+    } else {
+        hourlyRate = 60 + ((weight - 20) * 1);
+    }
+
+    // Cuffed Endotracheal Tube Size Calculation (Motoyama Formula)
+    const ettSize = (age / 4) + 3.5;
+
+    resultBox.innerHTML = `Maint. Fluid Rate: ${hourlyRate} mL/hr<br><strong>Cuffed ETT ID Size: ${ettSize.toFixed(1)} mm</strong>`;
+};
+
+// 3. Anion Gap Calculator Engine
+window.calculateAnionGap = function() {
+    const na = parseFloat(document.getElementById('agNa').value);
+    const cl = parseFloat(document.getElementById('agCl').value);
+    const hco3 = parseFloat(document.getElementById('agHco3').value);
+    const resultBox = document.getElementById('agResult');
+
+    if (isNaN(na) || isNaN(cl) || isNaN(hco3)) {
+        resultBox.innerText = "Error: Invalid Electrolyte Metrics";
+        return;
+    }
+
+    const anionGap = na - (cl + hco3);
+    let status = "Normal Range (8-12)";
+    if (anionGap > 12) status = "High Anion Gap Metabolic Acidosis (MUDPILES Vector)";
+    if (anionGap < 8) status = "Low Anion Gap Array";
+
+    resultBox.innerHTML = `Calculated AG: ${anionGap} mEq/L<br><small style="color: #94a3b8">${status}</small>`;
 };
