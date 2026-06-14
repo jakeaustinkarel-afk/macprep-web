@@ -1,16 +1,19 @@
 /* ==========================================================================
-   MACPREP BROADSHEET ENGINE CORE STYLES
+   MACPREP EDITORIAL BROADSHEET SYSTEM DESIGN MATRIX
    ========================================================================== */
 :root {
-    --bg-main: #f9f9f6;
-    --text-main: #1a1a1a;
-    --text-muted: #666666;
-    --border-color: #1a1a1a;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --bg-main: #fcfcf9;         /* Editorial warm broadsheet paper tone */
+    --bg-card: #ffffff;         /* Pure crisp white for utility panes */
+    --text-main: #111111;       /* Deep high-contrast ink black */
+    --text-muted: #555555;      /* Charcoal gray for sub-metadata layers */
+    --border-color: #111111;    /* Strong solid linework boundaries */
+    --accent-gold: #c5a059;     /* Deep muted gold for structural tags */
     --font-serif: "Times New Roman", Times, serif;
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
+/* Base Body Framework */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -21,19 +24,20 @@ body {
     background-color: var(--bg-main);
     color: var(--text-main);
     font-family: var(--font-sans);
-    padding: 20px;
-    line-height: 1.5;
+    padding: 30px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* Header & Typography */
+/* Broadsheet Academic Header */
 .broadsheet-header {
-    border-bottom: 3px double var(--border-color);
-    padding-bottom: 20px;
-    margin-bottom: 30px;
+    border-bottom: 4px double var(--border-color);
+    padding-bottom: 25px;
+    margin-bottom: 40px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -46,54 +50,69 @@ body {
 
 .logo-link h1 {
     font-family: var(--font-serif);
-    font-size: 3rem;
+    font-size: 3.5rem;
     font-weight: 700;
-    line-height: 1;
+    letter-spacing: -1px;
+    line-height: 0.9;
 }
 
 .subtitle {
     font-family: var(--font-serif);
     font-style: italic;
+    font-size: 1.1rem;
     color: var(--text-muted);
-    margin-top: 5px;
+    margin-top: 8px;
 }
 
 .tier-badge {
     font-family: var(--font-serif);
     font-weight: bold;
-    border: 1px solid var(--border-color);
-    padding: 5px 10px;
+    border: 2px solid var(--border-color);
+    padding: 6px 14px;
     text-transform: uppercase;
     font-size: 0.85rem;
+    letter-spacing: 1px;
+    background: #ffffff;
 }
 
-/* Onboarding Hub Layout */
+/* ==========================================================================
+   STATE 1: ONBOARDING HUB PARAMETER DECK
+   ========================================================================== */
 .onboarding-hub {
-    max-width: 800px;
+    max-width: 950px;
     margin: 40px auto;
-    padding: 40px;
-    background: #ffffff;
-    border: 1px solid var(--border-color);
+    padding: 50px;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
     box-shadow: var(--shadow-sm);
+}
+
+.welcome-hero {
+    text-align: center;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 30px;
 }
 
 .welcome-hero h2 {
     font-family: var(--font-serif);
-    font-size: 2.2rem;
+    font-size: 2.5rem;
+    font-weight: 700;
     margin-bottom: 12px;
 }
 
 .welcome-hero p {
     color: var(--text-muted);
-    margin-bottom: 35px;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    font-family: var(--font-serif);
+    font-style: italic;
 }
 
 .setup-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 25px;
-    margin-bottom: 40px;
+    gap: 30px;
+    margin-bottom: 50px;
 }
 
 @media (min-width: 768px) {
@@ -102,48 +121,53 @@ body {
 
 .setup-card {
     background: var(--bg-main);
-    padding: 25px;
+    padding: 30px;
     border: 1px solid var(--border-color);
 }
 
 .setup-card h3 {
     font-family: var(--font-serif);
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    border-bottom: 1px dashed #ccc;
-    padding-bottom: 5px;
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .radio-group {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
 }
 
 .radio-label {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
     font-size: 0.95rem;
+    line-height: 1.4;
 }
 
 .radio-label input {
     margin-top: 4px;
+    accent-color: var(--text-main);
 }
 
 .select-wrapper select {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     border: 1px solid var(--border-color);
     background: #ffffff;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-family: var(--font-sans);
+    outline: none;
 }
 
 .radio-group-horizontal {
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 
 .chip-label {
@@ -158,26 +182,30 @@ body {
 
 .chip-label span {
     display: block;
-    padding: 12px;
+    padding: 14px;
     background: #ffffff;
     border: 1px solid var(--border-color);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
+    transition: all 0.15s ease;
 }
 
 .chip-label input:checked + span {
     background: var(--text-main);
     color: #ffffff;
+    border-color: var(--text-main);
 }
 
-/* Button UI Suite */
+/* Core Buttons Button-Suite */
 .btn {
     background: #ffffff;
     color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 10px 20px;
+    border: 2px solid var(--border-color);
+    padding: 12px 24px;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     cursor: pointer;
     transition: all 0.2s ease;
     width: 100%;
@@ -190,30 +218,40 @@ body {
 }
 
 .btn-primary:hover {
-    background: #333333;
+    background: #2a2a2a;
+}
+
+.launch-action {
+    text-align: center;
 }
 
 .btn-large {
-    padding: 15px 40px;
-    font-size: 1.15rem;
+    padding: 18px 50px;
+    font-size: 1.25rem;
     width: auto;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
 }
 
-/* Active Workspace Grid */
+/* ==========================================================================
+   STATE 2: ACTIVE CLINICAL WORKSTATION ENGINE
+   ========================================================================== */
 .workstation-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 @media (min-width: 992px) {
-    .workstation-grid { grid-template-columns: 7fr 3fr; }
+    .workstation-grid { grid-template-columns: 7.5fr 4.5fr; }
 }
 
 .main-content {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    padding: 25px;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    padding: 35px;
+    box-shadow: var(--shadow-sm);
 }
 
 .telemetry-ribbon {
@@ -222,27 +260,35 @@ body {
     gap: 15px;
     background: var(--text-main);
     color: #ffffff;
-    padding: 15px;
-    margin-bottom: 25px;
+    padding: 18px;
+    margin-bottom: 30px;
+    border-radius: 2px;
 }
 
 .vitals-metric {
     flex: 1;
     min-width: 100px;
     text-align: center;
+    border-right: 1px dashed #444;
+}
+.vitals-metric:last-child {
+    border-right: none;
 }
 
 .vitals-metric .label {
     display: block;
-    font-size: 0.75rem;
-    color: #aaa;
+    font-size: 0.8rem;
+    color: #999;
     text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
 }
 
 .vitals-metric .value {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     font-weight: 700;
-    font-family: monospace;
+    font-family: "Courier New", Courier, monospace;
+    color: #00ff66; /* High acuity clinical green signal */
 }
 
 .question-canvas {
@@ -251,46 +297,73 @@ body {
 
 .meta-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .modality-tag, .difficulty-tag {
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 3px 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 4px 10px;
     border: 1px solid var(--border-color);
+    text-transform: uppercase;
+}
+
+.modality-tag {
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+.difficulty-tag {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
 }
 
 .question-stem {
     font-family: var(--font-serif);
-    font-size: 1.25rem;
-    margin-bottom: 25px;
-    color: #111;
+    font-size: 1.4rem;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 35px;
+    color: #000000;
 }
 
 .choices-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 30px;
+    gap: 14px;
+    margin-bottom: 35px;
 }
 
 .choice-row {
     display: flex;
     align-items: center;
-    padding: 15px;
+    padding: 18px;
     border: 1px solid var(--border-color);
-    cursor: pointer;
     background: #ffffff;
+    cursor: pointer;
+    font-size: 1.05rem;
+    transition: all 0.15s ease;
 }
 
 .choice-row:hover {
     background: var(--bg-main);
+    transform: translateX(4px);
 }
 
+/* Sidebar Utilities Suite */
 .utility-sidebar {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    padding: 25px;
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    padding: 35px;
+    box-shadow: var(--shadow-sm);
+    height: fit-content;
+}
+
+.utility-sidebar h2 {
+    font-family: var(--font-serif);
+    font-size: 1.6rem;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
 }
