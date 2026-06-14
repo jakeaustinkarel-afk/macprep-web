@@ -644,3 +644,25 @@ body {
     border: 1px dashed var(--border-color);
     background: transparent;
 }
+
+/* ==========================================================================
+   🎛️ OPTION 2: SESSION CONSTRUCTOR DASHBOARD LAYOUTS
+   ========================================================================== */
+.constructor-panel-card {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    padding: 24px;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.constructor-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 14px;
+}
+.constructor-field-block {
+    display: flex;
+    flex-direction: column;
+}

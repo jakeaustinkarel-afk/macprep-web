@@ -79,22 +79,49 @@
                 <div class="sunken-hardware-well">
                     <span class="well-metric">1,000 Integrated Questions</span>
                     <span class="well-divider">│</span>
-                    <span class="well-metric">10% Open Session Ceiling</span>
+                    <span class="well-metric">Dynamic Session Slicing</span>
                     <span class="well-divider">│</span>
                     <span class="well-metric">$50 Flat Lifetime Access</span>
                 </div>
             </div>
 
-            <div class="track-selection-container">
-                <div class="fork-row-layout" style="justify-content: center;">
-                    <div class="fork-card-blueprint" style="max-width: 550px; text-align: center; align-items: center;">
-                        <div class="blueprint-card-icon-header">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-crimson)" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+            <div class="track-selection-container" style="margin-bottom: 30px;">
+                <div class="constructor-panel-card">
+                    <h3 class="section-subtitle" style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:8px; letter-spacing:1px;">🎛️ ANESTHETIST SIMULATION SESSION CONSTRUCTOR</h3>
+                    <div class="constructor-grid-layout">
+                        
+                        <div class="constructor-field-block">
+                            <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">1. WORKSPACE TESTING MODALITY</label>
+                            <select id="config-session-mode" class="sprint-dropdown" style="width:100%; height:40px;">
+                                <option value="STUDY">📚 Clinical Study Mode (Immediate Rationales & Charts)</option>
+                                <option value="EXAM">⏱️ Strict Mock Examination Mode (Hidden Assets, Enforced Timer)</option>
+                            </select>
                         </div>
-                        <h4 class="fork-title" style="font-size:18px;">Launch Master Review Engine</h4>
-                        <p class="fork-desc" style="font-size:13px;">Stream customized diagnostic question sequences covering advanced pharmacology kinetics, machine physics, high-acuity crisis scenarios, and anesthetist rotation guidelines.</p>
-                        <button id="unified-start-btn" class="action-btn-trigger" style="padding: 14px 40px; width: auto;">Enter Active Board Testing ➔</button>
+
+                        <div class="constructor-field-block">
+                            <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">2. SESSION BLOCK SIZE (VOLUME ALLOCATION)</label>
+                            <select id="config-session-size" class="sprint-dropdown" style="width:100%; height:40px;">
+                                <option value="10">10 Questions (Targeted Flash Assessment)</option>
+                                <option value="25">25 Questions (Standard Subspecialty Block)</option>
+                                <option value="50">50 Questions (Mid-Length Practice Exam)</option>
+                                <option value="100">100 Questions (Comprehensive NCCAA / CDQ Matrix)</option>
+                            </select>
+                        </div>
+
+                        <div class="constructor-field-block">
+                            <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">3. SOURCE MATERIAL TARGET POOL</label>
+                            <select id="config-session-source" class="sprint-dropdown" style="width:100%; height:40px;">
+                                <option value="ALL">📋 Comprehensive 1,000 Blueprint Bank</option>
+                                <option value="FLAGGED">⭐️ Starred / Flagged Case Profiles Only</option>
+                                <option value="INCORRECT">❌ Remediate Weaknesses Pool (Missed Near-Misses)</option>
+                            </select>
+                        </div>
+
                     </div>
+                    
+                    <button id="unified-start-btn" class="action-btn-trigger success-theme-btn" style="width:100%; padding:14px; margin-top:20px; font-size:13px; font-weight:bold; letter-spacing:0.5px;">
+                        GENERATE PLATFORM BOARD SIMULATION RUN ➔
+                    </button>
                 </div>
             </div>
 
@@ -257,7 +284,7 @@
             <div class="paywall-card-frame">
                 <h2 class="scholarly-title">Session Ceiling Allocation Limit Reached</h2>
                 <p class="broadsheet-prose text-measure">
-                    You have efficiently processed the introductory 10% slice of the MACPrep review framework. Below is your clinical vulnerability risk profile generated directly from your calibration indices:
+                    You have efficiently processed the introductory slice of the MACPrep review framework. Below is your clinical vulnerability risk profile generated directly from your calibration indices:
                 </p>
 
                 <div class="diagnostic-evaluation-box-wrapper">
@@ -304,78 +331,7 @@
 
     </main>
 
-    <div id="printable-cme-invoice-pane" class="invoice-print-container">
-        <div class="invoice-header-block">
-            <div>
-                <h1 class="invoice-title">🩺 MACPrep Review Workstations</h1>
-                <p class="invoice-subtext">Unified Anesthesiologist Assistant Board Preparation & CDQ Certification Platform</p>
-                <p class="invoice-subtext">Operations Interface: operations@macprep.org │ www.macprep.org</p>
-            </div>
-            <div style="text-align: right;">
-                <h2 class="invoice-status-badge">PAID IN FULL</h2>
-                <p class="invoice-meta-text"><strong>Invoice ID:</strong> <span id="print-inv-id">INV-948201-CME</span></p>
-                <p class="invoice-meta-text"><strong>Date Issued:</strong> <span id="print-inv-date">June 14, 2026</span></p>
-            </div>
-        </div>
-
-        <div class="invoice-billing-split">
-            <div>
-                <span class="invoice-heading-label">MERCHANT CREDENTIALS</span>
-                <p class="invoice-address-text"><strong>MACPrep Academic Publishing LLC</strong></p>
-                <p class="invoice-address-text">100 Enterprise Way, Suite 400</p>
-                <p class="invoice-address-text">Anesthetist Education Allocation Hub</p>
-            </div>
-            <div style="text-align: right;">
-                <span class="invoice-heading-label">CLINICIAN ALLOCATION PROFILE</span>
-                <p class="invoice-address-text"><strong>Recipient:</strong> <span id="print-user-name">Certified/Student Anesthesiologist Assistant</span></p>
-                <p class="invoice-address-text"><strong>Account Profile:</strong> <span id="print-user-email">aa.clinician@aa-program.edu</span></p>
-                <p class="invoice-address-text"><strong>Status:</strong> Validated Graduate Registry maintenance</p>
-            </div>
-        </div>
-
-        <table class="invoice-ledger-table">
-            <thead>
-                <tr>
-                    <th>Accredited Training Curricular Module Description</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Unit Price</th>
-                    <th style="text-align: right;">Extended Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <strong>MACPrep Master Certification Engine Workstation Account Access Slot</strong>
-                        <br><small style="color:#555;">Full database lifetime stream access covering 1,000 peer-reviewed dynamic board questions, high-acuity crisis tracking, real-time waveform capnography simulation parameters, multi-formula anesthetist calculators, and metacognitive calibration heatmap matrices.</small>
-                    </td>
-                    <td style="text-align: center; vertical-align: top;">1</td>
-                    <td style="text-align: right; vertical-align: top;">$50.00</td>
-                    <td style="text-align: right; vertical-align: top;">$50.00</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="invoice-totals-block">
-            <div class="totals-line-row">
-                <span>Subtotal Baseline Value:</span>
-                <span>$50.00 USD</span>
-            </div>
-            <div class="totals-line-row">
-                <span>Institutional Processing Fees:</span>
-                <span>$0.00 USD</span>
-            </div>
-            <div class="totals-line-row total-highlight-row">
-                <span>Total Reimbursable Ledger Sum:</span>
-                <span>$50.00 USD</span>
-            </div>
-        </div>
-
-        <div class="invoice-footer-legal-well">
-            <p><strong>CME Reimbursement Attestation Registry Mapping Statement:</strong></p>
-            <p>This document serves as an authentic transaction receipt for educational software materials purchased exclusively for ongoing professional board certification and academic performance maintenance. The baseline payment transaction token was successfully cleared through automated merchant webhook signature security paths matching cryptographic authentication protocol regulations.</p>
-            <p style="margin-top: 10px; text-align: center; font-family: monospace; font-size: 10px; color: #444;">SECURITY SIGNATURE SHA256: VALIDATED_TRANSACTION_HANDSHAKE_COMPLETED_SUCCESSFULLY</p>
-        </div>
-    </div>
+    <div id="printable-cme-invoice-pane" class="invoice-print-container"></div>
 
     <script src="src/app.js"></script>
 </body>
