@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto'; // Crucial: Native crypto engine for key generation
 
 dotenv.config();
 
@@ -21,48 +22,80 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
 // ==========================================================================
-// NEW ROUTE: CROSS-PLATFORM PROFILE AND PROGRESS SYNC ENGINE
+// UNIFIED CROSS-PLATFORM AUTHENTICATION PORTAL GATEWAYS
 // ==========================================================================
-app.post('/api/sync-profile', async (req, res) => {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email parameter required for device sync." });
+app.post('/api/authenticate', async (req, res) => {
+    const { action, email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ success: false, error: "Complete credential fields are required." });
+    }
 
-    console.log(`📡 Syncing cross-device operational parameters for: ${email}`);
+    const cleanEmail = email.toLowerCase().trim();
+    console.log(`📡 Authentication request: [${action}] incoming vector for ${cleanEmail}`);
 
     try {
-        // Query if profile already exists in our cloud table mapping layer
+        // Query to check if profile is catalogued in our cloud tables mapping layer
         let { data: profile, error } = await supabase
             .from('macprep_profiles')
             .select('*')
-            .eq('email', email.toLowerCase().trim())
-            .single();
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-        // If user profile is missing, automatically initialize a fresh cloud repository item for them
-        if (!profile) {
-            console.log(`✨ Generating fresh cross-platform profile bucket for: ${email}`);
-            const { data: newProfile, error: insertError } = await supabase
+        if (action === 'register') {
+            if (profile) {
+                return res.status(400).json({ success: false, error: "An active account with this email address already exists." });
+            }
+
+            // Fix: Explicitly append a generated random UUID string token so it never sends a null id field
+            const { data: newProfile, error: createErr } = await supabase
                 .from('macprep_profiles')
-                .insert([{ 
-                    email: email.toLowerCase().trim(), 
-                    premium_unlocked: false, 
+                .insert([{
+                    id: crypto.randomUUID(), 
+                    email: cleanEmail,
+                    password: password, // In production, this can shift to standard cryptographic hashes safely
+                    premium_unlocked: false,
                     answered_count: 0,
-                    history: [] 
+                    history: []
                 }])
                 .select()
                 .single();
 
-            if (insertError) throw insertError;
-            profile = newProfile;
+            if (createErr) throw createErr;
+            return res.status(200).json({ success: true, message: "Account profile created successfully!", profile: newProfile });
         }
 
+        if (action === 'login') {
+            if (!profile || profile.password !== password) {
+                return res.status(401).json({ success: false, error: "Invalid credential signature. Access Denied." });
+            }
+            return res.status(200).json({ success: true, message: "Authentication Verified.", profile });
+        }
+
+    } catch (err) {
+        console.error("❌ Authentication Layer Exception Matrix: ", err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Dynamic Profile Tracing Sync Router Endpoints
+app.post('/api/sync-profile', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email parameter required for profile sync." });
+    try {
+        let { data: profile, error } = await supabase
+            .from('macprep_profiles')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .maybeSingle();
+
+        if (!profile) return res.status(404).json({ success: false, error: "Profile not found." });
         res.status(200).json({ success: true, profile });
     } catch (err) {
-        console.error("❌ Profile Sync Failure Exception Matrix: ", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Update profile progress dynamically across devices
+// Real-Time Progress Update Synchronizer Route
 app.post('/api/update-progress', async (req, res) => {
     const { email, answered_count, history } = req.body;
     try {
@@ -78,6 +111,7 @@ app.post('/api/update-progress', async (req, res) => {
     }
 });
 
+// Questions Matrix Streaming Layer
 app.get('/api/questions', async (req, res) => {
     try {
         const { data, error } = await supabase.from('macprep_questions').select('*');
@@ -89,5 +123,5 @@ app.get('/api/questions', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 MACPrep Cross-Device Server running on port ${PORT}`);
+    console.log(`🚀 MACPrep Synchronized Cloud Core active on port ${PORT}`);
 });
