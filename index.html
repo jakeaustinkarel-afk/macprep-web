@@ -3,156 +3,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MACPrep Academic Workstation</title>
+    <title>MACPrep // Clinical Anesthesia Console</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
     <header class="console-header">
-        <div class="logo-area">
-            <a href="#" id="homeLogoLink" class="logo-link">
-                <h1>MACPrep</h1>
-            </a>
-            <p class="subtitle">Unified SAA/CAA Evaluation Platform</p>
-        </div>
-        <div class="tier-badge" id="tierBadge">Tier: Guest (10% Unlocked)</div>
+        <a href="#" id="homeLogoLink" class="logo-link">
+            <h1>MACPrep</h1>
+            <div class="subtitle">Anesthesia Workspace & Board Prep Matrix</div>
+        </a>
+        <button id="tierBadgeBtn" class="tier-badge-btn">
+            TIER: GUEST (10% UNLOCKED)
+        </button>
     </header>
 
-    <section class="onboarding-hub" id="onboardingHub">
-        <div class="welcome-hero">
-            <h2>Welcome to the Academic Workstation</h2>
-            <p>Configure your adaptive study block parameters below to calibrate the evaluation matrix.</p>
-        </div>
-        
-        <div class="setup-grid">
-            <div class="setup-card">
-                <h3>1. Practice Mode</h3>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="prepMode" value="adaptive" checked>
-                        <span><strong>Adaptive Drill:</strong> Complexity scales dynamically based on performance arrays.</span>
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="prepMode" value="timed">
-                        <span><strong>Simulated Exam:</strong> Strict timing constraints mapping true national certification blocks.</span>
-                    </label>
-                </div>
+    <main>
+        <section id="onboardingHub" class="onboarding-hub">
+            <div class="welcome-hero">
+                <h2>Configure Evaluation Matrix</h2>
+                <p>Customize your high-signal board simulation parameters below to initialize the terminal workspace.</p>
             </div>
 
-            <div class="setup-card">
-                <h3>2. Core Topic Focus Blueprint</h3>
-                <div class="select-wrapper">
-                    <select id="topicFocus">
-                        <option value="all" selected>All Subspecialties (Comprehensive Review Matrix)</option>
-                        <optgroup label="Basic Sciences & Core Principles">
-                            <option value="physics">Anesthesia Physics, Equipment & Monitor Technology</option>
-                            <option value="pharmacology">General Pharmacology & Inhalational Pharmacokinetics</option>
-                            <option value="anatomy-physiology">Advanced Anatomy, Physiology & Organ Systems</option>
-                        </optgroup>
-                        <optgroup label="Clinical Subspecialties">
-                            <option value="cardiothoracic">Cardiothoracic & Vascular Anesthesia</option>
-                            <option value="neuroanesthesia">Neuroanesthesia & Neuromonitoring Arrays</option>
-                            <option value="obstetrics">Obstetric Anesthesia & Neonatal Resuscitation</option>
-                            <option value="pediatrics">Pediatric Subspecialty Management</option>
-                            <option value="regional-neuraxial">Regional Anesthesia & Neuraxial Blocks</option>
-                        </optgroup>
-                        <optgroup label="Crisis Management & Advanced Practice">
-                            <option value="co-morbidities">Pathophysiology & Complex Co-morbidities</option>
-                            <option value="crisis-complications">Anesthetic Complications & Crisis Management</option>
-                            <option value="critical-care">Critical Care Medicine & PACU Surveillance</option>
-                        </optgroup>
-                    </select>
-                </div>
-            </div>
-
-            <div class="setup-card full-width">
-                <h3>3. Question Volume Selection</h3>
-                <div class="radio-group-horizontal">
-                    <label class="chip-label"><input type="radio" name="qVolume" value="10" checked><span>10 Questions</span></label>
-                    <label class="chip-label"><input type="radio" name="qVolume" value="25"><span>25 Questions</span></label>
-                    <label class="chip-label"><input type="radio" name="qVolume" value="50"><span>50 Questions</span></label>
-                    <label class="chip-label"><input type="radio" name="qVolume" value="all"><span>Max Matrix</span></label>
-                </div>
-            </div>
-        </div>
-
-        <div class="launch-action">
-            <button class="btn btn-primary btn-large" id="launchWorkstationBtn">Launch Adaptive Workstation</button>
-        </div>
-    </section>
-
-    <main class="workstation-grid hidden" id="activeWorkstationGrid">
-        <section class="main-content">
-            <div class="telemetry-ribbon" id="telemetryRibbon">
-                <div class="vitals-metric"><span class="label">HR</span> <span class="value" id="hudHR">--</span><span class="unit">bpm</span></div>
-                <div class="vitals-metric"><span class="label">NIBP</span> <span class="value" id="hudBP">--/--</span><span class="unit">mmHg</span></div>
-                <div class="vitals-metric"><span class="label">MAP</span> <span class="value" id="hudMAP">--</span><span class="unit">mmHg</span></div>
-                <div class="vitals-metric"><span class="label">RR</span> <span class="value" id="hudRR">--</span><span class="unit">/min</span></div>
-                <div class="vitals-metric"><span class="label">EtCO₂</span> <span class="value" id="hudETCO2">--</span><span class="unit">mmHg</span></div>
-            </div>
-
-            <div class="question-canvas">
-                <div class="meta-row">
-                    <span class="modality-tag" id="questionModality">SYSTEM TRACK</span>
-                    <span class="difficulty-tag" id="questionDifficulty">BOARD LEVEL</span>
-                </div>
-                <p class="question-stem" id="questionStem">Loading evaluation matrix parameters...</p>
-                
-                <div class="choices-stack" id="choicesContainer">
+            <div class="setup-grid">
+                <div class="setup-card full-width">
+                    <h3>Select Core Specialties / Modality Focus</h3>
+                    <div class="checkbox-matrix">
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="pharmacology" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta">
+                                <strong>Clinical Pharmacology</strong>
+                                <span>Inhalation kinetics, IV profiles, neuromuscular blocks, local agents</span>
+                            </div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="physics" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta">
+                                <strong>Anesthesia Physics & Equipment</strong>
+                                <span>Variable-bypass vaporizers, circle systems, gas laws, scavenging physics</span>
+                            </div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="pathophysiology" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta">
+                                <strong>Advanced Pathophysiology & Co-morbidities</strong>
+                                <span>Carcinoid crisis, malignant hyperthermia, cardiac valve defects</span>
+                            </div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="regional">
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta">
+                                <strong>Regional & Neuraxial Modalities</strong>
+                                <span>Epidural dynamics, spinal sensory blocks, localized tracking arrays</span>
+                            </div>
+                        </label>
                     </div>
-
-                <div class="action-row">
-                    <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
-                    <button class="btn btn-primary" id="nextBtn">Next Question</button>
                 </div>
 
-                <div class="explanation-box hidden" id="explanationBox">
-                    <h3>Rationale & Psychometric Trail</h3>
-                    <p id="explanationText"></p>
+                <div class="setup-card">
+                    <h3>Workstation Operational Mode</h3>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="workstationMode" value="adaptive" checked>
+                            <div class="radio-meta">
+                                <strong>Adaptive Training Vector</strong>
+                                <span>Provides instantaneous rationales, explanations, and calculator tools.</span>
+                            </div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="workstationMode" value="mock-board">
+                            <div class="radio-meta">
+                                <strong>Strict Exam Mode</strong>
+                                <span>Simulates real board conditions. Blocks explanations and disables calculators.</span>
+                            </div>
+                        </label>
+                    </div>
                 </div>
+
+                <div class="setup-card">
+                    <h3>Session Item Allotment Volume</h3>
+                    <div class="radio-group-horizontal">
+                        <label class="chip-label">
+                            <input type="radio" name="itemVolume" value="10" checked>
+                            <span>10 Items</span>
+                        </label>
+                        <label class="chip-label">
+                            <input type="radio" name="itemVolume" value="25">
+                            <span>25 Items</span>
+                        </label>
+                        <label class="chip-label">
+                            <input type="radio" name="itemVolume" value="50">
+                            <span>50 Items</span>
+                        </label>
+                        <label class="chip-label">
+                            <input type="radio" name="itemVolume" value="100">
+                            <span>100 Items</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="launch-action">
+                <button id="launchWorkstationBtn" class="btn btn-primary btn-large">
+                    Initialize Operational Console
+                </button>
             </div>
         </section>
 
-        <aside class="utility-sidebar">
-            <div class="calculator-panel">
-                <h2>Clinical Calculators Suite</h2>
-                <div class="tabs-header">
-                    <button class="tab-btn active" onclick="switchCalc('abl')">ABL</button>
-                    <button class="tab-btn" onclick="switchCalc('pediatric')">Peds Fluid</button>
-                    <button class="tab-btn" onclick="switchCalc('anion')">Anion Gap</button>
+        <section id="activeWorkstationGrid" class="workstation-grid hidden">
+            <div class="main-content">
+                <div class="telemetry-ribbon">
+                    <div class="vitals-metric">
+                        <span class="label">HR</span>
+                        <span id="hudHR" class="value">--</span>
+                        <span class="unit">bpm</span>
+                    </div>
+                    <div class="vitals-metric">
+                        <span class="label">NIBP</span>
+                        <span id="hudBP" class="value">--</span>
+                        <span class="unit">mmHg</span>
+                    </div>
+                    <div class="vitals-metric">
+                        <span class="label">MAP</span>
+                        <span id="hudMAP" class="value">--</span>
+                        <span class="unit">mmHg</span>
+                    </div>
+                    <div class="vitals-metric">
+                        <span class="label">RR</span>
+                        <span id="hudRR" class="value">--</span>
+                        <span class="unit">/min</span>
+                    </div>
+                    <div class="vitals-metric">
+                        <span class="label">ETCO2</span>
+                        <span id="hudETCO2" class="value">--</span>
+                        <span class="unit">mmHg</span>
+                    </div>
                 </div>
 
-                <div class="calc-tab-content" id="calc-abl">
-                    <h3>Allowable Blood Loss (ABL)</h3>
+                <div class="meta-row">
+                    <span id="questionModality" class="modality-tag">--</span>
+                    <span id="questionDifficulty" class="difficulty-tag">--</span>
+                </div>
+
+                <div id="questionStem" class="question-stem">Loading core matrix channels...</div>
+                
+                <div id="choicesContainer" class="choices-stack">
+                    </div>
+
+                <div class="action-row">
+                    <button id="prevBtn" class="btn" disabled>Previous Matrix Item</button>
+                    <button id="nextBtn" class="btn">Next Matrix Item</button>
+                </div>
+            </div>
+
+            <aside class="utility-sidebar">
+                <h2>Clinical Algebra Calculators</h2>
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchCalc('abl')">Allowable Blood Loss</button>
+                    <button class="tab-btn" onclick="switchCalc('pediatric')">Peds Fluid / ETT</button>
+                    <button class="tab-btn" onclick="switchCalc('anion-gap')">Anion Gap</button>
+                </div>
+
+                <div id="calc-abl" class="calc-tab-content">
+                    <h3>Estimated Allowable Blood Loss Engine</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Weight (kg)</label>
+                            <label>Patient Weight (kg)</label>
                             <input type="number" id="ablWeight" value="70">
                         </div>
                         <div class="form-group">
-                            <label>EBV Factor</label>
+                            <label>EBV Multiplier (mL/kg)</label>
                             <select id="ablEbvFactor">
-                                <option value="70" selected>Adult Male (70 mL/kg)</option>
-                                <option value="65">Adult Female (65 mL/kg)</option>
-                                <option value="80">Pediatric (80 mL/kg)</option>
+                                <option value="70" selected>Adult Male (70)</option>
+                                <option value="65">Adult Female (65)</option>
+                                <option value="80">Pediatric Patient (80)</option>
+                                <option value="90">Neonatal Vector (90)</option>
                             </select>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Initial Hct (%)</label>
+                            <label>Initial Hematocrit (%)</label>
                             <input type="number" id="ablInitialHct" value="42">
                         </div>
                         <div class="form-group">
-                            <label>Minimum Hct (%)</label>
+                            <label>Minimum Safe Hematocrit (%)</label>
                             <input type="number" id="ablMinHct" value="30">
                         </div>
                     </div>
                     <button class="btn btn-calc" onclick="calculateABL()">Derive Target Volume</button>
-                    <div class="calc-result" id="ablResult">Result: -- mL</div>
+                    <div id="ablResult" class="calc-result">Awaiting validation entry parameters...</div>
                 </div>
 
-                <div class="calc-tab-content hidden" id="calc-pediatric">
-                    <h3>Pediatric Fluid & Tube Sizing</h3>
+                <div id="calc-pediatric" class="calc-tab-content hidden">
+                    <h3>Pediatric Fluid (4-2-1) & Cuffed Tube Metrics</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Age (Years)</label>
@@ -164,32 +212,59 @@
                         </div>
                     </div>
                     <button class="btn btn-calc" onclick="calculatePedsMetrics()">Derive Parameters</button>
-                    <div class="calc-result" id="pedsResult">Fluid: -- mL/hr | ETT: -- mm</div>
+                    <div id="pedsResult" class="calc-result">Awaiting validation entry parameters...</div>
                 </div>
 
-                <div class="calc-tab-content hidden" id="calc-anion">
-                    <h3>Anion Gap & Base Mismatch</h3>
+                <div id="calc-anion-gap" class="calc-tab-content hidden">
+                    <h3>Anion Gap Metabolic Evaluation</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Sodium (Na⁺)</label>
+                            <label>Sodium (Na+)</label>
                             <input type="number" id="agNa" value="140">
                         </div>
                         <div class="form-group">
-                            <label>Chloride (Cl⁻)</label>
+                            <label>Chloride (Cl-)</label>
                             <input type="number" id="agCl" value="104">
                         </div>
                         <div class="form-group">
-                            <label>Bicarb (HCO₃⁻)</label>
+                            <label>Bicarbonate (HCO3-)</label>
                             <input type="number" id="agHco3" value="24">
                         </div>
                     </div>
-                    <button class="btn btn-calc" onclick="calculateAnionGap()">Calculate Anion Gap</button>
-                    <div class="calc-result" id="agResult">Anion Gap: -- mEq/L</div>
+                    <button class="btn btn-calc" onclick="calculateAnionGap()">Derive Parameters</button>
+                    <div id="agResult" class="calc-result">Awaiting validation entry parameters...</div>
                 </div>
-            </div>
-        </aside>
+            </aside>
+        </section>
     </main>
 
-    <script src="src/app.js"></script>
+    <div id="paywallModal" class="paywall-overlay hidden">
+        <div class="paywall-card">
+            <button id="closePaywallBtn" class="paywall-close-x">&times;</button>
+            <div class="paywall-badge">PREMIUM ACCESS UPGRADE</div>
+            <h2>Unlock the Complete 2,500 Question Matrix</h2>
+            <p class="paywall-lead">You have explored the free trial parameters. Complete your secure registration sequence to instantly unlock the full platform.</p>
+            
+            <div class="value-proposition-box">
+                <ul>
+                    <li>⚡ <strong>Full National Curriculum Bank Access:</strong> Over 2,500 highly challenging clinical board questions.</li>
+                    <li>📊 <strong>Interactive Board Modes:</strong> Real-time adaptive rationales, explanations, and dynamic telemetry traces.</li>
+                    <li>🩺 <strong>Advanced Practice Calculators:</strong> Pediatric maintenance equations, cuffed ETT parameters, and ABL engines.</li>
+                    <li> Insulated, peer-reviewed study tracks with a 100% Pass Guarantee.</li>
+                </ul>
+            </div>
+
+            <div class="price-strike-block">
+                <span class="price-tag">$50</span>
+                <span class="price-recurrence">One-time purchase / Lifetime access</span>
+            </div>
+
+            <button id="stripeCheckoutBtn" class="btn btn-primary btn-large">
+                Unlock Lifetime Premium Access Instantly
+            </button>
+            <p class="secure-checkout-notice">🔒 Encrypted transactions managed securely via Stripe Core Network.</p>
+        </div>
+    </div>
+
 </body>
 </html>

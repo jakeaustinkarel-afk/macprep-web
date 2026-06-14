@@ -1,9 +1,11 @@
 // ==========================================================================
-// MACPREP PRODUCTION CONSOLE ENGINE - LIVE CLOUD NETWORK ROUTER
+// MACPREP PRODUCTION FRONTEND ROUTER WITH ACTIVE EXTENDED PAYWALL STATES
 // ==========================================================================
 
 let currentQuestionIndex = 0;
 let workstationQuestions = [];
+let totalQuestionsAnsweredCount = 0; // Tracks running free-tier utilization parameters
+const FREE_TIER_MAX_LIMIT = 100;     // Hard cap threshold restriction rules
 
 document.addEventListener('DOMContentLoaded', () => {
     const onboardingHub = document.getElementById('onboardingHub');
@@ -12,18 +14,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const homeLogoLink = document.getElementById('homeLogoLink');
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
+    
+    // Paywall Modal Interface Nodes
+    const tierBadgeBtn = document.getElementById('tierBadgeBtn');
+    const paywallModal = document.getElementById('paywallModal');
+    const closePaywallBtn = document.getElementById('closePaywallBtn');
+    const stripeCheckoutBtn = document.getElementById('stripeCheckoutBtn');
 
-    console.log("📡 MACPrep Clinical Workspace Controller Online.");
+    console.log("📡 MACPrep Integrated Workspace Operational Hub Online.");
 
-    // State Switch 1: Stream live questions out of cloud systems upon launch
+    // Action Trigger 1: Open paywall instantly when Guest badge is clicked
+    if (tierBadgeBtn) {
+        tierBadgeBtn.addEventListener('click', () => {
+            paywallModal.classList.remove('hidden');
+        });
+    }
+
+    if (closePaywallBtn) {
+        closePaywallBtn.addEventListener('click', () => {
+            paywallModal.classList.add('hidden');
+        });
+    }
+
+    if (stripeCheckoutBtn) {
+        stripeCheckoutBtn.addEventListener('click', () => {
+            alert("Redirecting to secure Stripe payment verification gateway portal...");
+            // Destination hook location line for window.location.href = data.stripeSessionUrl
+        });
+    }
+
+    // Action Trigger 2: Initialize Console
     if (launchBtn) {
         launchBtn.addEventListener('click', async () => {
             onboardingHub.classList.add('hidden');
             activeWorkstationGrid.classList.remove('hidden');
             
-            document.getElementById('questionStem').innerText = "Establishing secure cryptographic database tunnel... Calibration in progress.";
+            document.getElementById('questionStem').innerText = "Calibrating dynamic network paths... Retrieving production catalog row arrays.";
             
-            // Trigger live network fetch from our Render server route
             await fetchProductionQuestionMatrix();
             
             initializeVitalsMonitor();
@@ -41,8 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
+            // Check if user has answered more than 100 questions before advancing
+            if (totalQuestionsAnsweredCount >= FREE_TIER_MAX_LIMIT) {
+                paywallModal.classList.remove('hidden');
+                return;
+            }
+
             if (currentQuestionIndex < workstationQuestions.length - 1) {
                 currentQuestionIndex++;
+                totalQuestionsAnsweredCount++;
                 renderActiveQuestion();
             } else {
                 alert("Evaluation Matrix Exhausted: You have successfully completed this customized preparation block!");
@@ -79,17 +113,22 @@ async function fetchProductionQuestionMatrix() {
             workstationQuestions = data.questions;
             currentQuestionIndex = 0;
         } else {
-            throw new Error("Cloud database returned empty array matrix.");
+            throw new Error("Empty array matrix received.");
         }
     } catch (err) {
-        console.error("⚠️ Cloud connection latency detected. Hydrating localized backup stream: ", err);
-        // Bulletproof high-signal backup failover if database is unseeded
+        console.error("⚠️ Cloud latency fallback activated: ", err);
+        // Resilient local array failover loop
         workstationQuestions = [
             {
                 modality: "Clinical Pharmacology",
                 difficulty: "BOARD HARD",
                 stem: "During a rapid sequence induction in an unstable septic patient with a baseline mean arterial pressure (MAP) of 52 mmHg, which induction agent profiles the most balanced hemodynamic safety vector while minimizing adrenal suppression risks?",
-                choices: ["Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds", "Propofol 2 mg/kg IV high-velocity syringe bolus", "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization", "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols"]
+                choices: [
+                    "Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds",
+                    "Propofol 2 mg/kg IV high-velocity syringe bolus",
+                    "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization",
+                    "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols"
+                ]
             }
         ];
     }
@@ -101,27 +140,23 @@ window.renderActiveQuestion = function() {
 
     const currentQ = workstationQuestions[currentQuestionIndex];
     
-    document.getElementById('questionModality').innerText = currentQ.modality || currentQ.specialty || "General Blueprint";
+    document.getElementById('questionModality').innerText = currentQ.modality || "General Curriculum";
     document.getElementById('questionDifficulty').innerText = currentQ.difficulty || "BOARD LEVEL";
     document.getElementById('questionStem').innerText = currentQ.stem;
     
     const container = document.getElementById('choicesContainer');
-    
-    // Support parsing both structured array pools and mapped choice objects string blocks cleanly
     let choiceArray = Array.isArray(currentQ.choices) ? currentQ.choices : [];
     if (choiceArray.length === 0 && currentQ.options) choiceArray = currentQ.options;
     if (choiceArray.length === 0) {
-        // Fallback reconstruction parser layer
         choiceArray = [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean);
     }
 
     container.innerHTML = choiceArray.map((choice, i) => {
-        const letter = String.fromCharCode(65 + i); // Auto-assign options badges A, B, C, D
-        const textValue = typeof choice === 'object' ? (choice.text || choice.value) : choice;
+        const letter = String.fromCharCode(65 + i);
         return `
             <div class="choice-row" onclick="selectWorkspaceChoice(this)">
                 <strong>${letter}</strong>
-                <span>${textValue}</span>
+                <span>${choice}</span>
             </div>
         `;
     }).join('');
