@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP MASTERFRONTEND CORE - SYNCHRONIZED CLOUD CONSOLE
+// MACPREP PRODUCTION CLIENT - COMPREHENSIVE CLOUD RUNTIME CONTROLLER
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -7,7 +7,7 @@ let workstationQuestions = [];
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
-// System Account Memory Layers
+// Device Core Profile Session Variables
 let currentUserEmail = null;
 let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
@@ -20,66 +20,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
     
-    // Portal Targets
     const tierBadgeBtn = document.getElementById('tierBadgeBtn');
     const paywallModal = document.getElementById('paywallModal');
     const closePaywallBtn = document.getElementById('closePaywallBtn');
     
-    // Sidebar Authentication Element Anchors
-    const executeSyncBtn = document.getElementById('executeSyncBtn');
-    const syncUserEmailInput = document.getElementById('syncUserEmailInput');
-    const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
+    // Explicit Button Anchor Assignments
+    const authLoginBtn = document.getElementById('authLoginBtn');
+    const authRegisterBtn = document.getElementById('authRegisterBtn');
+    const authEmailInput = document.getElementById('authEmailInput');
+    const authPasswordInput = document.getElementById('authPasswordInput');
     const accountStatsContainer = document.getElementById('accountStatsContainer');
+    const authLogoutBtn = document.getElementById('authLogoutBtn');
 
-    // Cross-Platform Sign In & Creation Logic Pipeline
-    if (executeSyncBtn) {
-        executeSyncBtn.addEventListener('click', async () => {
-            const email = syncUserEmailInput.value.trim();
-            if (!email || !email.includes('@')) {
-                alert("Please input a valid verification email address to create or sync your profile.");
-                return;
+    // Subroutine: Process Sign In Call Pass
+    if (authLoginBtn) {
+        authLoginBtn.addEventListener('click', () => executeAuthTransaction('login'));
+    }
+
+    // Subroutine: Process Account Registration Call Pass
+    if (authRegisterBtn) {
+        authRegisterBtn.addEventListener('click', () => executeAuthTransaction('register'));
+    }
+
+    async function executeAuthTransaction(mode) {
+        const email = authEmailInput.value.trim();
+        const password = authPasswordInput.value.trim();
+
+        if (!email || !password || !email.includes('@')) {
+            alert("Please provide a valid email and password token key to verify profile status fields.");
+            return;
+        }
+
+        try {
+            const btnTarget = mode === 'login' ? authLoginBtn : authRegisterBtn;
+            const originalText = btnTarget.innerText;
+            btnTarget.innerText = "Syncing...";
+
+            const response = await fetch('/api/authenticate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: mode, email, password })
+            });
+            const data = await response.json();
+
+            btnTarget.innerText = originalText;
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || "Authentication handshake rejected.");
             }
 
-            try {
-                executeSyncBtn.innerText = "Connecting Crypto Channels...";
-                const response = await fetch('/api/sync-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                const data = await response.json();
+            // Hydrate working environment with active cloud columns data properties
+            currentUserEmail = data.profile.email;
+            isPremiumAccountUnlocked = data.profile.premium_unlocked;
+            totalQuestionsAnsweredCount = data.profile.answered_count || 0;
+            userQuestionHistoryArray = data.profile.history || [];
 
-                if (data.success) {
-                    currentUserEmail = data.profile.email;
-                    isPremiumAccountUnlocked = data.profile.premium_unlocked;
-                    totalQuestionsAnsweredCount = data.profile.answered_count || 0;
-                    userQuestionHistoryArray = data.profile.history || [];
-
-                    // Adjust Interface Tokens Dynamically
-                    if (isPremiumAccountUnlocked) {
-                        tierBadgeBtn.innerText = "TIER: LIFETIME PREMIUM (UNLOCKED)";
-                        tierBadgeBtn.style.color = "#00ff88";
-                        tierBadgeBtn.style.borderColor = "#00ff88";
-                        document.getElementById('statTier').innerText = "Premium Lifetime";
-                        document.getElementById('statTier').style.color = "#00ff88";
-                    } else {
-                        tierBadgeBtn.innerText = `TIER: GUEST (${totalQuestionsAnsweredCount}/100 FREE)`;
-                        document.getElementById('statTier').innerText = "Free Trial Guest";
-                    }
-
-                    // Populate Sidebar Statistics Output
-                    document.getElementById('statEmail').innerText = currentUserEmail;
-                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Completed`;
-                    
-                    accountStatsContainer.classList.remove('hidden');
-                    syncWelcomeNotice.innerText = `🔄 Session Handshake Live: Synchronized as ${currentUserEmail}. Secure database tracing active.`;
-                    syncWelcomeNotice.classList.remove('hidden');
-                    executeSyncBtn.innerText = "Connection Established";
-                }
-            } catch (err) {
-                alert("Database link latency detected. Please retry.");
-                executeSyncBtn.innerText = "Establish Secure Connection";
+            // Shift System Badge View States Instantly
+            if (isPremiumAccountUnlocked) {
+                tierBadgeBtn.innerText = "TIER: LIFETIME PREMIUM (UNLOCKED)";
+                tierBadgeBtn.style.color = "#00ff88";
+                tierBadgeBtn.style.borderColor = "#00ff88";
+                document.getElementById('statTier').innerText = "Premium Lifetime Member";
+                document.getElementById('statTier').style.color = "#00ff88";
+            } else {
+                tierBadgeBtn.innerText = `TIER: GUEST (${totalQuestionsAnsweredCount}/100 FREE)`;
+                document.getElementById('statTier').innerText = "Trial Tier Guest Profile";
             }
+
+            document.getElementById('statEmail').innerText = currentUserEmail;
+            document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Logged`;
+
+            // Display Session Output and Clear Inputs
+            accountStatsContainer.classList.remove('hidden');
+            authEmailInput.value = '';
+            authPasswordInput.value = '';
+            alert(data.message || "Connection complete!");
+
+        } catch (err) {
+            alert(`Profile Verification Fault: ${err.message}`);
+        }
+    }
+
+    if (authLogoutBtn) {
+        authLogoutBtn.addEventListener('click', () => {
+            location.reload();
         });
     }
 
@@ -124,9 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentQuestionIndex++;
                 totalQuestionsAnsweredCount++;
                 
-                // Keep cloud records instantly up-to-date across form switches
                 if (currentUserEmail) {
-                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Completed`;
+                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Logged`;
                     await fetch('/api/update-progress', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -214,7 +237,7 @@ window.switchCalc = function(calcId) {
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// Math Engines
+// Math Modules
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);

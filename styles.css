@@ -635,3 +635,27 @@ body {
 .btn-secondary:hover {
     background: rgba(255,255,255,0.05);
 }
+
+/* ==========================================================================
+   AUTHENTICATION LAYOUT AND LOGGED METRIC BOX ALIGNMENTS
+   ========================================================================== */
+.auth-action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 15px;
+}
+.auth-action-buttons .btn {
+    flex: 1;
+}
+
+.status-indicator-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--clinical-green);
+    border-radius: 50%;
+    display: inline-block;
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    box-shadow: 0 0 8px var(--clinical-green);
+}
