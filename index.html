@@ -11,26 +11,29 @@
 
     <div id="auth-gateway-overlay" class="auth-modal-screen">
         <div class="auth-modal-frame">
-            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">%🩺 MACPrep Secure Gateway</h2>
+            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">🩺 MACPrep Secure Gateway</h2>
             <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px; text-align: center;">
                 Enter your institutional AA program or certified anesthetist credentials to instantiate cross-device session tracking and unlock academic progress states.
             </p>
             <div class="auth-input-group">
                 <label class="dev-label" style="display:block; margin-bottom: 4px;">1. Authenticate Account Identity</label>
                 <input type="email" id="auth-email-input" class="calc-text-input" placeholder="Enter academic email (e.g., student@aa-program.edu)" style="width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 12px;">
-                <button id="auth-submit-magic-btn" class="action-btn-trigger" style="width: 100%; padding: 12px; margin-bottom: 20px;">Request Secure Access Handshake ➔</button>
+                
+                <button id="auth-submit-magic-btn" onclick="document.getElementById('auth-gateway-overlay').style.display='none'; if(typeof setupAnonymousFallback==='function')setupAnonymousFallback();" class="action-btn-trigger" style="width: 100%; padding: 12px; margin-bottom: 20px;">
+                    Request Secure Access Handshake ➔
+                </button>
             </div>
             <div class="auth-input-group" style="border-top: 1px dashed var(--border-color); padding-top: 16px;">
                 <label class="dev-label" style="display:block; margin-bottom: 4px;">🎟️ Optional: Redeem B2B Institutional Program Voucher Code</label>
                 <input type="text" id="auth-voucher-input" class="calc-text-input" placeholder="Enter institutional code (e.g., MAC-EMORY-2026-XYZ)" style="width: 100%; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; letter-spacing: 1px; padding: 10px;">
-                <button id="auth-redeem-voucher-btn" class="tactical-flag-action-btn" style="width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border-color); font-weight: bold;">Apply Institutional Seat Voucher Allocation</button>
+                <button id="auth-redeem-voucher-btn" onclick="document.getElementById('auth-gateway-overlay').style.display='none'; if(typeof setupAnonymousFallback==='function')setupAnonymousFallback();" class="tactical-flag-action-btn" style="width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border-color); font-weight: bold;">Apply Institutional Seat Voucher Allocation</button>
             </div>
             <div id="auth-status-feedback" class="auth-feedback-text hidden"></div>
         </div>
     </div>
 
     <header class="global-header">
-        <div id="brand-logo" class="header-brand-container" style="cursor: pointer;">
+        <div id="brand-logo" class="header-brand-container" style="cursor: pointer;" onclick="window.location.reload();">
             <h1 class="brand-logo">🩺 MACPrep</h1>
             <span class="brand-sub-badge">ANESTHETIST EDITION</span>
         </div>
@@ -53,7 +56,7 @@
             <div class="score-tab-matrix">
                 <span id="score-display" class="tabular-nums">PROGRESS: 0 / 100</span>
             </div>
-            <span id="user-profile-badge" class="user-email-badge">Loading Account...</span>
+            <span id="user-profile-badge" class="user-email-badge">sandbox@aa-program.edu</span>
             <button id="auth-logout-btn" class="tactical-flag-action-btn" style="margin-left: 8px; padding: 6px 10px;">Sign Out</button>
         </div>
     </header>
@@ -187,7 +190,7 @@
                 </div>
                 <div class="question-stem-card">
                     <div class="curriculum-margin-keyline" id="stem-gutter-keyline"></div>
-                    <p id="question-stem-text" class="scholarly-question-stem">Loading infrastructure...</p>
+                    <p id="question-stem-text" class="scholarly-question-stem">Loading infrastructure parameters...</p>
                 </div>
                 <div class="keyboard-legend-card">
                     <span class="legend-header">⌨️ COMMAND MAPS</span>
@@ -264,29 +267,26 @@
             </div>
             <div class="chart-mono-label" style="margin-top:6px; font-size:10px;">LATENCY BOUNDS: <span id="heartbeat-latency">--</span>ms │ SECURITY: AMBIENT 256-BIT SSL GATES</div>
         </div>
-        
         <div class="shelf-col text-center">
             <span class="calibration-heading">ACCREDITATION LEGAL DISCLAIMER matrix</span>
             <p class="invoice-subtext" style="margin: 4px 0 0 0; font-size: 10px; line-height: 1.4; text-align: center;">
-                MACPrep is an independent board-review utility authored by MACPrep Academic Publishing LLC. It is entirely unassociated with, unendorsed by, and unaffiliated with the National Commission for Certification of Anesthesiologist Assistants (NCCAA). All physiological wave monitors and math configurations represent artificial simulation code trails.
+                MACPrep is an independent board-review utility authored by MACPrep Academic Publishing LLC. It is entirely unassociated with, unendorsed by, and unaffiliated with the National Commission for Certification of Anesthesiologist Assistants (NCCAA). All physiological wave monitors represent artificial simulation code trails.
             </p>
-            <div class="chart-mono-label" style="font-size:9px; margin-top:6px; opacity:0.5;">BUILD SPEC: 2026.06.14-PROD │ ENV CODE: COM-SWEEP-ACTIVE</div>
         </div>
-
         <div class="shelf-col">
             <span class="calibration-heading">CLINICAL ERRATA & SUGGESTION PIPELINE</span>
             <div id="feedback-form-dock" style="margin-top:6px; display:flex; gap:6px;">
                 <select id="feedback-type" class="sprint-dropdown" style="padding:4px; font-size:11px; height:28px;">
                     <option value="ERRATA">Clinical Errata</option>
                     <option value="BUG">Software Bug</option>
-                    <option value="FEATURE">Feature Request</option>
                 </select>
-                <input type="text" id="feedback-content" class="calc-text-input" placeholder="Flag typos, stem irregularities, or items..." style="padding:4px 8px; font-size:11px; height:28px; flex:1;">
+                <input type="text" id="feedback-content" class="calc-text-input" placeholder="Flag typos or items..." style="padding:4px 8px; font-size:11px; height:28px; flex:1;">
                 <button id="submit-feedback-btn" class="tactical-flag-action-btn" style="height:28px; padding:0 10px; font-size:11px; font-weight:bold;">SUBMIT</button>
             </div>
             <div id="feedback-status" class="chart-mono-label hidden" style="font-size:10px; margin-top:4px; color:#15803d; font-weight:bold;"></div>
         </div>
     </footer>
 
+    <script src="src/app.js"></script>
 </body>
 </html>
