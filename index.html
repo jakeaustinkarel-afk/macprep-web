@@ -11,7 +11,7 @@
 
     <div id="auth-gateway-overlay" class="auth-modal-screen">
         <div class="auth-modal-frame">
-            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">%🩺 MACPrep Secure Gateway</h2>
+            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">🩺 MACPrep Secure Gateway</h2>
             <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px; text-align: center;">
                 Enter your institutional AA program or certified anesthetist credentials to instantiate cross-device session tracking and unlock academic progress states.
             </p>
@@ -100,10 +100,12 @@
                         <h3 class="section-subtitle" style="margin:0; letter-spacing:0.5px; color:var(--text-main);">🏛️ AA ACADEMIC PROGRAM DIRECTOR CONTROLS</h3>
                         <span class="brand-sub-badge" style="background:var(--accent-scrub); color:#fff; font-weight:bold;">PORTAL ACTIVE</span>
                     </div>
+                    
                     <p class="broadsheet-prose" style="font-size:13px; margin-bottom:16px;">
                         Manage your student cohort's seat parameters, monitor activation milestones, and provision voucher code allocations below.
                     </p>
-                    <div class="table-scroll-container" style="background:#fff; border:1px solid var(--border-color);">
+
+                    <div class="table-scroll-container" style="background:#fff; border:1px solid var(--border-color); max-height: 200px; overflow-y: auto;">
                         <table class="registry-data-matrix">
                             <thead>
                                 <tr>
@@ -117,10 +119,16 @@
                                 </tbody>
                         </table>
                     </div>
-                    <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                    <div style="display:flex; justify-content:flex-end; margin-top:12px; margin-bottom: 24px;">
                         <button id="b2b-mint-voucher-btn" class="tactical-flag-action-btn" style="background:var(--text-main); color:var(--bg-primary); font-weight:bold; padding:8px 16px;">
                             ➕ Mint New Group Seat Code Entry
                         </button>
+                    </div>
+
+                    <div id="b2b-cohort-analytics-view" style="border-top: 1px dashed var(--border-color); padding-top: 20px;">
+                        <span class="calibration-heading" style="color:var(--text-main); font-weight: bold; letter-spacing: 0.5px;">📊 COHORT MACROSCOPIC BLUEPRINT ACCURACY HEATMAP (ANONYMIZED COHORT DATA)</span>
+                        <div id="b2b-cohort-heatmap-grid" class="heatmap-grid-matrix" style="margin-top: 12px;">
+                            </div>
                     </div>
                 </div>
             </div>
@@ -198,166 +206,81 @@
         </section>
 
         <section id="pane-active-testing" class="workspace-asymmetric-pane hidden">
-            
             <div class="workspace-left-pane">
                 <div class="tactical-flag-ribbon" id="flag-tracker-ribbon"></div>
-
                 <div id="sticky-patient-banner" class="floating-patient-profile-banner">
                     <div class="banner-title-text">CRITICAL EVALUATION CASE TARGET MATRIX ACTIVE</div>
                     <button id="flag-case-toggle-btn" class="tactical-flag-action-btn">🏴 Flag Case</button>
                 </div>
-
                 <div class="monitor-telemetry-ribbon">
                     <div class="vitals-ticker-row">
-                        <div class="vital-block">
-                            <span class="vital-label">HR</span>
-                            <span id="vital-hr" class="vital-value">--</span>
-                            <span class="vital-unit">bpm</span>
-                        </div>
-                        <div class="vital-block">
-                            <span class="vital-label">NIBP</span>
-                            <span id="vital-bp" class="vital-value">--/--</span>
-                            <span class="vital-unit">mmHg</span>
-                        </div>
-                        <div class="vital-block">
-                            <span class="vital-label">SpO2</span>
-                            <span id="vital-spo2" class="vital-value">--</span>
-                            <span class="vital-unit">%</span>
-                        </div>
-                        <div class="vital-block">
-                            <span class="vital-label">ETCO2</span>
-                            <span id="vital-etco2" class="vital-value">--</span>
-                            <span class="vital-unit">mmHg</span>
-                        </div>
+                        <div class="vital-block"><span class="vital-label">HR</span><span id="vital-hr" class="vital-value">--</span><span class="vital-unit">bpm</span></div>
+                        <div class="vital-block"><span class="vital-label">NIBP</span><span id="vital-bp" class="vital-value">--/--</span><span class="vital-unit">mmHg</span></div>
+                        <div class="vital-block"><span class="vital-label">SpO2</span><span id="vital-spo2" class="vital-value">--</span><span class="vital-unit">%</span></div>
+                        <div class="vital-block"><span class="vital-label">ETCO2</span><span id="vital-etco2" class="vital-value">--</span><span class="vital-unit">mmHg</span></div>
                     </div>
                     <div class="svg-waveform-container">
-                        <svg class="capnography-canvas" viewBox="0 0 400 40" preserveAspectRatio="none">
-                            <path id="dynamic-capno-path" d="M 0 35 L 20 35 L 25 5 L 65 5 L 70 35 L 100 35" stroke="#22c55e" stroke-width="2" fill="none"/>
-                        </svg>
+                        <svg class="capnography-canvas" viewBox="0 0 400 40" preserveAspectRatio="none"><path id="dynamic-capno-path" d="M 0 35 L 20 35 L 25 5 L 65 5 L 70 35 L 100 35" stroke="#22c55e" stroke-width="2" fill="none"/></svg>
                     </div>
                 </div>
-
                 <div id="clinical-chart-viewport" class="clinical-chart-wrapper hidden">
-                    <div class="chart-header-row">
-                        <span id="clinical-chart-title" class="chart-mono-label">DIAGNOSTIC VISUAL PROFILE</span>
-                    </div>
-                    <div class="chart-canvas-dock">
-                        <svg id="dynamic-clinical-svg" viewBox="0 0 500 160" preserveAspectRatio="xMidYMid meet" style="width:100%; height:160px;"></svg>
-                    </div>
+                    <div class="chart-header-row"><span id="clinical-chart-title" class="chart-mono-label">DIAGNOSTIC VISUAL PROFILE</span></div>
+                    <div class="chart-canvas-dock"><svg id="dynamic-clinical-svg" viewBox="0 0 500 160" preserveAspectRatio="xMidYMid meet" style="width:100%; height:160px;"></svg></div>
                 </div>
-
                 <div class="question-stem-card">
                     <div class="curriculum-margin-keyline" id="stem-gutter-keyline"></div>
-                    <p id="question-stem-text" class="scholarly-question-stem">Loading clinical case infrastructure parameters...</p>
+                    <p id="question-stem-text" class="scholarly-question-stem">Loading infrastructure...</p>
                 </div>
-
                 <div class="keyboard-legend-card">
-                    <span class="legend-header">⌨️ WORKSTATION HOTKEY COMMAND MAPS</span>
-                    <div class="legend-flex-row">
-                        <span><kbd class="hotkey-badge">A</kbd>-<kbd class="hotkey-badge">E</kbd> Select Option</span>
-                        <span><kbd class="hotkey-badge">Right-Click</kbd> Strike distractor</span>
-                        <span><kbd class="hotkey-badge">Enter</kbd> Advance Case</span>
-                    </div>
+                    <span class="legend-header">⌨️ COMMAND MAPS</span>
+                    <div class="legend-flex-row"><span><kbd class="hotkey-badge">A</kbd>-<kbd class="hotkey-badge">E</kbd> Select</span><span><kbd class="hotkey-badge">Right-Click</kbd> Strike</span><span><kbd class="hotkey-badge">Enter</kbd> Advance</span></div>
                 </div>
-
                 <div id="developer-audit-panel" class="developer-panel-dock hidden">
-                    <span class="dev-badge">🛠️ INTERNAL DEVELOPER AUDIT TOOLS ACTIVE</span>
+                    <span class="dev-badge">🛠️ DEV TOOLS ACTIVE</span>
                     <div class="dev-controls-flex">
-                        <div style="display:flex; gap:6px; align-items:center;">
-                            <label class="dev-label">Warp to Index (1-1000):</label>
-                            <input type="number" id="dev-warp-index-input" class="calc-text-input" style="width:70px; padding:4px;" min="1" max="1000">
-                            <button id="dev-execute-warp-btn" class="tactical-flag-action-btn" style="background:#1c1a17; color:#fff; border:none;">WARP ⚡</button>
-                        </div>
-                        <div class="dev-peek-readout">
-                            <strong>Correct Key Badge Preview:</strong> <span id="dev-key-badge-preview" style="color:var(--accent-crimson); font-weight:bold;">--</span>
-                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;"><label class="dev-label">Warp:</label><input type="number" id="dev-warp-index-input" class="calc-text-input" style="width:70px; padding:4px;"><button id="dev-execute-warp-btn" class="tactical-flag-action-btn" style="background:#1c1a17; color:#fff; border:none;">WARP</button></div>
+                        <div class="dev-peek-readout"><strong>Correct Badge:</strong> <span id="dev-key-badge-preview" style="color:var(--accent-crimson); font-weight:bold;">--</span></div>
                     </div>
                 </div>
             </div>
-
             <div class="workspace-right-pane">
-                <div class="workspace-tab-bar">
-                    <button id="tab-toggle-question" class="workspace-tab active">CASE TESTING ENGINE</button>
-                    <button id="tab-toggle-calculator" class="workspace-tab">CLINICAL WORKSPACE CALCULATORS</button>
-                </div>
-
+                <div class="workspace-tab-bar"><button id="tab-toggle-question" class="workspace-tab active">CASE TESTING ENGINE</button><button id="tab-toggle-calculator" class="workspace-tab">CLINICAL CALCULATORS</button></div>
                 <div id="sub-pane-question-core" class="tab-content-panel">
-                    <div id="choices-stack-container" class="choices-layout-stack">
-                        </div>
-
+                    <div id="choices-stack-container" class="choices-layout-stack"></div>
                     <div id="calibration-submission-lock-panel" class="calibration-lock-panel hidden">
                         <span class="calibration-heading">LOG ASSESSMENT CERTAINTY CALIBRATION PROFILE</span>
-                        <div class="calibration-buttons-row">
-                            <button class="calibration-btn" data-certainty="CERTAIN" id="hotkey-cert-1">CERTAIN [1]</button>
-                            <button class="calibration-btn" data-certainty="EDUCATED_GUESS" id="hotkey-cert-2">EDUCATED [2]</button>
-                            <button class="calibration-btn" data-certainty="BLIND_GUESS" id="hotkey-cert-3">BLIND [3]</button>
-                        </div>
+                        <div class="calibration-buttons-row"><button class="calibration-btn" data-certainty="CERTAIN">CERTAIN [1]</button><button class="calibration-btn" data-certainty="EDUCATED_GUESS">EDUCATED [2]</button><button class="calibration-btn" data-certainty="BLIND_GUESS">BLIND [3]</button></div>
                     </div>
-
                     <div id="rationale-analysis-master-box" class="rationale-analysis-well hidden">
                         <h4 class="rationale-subheading">CRITICAL ANALYSIS RATIONALE</h4>
                         <p id="rationale-text-content" class="broadsheet-prose"></p>
-
-                        <div class="footnote-citation-drawer">
-                            <span class="caption-label">VERIFIED EVIDENCE BASE TRAILS</span>
-                            <button id="citation-abstract-toggle" class="citation-abstract-link">Loading bibliographic credentials...</button>
-                            <div id="citation-abstract-drawer-panel" class="abstract-drawer-panel hidden">
-                                <p id="citation-abstract-text" class="abstract-italic-prose"></p>
-                            </div>
-                        </div>
-
+                        <div class="footnote-citation-drawer"><span class="caption-label">EVIDENCE BASE TRAILS</span><button id="citation-abstract-toggle" class="citation-abstract-link">Loading credentials...</button><div id="citation-abstract-drawer-panel" class="abstract-drawer-panel hidden"><p id="citation-abstract-text" class="abstract-italic-prose"></p></div></div>
                         <button id="advance-next-case-btn" class="action-btn-trigger success-theme-btn" style="margin-top:20px; width:100%;">ADVANCE TO NEXT CASE ➔</button>
                     </div>
                 </div>
-
-                <div id="sub-pane-calculator-core" class="tab-content-panel hidden">
-                    </div>
+                <div id="sub-pane-calculator-core" class="tab-content-panel hidden"></div>
             </div>
         </section>
 
         <section id="pane-conversion-paywall" class="paywall-view-pane hidden">
             <div class="paywall-card-frame">
                 <h2 class="scholarly-title">Session Ceiling Allocation Limit Reached</h2>
-                <p class="broadsheet-prose text-measure">
-                    You have efficiently processed the introductory slice of the MACPrep review framework. Below is your clinical vulnerability risk profile generated directly from your calibration indices:
-                </p>
-
+                <p class="broadsheet-prose text-measure">You have efficiently processed the introductory slice of the MACPrep review framework. Below is your clinical vulnerability risk profile generated directly from your calibration indices:</p>
                 <div class="diagnostic-evaluation-box-wrapper">
                     <div class="diagnostic-metric-row">
-                        <div class="diag-card-inner">
-                            <span class="calibration-heading">Near-Miss Blindspot Quotient</span>
-                            <span id="metric-blindspot-value" class="diag-giant-stat">--%</span>
-                            <span class="caption-label text-left">Incorrect answers logged with a high-confidence 'CERTAIN' profile, representing unrecognized near-miss errors.</span>
-                        </div>
-                        <div class="diag-card-inner">
-                            <span class="calibration-heading">Clinical Hesitation Index</span>
-                            <span id="metric-hesitation-value" class="diag-giant-stat">--%</span>
-                            <span class="caption-label text-left">Proportion of total questions answered relying entirely on random chance or blind guesswork.</span>
-                        </div>
+                        <div class="diag-card-inner"><span class="calibration-heading">Near-Miss Blindspot Quotient</span><span id="metric-blindspot-value" class="diag-giant-stat">--%</span><span class="caption-label text-left">Incorrect answers logged with a high-confidence 'CERTAIN' profile, representing unrecognized near-miss errors.</span></div>
+                        <div class="diag-card-inner"><span class="calibration-heading">Clinical Hesitation Index</span><span id="metric-hesitation-value" class="diag-giant-stat">--%</span><span class="caption-label text-left">Proportion of total questions answered relying entirely on random chance or blind guesswork.</span></div>
                     </div>
                 </div>
-
                 <div class="scholarly-competency-heatmap-container" style="margin-top: 16px;">
                     <span class="calibration-heading">📉 HISTORICAL ACCREDITATION VELOCITY PERFORMANCE TRENDS</span>
                     <div class="history-chart-canvas-dock">
                         <canvas id="analytics-history-canvas" width="460" height="180"></canvas>
-                        <div class="chart-legend-flex">
-                            <span class="legend-indicator" style="background:#b91c1c;"></span> <span class="chart-mono-label" style="font-size:10px; margin-right:12px;">Blindspot Quotient</span>
-                            <span class="legend-indicator" style="background:#d97706;"></span> <span class="chart-mono-label" style="font-size:10px;">Hesitation Index</span>
-                        </div>
+                        <div class="chart-legend-flex"><span class="legend-indicator" style="background:#b91c1c;"></span> <span class="chart-mono-label" style="font-size:10px; margin-right:12px;">Blindspot Quotient</span><span class="legend-indicator" style="background:#d97706;"></span> <span class="chart-mono-label" style="font-size:10px;">Hesitation Index</span></div>
                     </div>
                 </div>
-
-                <div class="scholarly-competency-heatmap-container" style="margin-top:16px;">
-                    <span class="calibration-heading">DIAGNOSTIC PATH ACCURACY BY ACCREDITATION SPECIALTY CATEGORY</span>
-                    <div id="heatmap-injection-target-grid" class="heatmap-grid-matrix"></div>
-                </div>
-
-                <div class="sunken-hardware-well pricing-tier-well" style="margin-top:20px;">
-                    <span class="pricing-headline">$50 USD Flat Lifetime Access</span>
-                    <span class="caption-label" style="margin-top:4px;">One-time payment allocation. Hospital CME ledger invoice kit included.</span>
-                </div>
-
+                <div class="scholarly-competency-heatmap-container" style="margin-top:16px;"><span class="calibration-heading">DIAGNOSTIC PATH ACCURACY BY ACCREDITATION SPECIALTY CATEGORY</span><div id="heatmap-injection-target-grid" class="heatmap-grid-matrix"></div></div>
+                <div class="sunken-hardware-well pricing-tier-well" style="margin-top:20px;"><span class="pricing-headline">$50 USD Flat Lifetime Access</span><span class="caption-label" style="margin-top:4px;">One-time payment allocation. Hospital CME ledger invoice kit included.</span></div>
                 <button id="stripe-checkout-pay-btn" class="action-btn-trigger premium-checkout-btn" style="width:100%; font-size:12px; padding:14px;">UNLOCK SECURE MASTER 1,000 QUESTION BLUEPRINT MATRIX ➔</button>
                 <button id="paywall-return-home-btn" class="cme-reimburse-link" style="margin-top:16px; display:block; text-align:center; width:100%;">Return to Academic Dashboard</button>
                 <button id="cme-kit-trigger-paywall" class="cme-reimburse-link" style="margin-top:8px; display:block; text-align:center; width:100%;">📂 Print Institutional CME Receipt Sheet</button>
@@ -367,7 +290,6 @@
     </main>
 
     <div id="printable-cme-invoice-pane" class="invoice-print-container"></div>
-
     <script src="src/app.js"></script>
 </body>
 </html>
