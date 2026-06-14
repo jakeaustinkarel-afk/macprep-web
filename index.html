@@ -11,7 +11,7 @@
 
     <div id="auth-gateway-overlay" class="auth-modal-screen">
         <div class="auth-modal-frame">
-            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">🩺 MACPrep Secure Gateway</h2>
+            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">%🩺 MACPrep Secure Gateway</h2>
             <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px; text-align: center;">
                 Enter your institutional AA program or certified anesthetist credentials to instantiate cross-device session tracking and unlock academic progress states.
             </p>
@@ -162,7 +162,7 @@
             <div class="bibliography-registry-wrapper">
                 <div class="registry-header-row"><h3 class="section-subtitle">📚 PUBLIC OPEN-ACCESS BIBLIOGRAPHY REGISTRY INDEX</h3><input type="text" id="bib-search-input" class="registry-search-bar" placeholder="Filter sources..."></div>
                 <div class="table-scroll-container"><table class="registry-data-matrix"><thead><tr><th>Peer-Reviewed Article Source</th><th>Digital Object Identifier (DOI)</th><th>Verification</th></tr></thead><tbody id="bibliography-table-body"></tbody></table></div>
-            </header>
+            </div>
         </section>
 
         <section id="pane-active-testing" class="workspace-asymmetric-pane hidden">
@@ -228,9 +228,7 @@
                 </div>
                 <div class="scholarly-competency-heatmap-container" style="margin-top:16px;"><span class="calibration-heading">DIAGNOSTIC PATH ACCURACY BY ACCREDITATION SPECIALTY CATEGORY</span><div id="heatmap-injection-target-grid" class="heatmap-grid-matrix"></div></div>
                 
-                <button id="export-report-card-btn" class="action-btn-trigger success-theme-btn" style="width:100%; margin-top:20px; padding:14px; background:var(--text-main); color:var(--bg-primary);">
-                    📄 EXPORT CERTIFIED BOARD-READINESS REPORT CARD (PDF)
-                </button>
+                <button id="export-report-card-btn" class="action-btn-trigger success-theme-btn" style="width:100%; margin-top:20px; padding:14px; background:var(--text-main); color:var(--bg-primary);">📄 EXPORT CERTIFIED BOARD-READINESS REPORT CARD (PDF)</button>
 
                 <div class="sunken-hardware-well pricing-tier-well" style="margin-top:20px;"><span class="pricing-headline">$50 USD Flat Lifetime Access</span></div>
                 <button id="stripe-checkout-pay-btn" class="action-btn-trigger premium-checkout-btn" style="width:100%; font-size:12px; padding:14px;">UNLOCK SECURE MASTER 1,000 QUESTION BLUEPRINT MATRIX ➔</button>
@@ -242,39 +240,53 @@
 
     <div id="printable-report-card-pane" class="invoice-print-container">
         <div class="invoice-header-block">
-            <div>
-                <h1 class="invoice-title">🩺 MACPrep Review Workstations</h1>
-                <p class="invoice-subtext">Official Anesthetist Board-Readiness Calibration Evaluation Report Card</p>
-            </div>
-            <div style="text-align: right;">
-                <h2 class="invoice-status-badge" style="color:var(--accent-scrub); border-color:var(--accent-scrub);">CERTIFIED</h2>
-                <p class="invoice-meta-text"><strong>Verification MD5:</strong> <span id="print-rc-hash">--</span></p>
-            </div>
+            <div><h1 class="invoice-title">🩺 MACPrep Review Workstations</h1><p class="invoice-subtext">Official Anesthetist Board-Readiness Calibration Evaluation Report Card</p></div>
+            <div style="text-align: right;"><h2 class="invoice-status-badge" style="color:var(--accent-scrub); border-color:var(--accent-scrub);">CERTIFIED</h2><p class="invoice-meta-text"><strong>Verification MD5:</strong> <span id="print-rc-hash">--</span></p></div>
         </div>
         <div class="invoice-billing-split">
-            <div>
-                <span class="invoice-heading-label">ACADEMIC CANDIDATE</span>
-                <p class="invoice-address-text" id="print-rc-email">user@aa-program.edu</p>
-                <p class="invoice-address-text">Accredited Student Anesthesiologist Assistant Matrix</p>
-            </div>
-            <div style="text-align: right;">
-                <span class="invoice-heading-label">EVALUATION METRIC LAUNCH</span>
-                <p class="invoice-address-text"><strong>System Engine Version:</strong> 2026.06.AA</p>
-                <p class="invoice-address-text"><strong>Timestamp Generated:</strong> <span id="print-rc-date">--</span></p>
-            </div>
+            <div><span class="invoice-heading-label">ACADEMIC CANDIDATE</span><p class="invoice-address-text" id="print-rc-email">user@aa-program.edu</p><p class="invoice-address-text">Accredited Student Anesthesiologist Assistant Matrix</p></div>
+            <div style="text-align: right;"><span class="invoice-heading-label">EVALUATION METRIC LAUNCH</span><p class="invoice-address-text"><strong>System Engine Version:</strong> 2026.06.AA</p><p class="invoice-address-text"><strong>Timestamp Generated:</strong> <span id="print-rc-date">--</span></p></div>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px; border:1px solid var(--border-color); padding:16px; background:var(--bg-secondary);">
-            <div><strong>Near-Miss Blindspot Quotient:</strong> <span id="print-rc-blindspot">--</span><br><small>Confidence alignment errors.</small></div>
-            <div><strong>Clinical Hesitation Index:</strong> <span id="print-rc-hesitation">--</span><br><small>Proportion of complete random guess dependencies.</small></div>
+            <div><strong>Near-Miss Blindspot Quotient:</strong> <span id="print-rc-blindspot">--</span></div>
+            <div><strong>Clinical Hesitation Index:</strong> <span id="print-rc-hesitation">--</span></div>
         </div>
         <h3 class="section-subtitle" style="margin-top:30px;">BLUEPRINT ACCREDITATION SUBSPECIALTY MARGIN READOUT SHEET</h3>
         <div id="print-rc-heatmap-target" style="margin-top:10px;"></div>
-        <div class="invoice-footer-legal-well" style="margin-top:40px;">
-            <p><strong>Official Attestation Verification Clause:</strong></p>
-            <p>This academic report card tracks unalterable database session parameters securely saved in remote relational ledger indexes. The calculated percentage marks are verified clean and tamper-locked against localized script intercept injections.</p>
-        </div>
     </div>
 
-    <script src="src/app.js"></script>
+    <footer class="operational-trust-shelf">
+        <div class="shelf-col">
+            <span class="calibration-heading">LIVE CLOUD SYSTEM HEARTBEAT</span>
+            <div class="heartbeat-row">
+                <span id="heartbeat-dot" class="heartbeat-dot pulse-green"></span>
+                <span id="heartbeat-text" class="chart-mono-label">SUPABASE DB REST PATHWAY: NOMINAL [200 OK]</span>
+            </div>
+            <div class="chart-mono-label" style="margin-top:6px; font-size:10px;">LATENCY BOUNDS: <span id="heartbeat-latency">--</span>ms │ SECURITY: AMBIENT 256-BIT SSL GATES</div>
+        </div>
+        
+        <div class="shelf-col text-center">
+            <span class="calibration-heading">ACCREDITATION LEGAL DISCLAIMER matrix</span>
+            <p class="invoice-subtext" style="margin: 4px 0 0 0; font-size: 10px; line-height: 1.4; text-align: center;">
+                MACPrep is an independent board-review utility authored by MACPrep Academic Publishing LLC. It is entirely unassociated with, unendorsed by, and unaffiliated with the National Commission for Certification of Anesthesiologist Assistants (NCCAA). All physiological wave monitors and math configurations represent artificial simulation code trails.
+            </p>
+            <div class="chart-mono-label" style="font-size:9px; margin-top:6px; opacity:0.5;">BUILD SPEC: 2026.06.14-PROD │ ENV CODE: COM-SWEEP-ACTIVE</div>
+        </div>
+
+        <div class="shelf-col">
+            <span class="calibration-heading">CLINICAL ERRATA & SUGGESTION PIPELINE</span>
+            <div id="feedback-form-dock" style="margin-top:6px; display:flex; gap:6px;">
+                <select id="feedback-type" class="sprint-dropdown" style="padding:4px; font-size:11px; height:28px;">
+                    <option value="ERRATA">Clinical Errata</option>
+                    <option value="BUG">Software Bug</option>
+                    <option value="FEATURE">Feature Request</option>
+                </select>
+                <input type="text" id="feedback-content" class="calc-text-input" placeholder="Flag typos, stem irregularities, or items..." style="padding:4px 8px; font-size:11px; height:28px; flex:1;">
+                <button id="submit-feedback-btn" class="tactical-flag-action-btn" style="height:28px; padding:0 10px; font-size:11px; font-weight:bold;">SUBMIT</button>
+            </div>
+            <div id="feedback-status" class="chart-mono-label hidden" style="font-size:10px; margin-top:4px; color:#15803d; font-weight:bold;"></div>
+        </div>
+    </footer>
+
 </body>
 </html>
