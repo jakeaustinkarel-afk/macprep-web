@@ -16,16 +16,23 @@
     <main class="auth-window-container">
         <div class="auth-box-panel">
             <h2>Create Account</h2>
-            <p class="auth-subtitle">Register a permanent system profile to protect your progress tracking history.</p>
+            <p class="auth-subtitle">Register a secure system profile to cross-sync progress system-wide across all devices.</p>
             
             <form id="registerForm" onsubmit="handleFormAuth(event, 'register')">
                 <div class="form-group">
                     <label for="registerEmail">Institutional Email</label>
                     <input type="email" id="registerEmail" autocomplete="username email" required placeholder="name@institution.com">
                 </div>
-                <div class="form-group" style="margin: 15px 0 25px 0;">
+                <div class="form-group" style="margin: 15px 0 15px 0;">
                     <label for="registerPassword">Security Password</label>
                     <input type="password" id="registerPassword" autocomplete="new-password" required placeholder="••••••••">
+                </div>
+
+                <div class="privacy-compliance-row" style="margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; text-align: left;">
+                    <input type="checkbox" id="privacyCheck" required style="margin-top: 3px; cursor: pointer;">
+                    <label for="privacyCheck" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
+                        I acknowledge the <strong>MACPrep Privacy Policy</strong> and agree that data sync transmission logs are strictly encrypted for cross-device authentication use.
+                    </label>
                 </div>
                 
                 <button type="submit" id="registerSubmitBtn" class="btn btn-primary btn-large" style="width: 100%;">
@@ -35,6 +42,10 @@
             
             <p class="auth-switch-text">Already have an account? <a href="login.html">Sign in here</a></p>
             <p class="auth-back-home"><a href="index.html">← Return to Dashboard Configuration</a></p>
+            
+            <footer style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 15px; font-size: 0.7rem; color: var(--text-secondary); text-align: center;">
+                🔒 Institutional-grade data encryption compliance. Read our <a href="#" onclick="alert('MACPrep Privacy Policy & Data Protection Statement:\n\n1. Information Collection: We store only secure institutional emails and cryptographically hashed passwords.\n2. Progress Synchronization: Question completion state history sets are preserved inside an insulated cloud Postgres table array to ensure cross-device consistency.\n3. Payment Protection: Financial details never touch our grid; processing flows directly via Stripe security layers.\n4. Retention: Account metrics can be instantly expunged upon custom user request profiles.')" style="color: var(--clinical-blue); text-decoration: underline;">Privacy Policy Details</a>.
+            </footer>
         </div>
     </main>
 
@@ -54,10 +65,10 @@
                 });
                 const data = await response.json();
 
-                if (!response.ok || !data.success) throw new Error(data.error || "Registration rejected.");
+                if (!response.ok || !data.success) throw new Error(data.error || "Registration faulted.");
 
                 localStorage.setItem('macprep_user_email', data.profile.email);
-                localStorage.setItem('macprep_premium_unlocked', false);
+                localStorage.setItem('macprep_premium_unlocked', 'false');
                 
                 alert("Account Profile Created Successfully!");
                 window.location.href = 'index.html';

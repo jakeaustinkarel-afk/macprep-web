@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP PRODUCTION CLIENT - CLEAN ROUTING ENVIRONMENT
+// MACPREP FRONTEND CORE - LINKED SECURITY CONTROL LAYERS
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -7,7 +7,7 @@ let workstationQuestions = [];
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
-// Persistent Profile Handshakes
+// Persistent Global Memory Registry Pointers
 let currentUserEmail = null;
 let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closePaywallBtn = document.getElementById('closePaywallBtn');
     const headerAuthContainer = document.getElementById('headerAuthContainer');
     const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
+    const stripeCheckoutBtn = document.getElementById('stripeCheckoutBtn');
 
     // Automatically check for saved multi-platform profile details on reload
     currentUserEmail = localStorage.getItem('macprep_user_email');
@@ -29,7 +30,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     isPremiumAccountUnlocked = (savedPremium === 'true');
 
     if (currentUserEmail) {
-        // Redraw Header Action Items to confirm login profile sync
         headerAuthContainer.innerHTML = `
             <div class="user-profile-badge">
                 <span>Active Profile: <strong>${currentUserEmail}</strong></span>
@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             location.reload();
         });
 
-        // Trigger dynamic server sync to load historical metrics across devices
         try {
             const syncResponse = await fetch('/api/sync-profile', {
                 method: 'POST',
@@ -53,13 +52,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (syncData.success) {
                 totalQuestionsAnsweredCount = syncData.profile.answered_count || 0;
                 userQuestionHistoryArray = syncData.profile.history || [];
+                isPremiumAccountUnlocked = syncData.profile.premium_unlocked;
+                localStorage.setItem('macprep_premium_unlocked', isPremiumAccountUnlocked);
                 
                 syncWelcomeNotice.innerHTML = `⚡ Cross-Platform Sync Active: Welcome back, <strong>${currentUserEmail}</strong>. Your ${userQuestionHistoryArray.length} completed items have been synchronized onto this browser cleanly.`;
                 syncWelcomeNotice.classList.remove('hidden');
             }
         } catch (e) {
-            console.warn("Profile cache sync deferred.");
+            console.warn("Profile metrics synchronization deferred.");
         }
+    }
+
+    // Secure Account Upgrades Mapping Subroutine Hook
+    if (stripeCheckoutBtn) {
+        stripeCheckoutBtn.addEventListener('click', () => {
+            // Force a firm baseline requirement ensuring users have a profile created before swiping card parameters
+            if (!currentUserEmail) {
+                alert("🔒 Secure Checkout Restriction: Please sign in or create an official profile before unlocking premium access so your subscription links system-wide across devices.");
+                window.location.href = 'register.html';
+                return;
+            }
+
+            alert(`🔒 Redirecting to Stripe Gateway...\nLinking purchase token reference securely to your profile email: ${currentUserEmail}`);
+            // Down the line, this connects directly into your server endpoint:
+            // window.location.href = `/api/create-checkout?email=${encodeURIComponent(currentUserEmail)}`;
+        });
     }
 
     if (launchBtn) {

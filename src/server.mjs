@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto'; // Crucial: Native crypto engine for key generation
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -21,20 +21,26 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
+// Helper Matrix Subroutine: Cryptographic Password Hashing Engine
+function hashPasswordString(password) {
+    // Generate a secure, deterministic key signature to isolate plaintext values
+    return crypto.scryptSync(password, 'macprep_secure_salt_vector_2026', 64).toString('hex');
+}
+
 // ==========================================================================
-// UNIFIED CROSS-PLATFORM AUTHENTICATION PORTAL GATEWAYS
+// UNIFIED CROSS-PLATFORM SECURITY AUTHENTICATION ROUTING GATEWAYS
 // ==========================================================================
 app.post('/api/authenticate', async (req, res) => {
     const { action, email, password } = req.body;
     if (!email || !password) {
-        return res.status(400).json({ success: false, error: "Complete credential fields are required." });
+        return res.status(400).json({ success: false, error: "Complete credential inputs required." });
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    console.log(`📡 Authentication request: [${action}] incoming vector for ${cleanEmail}`);
+    const secureHash = hashPasswordString(password);
+    console.log(`📡 Security Gate: Action [${action}] matching query profiles for ${cleanEmail}`);
 
     try {
-        // Query to check if profile is catalogued in our cloud tables mapping layer
         let { data: profile, error } = await supabase
             .from('macprep_profiles')
             .select('*')
@@ -46,41 +52,57 @@ app.post('/api/authenticate', async (req, res) => {
                 return res.status(400).json({ success: false, error: "An active account with this email address already exists." });
             }
 
-            // Fix: Explicitly append a generated random UUID string token so it never sends a null id field
+            const uniqueProfileId = crypto.randomUUID();
+            const payloadRow = {
+                id: uniqueProfileId,
+                email: cleanEmail,
+                password: secureHash, // Insulated hash value
+                premium_unlocked: false,
+                answered_count: 0,
+                history: []
+            };
+
+            console.log(`📦 Injecting cryptographic row to profile cache grid... ID generated: ${uniqueProfileId}`);
+
             const { data: newProfile, error: createErr } = await supabase
                 .from('macprep_profiles')
-                .insert([{
-                    id: crypto.randomUUID(), 
-                    email: cleanEmail,
-                    password: password, // In production, this can shift to standard cryptographic hashes safely
-                    premium_unlocked: false,
-                    answered_count: 0,
-                    history: []
-                }])
+                .insert([payloadRow])
                 .select()
-                .single();
+                .maybeSingle();
 
             if (createErr) throw createErr;
-            return res.status(200).json({ success: true, message: "Account profile created successfully!", profile: newProfile });
+            
+            // Failover safe reconstruction fallback
+            const fallbackProfile = newProfile || payloadRow;
+
+            return res.status(200).json({ 
+                success: true, 
+                message: "Account profile created successfully!", 
+                profile: { email: fallbackProfile.email, premium_unlocked: fallbackProfile.premium_unlocked } 
+            });
         }
 
         if (action === 'login') {
-            if (!profile || profile.password !== password) {
+            if (!profile || profile.password !== secureHash) {
                 return res.status(401).json({ success: false, error: "Invalid credential signature. Access Denied." });
             }
-            return res.status(200).json({ success: true, message: "Authentication Verified.", profile });
+            return res.status(200).json({ 
+                success: true, 
+                message: "Authentication Verified.", 
+                profile: { email: profile.email, premium_unlocked: profile.premium_unlocked } 
+            });
         }
 
     } catch (err) {
-        console.error("❌ Authentication Layer Exception Matrix: ", err.message);
+        console.error("❌ Critical Authentication Exception Fault: ", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// Dynamic Profile Tracing Sync Router Endpoints
+// Sync Progress Retrieval Hook
 app.post('/api/sync-profile', async (req, res) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email parameter required for profile sync." });
+    if (!email) return res.status(400).json({ error: "Email validation parameter required." });
     try {
         let { data: profile, error } = await supabase
             .from('macprep_profiles')
@@ -95,7 +117,7 @@ app.post('/api/sync-profile', async (req, res) => {
     }
 });
 
-// Real-Time Progress Update Synchronizer Route
+// Live Updates Synchronizer Routing Logic
 app.post('/api/update-progress', async (req, res) => {
     const { email, answered_count, history } = req.body;
     try {
@@ -111,7 +133,7 @@ app.post('/api/update-progress', async (req, res) => {
     }
 });
 
-// Questions Matrix Streaming Layer
+// Questions Matrix Streaming API Endpoints
 app.get('/api/questions', async (req, res) => {
     try {
         const { data, error } = await supabase.from('macprep_questions').select('*');
@@ -123,5 +145,5 @@ app.get('/api/questions', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 MACPrep Synchronized Cloud Core active on port ${PORT}`);
+    console.log(`🚀 Secure MACPrep Cloud Kernel online on port ${PORT}`);
 });
