@@ -637,3 +637,51 @@ function initializeCmePrintingSubsystem() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeCmePrintingSubsystem();
 });
+
+/**
+ * 🖨️ ACADEMIC CME INVOICE PRINT CONTROLLER
+ * Dynamically updates ledger content strings and fires system hardware display loops
+ */
+function initializeAcademicPrintSystems() {
+    const dashboardTrigger = document.getElementById('cme-kit-trigger');
+    const paywallTrigger = document.getElementById('cme-kit-trigger-paywall');
+
+    const handlePrintCompilationJob = () => {
+        console.log("🖨️ Gathering validation tokens for print-ready invoice layout parameters...");
+        
+        let clientSessionEmail = "allocated.clinician@residency.edu";
+        try {
+            const cachedRaw = localStorage.getItem('macprep_active_session_ledger');
+            if (cachedRaw) {
+                const ledger = JSON.parse(cachedRaw);
+                if (ledger.currentLiveQuestion) {
+                    clientSessionEmail = "sandbox.clinician@gmail.com";
+                }
+            }
+        } catch (err) {
+            console.warn("Unable to extract session state strings for print lines.", err);
+        }
+
+        // Hydrate target DOM fields inside the hidden print canvas element
+        const invoiceEmailNode = document.getElementById('print-user-email');
+        const invoiceIdNode = document.getElementById('print-inv-id');
+        const invoiceDateNode = document.getElementById('print-inv-date');
+
+        if (invoiceEmailNode) invoiceEmailNode.textContent = clientSessionEmail;
+        if (invoiceIdNode) invoiceIdNode.textContent = `INV-${Math.floor(100000 + Math.random() * 900000)}-CME`;
+        if (invoiceDateNode) invoiceDateNode.textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        // Trigger native system printing overlay sheet window
+        window.print();
+    };
+
+    if (dashboardTrigger) dashboardTrigger.addEventListener('click', handlePrintCompilationJob);
+    if (paywallTrigger) paywallTrigger.addEventListener('click', handlePrintCompilationJob);
+}
+
+// Hook initializer step into standard document load tracks
+document.addEventListener('DOMContentLoaded', () => {
+    initializeAcademicPrintSystems();
+});
