@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workspace Controller
- * Unified One-Track Engine with Deep Analytics & Local Resume Cache Engines
+ * Unified One-Track Engine & Network-Synced Safe Resume Cache Engine
  */
 
 // Global State Variables
@@ -22,7 +22,6 @@ let metricsCertainButIncorrect = 0;
 let metricsEducatedGuesses = 0;
 let metricsBlindGuesses = 0;
 
-// High-Quality Static Fallback Question Matrix Object
 const localFallbackQuestion = {
     id: "q_fallback_001",
     specialty: "PHARM",
@@ -48,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupThemeAndScalingLogics();
     setupGlobalKeyboardHotkeys();
     
-    // RESUME CACHE HOOK: Check for persistent background sessions on initial boot
+    // Check for persistent background sessions on initial boot
     loadSessionStateFromCache();
 });
 
@@ -143,7 +142,6 @@ function setupDashboardEventHandlers() {
         exitBtn.addEventListener('click', () => {
             clearInterval(examTimerInterval);
             clearInterval(dynamicWaveformInterval);
-            // Clear cache variables completely on manual explicit session abandon
             clearSessionStateCache();
             if (dashboardPane) dashboardPane.classList.remove('hidden');
             if (testingPane) testingPane.classList.add('hidden');
@@ -153,6 +151,9 @@ function setupDashboardEventHandlers() {
     }
 }
 
+/**
+ * 📡 ASYNCHRONOUS DATA INGESTION ENGINE
+ */
 async function loadActiveSessionQuestion() {
     const stemText = document.getElementById('question-stem-text');
     const choicesStack = document.getElementById('choices-stack-container');
@@ -227,7 +228,7 @@ async function loadActiveSessionQuestion() {
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     startWaveformSimulationAnimation(currentLiveQuestion.waveformType || "NORMAL");
 
-    // PERSISTENT CACHE SAVE: Save current state to cache
+    // CRITICAL TIMING TIMESTAMPS FIXED: State saves strictly *after* variables clear and allocate into viewports
     saveSessionStateToCache();
 }
 
@@ -279,14 +280,12 @@ function setupWorkspaceTabHandlers() {
                 scoreDisplay.textContent = `PROGRESS: ${totalQuestionsAnsweredInSession} / ${FREE_TIER_LIMIT_CEILING}`;
             }
 
-            // PERSISTENT CACHE SAVE: Save current scores on answer lock
             saveSessionStateToCache();
         });
     });
 
     document.getElementById('advance-next-case-btn').addEventListener('click', async () => {
         if (totalQuestionsAnsweredInSession >= FREE_TIER_LIMIT_CEILING) {
-            // Drop cache files on ultimate conversion milestone target hit
             clearSessionStateCache();
             
             document.getElementById('pane-active-testing').classList.add('hidden');
@@ -327,6 +326,7 @@ function setupWorkspaceTabHandlers() {
             }
             document.getElementById('pane-conversion-paywall').classList.remove('hidden');
         } else {
+            // CRITICAL ORDER OF OPERATIONS ENFORCEMENT: Await network payload arrival *before* allowing local cache writes
             await loadActiveSessionQuestion();
             startWorkspaceCountdownTimer();
         }
@@ -338,12 +338,6 @@ function setupWorkspaceTabHandlers() {
     });
 }
 
-/**
- * ==========================================================================
- * 💾 RESUME ENGINE UTILITIES (LOCALSTORAGE WORKSPACE LEDGERS)
- * Caches workflow elements across sudden clinical emergency exits
- * ==========================================================================
- */
 function saveSessionStateToCache() {
     try {
         const cachePayload = {
@@ -356,7 +350,7 @@ function saveSessionStateToCache() {
         };
         localStorage.setItem('macprep_active_session_ledger', JSON.stringify(cachePayload));
     } catch (e) {
-        console.error('Failed to write progress metrics onto browser window local cache.', e);
+        console.error('Failed to write metrics cache.', e);
     }
 }
 
@@ -366,8 +360,7 @@ function loadSessionStateFromCache() {
         if (!cachedRaw) return;
 
         const ledger = JSON.parse(cachedRaw);
-        if (ledger && ledger.totalQuestionsAnsweredInSession > 0) {
-            // Restore numerical state values
+        if (ledger && ledger.totalQuestionsAnsweredInSession > 0 && ledger.currentLiveQuestion) {
             totalQuestionsAnsweredInSession = ledger.totalQuestionsAnsweredInSession;
             metricsCertainAndCorrect = ledger.metricsCertainAndCorrect;
             metricsCertainButIncorrect = ledger.metricsCertainButIncorrect;
@@ -375,7 +368,6 @@ function loadSessionStateFromCache() {
             metricsBlindGuesses = ledger.metricsBlindGuesses;
             currentLiveQuestion = ledger.currentLiveQuestion;
 
-            // Trigger structural DOM interface workspace shifts
             document.getElementById('pane-dashboard-home').classList.add('hidden');
             document.getElementById('pane-active-testing').classList.remove('hidden');
             document.getElementById('header-exit-btn').classList.remove('hidden');
@@ -386,14 +378,12 @@ function loadSessionStateFromCache() {
                 scoreDisplay.textContent = `PROGRESS: ${totalQuestionsAnsweredInSession} / ${FREE_TIER_LIMIT_CEILING}`;
             }
 
-            // Hydrate parameters safely
             document.getElementById('question-stem-text').textContent = currentLiveQuestion.stem;
             document.getElementById('vital-hr').textContent = currentLiveQuestion.telemetry?.hr || "74";
             document.getElementById('vital-bp').textContent = currentLiveQuestion.telemetry?.bp || "120/80";
             document.getElementById('vital-spo2').textContent = currentLiveQuestion.telemetry?.spo2 || "99";
             document.getElementById('vital-etco2').textContent = currentLiveQuestion.telemetry?.etco2 || "38";
 
-            // Rebuild option card columns
             const choicesStack = document.getElementById('choices-stack-container');
             if (choicesStack && currentLiveQuestion.choices) {
                 choicesStack.innerHTML = '';
@@ -425,7 +415,6 @@ function loadSessionStateFromCache() {
 
             startWorkspaceCountdownTimer();
             startWaveformSimulationAnimation(currentLiveQuestion.waveformType || "NORMAL");
-            console.log(`✨ Persistent local checkpoint restored. Workflow resumed at item ${totalQuestionsAnsweredInSession}.`);
         }
     } catch (err) {
         console.warn('Unable to deserialize cached state strings.', err);
@@ -435,20 +424,6 @@ function loadSessionStateFromCache() {
 function clearSessionStateCache() {
     localStorage.removeItem('macprep_active_session_ledger');
 }
-
-document.getElementById('tab-toggle-question').addEventListener('click', (e) => {
-    document.getElementById('tab-toggle-calculator').classList.remove('active');
-    e.target.classList.add('active');
-    document.getElementById('sub-pane-question-core').classList.remove('hidden');
-    document.getElementById('sub-pane-calculator-core').classList.add('hidden');
-});
-
-document.getElementById('tab-toggle-calculator').addEventListener('click', (e) => {
-    document.getElementById('tab-toggle-question').classList.remove('active');
-    e.target.classList.add('active');
-    document.getElementById('sub-pane-calculator-core').classList.remove('hidden');
-    document.getElementById('sub-pane-question-core').classList.add('hidden');
-});
 
 function setupCalculatorLogics() {
     document.getElementById('execute-abl-btn').addEventListener('click', () => {
