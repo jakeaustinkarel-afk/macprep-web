@@ -21,14 +21,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
-// Helper Subroutine: Cryptographic Password Hashing Engine
 function hashPasswordString(password) {
-    // Generate an isolated, deterministic key signature to protect raw plaintext strings
     return crypto.scryptSync(password, 'macprep_secure_salt_vector_2026', 64).toString('hex');
 }
 
 // ==========================================================================
-// UNIFIED CROSS-PLATFORM SECURITY AUTHENTICATION ROUTING GATEWAYS
+// UNIFIED AUTHENTICATION ENGINE GATEWAYS
 // ==========================================================================
 app.post('/api/authenticate', async (req, res) => {
     const { action, email, password } = req.body;
@@ -38,7 +36,6 @@ app.post('/api/authenticate', async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
     const secureHash = hashPasswordString(password);
-    console.log(`📡 Security Gate: Action [${action}] incoming match query for ${cleanEmail}`);
 
     try {
         let { data: profile, error } = await supabase
@@ -59,10 +56,10 @@ app.post('/api/authenticate', async (req, res) => {
                 password: secureHash, 
                 premium_unlocked: false,
                 answered_count: 0,
-                history: []
+                history: [],
+                first_name: null,
+                last_name: null
             };
-
-            console.log(`📦 Injecting secure row entry to cloud table... Assigned ID: ${uniqueProfileId}`);
 
             const { data: newProfile, error: createErr } = await supabase
                 .from('macprep_profiles')
@@ -71,13 +68,12 @@ app.post('/api/authenticate', async (req, res) => {
                 .maybeSingle();
 
             if (createErr) throw createErr;
-            
             const fallbackProfile = newProfile || payloadRow;
 
             return res.status(200).json({ 
                 success: true, 
                 message: "Account profile created successfully!", 
-                profile: { email: fallbackProfile.email, premium_unlocked: fallbackProfile.premium_unlocked } 
+                profile: { email: fallbackProfile.email, premium_unlocked: fallbackProfile.premium_unlocked, first_name: null, last_name: null } 
             });
         }
 
@@ -88,20 +84,18 @@ app.post('/api/authenticate', async (req, res) => {
             return res.status(200).json({ 
                 success: true, 
                 message: "Authentication Verified.", 
-                profile: { email: profile.email, premium_unlocked: profile.premium_unlocked } 
+                profile: { email: profile.email, premium_unlocked: profile.premium_unlocked, first_name: profile.first_name, last_name: profile.last_name } 
             });
         }
 
     } catch (err) {
-        console.error("❌ Critical Authentication Exception Fault: ", err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// Dynamic Profile Tracing Sync Router Endpoints
+// Sync Progress Retrieval Hook
 app.post('/api/sync-profile', async (req, res) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email validation parameter required." });
     try {
         let { data: profile, error } = await supabase
             .from('macprep_profiles')
@@ -113,6 +107,22 @@ app.post('/api/sync-profile', async (req, res) => {
         res.status(200).json({ success: true, profile });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// NEW API ENDPOINT: SAVE MODIFIED ACCOUNT METRICS
+app.post('/api/save-profile-meta', async (req, res) => {
+    const { email, first_name, last_name } = req.body;
+    try {
+        const { error } = await supabase
+            .from('macprep_profiles')
+            .update({ first_name, last_name })
+            .eq('email', email.toLowerCase().trim());
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: "Cloud settings updated cleanly." });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
@@ -132,7 +142,6 @@ app.post('/api/update-progress', async (req, res) => {
     }
 });
 
-// Questions Matrix Streaming API Endpoints
 app.get('/api/questions', async (req, res) => {
     try {
         const { data, error } = await supabase.from('macprep_questions').select('*');
@@ -144,5 +153,5 @@ app.get('/api/questions', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Secure MACPrep Cloud Kernel online on port ${PORT}`);
+    console.log(`🚀 MACPrep Cloud Engine operating on port ${PORT}`);
 });

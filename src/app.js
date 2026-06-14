@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP FRONTEND CORE - LINKED SECURITY CONTROL LAYERS
+// MACPREP RUNTIME CONTROLLER - PERSONALIZED CUSTOM HANDSHAKES
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -7,14 +7,17 @@ let workstationQuestions = [];
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
-// Persistent Global Memory Registry Pointers
 let currentUserEmail = null;
 let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
+let userFirstName = null;
+let userLastName = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const onboardingHub = document.getElementById('onboardingHub');
+    const profileSettingsScreen = document.getElementById('profileSettingsScreen');
     const activeWorkstationGrid = document.getElementById('activeWorkstationGrid');
+    
     const launchBtn = document.getElementById('launchWorkstationBtn');
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
@@ -22,26 +25,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closePaywallBtn = document.getElementById('closePaywallBtn');
     const headerAuthContainer = document.getElementById('headerAuthContainer');
     const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
-    const stripeCheckoutBtn = document.getElementById('stripeCheckoutBtn');
 
-    // Automatically check for saved multi-platform profile details on reload
+    // Profile Screen Buttons
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const profileFirstName = document.getElementById('profileFirstName');
+    const profileLastName = document.getElementById('profileLastName');
+    const profileEmailStatic = document.getElementById('profileEmailStatic');
+
+    // Check Local Browser Store for Active Cache Sessions
     currentUserEmail = localStorage.getItem('macprep_user_email');
     const savedPremium = localStorage.getItem('macprep_premium_unlocked');
     isPremiumAccountUnlocked = (savedPremium === 'true');
 
     if (currentUserEmail) {
-        headerAuthContainer.innerHTML = `
-            <div class="user-profile-badge">
-                <span>Active Profile: <strong>${currentUserEmail}</strong></span>
-                <button id="authLogoutBtn" class="nav-text-link" style="margin-left: 12px; color: #ef4444;">Sign Out</button>
-            </div>
-        `;
-        
-        document.getElementById('authLogoutBtn').addEventListener('click', () => {
-            localStorage.clear();
-            location.reload();
-        });
+        await executeProfileSynchronizer();
+    }
 
+    async function executeProfileSynchronizer() {
         try {
             const syncResponse = await fetch('/api/sync-profile', {
                 method: 'POST',
@@ -49,33 +50,79 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ email: currentUserEmail })
             });
             const syncData = await syncResponse.json();
+            
             if (syncData.success) {
                 totalQuestionsAnsweredCount = syncData.profile.answered_count || 0;
                 userQuestionHistoryArray = syncData.profile.history || [];
                 isPremiumAccountUnlocked = syncData.profile.premium_unlocked;
+                userFirstName = syncData.profile.first_name;
+                userLastName = syncData.profile.last_name;
+                
                 localStorage.setItem('macprep_premium_unlocked', isPremiumAccountUnlocked);
                 
-                syncWelcomeNotice.innerHTML = `⚡ Cross-Platform Sync Active: Welcome back, <strong>${currentUserEmail}</strong>. Your ${userQuestionHistoryArray.length} completed items have been synchronized onto this browser cleanly.`;
+                // Redraw Top Right Header to Show Premium Welcome Identity Tokens
+                const displayIdentity = userFirstName ? `Welcome, ${userFirstName}!` : `Welcome User!`;
+                headerAuthContainer.innerHTML = `
+                    <div class="user-profile-badge" style="display: flex; align-items: center; gap: 10px;">
+                        <button id="triggerProfileViewBtn" class="profile-avatar-btn">${displayIdentity}</button>
+                        <button id="authLogoutBtn" class="nav-text-link" style="color: #ef4444; font-size: 0.8rem;">Sign Out</button>
+                    </div>
+                `;
+
+                // Wire up view triggers
+                document.getElementById('triggerProfileViewBtn').addEventListener('click', () => {
+                    onboardingHub.classList.add('hidden');
+                    activeWorkstationGrid.classList.add('hidden');
+                    
+                    profileFirstName.value = userFirstName || '';
+                    profileLastName.value = userLastName || '';
+                    profileEmailStatic.value = currentUserEmail;
+                    
+                    profileSettingsScreen.classList.remove('hidden');
+                });
+
+                document.getElementById('authLogoutBtn').addEventListener('click', () => {
+                    localStorage.clear();
+                    location.reload();
+                });
+
+                syncWelcomeNotice.innerHTML = `⚡ Session Online: Synchronized as <strong>${currentUserEmail}</strong>. Track logs secured.`;
                 syncWelcomeNotice.classList.remove('hidden');
             }
         } catch (e) {
-            console.warn("Profile metrics synchronization deferred.");
+            console.warn("Cloud connection latency.");
         }
     }
 
-    // Secure Account Upgrades Mapping Subroutine Hook
-    if (stripeCheckoutBtn) {
-        stripeCheckoutBtn.addEventListener('click', () => {
-            // Force a firm baseline requirement ensuring users have a profile created before swiping card parameters
-            if (!currentUserEmail) {
-                alert("🔒 Secure Checkout Restriction: Please sign in or create an official profile before unlocking premium access so your subscription links system-wide across devices.");
-                window.location.href = 'register.html';
-                return;
-            }
+    // Handle Profile Form Triggers
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', async () => {
+            const fName = profileFirstName.value.trim();
+            const lName = profileLastName.value.trim();
 
-            alert(`🔒 Redirecting to Stripe Gateway...\nLinking purchase token reference securely to your profile email: ${currentUserEmail}`);
-            // Down the line, this connects directly into your server endpoint:
-            // window.location.href = `/api/create-checkout?email=${encodeURIComponent(currentUserEmail)}`;
+            try {
+                saveProfileBtn.innerText = "Saving to Cloud...";
+                const res = await fetch('/api/save-profile-meta', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentUserEmail, first_name: fName, last_name: lName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("Account Settings Saved Successfully!");
+                    location.reload(); // Refresh to repaint header greetings
+                }
+            } catch (err) {
+                alert("Failed to save changes.");
+                saveProfileBtn.innerText = "Save Profile Modifications";
+            }
+        });
+    }
+
+    if (cancelProfileBtn) {
+        cancelProfileBtn.addEventListener('click', () => {
+            profileSettingsScreen.classList.add('hidden');
+            onboardingHub.classList.remove('hidden');
         });
     }
 
@@ -196,7 +243,7 @@ window.switchCalc = function(calcId) {
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// Math Modules
+// Calculations Suite
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);

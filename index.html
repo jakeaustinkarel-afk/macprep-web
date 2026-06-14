@@ -107,6 +107,36 @@
             </div>
         </section>
 
+        <section id="profileSettingsScreen" class="hub-view-screen hidden" style="max-width: 600px; margin: 0 auto;">
+            <div class="welcome-hero">
+                <h2>User Profile Settings</h2>
+                <p>Complete your institutional identity configurations to localize your board preparation credentials.</p>
+            </div>
+
+            <div class="setup-card" style="padding: 30px;">
+                <div class="form-row" style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="profileFirstName">First Name</label>
+                        <input type="text" id="profileFirstName" placeholder="Jake">
+                    </div>
+                    <div class="form-group">
+                        <label for="profileLastName">Last Name</label>
+                        <input type="text" id="profileLastName" placeholder="Karel">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label>Registered Account Email</label>
+                    <input type="text" id="profileEmailStatic" readonly style="opacity: 0.6; background: var(--bg-dark);">
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <button id="saveProfileBtn" class="btn btn-primary" style="flex: 2; padding: 12px;">Save Profile Modifications</button>
+                    <button id="cancelProfileBtn" class="btn btn-secondary" style="flex: 1; padding: 12px;">Cancel</button>
+                </div>
+            </div>
+        </section>
+
         <section id="activeWorkstationGrid" class="workstation-grid hidden">
             <div class="main-content">
                 <div class="telemetry-ribbon">
