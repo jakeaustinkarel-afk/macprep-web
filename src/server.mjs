@@ -50,16 +50,12 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }
 
 app.use(express.json());
 
-// Serve static assets from the root project directory cleanly
-app.use(express.static(path.join(__dirname, '../')));
+// Absolute directory tracking resolution pass
+const ROOT_PROJECT_DIRECTORY_PATH = path.resolve(__dirname, '../');
+console.log(`📂 Routing Diagnostic: Mapping static assets to root folder: ${ROOT_PROJECT_DIRECTORY_PATH}`);
 
-// ==========================================================================
-// 🎯 EXPLICIT ROOT ROUTE ROUTING GATE
-// Explicitly handles base URLs to prevent cloud deployment 404 omissions
-// ==========================================================================
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../index.html'));
-});
+// Serve all secondary file assets (styles.css, app.js, images) directly out of root
+app.use(express.static(ROOT_PROJECT_DIRECTORY_PATH));
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -153,4 +149,14 @@ app.get('/api/bibliography', async (req, res) => {
     try { res.status(200).json({ sources: (await supabase.from('bibliography_registry').select('*')).data || [] }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Secure SQL Streaming Engine Active."); });
+// ==========================================================================
+// 🛡️ WILDCARD CATCH-ALL ROUTING MATRIX
+// Guarantees all non-API paths resolve strictly back to index.html layouts
+// ==========================================================================
+app.get('*', (req, res) => {
+    res.sendFile(path.join(ROOT_PROJECT_DIRECTORY_PATH, 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => { 
+    console.log(`🚀 Secure SQL Streaming Engine Active on Port: ${PORT}`); 
+});
