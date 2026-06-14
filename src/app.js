@@ -1,9 +1,9 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Integrates Developer Audit Tiers with Dynamic Cloud Auth Lifecycles
+ * Integrates Option C Diagnostic Chart Generators, UX Latency Trackers, and Cloud Sync
  */
 
-const SUPABASE_URL = "https://placeholder.supabase.co"; // Hydrated via platform routing matrices
+const SUPABASE_URL = "https://placeholder.supabase.co"; 
 const SUPABASE_ANON_KEY = "placeholder";
 
 let globalQuestionPool = [];
@@ -13,6 +13,10 @@ let answeredRegistryState = {};
 let flaggedQuestionsMap = {};
 let activeUserSessionProfile = null;
 let isDeveloperAccessPrivileged = false;
+
+// Spaced-Repetition Analytics Tracking Store
+let caseVignetteLoadTimestamp = Date.now();
+let structuralDecisionLatencyStore = {}; 
 
 const CONFIG = {
     FREE_CEILING: 10,
@@ -29,7 +33,6 @@ function initializeSupabaseSessionMonitor() {
         setupAnonymousFallback();
         return;
     }
-
     const client = supabase.createClient(window.location.origin, "placeholder");
 
     client.auth.onAuthStateChange(async (event, session) => {
@@ -49,7 +52,6 @@ function initializeSupabaseSessionMonitor() {
     document.getElementById('auth-submit-magic-btn').addEventListener('click', async () => {
         const emailInput = document.getElementById('auth-email-input').value.trim();
         const feedback = document.getElementById('auth-status-feedback');
-        
         if (!emailInput) return;
         feedback.classList.remove('hidden');
         feedback.textContent = "Transmitting passwordless authorization handshake...";
@@ -76,7 +78,6 @@ function initializeSupabaseSessionMonitor() {
 
 async function syncUserCloudStateVectors(clientInstance) {
     try {
-        // Query profile metadata table rows
         const { data, error } = await clientInstance
             .from('user_profiles')
             .select('progress_ledger, is_premium, is_developer')
@@ -90,17 +91,13 @@ async function syncUserCloudStateVectors(clientInstance) {
                 const parsed = typeof data.progress_ledger === 'string' ? JSON.parse(data.progress_ledger) : data.progress_ledger;
                 answeredRegistryState = parsed.answers || {};
                 flaggedQuestionsMap = parsed.flags || {};
+                structuralDecisionLatencyStore = parsed.latencies || {};
                 totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
-
-            // HARDENED SECURITY PARITY LOOP: Grant unlimited bounds if marked as premium OR developer
             if (data.is_premium || data.is_developer) {
-                console.log("🔓 Database Security Gate: Full question bank allocation authorized.");
                 CONFIG.FREE_CEILING = CONFIG.TOTAL_TIER_CEILING;
             }
-
-            // Expose internal debugging panel tools if row maps true for developer column flags
             if (data.is_developer) {
                 isDeveloperAccessPrivileged = true;
                 const devDock = document.getElementById('developer-audit-panel');
@@ -115,11 +112,17 @@ async function syncUserCloudStateVectors(clientInstance) {
 async function fetchDynamicQuestionSequences() {
     try {
         const response = await fetch('/api/questions/free');
-        if (!response.ok) throw new Error("Database interface breakdown error.");
+        if (!response.ok) throw new Error("Database interface connection limits.");
         const data = await response.json();
         
         if (data.questions && data.questions.length > 0) {
-            globalQuestionPool = data.questions;
+            // STEP 3: Spaced Repetition Re-sorting layer (prioritizes un-answered cases)
+            globalQuestionPool = data.questions.sort((a, b) => {
+                const aAns = answeredRegistryState[a.id] ? 1 : 0;
+                const bAns = answeredRegistryState[b.id] ? 1 : 0;
+                return aAns - bAns;
+            });
+
             renderTacticalFlagRibbon();
             loadActiveQuestionVignette();
         }
@@ -157,14 +160,18 @@ function renderTacticalFlagRibbon() {
     }
 }
 
+// --- UI RE-GENERATOR ENGINE: CHARTS AND DATA TRAILS ---
 function loadActiveQuestionVignette() {
     if (!globalQuestionPool[currentQuestionIndex]) return;
     const currentQuestion = globalQuestionPool[currentQuestionIndex];
+
+    caseVignetteLoadTimestamp = Date.now(); // Instantiate latency clock interval point
 
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
     document.getElementById('question-stem-text').textContent = currentQuestion.stem;
 
+    // Flag State Synchronization
     const flagBtn = document.getElementById('flag-case-toggle-btn');
     if (flagBtn) {
         if (flaggedQuestionsMap[currentQuestionIndex]) {
@@ -176,6 +183,7 @@ function loadActiveQuestionVignette() {
         }
     }
 
+    // Hydrate Telemetry Tickers
     if (currentQuestion.telemetry) {
         document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72";
         document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80";
@@ -183,25 +191,56 @@ function loadActiveQuestionVignette() {
         document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35";
     }
 
-    // Update internal developer quick preview reads
     if (isDeveloperAccessPrivileged) {
-        const keyPreviewNode = document.getElementById('dev-key-badge-preview');
-        if (keyPreviewNode) keyPreviewNode.textContent = currentQuestion.correctAnswer || "N/A";
+        document.getElementById('dev-key-badge-preview').textContent = currentQuestion.correctAnswer || "N/A";
     }
 
-    const wavePathNode = document.getElementById('dynamic-capno-path');
-    if (wavePathNode) {
-        const specialtyKey = currentQuestion.specialty || "ALL";
-        if (specialtyKey === "CRISIS" || currentQuestion.stem.toUpperCase().includes("EMBOLISM")) {
-            wavePathNode.setAttribute('d', 'M 0 38 L 400 38');
-            wavePathNode.setAttribute('stroke', '#ef4444');
-        } else if (specialtyKey === "PHYSICS" || currentQuestion.stem.toUpperCase().includes("BRONCHOSPASM")) {
-            wavePathNode.setAttribute('d', 'M 0 35 L 15 35 L 45 8 C 55 5, 75 4, 85 4 L 90 35 L 400 35');
-            wavePathNode.setAttribute('stroke', '#eab308');
-        } else {
-            wavePathNode.setAttribute('d', 'M 0 35 L 15 35 L 18 6 L 55 6 L 58 35 L 200 35');
-            wavePathNode.setAttribute('stroke', '#22c55e');
-        }
+    // ==========================================================================
+    // 📊 ADVANCED OPTION C GRAPH RETRIEVAL COMPILATION HOOK
+    // Programmatically compiles vector chart grids into the display panels
+    // ==========================================================================
+    const chartViewport = document.getElementById('clinical-chart-viewport');
+    const svgNode = document.getElementById('dynamic-clinical-svg');
+    const chartLabel = document.getElementById('clinical-chart-title');
+
+    const specialty = currentQuestion.specialty || "ALL";
+    const uppercaseStem = currentQuestion.stem.toUpperCase();
+
+    if (specialty === "CARDIAC" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH") || uppercaseStem.includes("PRESSURE")) {
+        // CHART 1: Invasive Arterial Line Waveform Trace Profile
+        chartViewport.classList.remove('hidden');
+        chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)";
+        svgNode.innerHTML = `
+            <line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" />
+            <line x1="0" y1="80" x2="500" y2="80" class="chart-grid-line" stroke-dasharray="2 2" />
+            <line x1="0" y1="120" x2="500" y2="120" class="chart-grid-line" stroke-dasharray="2 2" />
+            <path d="M 0 140 L 25 30 L 45 75 L 50 65 L 85 140 L 110 30 L 130 75 L 135 65 L 170 140 L 195 30 L 215 75 L 220 65 L 255 140" stroke="#ef4444" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="55" y="60" font-family="monospace" font-size="9" fill="#ef4444">Dicrotic Notch</text>
+        `;
+    } else if (specialty === "REGIONAL" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION") || uppercaseStem.includes("THROMBOELASTOGRAPHY")) {
+        // CHART 2: Thromboelastography (TEG) Coagulation Core Visual
+        chartViewport.classList.remove('hidden');
+        chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK";
+        svgNode.innerHTML = `
+            <line x1="0" y1="80" x2="500" y2="80" stroke="#9ca3af" stroke-width="1" />
+            <path d="M 10 80 L 80 80 C 130 50, 220 40, 360 45 C 440 48, 480 70, 500 80 C 480 90, 440 112, 360 115 C 220 120, 130 110, 80 80 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.08)"/>
+            <text x="40" y="75" font-family="monospace" font-size="9" fill="#3b82f6">R-Time</text>
+            <text x="180" y="30" font-family="monospace" font-size="9" fill="#3b82f6">Max Amplitude (MA)</text>
+        `;
+    } else if (uppercaseStem.includes("DILUTION") || uppercaseStem.includes("CARDIAC OUTPUT") || uppercaseStem.includes("INDEX")) {
+        // CHART 3: Thermodilution Indicator Decay Target Curve
+        chartViewport.classList.remove('hidden');
+        chartLabel.textContent = "THERMODILUTION INDICATOR CO DISSIPATION CURVE";
+        svgNode.innerHTML = `
+            <line x1="40" y1="10" x2="40" y2="140" stroke="#4b5563" stroke-width="1"/>
+            <line x1="40" y1="140" x2="480" y2="140" stroke="#4b5563" stroke-width="1"/>
+            <path d="M 40 20 C 50 20, 70 130, 140 100 C 220 70, 340 135, 460 140" stroke="#8b5cf6" stroke-width="2.5" fill="none"/>
+            <text x="160" y="80" font-family="monospace" font-size="9" fill="#8b5cf6">Thermal Washout Phase</text>
+        `;
+    } else {
+        // Bypassed completely if the case does not call for visual graph metrics
+        chartViewport.classList.add('hidden');
+        svgNode.innerHTML = "";
     }
 
     const container = document.getElementById('choices-stack-container');
@@ -250,9 +289,6 @@ function initializeInterfaceControls() {
         document.getElementById('pane-active-testing').classList.remove('hidden');
     });
 
-    // ==========================================================================
-    // ⚡ INTERACTIVE DEVELOPER WARP ENGINE CONTROLS
-    // ==========================================================================
     const warpBtn = document.getElementById('dev-execute-warp-btn');
     if (warpBtn) {
         warpBtn.addEventListener('click', () => {
@@ -261,15 +297,18 @@ function initializeInterfaceControls() {
                 currentQuestionIndex = indexInputVal - 1;
                 renderTacticalFlagRibbon();
                 loadActiveQuestionVignette();
-                console.log(`⚡ Developer Warp triggered smoothly to index item node: ${indexInputVal}`);
             }
         });
     }
 
     document.querySelectorAll('.calibration-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const selectedCard = document.querySelector('.choice-card.selected');
             if (!selectedCard) return;
+
+            // STEP 2: Log decision fatigue response speed down to the millisecond
+            const decisionLatencyDuration = Date.now() - caseVignetteLoadTimestamp;
+            structuralDecisionLatencyStore[currentQuestionIndex] = decisionLatencyDuration;
 
             const selectedBadge = selectedCard.getAttribute('data-badge');
             const currentQuestion = globalQuestionPool[currentQuestionIndex];
@@ -279,7 +318,7 @@ function initializeInterfaceControls() {
 
             document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
             const rationaleBox = document.getElementById('rationale-analysis-master-box');
-            ration Box.classList.remove('hidden');
+            rationaleBox.classList.remove('hidden');
             document.getElementById('rationale-text-content').textContent = currentQuestion.explanation;
 
             document.querySelectorAll('.choice-card').forEach(c => {
@@ -299,6 +338,9 @@ function initializeInterfaceControls() {
             if (totalProgressCount >= CONFIG.FREE_CEILING) {
                 document.getElementById('advance-next-case-btn').textContent = "VIEW SYSTEM EVALUATION METRICS ➔";
             }
+
+            // Sync structural variables quietly back down to custom user rows
+            await pushClientProgressStateToSupabaseCloud();
         });
     });
 
@@ -321,49 +363,26 @@ function initializeInterfaceControls() {
     });
 }
 
-/**
- * 🛰️ HARDENED CLOUD PERSISTENCE PUSH SYNC
- * Safely transmits local progress indices directly up to your postgres instance
- */
 async function pushClientProgressStateToSupabaseCloud() {
     if (typeof supabase === 'undefined' || !activeUserSessionProfile) return;
-    
     const client = supabase.createClient(window.location.origin, "placeholder");
     
-    // Construct the payload metrics tracking data bundle
     const synchronizedLedgerPayload = {
         answers: answeredRegistryState,
         flags: flaggedQuestionsMap,
+        latencies: structuralDecisionLatencyStore,
         last_updated_at: new Date().toISOString()
     };
 
-    console.log("🛰️ Synchronizing session state parameters to encrypted cloud columns...");
-
     try {
-        // Upsert standard dataset metrics safely across unique user auth IDs bounds checking
-        const { error } = await client
+        await client
             .from('user_profiles')
             .upsert({
                 id: activeUserSessionProfile.id,
                 email: activeUserSessionProfile.email,
                 progress_ledger: synchronizedLedgerPayload
             }, { onConflict: 'id' });
-
-        if (error) throw error;
-        console.log("🟢 Cloud synchronization successfully committed down to Postgres tables row keys.");
     } catch (err) {
-        console.warn("Cloud persistence link unavailable, caching progress changes locally inside volatile storage layouts.", err.message);
+        console.warn("Cloud persistence links deferred.", err.message);
     }
-}
-
-// Hook state engine saves into the answer submission routines
-document.addEventListener('click', (e) => {
-    // Check if user clicked a calibration certainty confirmation tracker button node
-    if (e.target && e.target.classList.contains('calibration-btn')) {
-        pushClientProgressStateToProgressRegistry();
-    }
-});
-
-async function pushClientProgressStateToProgressRegistry() {
-    await pushClientProgressStateToSupabaseCloud();
 }

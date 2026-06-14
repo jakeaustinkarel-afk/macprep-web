@@ -513,3 +513,42 @@ body {
     font-size: 12px;
     color: #111;
 }
+
+/* ==========================================================================
+   📈 ADVANCED INTRAOPERATIVE DIAGNOSTIC CHART UTILITIES
+   ========================================================================== */
+.clinical-chart-wrapper {
+    margin: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+}
+.chart-header-row {
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+}
+.chart-mono-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+.chart-canvas-dock {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+.theme-night .chart-canvas-dock {
+    background: #111111;
+}
+.chart-grid-line {
+    stroke: #e5e7eb;
+    stroke-width: 0.5;
+}
+.theme-night .chart-grid-line {
+    stroke: #222222;
+}
