@@ -372,3 +372,81 @@ body {
 .text-left {
     text-align: left !important;
 }
+
+/* ==========================================================================
+   🌐 PREMIUM RESPONSIVE WORKSPACE SCALING OVERRIDES
+   Automatically converts side-by-side layouts into crisp vertical columns
+   ========================================================================== */
+@media screen and (max-width: 1024px) {
+    /* Main layout shell transitions away from wide constraints */
+    .main-viewport-shell {
+        padding: 16px;
+    }
+
+    /* Convert the rigid 60/40 side-by-side row into a single fluid vertical stack */
+    .workspace-asymmetric-pane {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    /* Left pane stops sticking or locking, allowing natural document scrolling flow */
+    .workspace-left-pane {
+        position: static;
+        width: 100%;
+        flex: none;
+    }
+
+    /* Right pane claims full layout width matching the text columns above it */
+    .workspace-right-pane {
+        width: 100%;
+        flex: none;
+    }
+
+    /* Clean up the track selection dashboard blocks for compact windows */
+    .fork-row-layout {
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+    
+    .fork-card-blueprint {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Adjust data matrix tables to gracefully roll and prevent horizontal page shifts */
+    .table-scroll-container {
+        overflow-x: auto;
+    }
+    
+    .registry-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .registry-search-bar {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 640px) {
+    /* Optimize the high-density monitor ticker columns for phone sizing scales */
+    .vitals-ticker-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .vital-unit {
+        text-align: left;
+    }
+
+    .global-header {
+        padding: 0 16px;
+    }
+    
+    .text-scaler-dock {
+        display: none; /* Safely hide secondary toolbar modifiers on tight screen rows */
+    }
+}
