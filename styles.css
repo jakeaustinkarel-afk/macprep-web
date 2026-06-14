@@ -1,329 +1,296 @@
+/* ==========================================================================
+   MACPREP BROADSHEET ENGINE CORE STYLES
+   ========================================================================== */
 :root {
-    --bg-primary: #fcfbf7;
-    --text-main: #111111;
-    --accent-subtle: #767676;
-    --border-editorial: #111111;
-    --correct-green: #2e7d32;
-    --incorrect-red: #c62828;
+    --bg-main: #f9f9f6;
+    --text-main: #1a1a1a;
+    --text-muted: #666666;
+    --border-color: #1a1a1a;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --font-serif: "Times New Roman", Times, serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: "Georgia", Times, serif;
-    line-height: 1.6;
-    margin: 0;
-    padding: 2rem;
+    font-family: var(--font-sans);
+    padding: 20px;
+    line-height: 1.5;
 }
 
+.hidden {
+    display: none !important;
+}
+
+/* Header & Typography */
 .broadsheet-header {
-    border-bottom: 4px double var(--border-editorial);
+    border-bottom: 3px double var(--border-color);
+    padding-bottom: 20px;
+    margin-bottom: 30px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding-bottom: 1rem;
-    margin-bottom: 2rem;
 }
 
-.broadsheet-header h1 {
-    font-size: 3.5rem;
-    font-weight: 900;
-    margin: 0;
-    letter-spacing: -1px;
-}
-
-.subtitle {
-    font-style: italic;
-    color: var(--accent-subtle);
-    margin: 0.2rem 0 0 0;
-}
-
-.tier-badge {
-    border: 1px solid var(--border-editorial);
-    font-family: monospace;
-    font-size: 0.9rem;
-    padding: 0.4rem 0.8rem;
-    background-color: #fff;
-}
-
-/* Master Workstation Split Grid Arrangement */
-.workstation-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 3rem;
-}
-
-/* Dynamic Live Telemetry HUD Strip UI */
-.telemetry-ribbon {
-    background-color: #111;
-    color: #00ff00;
-    font-family: monospace;
-    display: flex;
-    justify-content: space-around;
-    padding: 0.8rem;
-    border-radius: 4px;
-    margin-bottom: 1.5rem;
-    box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
-}
-
-.vitals-metric .label { color: #aaa; font-weight: bold; }
-.vitals-metric .value { font-size: 1.2rem; font-weight: bold; }
-.vitals-metric .unit { color: #666; font-size: 0.8rem; }
-
-/* Question Layout Fields */
-.meta-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.modality-tag {
-    font-weight: bold;
-    text-transform: uppercase;
-    border-bottom: 2px solid var(--border-editorial);
-    font-size: 0.9rem;
-}
-
-.difficulty-tag {
-    color: var(--incorrect-red);
-    font-family: monospace;
-    font-weight: bold;
-}
-
-.question-stem {
-    font-size: 1.3rem;
-    margin-bottom: 2rem;
-    text-align: left;
-}
-
-.choices-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    margin-bottom: 2rem;
-}
-
-.choice-item {
-    border: 1px solid #ddd;
-    background-color: #fff;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-}
-
-.choice-item:hover {
-    background-color: #f4f1ea;
-    border-color: var(--border-editorial);
-}
-
-.choice-item.correct {
-    background-color: #e8f5e9 !important;
-    border-color: var(--correct-green) !important;
-    color: var(--correct-green);
-    font-weight: bold;
-}
-
-.choice-item.incorrect {
-    background-color: #ffebee !important;
-    border-color: var(--incorrect-red) !important;
-    color: var(--incorrect-red);
-}
-
-.action-row {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn {
-    border: 1px solid var(--border-editorial);
-    background-color: #fff;
-    padding: 0.8rem 1.5rem;
-    font-family: inherit;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn:hover:not(:disabled) { background-color: #111; color: #fff; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-primary { background-color: #111; color: #fff; }
-
-/* Explanations & Citations Layout Panel */
-.explanation-box {
-    margin-top: 2.5rem;
-    padding: 1.5rem;
-    border-left: 4px solid var(--border-editorial);
-    background-color: #f5f4ed;
-}
-
-.literature-trail {
-    margin-top: 1rem;
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.85rem;
-    font-family: monospace;
-}
-
-/* Sidebar Utilities & Calculator Component Interfaces */
-.calculator-panel {
-    border: 1px solid var(--border-editorial);
-    background-color: #fff;
-    padding: 1.5rem;
-}
-
-.tabs-header {
-    display: flex;
-    border-bottom: 1px solid var(--border-editorial);
-    margin-bottom: 1.5rem;
-}
-
-.tab-btn {
-    background: none;
-    border: none;
-    font-family: inherit;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-weight: bold;
-    color: var(--accent-subtle);
-}
-
-.tab-btn.active {
-    color: var(--text-main);
-    border-bottom: 2px solid var(--border-editorial);
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    margin-bottom: 1rem;
-    text-align: left;
-}
-
-.form-group input, .form-group select {
-    padding: 0.5rem;
-    border: 1px solid var(--border-editorial);
-    font-family: inherit;
-    font-size: 1rem;
-}
-
-.btn-calc { width: 100%; margin-top: 0.5rem; }
-
-.calc-result {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: #fcfbf7;
-    border: 1px dashed var(--border-editorial);
-    font-family: monospace;
-    text-align: left;
-}
-
-.hidden { display: none !important; }
-
-/* --- Responsive Layout Media Queries --- */
-@media (max-width: 1024px) {
-    body { padding: 1rem; }
-    .broadsheet-header h1 { font-size: 2.5rem; }
-    .workstation-grid { grid-template-columns: 1fr; gap: 2.5rem; }
-}
-
-@media (max-width: 600px) {
-    .broadsheet-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-    .telemetry-ribbon { flex-wrap: wrap; gap: 0.8rem; justify-content: flex-start; }
-    .vitals-metric { flex-basis: 40%; }
-    .question-stem { font-size: 1.1rem; }
-}
-
-/* Fix: Maintain broadsheet aesthetic on interactive logo link elements */
 .logo-link {
     text-decoration: none;
     color: var(--text-main);
 }
-.logo-link:hover h1 {
-    opacity: 0.8;
+
+.logo-link h1 {
+    font-family: var(--font-serif);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
-/* ==========================================================================
-   ONBOARDING CONTROL HUB STYLES
-   ========================================================================== */
+.subtitle {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+.tier-badge {
+    font-family: var(--font-serif);
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+/* Onboarding Hub Layout */
 .onboarding-hub {
-    max-width: 900px;
+    max-width: 800px;
     margin: 40px auto;
-    padding: 30px;
-    background: #fff;
+    padding: 40px;
+    background: #ffffff;
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
 }
+
 .welcome-hero h2 {
     font-family: var(--font-serif);
-    font-size: 2rem;
-    margin-bottom: 10px;
+    font-size: 2.2rem;
+    margin-bottom: 12px;
 }
+
 .welcome-hero p {
     color: var(--text-muted);
-    margin-bottom: 30px;
+    margin-bottom: 35px;
+    font-size: 1.05rem;
 }
+
 .setup-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 25px;
     margin-bottom: 40px;
 }
+
 @media (min-width: 768px) {
     .setup-grid { grid-template-columns: 1fr 1fr; }
 }
+
 .setup-card {
     background: var(--bg-main);
-    padding: 20px;
+    padding: 25px;
     border: 1px solid var(--border-color);
 }
+
 .setup-card h3 {
-    font-size: 1.1rem;
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
     margin-bottom: 15px;
-    border-bottom: 1px dashed var(--border-color);
+    border-bottom: 1px dashed #ccc;
     padding-bottom: 5px;
 }
+
 .radio-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
 }
+
 .radio-label {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     cursor: pointer;
+    font-size: 0.95rem;
 }
-.radio-label input { margin-top: 4px; }
+
+.radio-label input {
+    margin-top: 4px;
+}
+
 .select-wrapper select {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid var(--border-color);
-    background: #fff;
-    font-size: 1rem;
+    background: #ffffff;
+    font-size: 0.95rem;
+    font-family: var(--font-sans);
 }
+
 .radio-group-horizontal {
     display: flex;
     gap: 10px;
 }
+
 .chip-label {
     flex: 1;
     text-align: center;
     cursor: pointer;
 }
-.chip-label input { display: none; }
+
+.chip-label input {
+    display: none;
+}
+
 .chip-label span {
     display: block;
-    padding: 10px;
-    background: #fff;
+    padding: 12px;
+    background: #ffffff;
     border: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    font-weight: 600;
 }
+
 .chip-label input:checked + span {
     background: var(--text-main);
-    color: #fff;
-    border-color: var(--text-main);
+    color: #ffffff;
 }
-.launch-action { text-align: center; }
-.btn-large { padding: 15px 40px; font-size: 1.2rem; width: auto; }
+
+/* Button UI Suite */
+.btn {
+    background: #ffffff;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--text-main);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: #333333;
+}
+
+.btn-large {
+    padding: 15px 40px;
+    font-size: 1.15rem;
+    width: auto;
+}
+
+/* Active Workspace Grid */
+.workstation-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 992px) {
+    .workstation-grid { grid-template-columns: 7fr 3fr; }
+}
+
+.main-content {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    padding: 25px;
+}
+
+.telemetry-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    background: var(--text-main);
+    color: #ffffff;
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+.vitals-metric {
+    flex: 1;
+    min-width: 100px;
+    text-align: center;
+}
+
+.vitals-metric .label {
+    display: block;
+    font-size: 0.75rem;
+    color: #aaa;
+    text-transform: uppercase;
+}
+
+.vitals-metric .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+.question-canvas {
+    padding: 10px 0;
+}
+
+.meta-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.modality-tag, .difficulty-tag {
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 3px 8px;
+    border: 1px solid var(--border-color);
+}
+
+.question-stem {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    margin-bottom: 25px;
+    color: #111;
+}
+
+.choices-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.choice-row {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.choice-row:hover {
+    background: var(--bg-main);
+}
+
+.utility-sidebar {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    padding: 25px;
+}
