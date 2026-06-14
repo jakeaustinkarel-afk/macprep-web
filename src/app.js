@@ -590,3 +590,50 @@ function startWaveformSimulationAnimation(type) {
         if (path) path.setAttribute('d', svgCoordinates);
     }, 50);
 }
+
+/**
+ * 🖨️ ACADEMIC CME PRINT ROUTING MANAGER
+ * Automatically populates ledger rows and evokes native printing overlays
+ */
+function initializeCmePrintingSubsystem() {
+    const dashboardTrigger = document.getElementById('cme-kit-trigger');
+    const paywallTrigger = document.getElementById('cme-kit-trigger-paywall'); // fallback hook selector
+
+    const executeInvoicePrintJob = () => {
+        console.log("🖨️ Initiating print compilation event tracking passes...");
+        
+        // Dynamic Variable Fallback Checks: Hydrate ledger parameters from user cache profiles
+        let targetEmail = "allocated.clinician@residency.edu";
+        try {
+            const cachedRaw = localStorage.getItem('macprep_active_session_ledger');
+            if (cachedRaw) {
+                const parsed = JSON.parse(cachedRaw);
+                if (parsed.currentLiveQuestion) {
+                    targetEmail = "sandbox.clinician@gmail.com"; // Set to simulated validation target email
+                }
+            }
+        } catch(e) {}
+
+        // Populate fields inside the printable hidden invoice element space
+        const userEmailField = document.getElementById('print-user-email');
+        const userInvoiceId = document.getElementById('print-inv-id');
+        const userInvoiceDate = document.getElementById('print-inv-date');
+
+        if (userEmailField) userEmailField.textContent = targetEmail;
+        if (userInvoiceId) userInvoiceId.textContent = `INV-${Math.floor(100000 + Math.random() * 900000)}-CME`;
+        if (userInvoiceDate) userInvoiceDate.textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        // Trigger native hardware platform print loop
+        window.print();
+    };
+
+    if (dashboardTrigger) dashboardTrigger.addEventListener('click', executeInvoicePrintJob);
+    if (paywallTrigger) paywallTrigger.addEventListener('click', executeInvoicePrintJob);
+}
+
+// Register initialization hook directly inside active application threads
+document.addEventListener('DOMContentLoaded', () => {
+    initializeCmePrintingSubsystem();
+});

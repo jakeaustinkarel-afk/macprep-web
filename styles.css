@@ -237,3 +237,66 @@ body {
     .vital-unit { text-align: left; }
     .diagnostic-metric-row { flex-direction: column; gap: 12px; }
 }
+
+/* ==========================================================================
+   📂 PROFESSIONAL ACADEMIC INSTITUTIONAL INVOICE SYSTEM STYLE RULES
+   ========================================================================== */
+.invoice-print-container {
+    display: none; /* Keep hidden on screen layouts by default */
+    background: #ffffff;
+    color: #111111;
+    font-family: var(--font-sans);
+    padding: 20px;
+}
+.invoice-header-block {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid #111111;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+}
+.invoice-title { font-family: var(--font-serif); font-size: 26px; font-weight: bold; }
+.invoice-subtext { font-size: 12px; color: #444; margin-top: 2px; }
+.invoice-status-badge { font-size: 18px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-bottom: 6px; }
+.invoice-meta-text { font-size: 12px; color: #111; margin-top: 2px; }
+.invoice-billing-split { display: flex; justify-content: space-between; margin-bottom: 32px; }
+.invoice-heading-label { font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #666; display: block; margin-bottom: 6px; }
+.invoice-address-text { font-size: 13px; line-height: 1.4; }
+.invoice-ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.invoice-ledger-table th { border-bottom: 1px solid #111111; font-family: var(--font-mono); font-size: 11px; font-weight: bold; color: #444; padding: 8px 12px; text-align: left; }
+.invoice-ledger-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #e5e7eb; line-height: 1.4; }
+.invoice-totals-block { width: 320px; margin-left: auto; margin-bottom: 40px; }
+.totals-line-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+.total-highlight-row { border-top: 1px dashed #111; font-weight: bold; font-size: 15px; padding-top: 8px; margin-top: 4px; }
+.invoice-footer-legal-well { border: 1px solid #dfd7ca; background: #fafafa; padding: 16px; font-size: 11px; color: #555; line-height: 1.5; }
+
+/* ==========================================================================
+   🖨️ NATIVE SYSTEM HARDWARE PRINT PORT INTERPOLATION OVERRIDES
+   ========================================================================== */
+@media print {
+    /* 1. Eliminate all interactive screen elements entirely */
+    body, html, .global-header, .main-viewport-shell, #primary-viewport-container, section, button, select, input {
+        display: none !important;
+        background: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* 2. Enforce absolute visibility constraints onto the academic receipt sheet block */
+    .invoice-print-container {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* 3. Strip custom user palette accents back to traditional printer-friendly ink ranges */
+    .invoice-status-badge {
+        color: #000000 !important;
+        border: 2px solid #000000;
+        padding: 4px 10px;
+        display: inline-block;
+    }
+}
