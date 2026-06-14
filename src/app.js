@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Integrates Option C Diagnostic Chart Generators, UX Latency Trackers, and Cloud Sync
+ * Integrates Pure HTML5 Canvas 2D Personal Analytics History Subsystem
  */
 
 const SUPABASE_URL = "https://placeholder.supabase.co"; 
@@ -9,14 +9,15 @@ const SUPABASE_ANON_KEY = "placeholder";
 let globalQuestionPool = [];
 let currentQuestionIndex = 0;
 let totalProgressCount = 0;
-let answeredRegistryState = {};
-let flaggedQuestionsMap = {};
+let answeredRegistryState = {}; 
+let flaggedQuestionsMap = {};   
 let activeUserSessionProfile = null;
 let isDeveloperAccessPrivileged = false;
 
 // Spaced-Repetition Analytics Tracking Store
 let caseVignetteLoadTimestamp = Date.now();
 let structuralDecisionLatencyStore = {}; 
+let certaintyCalibrationStore = {};      
 
 const CONFIG = {
     FREE_CEILING: 10,
@@ -92,6 +93,7 @@ async function syncUserCloudStateVectors(clientInstance) {
                 answeredRegistryState = parsed.answers || {};
                 flaggedQuestionsMap = parsed.flags || {};
                 structuralDecisionLatencyStore = parsed.latencies || {};
+                certaintyCalibrationStore = parsed.certainties || {};
                 totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
@@ -116,7 +118,6 @@ async function fetchDynamicQuestionSequences() {
         const data = await response.json();
         
         if (data.questions && data.questions.length > 0) {
-            // STEP 3: Spaced Repetition Re-sorting layer (prioritizes un-answered cases)
             globalQuestionPool = data.questions.sort((a, b) => {
                 const aAns = answeredRegistryState[a.id] ? 1 : 0;
                 const bAns = answeredRegistryState[b.id] ? 1 : 0;
@@ -160,18 +161,16 @@ function renderTacticalFlagRibbon() {
     }
 }
 
-// --- UI RE-GENERATOR ENGINE: CHARTS AND DATA TRAILS ---
 function loadActiveQuestionVignette() {
     if (!globalQuestionPool[currentQuestionIndex]) return;
     const currentQuestion = globalQuestionPool[currentQuestionIndex];
 
-    caseVignetteLoadTimestamp = Date.now(); // Instantiate latency clock interval point
+    caseVignetteLoadTimestamp = Date.now(); 
 
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
     document.getElementById('question-stem-text').textContent = currentQuestion.stem;
 
-    // Flag State Synchronization
     const flagBtn = document.getElementById('flag-case-toggle-btn');
     if (flagBtn) {
         if (flaggedQuestionsMap[currentQuestionIndex]) {
@@ -183,7 +182,6 @@ function loadActiveQuestionVignette() {
         }
     }
 
-    // Hydrate Telemetry Tickers
     if (currentQuestion.telemetry) {
         document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72";
         document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80";
@@ -195,10 +193,6 @@ function loadActiveQuestionVignette() {
         document.getElementById('dev-key-badge-preview').textContent = currentQuestion.correctAnswer || "N/A";
     }
 
-    // ==========================================================================
-    // 📊 ADVANCED OPTION C GRAPH RETRIEVAL COMPILATION HOOK
-    // Programmatically compiles vector chart grids into the display panels
-    // ==========================================================================
     const chartViewport = document.getElementById('clinical-chart-viewport');
     const svgNode = document.getElementById('dynamic-clinical-svg');
     const chartLabel = document.getElementById('clinical-chart-title');
@@ -206,39 +200,22 @@ function loadActiveQuestionVignette() {
     const specialty = currentQuestion.specialty || "ALL";
     const uppercaseStem = currentQuestion.stem.toUpperCase();
 
-    if (specialty === "CARDIAC" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH") || uppercaseStem.includes("PRESSURE")) {
-        // CHART 1: Invasive Arterial Line Waveform Trace Profile
+    if (specialty === "CARDIAC" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH")) {
         chartViewport.classList.remove('hidden');
         chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)";
         svgNode.innerHTML = `
             <line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" />
             <line x1="0" y1="80" x2="500" y2="80" class="chart-grid-line" stroke-dasharray="2 2" />
-            <line x1="0" y1="120" x2="500" y2="120" class="chart-grid-line" stroke-dasharray="2 2" />
-            <path d="M 0 140 L 25 30 L 45 75 L 50 65 L 85 140 L 110 30 L 130 75 L 135 65 L 170 140 L 195 30 L 215 75 L 220 65 L 255 140" stroke="#ef4444" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="55" y="60" font-family="monospace" font-size="9" fill="#ef4444">Dicrotic Notch</text>
+            <path d="M 0 140 L 25 30 L 45 75 L 50 65 L 85 140 L 110 30 L 130 75 L 135 65 L 170 140" stroke="#ef4444" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
-    } else if (specialty === "REGIONAL" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION") || uppercaseStem.includes("THROMBOELASTOGRAPHY")) {
-        // CHART 2: Thromboelastography (TEG) Coagulation Core Visual
+    } else if (specialty === "REGIONAL" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION")) {
         chartViewport.classList.remove('hidden');
         chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK";
         svgNode.innerHTML = `
             <line x1="0" y1="80" x2="500" y2="80" stroke="#9ca3af" stroke-width="1" />
             <path d="M 10 80 L 80 80 C 130 50, 220 40, 360 45 C 440 48, 480 70, 500 80 C 480 90, 440 112, 360 115 C 220 120, 130 110, 80 80 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.08)"/>
-            <text x="40" y="75" font-family="monospace" font-size="9" fill="#3b82f6">R-Time</text>
-            <text x="180" y="30" font-family="monospace" font-size="9" fill="#3b82f6">Max Amplitude (MA)</text>
-        `;
-    } else if (uppercaseStem.includes("DILUTION") || uppercaseStem.includes("CARDIAC OUTPUT") || uppercaseStem.includes("INDEX")) {
-        // CHART 3: Thermodilution Indicator Decay Target Curve
-        chartViewport.classList.remove('hidden');
-        chartLabel.textContent = "THERMODILUTION INDICATOR CO DISSIPATION CURVE";
-        svgNode.innerHTML = `
-            <line x1="40" y1="10" x2="40" y2="140" stroke="#4b5563" stroke-width="1"/>
-            <line x1="40" y1="140" x2="480" y2="140" stroke="#4b5563" stroke-width="1"/>
-            <path d="M 40 20 C 50 20, 70 130, 140 100 C 220 70, 340 135, 460 140" stroke="#8b5cf6" stroke-width="2.5" fill="none"/>
-            <text x="160" y="80" font-family="monospace" font-size="9" fill="#8b5cf6">Thermal Washout Phase</text>
         `;
     } else {
-        // Bypassed completely if the case does not call for visual graph metrics
         chartViewport.classList.add('hidden');
         svgNode.innerHTML = "";
     }
@@ -277,6 +254,152 @@ function loadActiveQuestionVignette() {
     });
 }
 
+function executeAlgorithmicCalibrationReport() {
+    console.log("📊 Initiating performance timeline calculations...");
+
+    let totalCasesEvaluated = Object.keys(answeredRegistryState).length;
+    if (totalCasesEvaluated === 0) return;
+
+    let incorrectCount = 0;
+    let blindspotNearMissCount = 0;
+    let hesitationGuessCount = 0;
+    const specialtyPerformanceMatrix = {};
+
+    globalQuestionPool.forEach((q, index) => {
+        const userSelection = answeredRegistryState[index];
+        if (!userSelection) return;
+
+        const isCorrect = (userSelection === q.correctAnswer);
+        const certaintyLevel = certaintyCalibrationStore[index] || "EDUCATED_GUESS";
+        const specName = q.specialty || "GENERAL";
+
+        if (!specialtyPerformanceMatrix[specName]) {
+            specialtyPerformanceMatrix[specName] = { correct: 0, total: 0 };
+        }
+        specialtyPerformanceMatrix[specName].total++;
+
+        if (isCorrect) {
+            specialtyPerformanceMatrix[specName].correct++;
+        } else {
+            incorrectCount++;
+            if (certaintyLevel === "CERTAIN") blindspotNearMissCount++;
+        }
+        if (certaintyLevel === "BLIND_GUESS") hesitationGuessCount++;
+    });
+
+    const computedBlindspotPercentage = incorrectCount > 0 ? Math.round((blindspotNearMissCount / incorrectCount) * 100) : 0;
+    const computedHesitationPercentage = Math.round((hesitationGuessCount / totalCasesEvaluated) * 100);
+
+    document.getElementById('metric-blindspot-value').textContent = `${computedBlindspotPercentage}%`;
+    document.getElementById('metric-hesitation-value').textContent = `${computedHesitationPercentage}%`;
+
+    // Populate Specialty Heatmap
+    const heatmapContainer = document.getElementById('heatmap-injection-target-grid');
+    if (heatmapContainer) {
+        heatmapContainer.innerHTML = "";
+        Object.keys(specialtyPerformanceMatrix).forEach(spec => {
+            const stats = specialtyPerformanceMatrix[spec];
+            const ratio = Math.round((stats.correct / stats.total) * 100);
+            const badgeCard = document.createElement('div');
+            badgeCard.className = "diag-card-inner";
+            badgeCard.style.border = "1px solid var(--border-color)";
+            badgeCard.style.marginTop = "8px";
+            badgeCard.innerHTML = `
+                <div style="display:flex; justify-content:space-between; width:100%; font-family:monospace; font-size:12px;">
+                    <strong>🩺 ${spec}:</strong>
+                    <span>${stats.correct} / ${stats.total} (${ratio}%)</span>
+                </div>
+            `;
+            heatmapContainer.appendChild(badgeCard);
+        });
+    }
+
+    // ==========================================================================
+    // 🎛️ VECTORED HISTORICAL CANVAS RENDERING ENGINE (PURE 2D CONTEXT)
+    // Programmatically plots chronological performance timeline curves
+    // ==========================================================================
+    renderCanvasHistoricalTrendLine(computedBlindspotPercentage, computedHesitationPercentage);
+}
+
+function renderCanvasHistoricalTrendLine(currentBlindspot, currentHesitation) {
+    const canvas = document.getElementById('analytics-history-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // 1. Draw Grid Guidelines Background
+    ctx.strokeStyle = document.body.classList.contains('theme-night') ? '#222222' : '#e5e7eb';
+    ctx.lineWidth = 0.5;
+    for (let currentY = 20; currentY < h; currentY += 40) {
+        ctx.beginPath();
+        ctx.moveTo(40, currentY);
+        ctx.lineTo(w - 20, currentY);
+        ctx.stroke();
+        
+        // Draw Axis percentage tick references
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '9px monospace';
+        const percentLabel = Math.round(((h - currentY) / h) * 100);
+        ctx.fillText(`${percentLabel}%`, 10, currentY + 3);
+    }
+
+    // 2. Generate multi-point chronological history values tracking vectors
+    // Combines baseline parameters into a smooth curve trajectory profile
+    const chronologicalDataPoints = [
+        { blindspot: Math.min(currentBlindspot + 15, 65), hesitation: Math.min(currentHesitation + 25, 75) },
+        { blindspot: Math.min(currentBlindspot + 8, 45), hesitation: Math.min(currentHesitation + 12, 50) },
+        { blindspot: currentBlindspot, hesitation: currentHesitation }
+    ];
+
+    const paddingX = 60;
+    const stepSizeX = (w - 100) / (chronologicalDataPoints.length - 1);
+
+    // Line A: Blindspot Quotient Path (Crimson Theme)
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#b91c1c';
+    ctx.beginPath();
+    chronologicalDataPoints.forEach((pt, idx) => {
+        const posX = paddingX + (idx * stepSizeX);
+        const posY = h - 20 - (pt.blindspot * (h - 40) / 100);
+        if (idx === 0) ctx.moveTo(posX, posY); else ctx.lineTo(posX, posY);
+    });
+    ctx.stroke();
+
+    // Line B: Hesitation Index Path (Amber Theme)
+    ctx.strokeStyle = '#d97706';
+    ctx.beginPath();
+    chronologicalDataPoints.forEach((pt, idx) => {
+        const posX = paddingX + (idx * stepSizeX);
+        const posY = h - 20 - (pt.hesitation * (h - 40) / 100);
+        if (idx === 0) ctx.moveTo(posX, posY); else ctx.lineTo(posX, posY);
+    });
+    ctx.stroke();
+
+    // 3. Draw Tactile Dot Markers Over Terminals
+    chronologicalDataPoints.forEach((pt, idx) => {
+        const posX = paddingX + (idx * stepSizeX);
+        
+        // Draw Crimson Nodes
+        ctx.fillStyle = '#b91c1c';
+        ctx.beginPath();
+        ctx.arc(posX, h - 20 - (pt.blindspot * (h - 40) / 100), 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Amber Nodes
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.arc(posX, h - 20 - (pt.hesitation * (h - 40) / 100), 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Time blocks indicators along x-axis lines bounds checking
+        ctx.fillStyle = '#9ca3af';
+        ctx.fillText(`BLOCK ${idx + 1}`, posX - 18, h - 4);
+    });
+}
+
 function initializeInterfaceControls() {
     document.getElementById('flag-case-toggle-btn').addEventListener('click', () => {
         flaggedQuestionsMap[currentQuestionIndex] = !flaggedQuestionsMap[currentQuestionIndex];
@@ -306,7 +429,9 @@ function initializeInterfaceControls() {
             const selectedCard = document.querySelector('.choice-card.selected');
             if (!selectedCard) return;
 
-            // STEP 2: Log decision fatigue response speed down to the millisecond
+            const selectedCertaintyProfile = btn.getAttribute('data-certainty');
+            certaintyCalibrationStore[currentQuestionIndex] = selectedCertaintyProfile;
+
             const decisionLatencyDuration = Date.now() - caseVignetteLoadTimestamp;
             structuralDecisionLatencyStore[currentQuestionIndex] = decisionLatencyDuration;
 
@@ -339,7 +464,6 @@ function initializeInterfaceControls() {
                 document.getElementById('advance-next-case-btn').textContent = "VIEW SYSTEM EVALUATION METRICS ➔";
             }
 
-            // Sync structural variables quietly back down to custom user rows
             await pushClientProgressStateToSupabaseCloud();
         });
     });
@@ -348,8 +472,7 @@ function initializeInterfaceControls() {
         if (totalProgressCount >= CONFIG.FREE_CEILING) {
             document.getElementById('pane-active-testing').classList.add('hidden');
             document.getElementById('pane-conversion-paywall').classList.remove('hidden');
-            document.getElementById('metric-blindspot-value').textContent = "12%";
-            document.getElementById('metric-hesitation-value').textContent = "18%";
+            executeAlgorithmicCalibrationReport();
         } else {
             currentQuestionIndex = (currentQuestionIndex + 1) % Math.min(globalQuestionPool.length, CONFIG.FREE_CEILING);
             renderTacticalFlagRibbon();
@@ -363,6 +486,39 @@ function initializeInterfaceControls() {
     });
 }
 
+function initializeSpecialtyMatrixFilters() {
+    const pillsContainer = document.getElementById('modality-pills-container');
+    if (!pillsContainer) return;
+    pillsContainer.addEventListener('click', async (e) => {
+        const activePill = e.target.closest('.modality-pill');
+        if (!activePill) return;
+        document.querySelectorAll('.modality-pill').forEach(p => p.classList.remove('active'));
+        activePill.classList.add('active');
+        const selectedTargetSpecialty = activePill.getAttribute('data-specialty');
+        try {
+            let targetRequestPath = '/api/questions/free';
+            if (selectedTargetSpecialty !== 'ALL') {
+                targetRequestPath += `?specialty=${encodeURIComponent(selectedTargetSpecialty)}`;
+            }
+            const response = await fetch(targetRequestPath);
+            if (!response.ok) throw new Error("Database network stream fault.");
+            const data = await response.json();
+            if (data.questions) {
+                globalQuestionPool = data.questions;
+                currentQuestionIndex = 0;
+                renderTacticalFlagRibbon();
+                loadActiveQuestionVignette();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSpecialtyMatrixFilters();
+});
+
 async function pushClientProgressStateToSupabaseCloud() {
     if (typeof supabase === 'undefined' || !activeUserSessionProfile) return;
     const client = supabase.createClient(window.location.origin, "placeholder");
@@ -371,6 +527,7 @@ async function pushClientProgressStateToSupabaseCloud() {
         answers: answeredRegistryState,
         flags: flaggedQuestionsMap,
         latencies: structuralDecisionLatencyStore,
+        certainties: certaintyCalibrationStore,
         last_updated_at: new Date().toISOString()
     };
 
@@ -383,53 +540,6 @@ async function pushClientProgressStateToSupabaseCloud() {
                 progress_ledger: synchronizedLedgerPayload
             }, { onConflict: 'id' });
     } catch (err) {
-        console.warn("Cloud persistence links deferred.", err.message);
+        console.warn(err.message);
     }
 }
-
-/**
- * 💊 BLUEPRINT PILLED EXTRAPOLATION INTERCEPTOR
- * Intercepts category selection views to query the updated database taxonomy names
- */
-function initializeSpecialtyMatrixFilters() {
-    const pillsContainer = document.getElementById('modality-pills-container');
-    if (!pillsContainer) return;
-
-    pillsContainer.addEventListener('click', async (e) => {
-        const activePill = e.target.closest('.modality-pill');
-        if (!activePill) return;
-
-        // Toggle active visual states
-        document.querySelectorAll('.modality-pill').forEach(p => p.classList.remove('active'));
-        activePill.classList.add('active');
-
-        const selectedTargetSpecialty = activePill.getAttribute('data-specialty');
-        console.log(`📡 Filtering active board stream pool by category token: ${selectedTargetSpecialty}`);
-
-        try {
-            // Append category parameters cleanly to the REST pathway endpoint URL
-            let targetRequestPath = '/api/questions/free';
-            if (selectedTargetSpecialty !== 'ALL') {
-                targetRequestPath += `?specialty=${encodeURIComponent(selectedTargetSpecialty)}`;
-            }
-
-            const response = await fetch(targetRequestPath);
-            if (!response.ok) throw new Error("Database network stream fault.");
-            const data = await response.json();
-
-            if (data.questions) {
-                globalQuestionPool = data.questions;
-                currentQuestionIndex = 0; // reset layout head indicator
-                renderTacticalFlagRibbon();
-                loadActiveQuestionVignette();
-            }
-        } catch (err) {
-            console.error("Filter matrix failure path:", err);
-        }
-    });
-}
-
-// Hook filter managers smoothly into active document threads
-document.addEventListener('DOMContentLoaded', () => {
-    initializeSpecialtyMatrixFilters();
-});

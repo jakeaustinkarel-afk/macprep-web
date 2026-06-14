@@ -552,3 +552,36 @@ body {
 .theme-night .chart-grid-line {
     stroke: #222222;
 }
+
+/* ==========================================================================
+   📉 CLINICAL VELOCITY CANVAS HISTORICAL TREND CARDS
+   ========================================================================== */
+.history-chart-canvas-dock {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+.theme-night .history-chart-canvas-dock {
+    background: #111111;
+}
+#analytics-history-canvas {
+    width: 100%;
+    height: 180px;
+    display: block;
+}
+.chart-legend-flex {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-color);
+}
+.legend-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+}

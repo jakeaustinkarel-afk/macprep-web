@@ -249,39 +249,7 @@
                 </div>
 
                 <div id="sub-pane-calculator-core" class="tab-content-panel hidden">
-                    <div class="calculator-card-wrapper">
-                        <span class="calibration-heading">ALLOWABLE BLOOD LOSS (ABL)</span>
-                        <div class="calculator-inputs-flex-row">
-                            <input type="number" id="calc-abl-weight" class="calc-text-input" placeholder="Weight (kg)">
-                            <input type="number" id="calc-abl-hct-start" class="calc-text-input" placeholder="Initial Hct (%)">
-                            <input type="number" id="calc-abl-hct-target" class="calc-text-input" placeholder="Target Hct (%)">
-                        </div>
-                        <button id="execute-abl-btn" class="secondary-utility-btn">Run ABL Calculation</button>
-                        <div id="output-well-abl" class="sunken-monospace-output-well hidden"></div>
                     </div>
-
-                    <div class="calculator-card-wrapper">
-                        <span class="calibration-heading">ALVEOLAR GAS EQUATION (PAO2)</span>
-                        <div class="calculator-inputs-flex-row">
-                            <input type="number" id="calc-pao2-fio2" class="calc-text-input" placeholder="FiO2 (%)" value="100">
-                            <input type="number" id="calc-pao2-paco2" class="calc-text-input" placeholder="PaCO2 (mmHg)" value="40">
-                            <input type="number" id="calc-pao2-pb" class="calc-text-input" placeholder="Barometric Pressure (Pb)" value="760">
-                        </div>
-                        <button id="execute-pao2-btn" class="secondary-utility-btn">Run PAO2 Calculation</button>
-                        <div id="output-well-pao2" class="sunken-monospace-output-well hidden"></div>
-                    </div>
-
-                    <div class="calculator-card-wrapper">
-                        <span class="calibration-heading">SYSTEMIC VASCULAR RESISTANCE (SVR)</span>
-                        <div class="calculator-inputs-flex-row">
-                            <input type="number" id="calc-svr-map" class="calc-text-input" placeholder="MAP (mmHg)">
-                            <input type="number" id="calc-svr-cvp" class="calc-text-input" placeholder="CVP (mmHg)" value="5">
-                            <input type="number" id="calc-svr-co" class="calc-text-input" placeholder="Cardiac Output (L/min)" value="5.0">
-                        </div>
-                        <button id="execute-svr-btn" class="secondary-utility-btn">Run SVR Calculation</button>
-                        <div id="output-well-svr" class="sunken-monospace-output-well hidden"></div>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -307,6 +275,17 @@
                     </div>
                 </div>
 
+                <div class="scholarly-competency-heatmap-container" style="margin-top: 16px;">
+                    <span class="calibration-heading">📉 HISTORICAL ACCREDITATION VELOCITY PERFORMANCE TRENDS</span>
+                    <div class="history-chart-canvas-dock">
+                        <canvas id="analytics-history-canvas" width="460" height="180"></canvas>
+                        <div class="chart-legend-flex">
+                            <span class="legend-indicator" style="background:#b91c1c;"></span> <span class="chart-mono-label" style="font-size:10px; margin-right:12px;">Blindspot Quotient</span>
+                            <span class="legend-indicator" style="background:#d97706;"></span> <span class="chart-mono-label" style="font-size:10px;">Hesitation Index</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="scholarly-competency-heatmap-container" style="margin-top:16px;">
                     <span class="calibration-heading">DIAGNOSTIC PATH ACCURACY BY ACCREDITATION SPECIALTY CATEGORY</span>
                     <div id="heatmap-injection-target-grid" class="heatmap-grid-matrix"></div>
@@ -325,8 +304,7 @@
 
     </main>
 
-    <div id="printable-cme-invoice-pane" class="invoice-print-container">
-        </div>
+    <div id="printable-cme-invoice-pane" class="invoice-print-container"></div>
 
     <script src="src/app.js"></script>
 </body>
