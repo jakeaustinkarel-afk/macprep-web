@@ -367,3 +367,19 @@ body {
     border-bottom: 2px solid var(--border-color);
     padding-bottom: 8px;
 }
+
+/* Styling enhancements for expanded blueprint dropdown selector panels */
+select id="topicFocus" optgroup {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    color: var(--accent-gold);
+    background: var(--bg-main);
+    padding: 6px;
+}
+select id="topicFocus" option {
+    font-family: var(--font-sans);
+    font-weight: normal;
+    color: var(--text-main);
+    background: #ffffff;
+    padding: 4px;
+}

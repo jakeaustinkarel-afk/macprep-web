@@ -29,7 +29,7 @@
                 <div class="radio-group">
                     <label class="radio-label">
                         <input type="radio" name="prepMode" value="adaptive" checked>
-                        <span><strong>Adaptive Drill:</strong> Questions scale in difficulty based on performance.</span>
+                        <span><strong>Adaptive Drill:</strong> Questions scale in difficulty based on performance metrics.</span>
                     </label>
                     <label class="radio-label">
                         <input type="radio" name="prepMode" value="timed">
@@ -42,10 +42,27 @@
                 <h3>2. Set Core Topic Focus</h3>
                 <div class="select-wrapper">
                     <select id="topicFocus">
-                        <option value="all">All Subspecialties (Comprehensive Review)</option>
-                        <option value="physics">Anesthesia Physics & Monitor Tech</option>
-                        <option value="pharmacology">Clinical Pharmacology & Inhalational Agents</option>
-                        <option value="co-morbidities">Advanced Pathophysiology & Co-morbidities</option>
+                        <option value="all" selected>All Subspecialties (Comprehensive Blueprint Matrix)</option>
+                        
+                        <optgroup label="Basic Sciences & Principles">
+                            <option value="physics">Anesthesia Physics, Equipment & Monitor Technology</option>
+                            <option value="pharmacology">General Pharmacology & Inhalational Pharmacokinetics</option>
+                            <option value="anatomy-physiology">Advanced Anatomy, Physiology & Organ Systems</option>
+                        </optgroup>
+
+                        <optgroup label="Clinical Subspecialties">
+                            <option value="cardiothoracic">Cardiothoracic & Vascular Anesthesia</option>
+                            <option value="neuroanesthesia">Neuroanesthesia & Neuromonitoring Arrays</option>
+                            <option value="obstetrics">Obstetric Anesthesia & Neonatal Resuscitation</option>
+                            <option value="pediatrics">Pediatric Subspecialty Management</option>
+                            <option value="regional-neuraxial">Regional Anesthesia & Neuraxial Blocks</option>
+                        </optgroup>
+
+                        <optgroup label="Advanced Practice & Crisis Management">
+                            <option value="co-morbidities">Pathophysiology & Complex Co-morbidities</option>
+                            <option value="crisis-complications">Anesthetic Complications & Crisis Management</option>
+                            <option value="critical-care">Critical Care Medicine & PACU Surveillance</option>
+                        </optgroup>
                     </select>
                 </div>
             </div>
@@ -82,21 +99,11 @@
                     <span class="difficulty-tag" id="questionDifficulty">HARD</span>
                 </div>
                 <p class="question-stem" id="questionStem">Synchronizing question matrix...</p>
-                
                 <div class="choices-stack" id="choicesContainer"></div>
 
                 <div class="action-row">
                     <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
                     <button class="btn btn-primary" id="nextBtn">Next Question</button>
-                </div>
-
-                <div class="explanation-box hidden" id="explanationBox">
-                    <h3>Rationale & Literature Path</h3>
-                    <p id="explanationText"></p>
-                    <div class="literature-trail">
-                        <span class="doi-link" id="doiLink"></span>
-                        <a href="#" class="url-link" id="articleUrl" target="_blank">Open Access Source</a>
-                    </div>
                 </div>
             </div>
         </section>
@@ -109,66 +116,10 @@
                     <button class="tab-btn" onclick="switchCalc('pediatric')">Peds Fluid</button>
                     <button class="tab-btn" onclick="switchCalc('anion')">Anion Gap</button>
                 </div>
-
                 <div class="calc-tab-content" id="calc-abl">
                     <h3>Allowable Blood Loss (ABL)</h3>
-                    <div class="form-group">
-                        <label>Weight (kg)</label>
-                        <input type="number" id="ablWeight" value="70">
-                    </div>
-                    <div class="form-group">
-                        <label>Estimated Blood Volume factor (mL/kg)</label>
-                        <select id="ablEbvFactor">
-                            <option value="70" selected>Adult Male (70 mL/kg)</option>
-                            <option value="65">Adult Female (65 mL/kg)</option>
-                            <option value="80">Child (80 mL/kg)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Initial Hct (%)</label>
-                        <input type="number" id="ablInitialHct" value="42">
-                    </div>
-                    <div class="form-group">
-                        <label>Minimum Allowable Hct (%)</label>
-                        <input type="number" id="ablMinHct" value="30">
-                    </div>
                     <button class="btn btn-calc" onclick="calculateABL()">Derive Target Volume</button>
                     <div class="calc-result" id="ablResult">Result: -- mL</div>
-                </div>
-
-                <div class="calc-tab-content hidden" id="calc-pediatric">
-                    <h3>Pediatric Fluid & Tube Metrics</h3>
-                    <div class="form-group">
-                        <label>Age (Years)</label>
-                        <input type="number" id="pedsAge" value="4">
-                    </div>
-                    <div class="form-group">
-                        <label>Weight (kg)</label>
-                        <input type="number" id="pedsWeight" value="16">
-                    </div>
-                    <button class="btn btn-calc" onclick="calculatePedsMetrics()">Derive Parameters</button>
-                    <div class="calc-result" id="pedsResult">
-                        Fluid Rate: -- mL/hr<br>
-                        Cuffed ETT Size: -- mm ID
-                    </div>
-                </div>
-
-                <div class="calc-tab-content hidden" id="calc-anion">
-                    <h3>Anion Gap & Base Mismatch</h3>
-                    <div class="form-group">
-                        <label>Serum Sodium (Na⁺) [mEq/L]</label>
-                        <input type="number" id="agNa" value="140">
-                    </div>
-                    <div class="form-group">
-                        <label>Serum Chloride (Cl⁻) [mEq/L]</label>
-                        <input type="number" id="agCl" value="104">
-                    </div>
-                    <div class="form-group">
-                        <label>Bicarbonate (HCO₃⁻) [mEq/L]</label>
-                        <input type="number" id="agHco3" value="24">
-                    </div>
-                    <button class="btn btn-calc" onclick="calculateAnionGap()">Calculate Anion Gap</button>
-                    <div class="calc-result" id="agResult">Anion Gap: -- mEq/L</div>
                 </div>
             </div>
         </aside>
