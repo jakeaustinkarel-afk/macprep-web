@@ -604,3 +604,43 @@ body {
     background: #181614;
     color: #dfd7ca;
 }
+
+/* ==========================================================================
+   🎨 RETINA & ACCESSIBILITY CONTRAST VARIANT CORRECTIONS
+   ========================================================================== */
+:root {
+    --state-success-bg: #e8f5e9;
+    --state-success-border: var(--accent-scrub);
+    --state-danger-bg: #ffebee;
+    --state-danger-border: var(--accent-crimson);
+}
+
+.theme-night {
+    --state-success-bg: #064e3b;
+    --state-success-border: #10b981;
+    --state-danger-bg: #7f1d1d;
+    --state-danger-border: #f43f5e;
+}
+
+/* Redefine chart wrapper bounds to stabilize screen elements */
+.clinical-chart-wrapper {
+    margin: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+    height: 200px; /* Lock height dimensions firmly to absolute constants */
+    box-sizing: border-box;
+}
+
+.chart-placeholder-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 160px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px dashed var(--border-color);
+    background: transparent;
+}

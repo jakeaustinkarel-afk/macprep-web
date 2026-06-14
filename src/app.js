@@ -1,13 +1,13 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Integrates Public Open-Access Bibliography Registry Fuzzy Lookup & Filter Engines
+ * Hardened to address CLS shifts, high-DPI canvas blurring, touch screens, and night theme clashing.
  */
 
 const SUPABASE_URL = "https://placeholder.supabase.co"; 
 const SUPABASE_ANON_KEY = "placeholder";
 
 let globalQuestionPool = [];
-let masterBibliographyRegistryCache = []; // Master cache for fast client-side fuzzy lookups
+let masterBibliographyRegistryCache = []; 
 let currentQuestionIndex = 0;
 let totalProgressCount = 0;
 let answeredRegistryState = {}; 
@@ -15,7 +15,6 @@ let flaggedQuestionsMap = {};
 let activeUserSessionProfile = null;
 let isDeveloperAccessPrivileged = false;
 
-// Spaced-Repetition Analytics Tracking Store
 let caseVignetteLoadTimestamp = Date.now();
 let structuralDecisionLatencyStore = {}; 
 let certaintyCalibrationStore = {};      
@@ -30,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeInterfaceControls();
     initializeSpecialtyMatrixFilters();
     initializeAdvancedCalculatorRouting();
-    initializeBibliographySearchEngine(); // Wakes up the fuzzy filter input handlers
+    initializeBibliographySearchEngine();
 });
 
 function initializeSupabaseSessionMonitor() {
@@ -48,7 +47,7 @@ function initializeSupabaseSessionMonitor() {
             
             await syncUserCloudStateVectors(client);
             fetchDynamicQuestionSequences();
-            fetchPublicBibliographyRegistry(); // Stream source references as soon as identity checks clear
+            fetchPublicBibliographyRegistry(); 
         } else {
             document.getElementById('auth-gateway-overlay').classList.remove('hidden');
             document.getElementById('user-profile-badge').textContent = "Unauthenticated";
@@ -136,10 +135,6 @@ async function fetchDynamicQuestionSequences() {
     }
 }
 
-// ==========================================================================
-// 📚 API INTERCEPTOR: STREAM & POPULATE LITERATURE BIBLIOGRAPHY
-// Pulls the master bibliography ledger arrays out of your secure cloud tables
-// ==========================================================================
 async function fetchPublicBibliographyRegistry() {
     try {
         const response = await fetch('/api/bibliography');
@@ -151,9 +146,7 @@ async function fetchPublicBibliographyRegistry() {
             renderBibliographyTableRows(masterBibliographyRegistryCache);
         }
     } catch (err) {
-        console.error("Bibliography loader error track:", err.message);
-        const tbody = document.getElementById('bibliography-table-body');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="color:var(--accent-crimson); font-family:monospace; text-align:center;">⚠️ Failed to stream live peer-reviewed evidence baselines from Postgres instance.</td></tr>`;
+        console.error(err.message);
     }
 }
 
@@ -169,8 +162,6 @@ function renderBibliographyTableRows(sourcesArray) {
 
     sourcesArray.forEach(citation => {
         const row = document.createElement('tr');
-        
-        // Gracefully format fields matching snake_case database schema mappings
         const sourceText = citation.source || citation.source_text || "Evidence Citation Trail Node";
         const doiKey = citation.doi || "N/A (Open Access Grid)";
         const specialtyTag = citation.specialty || "GENERAL";
@@ -189,32 +180,22 @@ function renderBibliographyTableRows(sourcesArray) {
     });
 }
 
-// ==========================================================================
-// 🔍 FUZZY INPUT ENGINE INTERCEPTOR
-// Real-time keyword filter across cached literature records
-// ==========================================================================
 function initializeBibliographySearchEngine() {
     const searchInput = document.getElementById('bib-search-input');
     if (!searchInput) return;
 
     searchInput.addEventListener('input', (e) => {
         const fuzzySearchQuery = e.target.value.trim().toLowerCase();
-        console.log(`🔍 Refining citation grid matches for lookup prefix: "${fuzzySearchQuery}"`);
-
         if (!fuzzySearchQuery) {
-            // Re-render full table instantly if input card row is empty strings
             renderBibliographyTableRows(masterBibliographyRegistryCache);
             return;
         }
-
         const filteredCitationsSlice = masterBibliographyRegistryCache.filter(citation => {
             const matchSource = (citation.source || "").toLowerCase().includes(fuzzySearchQuery);
             const matchDoi = (citation.doi || "").toLowerCase().includes(fuzzySearchQuery);
             const matchSpecialty = (citation.specialty || "").toLowerCase().includes(fuzzySearchQuery);
-            
             return matchSource || matchDoi || matchSpecialty;
         });
-
         renderBibliographyTableRows(filteredCitationsSlice);
     });
 }
@@ -258,11 +239,9 @@ function loadActiveQuestionVignette() {
     const flagBtn = document.getElementById('flag-case-toggle-btn');
     if (flagBtn) {
         if (flaggedQuestionsMap[currentQuestionIndex]) {
-            flagBtn.textContent = "⭐️ Case Flagged";
-            flagBtn.classList.add('active');
+            flagBtn.textContent = "⭐️ Case Flagged"; flagBtn.classList.add('active');
         } else {
-            flagBtn.textContent = "🏴 Flag Case";
-            flagBtn.classList.remove('active');
+            flagBtn.textContent = "🏴 Flag Case"; flagBtn.classList.remove('active');
         }
     }
 
@@ -283,8 +262,13 @@ function loadActiveQuestionVignette() {
     const specialty = currentQuestion.specialty || "ALL";
     const uppercaseStem = currentQuestion.stem.toUpperCase();
 
+    // ==========================================================================
+    // 🛡️ ANTI-LAYOUT SHIFT QUALITY GATE
+    // The viewport remains permanently visible; swapping graphics vs placeholders
+    // ==========================================================================
+    chartViewport.classList.remove('hidden'); 
+
     if (specialty === "CARDIOVASCULAR MANAGEMENT" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH")) {
-        chartViewport.classList.remove('hidden');
         chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)";
         svgNode.innerHTML = `
             <line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" />
@@ -292,15 +276,14 @@ function loadActiveQuestionVignette() {
             <path d="M 0 140 L 25 30 L 45 75 L 50 65 L 85 140 L 110 30 L 130 75 L 135 65 L 170 140" stroke="#ef4444" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
         `;
     } else if (specialty === "REGIONAL ANESTHETICS" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION")) {
-        chartViewport.classList.remove('hidden');
         chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK";
         svgNode.innerHTML = `
             <line x1="0" y1="80" x2="500" y2="80" stroke="#9ca3af" stroke-width="1" />
             <path d="M 10 80 L 80 80 C 130 50, 220 40, 360 45 C 440 48, 480 70, 500 80 C 480 90, 440 112, 360 115 C 220 120, 130 110, 80 80 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.08)"/>
         `;
     } else {
-        chartViewport.classList.add('hidden');
-        svgNode.innerHTML = "";
+        chartLabel.textContent = "INTRAOPERATIVE RECOGNITION TRACK DATA STATUS";
+        svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">NO ACTIVE METRIC GRAPH PROFILE REQUIRED FOR THIS CASE VIGNETTE</div></foreignObject>`;
     }
 
     const container = document.getElementById('choices-stack-container');
@@ -328,6 +311,22 @@ function loadActiveQuestionVignette() {
             if (answeredRegistryState[currentQuestionIndex]) return;
             card.classList.toggle('struck-out');
         });
+
+        // ==========================================================================
+        // 📱 MOBILE LONG-PRESS DISTRACTOR ELIMINATOR INTERCEPTOR
+        // Maps touch duration holds down on choices to strike text out
+        // ==========================================================================
+        let touchTimerReferenceToken = null;
+        card.addEventListener('touchstart', () => {
+            if (answeredRegistryState[currentQuestionIndex]) return;
+            touchTimerReferenceToken = setTimeout(() => {
+                card.classList.toggle('struck-out');
+            }, 500); 
+        });
+        card.addEventListener('touchend', () => {
+            if (touchTimerReferenceToken) clearTimeout(touchTimerReferenceToken);
+        });
+
         container.appendChild(card);
     });
 }
@@ -387,13 +386,29 @@ function executeAlgorithmicCalibrationReport() {
     renderCanvasHistoricalTrendLine(computedBlindspotPercentage, computedHesitationPercentage);
 }
 
+// ==========================================================================
+// 📉 HIGH-DPI RETINA AUTO-SCALE CONTEXT VECTOR ENGINE
+// Automatically configures drawing ratios to maximize typography clarity
+// ==========================================================================
 function renderCanvasHistoricalTrendLine(currentBlindspot, currentHesitation) {
     const canvas = document.getElementById('analytics-history-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+    
+    const devicePixelRatioToken = window.devicePixelRatio || 1;
+    const visualWidthBounds = 460;
+    const visualHeightBounds = 180;
+
+    // Enforce high-res backing dimensions multiplied cleanly by screen ratio
+    canvas.width = visualWidthBounds * devicePixelRatioToken;
+    canvas.height = visualHeightBounds * devicePixelRatioToken;
+    canvas.style.width = `${visualWidthBounds}px`;
+    canvas.style.height = `${visualHeightBounds}px`;
+
+    ctx.scale(devicePixelRatioToken, devicePixelRatioToken);
+
+    const w = visualWidthBounds;
+    const h = visualHeightBounds;
 
     ctx.strokeStyle = document.body.classList.contains('theme-night') ? '#222222' : '#e5e7eb';
     ctx.lineWidth = 0.5;
@@ -488,12 +503,18 @@ function initializeInterfaceControls() {
             document.getElementById('rationale-analysis-master-box').classList.remove('hidden');
             document.getElementById('rationale-text-content').textContent = globalQuestionPool[currentQuestionIndex].explanation;
 
+            // ==========================================================================
+            // 🛡️ DYNAMIC SEMANTIC VARIABLE THEME SYNC
+            // Removes hardcoded colors to preserve Night Mode accessible visibility
+            // ==========================================================================
             document.querySelectorAll('.choice-card').forEach(c => {
                 const cBadge = c.getAttribute('data-badge');
                 if (cBadge === globalQuestionPool[currentQuestionIndex].correctAnswer) {
-                    c.style.borderColor = "var(--accent-scrub)"; c.style.background = "#e8f5e9";
+                    c.style.borderColor = "var(--state-success-border)"; 
+                    c.style.background = "var(--state-success-bg)";
                 } else if (cBadge === answeredRegistryState[currentQuestionIndex]) {
-                    c.style.borderColor = "var(--accent-crimson)"; c.style.background = "#ffebee";
+                    c.style.borderColor = "var(--state-danger-border)"; 
+                    c.style.background = "var(--state-danger-bg)";
                 }
             });
 
