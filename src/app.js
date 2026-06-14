@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP MASTER CONSOLE ROUTER & CLINICAL ENGINE WITH STATE NAVIGATION
+// MACPREP MASTER CONSOLE ROUTER & CLINICAL ENGINE WITH SECURE GLOBAL MOUNTING
 // ==========================================================================
 
 // Application Session Memory Layers
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
 
-    console.log("📡 MACPrep Clinical Workspace Controller Online.");
+    console.log("📡 MACPrep Clinical Workspace Core Active.");
 
     // State Switch 1: Transitions from Onboarding Hub into Active Workstation
     if (launchBtn) {
@@ -59,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
             onboardingHub.classList.add('hidden');
             activeWorkstationGrid.classList.remove('hidden');
             
-            // Hydrate working questions array and reset tracking metrics
             workstationQuestions = [...COMPREHENSIVE_MOCK_BANK];
             currentQuestionIndex = 0;
 
@@ -68,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // State Switch 2: Transitions from Active Workstation safely back to Setup Hub
+    // State Switch 2: Transitions back to Setup Hub on Title Logo Click
     if (homeLogoLink) {
         homeLogoLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -114,12 +113,10 @@ window.renderActiveQuestion = function() {
 
     const currentQ = workstationQuestions[currentQuestionIndex];
     
-    // Core Layout Population
     document.getElementById('questionModality').innerText = currentQ.modality;
     document.getElementById('questionDifficulty').innerText = currentQ.difficulty;
     document.getElementById('questionStem').innerText = currentQ.stem;
     
-    // Choices Canvas Generation Loop
     const container = document.getElementById('choicesContainer');
     container.innerHTML = currentQ.choices.map(choice => `
         <div class="choice-row" onclick="selectWorkspaceChoice(this)">
@@ -128,30 +125,37 @@ window.renderActiveQuestion = function() {
         </div>
     `).join('');
 
-    // Dynamic Navigation Button Management Rules
     const prevBtn = document.getElementById('prevBtn');
     if (prevBtn) {
         prevBtn.disabled = (currentQuestionIndex === 0);
     }
 };
 
-// Selection Row Event Routing Hook
+// Explicit Global Mounting Layer for raw HTML onclick listeners
 window.selectWorkspaceChoice = function(element) {
     document.querySelectorAll('.choice-row').forEach(row => row.classList.remove('selected'));
     element.classList.add('selected');
 };
 
-// Polished Tabs Panel Switcher Hook
 window.switchCalc = function(calcId) {
+    // Hide all contents
     document.querySelectorAll('.calc-tab-content').forEach(el => el.classList.add('hidden'));
+    // Remove active styling from all buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     
-    document.getElementById(`calc-${calcId}`).classList.remove('hidden');
-    event.currentTarget.classList.add('active');
+    // Show target content
+    const targetContent = document.getElementById(`calc-${calcId}`);
+    if (targetContent) {
+        targetContent.classList.remove('hidden');
+    }
+    // Highlight matching tab trigger button
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
 };
 
 // ==========================================================================
-// MATHEMATICAL CALCULATOR RUNTIME SUBROUTINES
+// MATHEMATICAL CALCULATOR RUNTIME SUBROUTINES (BOUND GLOBALLY)
 // ==========================================================================
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
