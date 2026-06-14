@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP PRODUCTION CLIENT - COMPREHENSIVE CLOUD RUNTIME CONTROLLER
+// MACPREP MASTERFRONTEND SYSTEM INTERFACE SCREEN CONTROLLER
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -13,49 +13,78 @@ let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Screen Tracking Pointers
     const onboardingHub = document.getElementById('onboardingHub');
+    const signInScreen = document.getElementById('signInScreen');
+    const signUpScreen = document.getElementById('signUpScreen');
     const activeWorkstationGrid = document.getElementById('activeWorkstationGrid');
+    
+    // Core Layout Trigger Anchors
     const launchBtn = document.getElementById('launchWorkstationBtn');
     const homeLogoLink = document.getElementById('homeLogoLink');
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
-    
     const tierBadgeBtn = document.getElementById('tierBadgeBtn');
     const paywallModal = document.getElementById('paywallModal');
     const closePaywallBtn = document.getElementById('closePaywallBtn');
+
+    // Authentication Form Flow Trigger Anchors
+    const navSignInBtn = document.getElementById('navSignInBtn');
+    const navSignUpBtn = document.getElementById('navSignUpBtn');
+    const switchToSignUpLink = document.getElementById('switchToSignUpLink');
+    const switchToSignInLink = document.getElementById('switchToSignInLink');
     
-    // Explicit Button Anchor Assignments
-    const authLoginBtn = document.getElementById('authLoginBtn');
-    const authRegisterBtn = document.getElementById('authRegisterBtn');
-    const authEmailInput = document.getElementById('authEmailInput');
-    const authPasswordInput = document.getElementById('authPasswordInput');
-    const accountStatsContainer = document.getElementById('accountStatsContainer');
-    const authLogoutBtn = document.getElementById('authLogoutBtn');
+    const executeLoginBtn = document.getElementById('executeLoginBtn');
+    const executeRegisterBtn = document.getElementById('executeRegisterBtn');
+    const loginEmailInput = document.getElementById('loginEmailInput');
+    const loginPasswordInput = document.getElementById('loginPasswordInput');
+    const registerEmailInput = document.getElementById('registerEmailInput');
+    const registerPasswordInput = document.getElementById('registerPasswordInput');
+    const headerAuthContainer = document.getElementById('headerAuthContainer');
 
-    // Subroutine: Process Sign In Call Pass
-    if (authLoginBtn) {
-        authLoginBtn.addEventListener('click', () => executeAuthTransaction('login'));
+    // ==========================================================================
+    // MULTI-VIEW HIGH FIDELITY SCREEN ROUTER ACTION LINES
+    // ==========================================================================
+    function showTargetViewScreen(targetScreen) {
+        onboardingHub.classList.add('hidden');
+        signInScreen.classList.add('hidden');
+        signUpScreen.classList.add('hidden');
+        activeWorkstationGrid.classList.add('hidden');
+        targetScreen.classList.remove('hidden');
     }
 
-    // Subroutine: Process Account Registration Call Pass
-    if (authRegisterBtn) {
-        authRegisterBtn.addEventListener('click', () => executeAuthTransaction('register'));
+    if (navSignInBtn) navSignInBtn.addEventListener('click', () => showTargetViewScreen(signInScreen));
+    if (navSignUpBtn) navSignUpBtn.addEventListener('click', () => showTargetViewScreen(signUpScreen));
+    if (switchToSignUpLink) switchToSignUpLink.addEventListener('click', (e) => { e.preventDefault(); showTargetViewScreen(signUpScreen); });
+    if (switchToSignInLink) switchToSignInLink.addEventListener('click', (e) => { e.preventDefault(); showTargetViewScreen(signInScreen); });
+
+    if (homeLogoLink) {
+        homeLogoLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTargetViewScreen(onboardingHub);
+        });
     }
 
-    async function executeAuthTransaction(mode) {
-        const email = authEmailInput.value.trim();
-        const password = authPasswordInput.value.trim();
+    // Process True Server Registration Actions Loop
+    if (executeRegisterBtn) {
+        executeRegisterBtn.addEventListener('click', () => handleAuthTransaction('register'));
+    }
+
+    // Process True Server Sign In Actions Loop
+    if (executeLoginBtn) {
+        executeLoginBtn.addEventListener('click', () => handleAuthTransaction('login'));
+    }
+
+    async function handleAuthTransaction(mode) {
+        const email = mode === 'login' ? loginEmailInput.value.trim() : registerEmailInput.value.trim();
+        const password = mode === 'login' ? loginPasswordInput.value.trim() : registerPasswordInput.value.trim();
 
         if (!email || !password || !email.includes('@')) {
-            alert("Please provide a valid email and password token key to verify profile status fields.");
+            alert("Please input a valid username and verification password.");
             return;
         }
 
         try {
-            const btnTarget = mode === 'login' ? authLoginBtn : authRegisterBtn;
-            const originalText = btnTarget.innerText;
-            btnTarget.innerText = "Syncing...";
-
             const response = await fetch('/api/authenticate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -63,72 +92,51 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
 
-            btnTarget.innerText = originalText;
-
             if (!response.ok || !data.success) {
-                throw new Error(data.error || "Authentication handshake rejected.");
+                throw new Error(data.error || "Transaction aborted by database constraint validation.");
             }
 
-            // Hydrate working environment with active cloud columns data properties
+            // Successfully authenticated -> Map properties to memory
             currentUserEmail = data.profile.email;
             isPremiumAccountUnlocked = data.profile.premium_unlocked;
             totalQuestionsAnsweredCount = data.profile.answered_count || 0;
             userQuestionHistoryArray = data.profile.history || [];
 
-            // Shift System Badge View States Instantly
+            // Re-render header actions state block cleanly
+            headerAuthContainer.innerHTML = `
+                <div class="user-profile-badge">
+                    <span>Active Profile: <strong>${currentUserEmail}</strong></span>
+                    <button id="authLogoutBtn" class="nav-text-link" style="margin-left: 10px; color: #ef4444;">Sign Out</button>
+                </div>
+            `;
+            
+            // Rebind dynamically generated sign out listeners cleanly
+            document.getElementById('authLogoutBtn').addEventListener('click', () => location.reload());
+
+            // Adjust Badges Based on Live Roles Parameters
             if (isPremiumAccountUnlocked) {
-                tierBadgeBtn.innerText = "TIER: LIFETIME PREMIUM (UNLOCKED)";
+                tierBadgeBtn.innerText = "TIER: PREMIUM MEMBER (UNLOCKED)";
                 tierBadgeBtn.style.color = "#00ff88";
                 tierBadgeBtn.style.borderColor = "#00ff88";
-                document.getElementById('statTier').innerText = "Premium Lifetime Member";
-                document.getElementById('statTier').style.color = "#00ff88";
             } else {
-                tierBadgeBtn.innerText = `TIER: GUEST (${totalQuestionsAnsweredCount}/100 FREE)`;
-                document.getElementById('statTier').innerText = "Trial Tier Guest Profile";
+                tierBadgeBtn.innerText = `TIER: MEMBER (${totalQuestionsAnsweredCount}/100 FREE)`;
             }
 
-            document.getElementById('statEmail').innerText = currentUserEmail;
-            document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Logged`;
-
-            // Display Session Output and Clear Inputs
-            accountStatsContainer.classList.remove('hidden');
-            authEmailInput.value = '';
-            authPasswordInput.value = '';
-            alert(data.message || "Connection complete!");
+            alert(data.message || " Handshake Verified!");
+            showTargetViewScreen(onboardingHub);
 
         } catch (err) {
-            alert(`Profile Verification Fault: ${err.message}`);
+            alert(`Authentication Error: ${err.message}`);
         }
     }
 
-    if (authLogoutBtn) {
-        authLogoutBtn.addEventListener('click', () => {
-            location.reload();
-        });
-    }
-
-    if (tierBadgeBtn) {
-        tierBadgeBtn.addEventListener('click', () => paywallModal.classList.remove('hidden'));
-    }
-    if (closePaywallBtn) {
-        closePaywallBtn.addEventListener('click', () => paywallModal.classList.add('hidden'));
-    }
-
+    // Launch Workspace Terminal Hook Action
     if (launchBtn) {
         launchBtn.addEventListener('click', async () => {
-            onboardingHub.classList.add('hidden');
-            activeWorkstationGrid.classList.remove('hidden');
+            showTargetViewScreen(activeWorkstationGrid);
             await fetchProductionQuestionMatrix();
             initializeVitalsMonitor();
             renderActiveQuestion();
-        });
-    }
-
-    if (homeLogoLink) {
-        homeLogoLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            activeWorkstationGrid.classList.add('hidden');
-            onboardingHub.classList.remove('hidden');
         });
     }
 
@@ -149,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalQuestionsAnsweredCount++;
                 
                 if (currentUserEmail) {
-                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Logged`;
                     await fetch('/api/update-progress', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         })
                     });
                 }
-
                 renderActiveQuestion();
             } else {
                 alert("Evaluation Matrix Block Exhausted.");
@@ -176,6 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    if (tierBadgeBtn) tierBadgeBtn.addEventListener('click', () => paywallModal.classList.remove('hidden'));
+    if (closePaywallBtn) closePaywallBtn.addEventListener('click', () => paywallModal.classList.add('hidden'));
 
     function initializeVitalsMonitor() {
         document.getElementById('hudHR').innerText = "72";
@@ -237,7 +246,7 @@ window.switchCalc = function(calcId) {
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// Math Modules
+// Math Suite Engine Handlers
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);

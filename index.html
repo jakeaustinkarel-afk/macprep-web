@@ -13,132 +13,134 @@
             <h1>MACPrep</h1>
             <div class="subtitle">Anesthesia Workspace & Board Prep Matrix</div>
         </a>
-        <button id="tierBadgeBtn" class="tier-badge-btn">
-            TIER: GUEST (10% UNLOCKED)
-        </button>
+        <div class="header-right" id="headerAuthContainer">
+            <button id="navSignInBtn" class="nav-text-link">Sign In</button>
+            <button id="navSignUpBtn" class="btn btn-small">Create Account</button>
+        </div>
     </header>
 
-    <main>
-        <section id="onboardingHub" class="onboarding-hub">
-            
-            <div class="hub-layout-split">
+    <main class="console-container">
+
+        <section id="onboardingHub" class="hub-view-screen">
+            <div class="welcome-hero">
+                <h2>Configure Evaluation Matrix</h2>
+                <p>Customize your target parameters below to initialize your high-signal workstation engine.</p>
+            </div>
+
+            <div class="setup-grid">
+                <div class="setup-card full-width">
+                    <h3>Select Core Specialty Modalities (8 Active Domains)</h3>
+                    <div class="checkbox-matrix">
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="pharmacology" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>1. Clinical Pharmacology</strong><span>Inhalation kinetics, IV induction agents, paralytics, and local block sets</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="physics" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>2. Anesthesia Physics & Equipment</strong><span>Variable vaporizers, circle breathing circuits, cylinder gas physics</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="pathophysiology" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>3. Advanced Pathophysiology & Co-morbidities</strong><span>Carcinoid presentation, malignant hyperthermia crises, valve lesions</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="regional" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>4. Regional & Neuraxial Modalities</strong><span>Epidural pressure dynamics, spinal sensory blocks, dermatome matrices</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="general-principles" checked>
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>5. General & Surgical Anesthesia Principles</strong><span>Airway monitoring algorithms, nerve position hazards, induction traps</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="peds-ob">
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>6. Pediatric & Obstetric Specialty Vector</strong><span>Neonatal critical resuscitation steps, maternal systemic physiology shifts</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="critical-care">
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>7. Critical Care & Resuscitation Subspecialties</strong><span>Arterial line trace anomalies, ventilator loops, vasoactive support lines</span></div>
+                        </label>
+                        <label class="check-label">
+                            <input type="checkbox" name="specialty" value="professional">
+                            <div class="check-custom-box"></div>
+                            <div class="check-meta"><strong>8. Professional Practice, Safety & Quality Vectors</strong><span>WHO checkpoint guidelines, disclosure metric rules, regulatory standards</span></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setup-card">
+                    <h3>Workstation Training Mode</h3>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="workstationMode" value="adaptive" checked>
+                            <div class="radio-meta"><strong>Adaptive Training Vector</strong><span>Exposes real-time explanations, rationales, and dynamic clinical calculators.</span></div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="workstationMode" value="mock">
+                            <div class="radio-meta"><strong>Strict Exam Simulation</strong><span>Isolates assistance tools, masks rationales, and locks calculation units.</span></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setup-card">
+                    <h3>Session Item Allotment Volume</h3>
+                    <div class="radio-group-horizontal">
+                        <label class="chip-label"><input type="radio" name="itemVolume" value="10" checked><span>10 Items</span></label>
+                        <label class="chip-label"><input type="radio" name="itemVolume" value="25"><span>25 Items</span></label>
+                        <label class="chip-label"><input type="radio" name="itemVolume" value="50"><span>50 Items</span></label>
+                        <label class="chip-label"><input type="radio" name="itemVolume" value="100"><span>100 Items</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="launch-action">
+                <button id="launchWorkstationBtn" class="btn btn-primary btn-large">
+                    Initialize Operational Console
+                </button>
+            </div>
+        </section>
+
+        <section id="signInScreen" class="auth-view-screen hidden">
+            <div class="auth-box-panel">
+                <h2>Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to sync your custom board matrices and cross-platform progress logs.</p>
                 
-                <div class="auth-sidebar-card">
-                    <h3>Account Profile Sync</h3>
-                    <p class="auth-desc">Sign in or register a permanent institutional profile to preserve your $50 lifetime premium access tier parameters system-wide across all devices.</p>
-                    
-                    <div class="auth-input-fields">
-                        <div class="form-group">
-                            <label>Institutional Email</label>
-                            <input type="email" id="authEmailInput" placeholder="name@institution.com">
-                        </div>
-
-                        <div class="form-group" style="margin: 12px 0;">
-                            <label>Secure Key Password</label>
-                            <input type="password" id="authPasswordInput" placeholder="••••••••">
-                        </div>
-                    </div>
-                    
-                    <div class="auth-action-buttons">
-                        <button id="authLoginBtn" class="btn btn-primary" style="padding: 10px; font-size: 0.85rem;">Sign In</button>
-                        <button id="authRegisterBtn" class="btn btn-secondary" style="padding: 10px; font-size: 0.85rem;">Create Account</button>
-                    </div>
-
-                    <div id="accountStatsContainer" class="account-stats-box hidden">
-                        <div class="status-indicator-dot"></div>
-                        <h4>Cloud Sync Synchronized</h4>
-                        <div class="stat-line">User ID: <strong id="statEmail">--</strong></div>
-                        <div class="stat-line">Tier Plan: <strong id="statTier">Guest</strong></div>
-                        <div class="stat-line">Completed: <strong id="statCount">0 Items</strong></div>
-                        <button id="authLogoutBtn" class="btn btn-secondary" style="width: 100%; margin-top: 15px; padding: 6px; font-size: 0.75rem;">Disconnect Profile Session</button>
-                    </div>
+                <div class="form-group">
+                    <label>Account Email</label>
+                    <input type="email" id="loginEmailInput" placeholder="name@institution.com">
                 </div>
-
-                <div class="configuration-main">
-                    <div class="welcome-hero">
-                        <h2>Configure Evaluation Matrix</h2>
-                        <p>Customize your baseline board parameters to initialize your dark room clinical workstation environment.</p>
-                    </div>
-
-                    <div class="setup-grid">
-                        <div class="setup-card full-width">
-                            <h3>Select Core Specialty Modalities (8 Active Domains)</h3>
-                            <div class="checkbox-matrix">
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="pharmacology" checked>
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>1. Clinical Pharmacology</strong><span>Inhalation kinetics, IV induction agents, paralytic relaxants, local profiles</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="physics" checked>
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>2. Anesthesia Physics & Equipment</strong><span>Variable vaporizers, circle circuits, pipeline gas cylinders, scavenging safety</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="pathophysiology" checked>
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>3. Advanced Pathophysiology & Co-morbidities</strong><span>Carcinoid presentation crises, malignant hyperthermia protocols, valvular lesions</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="regional" checked>
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>4. Regional & Neuraxial Modalities</strong><span>Epidural compliance vectors, spinal block spreads, dermatome tracking arrays</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="general-principles" checked>
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>5. General & Surgical Anesthesia Principles</strong><span>Airway crisp classification algorithms, positioning nerve hazards, induction traps</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="peds-ob">
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>6. Pediatric & Obstetric Specialty Vector</strong><span>Neonatal critical resuscitation guidelines, pregnancy systemic physiology shifts</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="critical-care">
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>7. Critical Care & Resuscitation Subspecialties</strong><span>Arterial line trace dicrotic notches, ventilator loops, vasoactive support lines</span></div>
-                                </label>
-                                <label class="check-label">
-                                    <input type="checkbox" name="specialty" value="professional">
-                                    <div class="check-custom-box"></div>
-                                    <div class="check-meta"><strong>8. Professional Practice, Safety & Quality Vectors</strong><span>WHO checkpoint guidelines, disclosure disclosure systems, regulatory conditions</span></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="setup-card">
-                            <h3>Workstation Training Mode</h3>
-                            <div class="radio-group">
-                                <label class="radio-label">
-                                    <input type="radio" name="workstationMode" value="adaptive" checked>
-                                    <div class="radio-meta"><strong>Adaptive Training Vector</strong><span>Exposes real-time explanations, rationales, and dynamic clinical calculators.</span></div>
-                                </label>
-                                <label class="radio-label">
-                                    <input type="radio" name="workstationMode" value="mock">
-                                    <div class="radio-meta"><strong>Strict Exam Simulation</strong><span>Isolates assistance tools, masks rationales, and locks calculation units.</span></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="setup-card">
-                            <h3>Session Item Allotment Volume</h3>
-                            <div class="radio-group-horizontal">
-                                <label class="chip-label"><input type="radio" name="itemVolume" value="10" checked><span>10 Items</span></label>
-                                <label class="chip-label"><input type="radio" name="itemVolume" value="25"><span>25 Items</span></label>
-                                <label class="chip-label"><input type="radio" name="itemVolume" value="50"><span>50 Items</span></label>
-                                <label class="chip-label"><input type="radio" name="itemVolume" value="100"><span>100 Items</span></label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="launch-action" style="margin-top: 25px;">
-                        <button id="launchWorkstationBtn" class="btn btn-primary btn-large" style="width: 100%;">
-                            Initialize Operational Console
-                        </button>
-                    </div>
+                <div class="form-group">
+                    <label>Security Password</label>
+                    <input type="password" id="loginPasswordInput" placeholder="••••••••">
                 </div>
+                
+                <button id="executeLoginBtn" class="btn btn-primary btn-large">Sign In to Cloud Network</button>
+                <p class="auth-switch-text">New to MACPrep? <a href="#" id="switchToSignUpLink">Create a profile profile</a></p>
+            </div>
+        </section>
 
+        <section id="signUpScreen" class="auth-view-screen hidden">
+            <div class="auth-box-panel">
+                <h2>Create Account</h2>
+                <p class="auth-subtitle">Register a permanent system profile to protect your progress tracking history.</p>
+                
+                <div class="form-group">
+                    <label>Account Email</label>
+                    <input type="email" id="registerEmailInput" placeholder="name@institution.com">
+                </div>
+                <div class="form-group">
+                    <label>Choose Security Password</label>
+                    <input type="password" id="registerPasswordInput" placeholder="••••••••">
+                </div>
+                
+                <button id="executeRegisterBtn" class="btn btn-primary btn-large">Register Secure Profile</button>
+                <p class="auth-switch-text">Already have an account? <a href="#" id="switchToSignInLink">Sign in here</a></p>
             </div>
         </section>
 
