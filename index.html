@@ -9,7 +9,7 @@
 <body>
     <header class="broadsheet-header">
         <div class="logo-area">
-            <a href="/" class="logo-link">
+            <a href="#" id="homeLogoLink" class="logo-link">
                 <h1>MACPrep</h1>
             </a>
             <p class="subtitle">Unified SAA/CAA Evaluation Platform</p>
@@ -17,7 +17,56 @@
         <div class="tier-badge" id="tierBadge">Tier: Guest (10% Unlocked)</div>
     </header>
 
-    <main class="workstation-grid">
+    <section class="onboarding-hub" id="onboardingHub">
+        <div class="welcome-hero">
+            <h2>Welcome to the Academic Workstation</h2>
+            <p>Configure your adaptive study block parameters below to calibrate the evaluation matrix.</p>
+        </div>
+        
+        <div class="setup-grid">
+            <div class="setup-card">
+                <h3>1. Select Practice Mode</h3>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="prepMode" value="adaptive" checked>
+                        <span><strong>Adaptive Drill:</strong> Questions scale in difficulty based on performance.</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="prepMode" value="timed">
+                        <span><strong>Simulated Exam:</strong> Hard time limits mirroring true certification day.</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setup-card">
+                <h3>2. Set Core Topic Focus</h3>
+                <div class="select-wrapper">
+                    <select id="topicFocus">
+                        <option value="all">All Subspecialties (Comprehensive Review)</option>
+                        <option value="physics">Anesthesia Physics & Monitor Tech</option>
+                        <option value="pharmacology">Clinical Pharmacology & Inhalational Agents</option>
+                        <option value="co-morbidities">Advanced Pathophysiology & Co-morbidities</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setup-card">
+                <h3>3. Question Volume</h3>
+                <div class="radio-group-horizontal">
+                    <label class="chip-label"><input type="radio" name="qVolume" value="10" checked><span>10 Qs</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="25"><span>25 Qs</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="50"><span>50 Qs</span></label>
+                    <label class="chip-label"><input type="radio" name="qVolume" value="all"><span>Max Matrix</span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="launch-action">
+            <button class="btn btn-primary btn-large" id="launchWorkstationBtn">Launch Adaptive Workstation</button>
+        </div>
+    </section>
+
+    <main class="workstation-grid hidden" id="activeWorkstationGrid">
         <section class="main-content">
             <div class="telemetry-ribbon" id="telemetryRibbon">
                 <div class="vitals-metric"><span class="label">HR</span> <span class="value" id="hudHR">--</span> <span class="unit">bpm</span></div>
@@ -32,10 +81,9 @@
                     <span class="modality-tag" id="questionModality">Loading...</span>
                     <span class="difficulty-tag" id="questionDifficulty">HARD</span>
                 </div>
-                <p class="question-stem" id="questionStem">Initialising global asset metrics. Please wait while your 2,500 question matrix synchronizes...</p>
+                <p class="question-stem" id="questionStem">Synchronizing question matrix...</p>
                 
-                <div class="choices-stack" id="choicesContainer">
-                    </div>
+                <div class="choices-stack" id="choicesContainer"></div>
 
                 <div class="action-row">
                     <button class="btn btn-secondary" id="prevBtn" disabled>Previous</button>
@@ -43,7 +91,7 @@
                 </div>
 
                 <div class="explanation-box hidden" id="explanationBox">
-                    <h3>Rational & Literature Path</h3>
+                    <h3>Rationale & Literature Path</h3>
                     <p id="explanationText"></p>
                     <div class="literature-trail">
                         <span class="doi-link" id="doiLink"></span>
@@ -120,7 +168,7 @@
                         <input type="number" id="agHco3" value="24">
                     </div>
                     <button class="btn btn-calc" onclick="calculateAnionGap()">Calculate Anion Gap</button>
-                    <div class="calc-result" id="agResult">Anion Gap: -- mEq/L (Normal: 8-12)</div>
+                    <div class="calc-result" id="agResult">Anion Gap: -- mEq/L</div>
                 </div>
             </div>
         </aside>

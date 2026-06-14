@@ -120,3 +120,35 @@ if (prevBtn) {
 
 // Boot setup on initialization
 loadQuestionBank();
+
+// ==========================================================================
+// DUAL-STATE INTERFACE SCREEN ROUTER LOGIC
+// ==========================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const onboardingHub = document.getElementById('onboardingHub');
+    const activeWorkstationGrid = document.getElementById('activeWorkstationGrid');
+    const launchBtn = document.getElementById('launchWorkstationBtn');
+    const homeLogoLink = document.getElementById('homeLogoLink');
+
+    // Action 1: Transition into Question Workspace State
+    if (launchBtn) {
+        launchBtn.addEventListener('click', () => {
+            onboardingHub.classList.add('hidden');
+            activeWorkstationGrid.classList.remove('hidden');
+            
+            // Re-fire standard question engine instantiation hooks if needed
+            if (typeof renderActiveQuestion === 'function') {
+                renderActiveQuestion();
+            }
+        });
+    }
+
+    // Action 2: Reset app layout state back to Setup Screen on title tap
+    if (homeLogoLink) {
+        homeLogoLink.addEventListener('click', (e) => {
+            e.preventDefault(); // Halt page dump refresh loops
+            activeWorkstationGrid.classList.add('hidden');
+            onboardingHub.classList.remove('hidden');
+        });
+    }
+});
