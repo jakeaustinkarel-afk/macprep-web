@@ -362,3 +362,76 @@ body {
         display: inline-block;
     }
 }
+
+/* ==========================================================================
+   🎮 OPTION A INTERACTIVE POLISH THEME UTILITIES
+   ========================================================================== */
+.tactical-flag-ribbon {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+.ribbon-node {
+    padding: 4px 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    cursor: pointer;
+    min-width: 24px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.ribbon-node.current {
+    border-color: var(--accent-crimson);
+    color: var(--text-main);
+    font-weight: bold;
+}
+.ribbon-node.flagged {
+    background: #fef08a !important;
+    border-color: #ca8a04 !important;
+    color: #854d0e !important;
+}
+.ribbon-node.answered {
+    background: #d1fae5;
+    color: #065f46;
+}
+.floating-patient-profile-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+}
+.tactical-flag-action-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+}
+.tactical-flag-action-btn.active {
+    background: #fef08a;
+    border-color: #ca8a04;
+    color: #854d0e;
+}
+.choice-card.struck-out {
+    opacity: 0.35;
+    text-decoration: line-through;
+    transform: scale(0.98);
+    pointer-events: none; /* Block selection until un-struck */
+}
+.choice-card .strike-overlay-hint {
+    float: right;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--accent-crimson);
+    opacity: 0.8;
+}

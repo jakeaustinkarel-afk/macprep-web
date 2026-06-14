@@ -123,8 +123,11 @@
         <section id="pane-active-testing" class="workspace-asymmetric-pane hidden">
             
             <div class="workspace-left-pane">
+                <div class="tactical-flag-ribbon" id="flag-tracker-ribbon"></div>
+
                 <div id="sticky-patient-banner" class="floating-patient-profile-banner">
-                    CRITICAL EVALUATION CASE TARGET MATRIX ACTIVE
+                    <div class="banner-title-text">CRITICAL EVALUATION CASE TARGET MATRIX ACTIVE</div>
+                    <button id="flag-case-toggle-btn" class="tactical-flag-action-btn">🏴 Flag Case</button>
                 </div>
 
                 <div class="monitor-telemetry-ribbon">
@@ -166,7 +169,7 @@
                     <span class="legend-header">⌨️ WORKSTATION HOTKEY COMMAND MAPS</span>
                     <div class="legend-flex-row">
                         <span><kbd class="hotkey-badge">A</kbd>-<kbd class="hotkey-badge">E</kbd> Select Option</span>
-                        <span><kbd class="hotkey-badge">Spacebar</kbd> Log Certainty</span>
+                        <span><kbd class="hotkey-badge">Right-Click</kbd> Strike distractor</span>
                         <span><kbd class="hotkey-badge">Enter</kbd> Advance Case</span>
                     </div>
                 </div>
