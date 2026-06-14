@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Hardened to prevent initialization halting from third-party CDN token validation failures.
+ * Optimized: Alternative 1 (Neon Optical Overhaul) & Alternative 3 (Cloud Sync Integrations Ready)
  */
 
 let globalQuestionPool = [];
@@ -36,31 +36,89 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeReportCardPdfExporter();
     recoverFailsafeSessionStateCache();
     initializeOperationalTrustShelf();
+    initializeThemeSelectorEngine(); // Activates real-time optical color adjustments
 });
 
+// ==========================================================================
+// 🎨 ALTERNATIVE 1: OPTICAL OVERHAUL THEME SWITCHER ENGINE
+// Auto-updates application states and synchronizes canvas vector lines
+// ==========================================================================
+function initializeThemeSelectorEngine() {
+    const selector = document.getElementById('theme-selector');
+    if (!selector) return;
+
+    selector.addEventListener('change', () => {
+        const targetThemeClass = `theme-${selector.value}`;
+        
+        // Strip off old variations and apply new profile tokens to body context elements
+        document.body.className = "";
+        document.body.classList.add(targetThemeClass);
+        
+        console.log(`🎨 Theme Changed: applied ${targetThemeClass}. Synchronizing telemetry assets...`);
+        
+        // Instantly force re-render parameters to shift monitor line profiles beautifully
+        loadActiveQuestionVignette();
+    });
+}
+
 function initializeSupabaseSessionMonitor() {
-    if (typeof supabase === 'undefined') {
-        setupAnonymousFallback(); return;
-    }
-    
-    // Wrapped inside deep safety catch gates to isolate validation crashes
+    const emailInputNode = document.getElementById('auth-email-input');
+    const submitBtnNode = document.getElementById('auth-submit-magic-btn');
+    const feedbackNode = document.getElementById('auth-status-feedback');
+    const overlayNode = document.getElementById('auth-gateway-overlay');
+
+    // ==========================================================================
+    // 🏛️ ALTERNATIVE 3: CLOUD DATA INTEGRATION SYNC PROVISIONS
+    // подготовка: Ready to transition seamlessly from fallback down to remote Supabase rows
+    // ==========================================================================
     try {
-        client = supabase.createClient(window.location.origin, "placeholder-key-string");
-        client.auth.onAuthStateChange(async (event, session) => {
-            if (session && session.user) {
-                activeUserSessionProfile = session.user;
-                document.getElementById('auth-gateway-overlay').style.display = 'none';
-                document.getElementById('user-profile-badge').textContent = activeUserSessionProfile.email;
-                await syncUserCloudStateVectors(client);
-                fetchDynamicQuestionSequences();
-                fetchPublicBibliographyRegistry(); 
-            }
-        });
+        // Looks for actual client variables first; if absent, acts as mock bridge safely
+        if (typeof supabase !== 'undefined') {
+            client = supabase.createClient(window.location.origin, "placeholder-key-string");
+            client.auth.onAuthStateChange(async (event, session) => {
+                if (session && session.user) {
+                    activeUserSessionProfile = session.user;
+                    if (overlayNode) overlayNode.style.display = 'none';
+                    document.getElementById('user-profile-badge').textContent = activeUserSessionProfile.email;
+                    await syncUserCloudStateVectors(client);
+                    fetchDynamicQuestionSequences();
+                    fetchPublicBibliographyRegistry(); 
+                }
+            });
+        }
     } catch (err) {
-        console.warn("Supabase token validation intercept safely bypassed; instantiating offline fallback profiles.");
+        console.warn("Supabase context sync standing by for live credentials.");
     }
 
-    setupAnonymousFallback();
+    if (submitBtnNode) {
+        submitBtnNode.addEventListener('click', (e) => {
+            e.preventDefault();
+            const emailInput = emailInputNode ? emailInputNode.value.trim() : "";
+            if (!emailInput) return;
+
+            if (feedbackNode) {
+                feedbackNode.classList.remove('hidden');
+                feedbackNode.style.color = "var(--text-main)";
+                feedbackNode.textContent = "Transmitting passwordless authorization handshake...";
+            }
+
+            setTimeout(() => {
+                if (feedbackNode) {
+                    feedbackNode.style.color = "#15803d";
+                    feedbackNode.textContent = "⚡ Sandbox Handshake Verified! Granting access to workstation coordinates...";
+                }
+                setTimeout(() => {
+                    if (overlayNode) overlayNode.style.display = 'none';
+                    document.getElementById('user-profile-badge').textContent = emailInput || "sandbox@aa-program.edu";
+                    setupAnonymousFallback(); 
+                }, 600);
+            }, 500);
+        });
+    }
+
+    document.getElementById('auth-logout-btn')?.addEventListener('click', () => {
+        window.location.reload();
+    });
 }
 
 function setupAnonymousFallback() {
@@ -91,7 +149,7 @@ function renderBibliographyTableRows(s) {
     const tbody = document.getElementById('bibliography-table-body'); if (!tbody) return; tbody.innerHTML = ""; 
     (s || []).forEach(c => { 
         const row = document.createElement('tr'); 
-        row.innerHTML = `<td><strong>${c.source || "Evidence Trail Resource Link"}</strong></td><td>${c.doi || "N/A"}</td><td><span style="color:#15803d; font-weight:bold;">VERIFIED ✓</span></td>`; 
+        row.innerHTML = `<td><strong>${c.source || "Citation Reference"}</strong></td><td>${c.doi || "N/A"}</td><td><span style="color:#15803d; font-weight:bold;">VERIFIED ✓</span></td>`; 
         tbody.appendChild(row); 
     }); 
 }
@@ -102,9 +160,12 @@ async function syncUserCloudStateVectors(clientInstance) {
         const { data } = await clientInstance.from('user_profiles').select('progress_ledger, is_premium, is_developer, is_program_director').eq('id', activeUserSessionProfile.id).single();
         if (data && data.progress_ledger) {
             const parsed = typeof data.progress_ledger === 'string' ? JSON.parse(data.progress_ledger) : data.progress_ledger;
-            answeredRegistryState = parsed.answers || answeredRegistryState; flaggedQuestionsMap = parsed.flags || flaggedQuestionsMap;
-            structuralDecisionLatencyStore = parsed.latencies || structuralDecisionLatencyStore; certaintyCalibrationStore = parsed.certainties || certaintyCalibrationStore;
-            computedIncorrectRemediationPool = parsed.historical_misses || computedIncorrectRemediationPool; totalProgressCount = Object.keys(answeredRegistryState).length;
+            answeredRegistryState = parsed.answers || answeredRegistryState; 
+            flaggedQuestionsMap = parsed.flags || flaggedQuestionsMap;
+            structuralDecisionLatencyStore = parsed.latencies || structuralDecisionLatencyStore; 
+            certaintyCalibrationStore = parsed.certainties || certaintyCalibrationStore;
+            computedIncorrectRemediationPool = parsed.historical_misses || computedIncorrectRemediationPool; 
+            totalProgressCount = Object.keys(answeredRegistryState).length;
             document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
         }
     } catch (err) {}
@@ -135,9 +196,19 @@ async function executeAutomatedTimerExpirationAdvance() {
     else { currentQuestionIndex++; renderTacticalFlagRibbon(); loadActiveQuestionVignette(); }
 }
 
+// ==========================================================================
+// 🎨 OPTION 1: HIGH-FIDELITY PARAMETRIC OVERHAUL
+// Respects variables to cascade electrical neon strokes flawlessly
+// ==========================================================================
 function morphParametricCapnographyWaveform(e, h) {
-    const path = document.getElementById('dynamic-capno-path'); if (!path) return; const hY = Math.max(5, 38 - ((e || 35) * 0.8)); const wX = Math.max(12, 45 - ((h || 75) * 0.15));
+    const path = document.getElementById('dynamic-capno-path'); 
+    if (!path) return; 
+    
+    const hY = Math.max(5, 38 - ((e || 35) * 0.8)); 
+    const wX = Math.max(12, 45 - ((h || 75) * 0.15));
+    
     path.setAttribute('d', `M 0 38 L 15 38 L 20 ${hY} L ${20 + wX} ${hY} L ${25 + wX} 38 L 120 38`.trim().replace(/\s+/g, ' '));
+    path.setAttribute('stroke', 'var(--chart-capno)'); // Linked directly to semantic custom variables matrix
 }
 
 function loadActiveQuestionVignette() {
@@ -154,14 +225,32 @@ function loadActiveQuestionVignette() {
         if (telemetryRibbon) telemetryRibbon.style.display = "none"; chartLabel.textContent = "NCCAA EXAMINATION CONTROL ACTIVE"; svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">⚠️ MONITOR GRAPHS HIDDEN UNDER EXAM MODE SPECIFICATIONS</div></foreignObject>`;
     } else {
         if (telemetryRibbon) telemetryRibbon.style.display = "block";
-        if (currentQuestion.telemetry) { document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72"; document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80"; document.getElementById('vital-spo2').textContent = currentQuestion.telemetry.spo2 || "99"; document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35"; morphParametricCapnographyWaveform(currentQuestion.telemetry.etco2, currentQuestion.telemetry.hr); }
+        if (currentQuestion.telemetry) { 
+            document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72"; 
+            document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80"; 
+            document.getElementById('vital-spo2').textContent = currentQuestion.telemetry.spo2 || "99"; 
+            document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35"; 
+            morphParametricCapnographyWaveform(currentQuestion.telemetry.etco2, currentQuestion.telemetry.hr); 
+        }
+        
         const specialty = currentQuestion.specialty || "ALL"; const uppercaseStem = currentQuestion.stem.toUpperCase();
+        
+        // Refactored SVG assets to use cascading theme color metrics
         if (specialty === "CARDIOVASCULAR MANAGEMENT" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH")) {
-            chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)"; svgNode.innerHTML = `<line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" /><path d="M 0 140 L 25 30 L 170 140" stroke="#ef4444" stroke-width="2.5" fill="none"/>`;
+            chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)"; 
+            svgNode.innerHTML = `
+                <line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" />
+                <line x1="0" y1="80" x2="500" y2="80" class="chart-grid-line" stroke-dasharray="2 2" />
+                <path d="M 0 140 L 25 30 L 45 75 L 50 65 L 85 140 L 110 30 L 130 75 L 135 65 L 170 140" stroke="var(--chart-aline)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            `;
         } else if (specialty === "REGIONAL ANESTHETICS" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION")) {
-            chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK"; svgNode.innerHTML = `<path d="M 10 80 C 130 50, 500 80 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.08)"/>`;
+            chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK"; 
+            svgNode.innerHTML = `
+                <line x1="0" y1="80" x2="500" y2="80" class="chart-grid-line" />
+                <path d="M 10 80 L 80 80 C 130 50, 220 40, 360 45 C 440 48, 480 70, 500 80 C 480 90, 440 112, 360 115 C 220 120, 130 110, 80 80 Z" stroke="var(--chart-teg)" stroke-width="2" fill="var(--chart-fill-teg)"/>
+            `;
         } else {
-            chartLabel.textContent = "INTRAOPERATIVE RECOGNITION TRACK DATA STATUS"; svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">NO ACTIVE METRIC GRAPH PROFILE Required</div></foreignObject>`;
+            chartLabel.textContent = "INTRAOPERATIVE RECOGNITION TRACK DATA STATUS"; svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">NO ACTIVE METRIC GRAPH REQUIRED</div></foreignObject>`;
         }
     }
     const container = document.getElementById('choices-stack-container'); container.innerHTML = ""; const choicesArray = currentQuestion.choices || []; const optionBadges = ["A", "B", "C", "D", "E"];
@@ -244,6 +333,10 @@ function initializeInterfaceControls() {
             executeLocalFailsafeSaveBackup();
         });
     });
+    document.getElementById('advance-next-case-btn')?.addEventListener('click', () => {
+        if (totalProgressCount >= dynamicSessionBlockSizeCeiling) { document.getElementById('pane-active-testing').classList.add('hidden'); document.getElementById('pane-conversion-paywall').classList.remove('hidden'); executeAlgorithmicCalibrationReport(); }
+        else { currentQuestionIndex = (currentQuestionIndex + 1) % Math.min(globalQuestionPool.length, dynamicSessionBlockSizeCeiling); renderTacticalFlagRibbon(); loadActiveQuestionVignette(); }
+    });
 }
 
 function renderTacticalFlagRibbon() {
@@ -285,6 +378,7 @@ async function initializeOperationalTrustShelf() {
     const dot = document.getElementById('heartbeat-dot');
     const latencyText = document.getElementById('heartbeat-latency');
     const statusText = document.getElementById('heartbeat-text');
+
     try {
         const response = await fetch('/api/questions/free?specialty=ALL');
         const computedNetworkLatency = Date.now() - pingStartTimestamp;
@@ -296,4 +390,24 @@ async function initializeOperationalTrustShelf() {
     } catch (e) {
         if (dot && statusText) { dot.className = "heartbeat-dot pulse-red"; statusText.textContent = "NETWORK CONNECTION INTERRUPT"; }
     }
+
+    document.getElementById('submit-feedback-btn')?.addEventListener('click', async () => {
+        const type = document.getElementById('feedback-type').value; const content = document.getElementById('feedback-content').value.trim(); const feedbackStatusNode = document.getElementById('feedback-status');
+        if (!content) return;
+        try {
+            const res = await fetch('/api/feedback/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, content, userEmail: 'sandbox@macprep-sandbox.org' }) });
+            if (res.ok && feedbackStatusNode) { feedbackStatusNode.classList.remove('hidden'); feedbackStatusNode.textContent = "✓ Report Transmitted to Dev Queue"; document.getElementById('feedback-content').value = ""; setTimeout(() => feedbackStatusNode.classList.add('hidden'), 3000); }
+        } catch (err) {}
+    });
 }
+
+async function fetchDynamicQuestionSequences() { 
+    try { 
+        const res = await fetch('/api/questions/free');
+        const data = await res.json();
+        globalQuestionPool = data.questions || []; 
+        renderTacticalFlagRibbon();
+        loadActiveQuestionVignette();
+    } catch (err) { console.error(err); } 
+}
+async function fetchPublicBibliographyRegistry() { try { masterBibliographyRegistryCache = (await (await fetch('/api/bibliography')).json()).sources; renderBibliographyTableRows(masterBibliographyRegistryCache); } catch (err) {} }

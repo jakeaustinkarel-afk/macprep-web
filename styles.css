@@ -768,3 +768,44 @@ body {
     70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
+
+/* ==========================================================================
+   🎨 ALTERNATIVE 1: SEMANTIC MONITOR telemetry VARIABLES (OPTICAL OVERHAUL)
+   ========================================================================== */
+:root {
+    --chart-grid: #e5e7eb;
+    --chart-aline: #ef4444;
+    --chart-teg: #3b82f6;
+    --chart-fill-teg: rgba(59, 130, 246, 0.08);
+    --chart-capno: #22c55e;
+}
+
+.theme-scrub {
+    --chart-grid: #cbd5e1;
+    --chart-aline: #b91c1c;
+    --chart-teg: #2563eb;
+    --chart-fill-teg: rgba(37, 99, 235, 0.06);
+    --chart-capno: #16a34a;
+}
+
+.theme-drape {
+    --chart-grid: #cbd5e1;
+    --chart-aline: #dc2626;
+    --chart-teg: #0284c7;
+    --chart-fill-teg: rgba(2, 132, 199, 0.06);
+    --chart-capno: #059669;
+}
+
+.theme-night {
+    --chart-grid: #2e2a24;
+    --chart-aline: #ff4766; /* Vibrant Tactical Neon Crimson */
+    --chart-teg: #00d2ff;   /* Cyber High-Contrast Neon Cyan */
+    --chart-fill-teg: rgba(0, 210, 255, 0.12);
+    --chart-capno: #39ff14; /* High-Visibility Electric Lime Green */
+}
+
+/* Enforce style synchronization properties across SVG paths */
+.chart-grid-line {
+    stroke: var(--chart-grid);
+    stroke-width: 1;
+}
