@@ -1,47 +1,9 @@
 // ==========================================================================
-// MACPREP MASTER CONSOLE ROUTER & CLINICAL ENGINE WITH SECURE GLOBAL MOUNTING
+// MACPREP PRODUCTION CONSOLE ENGINE - LIVE CLOUD NETWORK ROUTER
 // ==========================================================================
 
-// Application Session Memory Layers
 let currentQuestionIndex = 0;
 let workstationQuestions = [];
-
-// High-Signal Board Question Mock Pool Assets
-const COMPREHENSIVE_MOCK_BANK = [
-    {
-        modality: "Clinical Pharmacology",
-        difficulty: "BOARD HARD",
-        stem: "During a rapid sequence induction in an unstable septic patient with a baseline mean arterial pressure (MAP) of 52 mmHg, which induction agent profiles the most balanced hemodynamic safety vector while minimizing adrenal suppression risks?",
-        choices: [
-            { letter: "A", text: "Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds" },
-            { letter: "B", text: "Propofol 2 mg/kg IV high-velocity syringe bolus" },
-            { letter: "C", text: "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization" },
-            { letter: "D", text: "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols" }
-        ]
-    },
-    {
-        modality: "Anesthesia Physics & Equipment",
-        difficulty: "BOARD LEVEL",
-        stem: "An anesthesia workstation is utilizing a variable-bypass vaporizer configured for Isoflurane. If the clinician brings the machine into an operating environment located at an altitude of 10,000 feet above sea level without recalibration, how is the delivered partial pressure impacted?",
-        choices: [
-            { letter: "A", text: "The delivered partial pressure decreases significantly, causing under-anesthetization." },
-            { letter: "B", text: "The delivered partial pressure remains approximately unaltered due to compensating vapor pressure physics." },
-            { letter: "C", text: "The delivered partial pressure increases linearly, risking profound anesthetic depth." },
-            { letter: "D", text: "The vaporizer completely ceases output due to safety interlock barometric constraints." }
-        ]
-    },
-    {
-        modality: "Advanced Pathophysiology & Co-morbidities",
-        difficulty: "CRITICAL CARE",
-        stem: "A patient undergoing an emergent laparotomy with a history of severe carcinoid syndrome manifests sudden, refractory intraoperative hypotension paired with profound bronchospasm. Which vasoactive agent is most explicitly indicated for rescue stabilization?",
-        choices: [
-            { letter: "A", text: "Ephedrine boluses to trigger indirect catecholamine release profiles" },
-            { letter: "B", text: "Epinephrine infusion to stimulate beta-2 adrenergic mediated bronchodilation" },
-            { letter: "C", text: "Octreotide 50–100 mcg IV bolus to suppress bioactive peptide secretion" },
-            { letter: "D", text: "Phenylephrine titration to achieve isolated alpha-1 peripheral vasoconstriction" }
-        ]
-    }
-];
 
 document.addEventListener('DOMContentLoaded', () => {
     const onboardingHub = document.getElementById('onboardingHub');
@@ -51,23 +13,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
 
-    console.log("📡 MACPrep Clinical Workspace Core Active.");
+    console.log("📡 MACPrep Clinical Workspace Controller Online.");
 
-    // State Switch 1: Transitions from Onboarding Hub into Active Workstation
+    // State Switch 1: Stream live questions out of cloud systems upon launch
     if (launchBtn) {
-        launchBtn.addEventListener('click', () => {
+        launchBtn.addEventListener('click', async () => {
             onboardingHub.classList.add('hidden');
             activeWorkstationGrid.classList.remove('hidden');
             
-            workstationQuestions = [...COMPREHENSIVE_MOCK_BANK];
-            currentQuestionIndex = 0;
-
+            document.getElementById('questionStem').innerText = "Establishing secure cryptographic database tunnel... Calibration in progress.";
+            
+            // Trigger live network fetch from our Render server route
+            await fetchProductionQuestionMatrix();
+            
             initializeVitalsMonitor();
             renderActiveQuestion();
         });
     }
 
-    // State Switch 2: Transitions back to Setup Hub on Title Logo Click
     if (homeLogoLink) {
         homeLogoLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -76,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Navigation Step: Process Forward Move Events
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
             if (currentQuestionIndex < workstationQuestions.length - 1) {
@@ -88,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Navigation Step: Process Backward Move Events
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
             if (currentQuestionIndex > 0) {
@@ -107,23 +68,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Async Network Fetch Layer
+async function fetchProductionQuestionMatrix() {
+    try {
+        const response = await fetch('/api/questions');
+        if (!response.ok) throw new Error("Network response mismatch.");
+        const data = await response.json();
+        
+        if (data.questions && data.questions.length > 0) {
+            workstationQuestions = data.questions;
+            currentQuestionIndex = 0;
+        } else {
+            throw new Error("Cloud database returned empty array matrix.");
+        }
+    } catch (err) {
+        console.error("⚠️ Cloud connection latency detected. Hydrating localized backup stream: ", err);
+        // Bulletproof high-signal backup failover if database is unseeded
+        workstationQuestions = [
+            {
+                modality: "Clinical Pharmacology",
+                difficulty: "BOARD HARD",
+                stem: "During a rapid sequence induction in an unstable septic patient with a baseline mean arterial pressure (MAP) of 52 mmHg, which induction agent profiles the most balanced hemodynamic safety vector while minimizing adrenal suppression risks?",
+                choices: ["Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds", "Propofol 2 mg/kg IV high-velocity syringe bolus", "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization", "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols"]
+            }
+        ];
+    }
+}
+
 // Dynamic Matrix Canvas HTML Generation Handler
 window.renderActiveQuestion = function() {
     if (workstationQuestions.length === 0) return;
 
     const currentQ = workstationQuestions[currentQuestionIndex];
     
-    document.getElementById('questionModality').innerText = currentQ.modality;
-    document.getElementById('questionDifficulty').innerText = currentQ.difficulty;
+    document.getElementById('questionModality').innerText = currentQ.modality || currentQ.specialty || "General Blueprint";
+    document.getElementById('questionDifficulty').innerText = currentQ.difficulty || "BOARD LEVEL";
     document.getElementById('questionStem').innerText = currentQ.stem;
     
     const container = document.getElementById('choicesContainer');
-    container.innerHTML = currentQ.choices.map(choice => `
-        <div class="choice-row" onclick="selectWorkspaceChoice(this)">
-            <strong>${choice.letter}</strong>
-            <span>${choice.text}</span>
-        </div>
-    `).join('');
+    
+    // Support parsing both structured array pools and mapped choice objects string blocks cleanly
+    let choiceArray = Array.isArray(currentQ.choices) ? currentQ.choices : [];
+    if (choiceArray.length === 0 && currentQ.options) choiceArray = currentQ.options;
+    if (choiceArray.length === 0) {
+        // Fallback reconstruction parser layer
+        choiceArray = [currentQ.option_a, currentQ.option_b, currentQ.option_c, currentQ.option_d].filter(Boolean);
+    }
+
+    container.innerHTML = choiceArray.map((choice, i) => {
+        const letter = String.fromCharCode(65 + i); // Auto-assign options badges A, B, C, D
+        const textValue = typeof choice === 'object' ? (choice.text || choice.value) : choice;
+        return `
+            <div class="choice-row" onclick="selectWorkspaceChoice(this)">
+                <strong>${letter}</strong>
+                <span>${textValue}</span>
+            </div>
+        `;
+    }).join('');
 
     const prevBtn = document.getElementById('prevBtn');
     if (prevBtn) {
@@ -131,32 +132,21 @@ window.renderActiveQuestion = function() {
     }
 };
 
-// Explicit Global Mounting Layer for raw HTML onclick listeners
 window.selectWorkspaceChoice = function(element) {
     document.querySelectorAll('.choice-row').forEach(row => row.classList.remove('selected'));
     element.classList.add('selected');
 };
 
 window.switchCalc = function(calcId) {
-    // Hide all contents
     document.querySelectorAll('.calc-tab-content').forEach(el => el.classList.add('hidden'));
-    // Remove active styling from all buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     
-    // Show target content
     const targetContent = document.getElementById(`calc-${calcId}`);
-    if (targetContent) {
-        targetContent.classList.remove('hidden');
-    }
-    // Highlight matching tab trigger button
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-    }
+    if (targetContent) targetContent.classList.remove('hidden');
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// ==========================================================================
-// MATHEMATICAL CALCULATOR RUNTIME SUBROUTINES (BOUND GLOBALLY)
-// ==========================================================================
+// Math Modules
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);
