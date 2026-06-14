@@ -826,3 +826,76 @@ body {
     color: var(--bg-dark);
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
 }
+
+/* ==========================================================================
+   ALIGNMENT FIXES FOR CLUSTERED TEXT AND CUSTOM INCREMENT GROUPS
+   ========================================================================== */
+.checkbox-matrix {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.check-label {
+    display: flex !important;
+    align-items: flex-start !important; /* Forces checkbox pins to lock perfectly to top-left corners */
+    background: #0a0e17;
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.check-label:hover {
+    background: var(--bg-inset);
+}
+
+.check-custom-box {
+    margin-top: 2px; /* Aligns checkbox boxes squarely with heading lines */
+    margin-right: 16px !important;
+}
+
+.check-meta {
+    display: flex;
+    flex-direction: column;
+    text-align: left !important;
+}
+.check-meta strong {
+    font-size: 1rem;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+.check-meta span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4; /* Resolves jumbled or overlapping lines */
+}
+
+/* Custom Volume Allotment Input Box Styles */
+.custom-input-group {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+    text-align: left;
+}
+.custom-input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.custom-input-group input {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    color: #ffffff;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+}
+.custom-input-group input:focus {
+    border-color: var(--clinical-blue);
+}

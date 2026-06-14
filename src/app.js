@@ -1,9 +1,10 @@
 // ==========================================================================
-// MACPREP RUNTIME CONTROLLER - PERSONALIZED CUSTOM HANDSHAKES
+// MACPREP RUNTIME SYSTEM CONTROLLER - COMPLETE LIFECYCLE SYNC
 // ==========================================================================
 
 let currentQuestionIndex = 0;
 let workstationQuestions = [];
+let targetSessionBlockLimit = 10; // Default count fallback
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
@@ -26,14 +27,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const headerAuthContainer = document.getElementById('headerAuthContainer');
     const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
 
-    // Profile Screen Buttons
     const saveProfileBtn = document.getElementById('saveProfileBtn');
     const cancelProfileBtn = document.getElementById('cancelProfileBtn');
     const profileFirstName = document.getElementById('profileFirstName');
     const profileLastName = document.getElementById('profileLastName');
     const profileEmailStatic = document.getElementById('profileEmailStatic');
+    const customVolumeInput = document.getElementById('customVolumeInput');
 
-    // Check Local Browser Store for Active Cache Sessions
+    // FIX: Match exact key name saved by register.html / login.html
     currentUserEmail = localStorage.getItem('macprep_user_email');
     const savedPremium = localStorage.getItem('macprep_premium_unlocked');
     isPremiumAccountUnlocked = (savedPremium === 'true');
@@ -60,16 +61,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 localStorage.setItem('macprep_premium_unlocked', isPremiumAccountUnlocked);
                 
-                // Redraw Top Right Header to Show Premium Welcome Identity Tokens
+                // Redraw top-right button to show personalized identity name
                 const displayIdentity = userFirstName ? `Welcome, ${userFirstName}!` : `Welcome User!`;
                 headerAuthContainer.innerHTML = `
-                    <div class="user-profile-badge" style="display: flex; align-items: center; gap: 10px;">
-                        <button id="triggerProfileViewBtn" class="profile-avatar-btn">${displayIdentity}</button>
-                        <button id="authLogoutBtn" class="nav-text-link" style="color: #ef4444; font-size: 0.8rem;">Sign Out</button>
+                    <div class="user-profile-badge" style="display: flex; align-items: center; gap: 12px; padding: 4px 8px; background: rgba(18,24,38,0.6); border: 1px solid var(--border-color); border-radius: 6px;">
+                        <button id="triggerProfileViewBtn" class="profile-avatar-btn" style="background: transparent; border: 1px solid var(--clinical-blue); color: var(--clinical-blue); padding: 6px 12px; border-radius: 4px; font-weight:700; cursor:pointer;">${displayIdentity}</button>
+                        <button id="authLogoutBtn" class="nav-text-link" style="color: #ef4444; background:transparent; border:none; font-size:0.85rem; cursor:pointer;">Sign Out</button>
                     </div>
                 `;
 
-                // Wire up view triggers
+                // Wire up profile section view trigger link
                 document.getElementById('triggerProfileViewBtn').addEventListener('click', () => {
                     onboardingHub.classList.add('hidden');
                     activeWorkstationGrid.classList.add('hidden');
@@ -86,22 +87,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     location.reload();
                 });
 
-                syncWelcomeNotice.innerHTML = `⚡ Session Online: Synchronized as <strong>${currentUserEmail}</strong>. Track logs secured.`;
+                syncWelcomeNotice.innerHTML = `⚡ Cross-Platform Sync Active: Authenticated as <strong>${currentUserEmail}</strong>. Track logs secured.`;
                 syncWelcomeNotice.classList.remove('hidden');
             }
         } catch (e) {
-            console.warn("Cloud connection latency.");
+            console.warn("Cloud connection sync latency.");
         }
     }
 
-    // Handle Profile Form Triggers
     if (saveProfileBtn) {
         saveProfileBtn.addEventListener('click', async () => {
             const fName = profileFirstName.value.trim();
             const lName = profileLastName.value.trim();
 
             try {
-                saveProfileBtn.innerText = "Saving to Cloud...";
+                saveProfileBtn.innerText = "Saving Parameters...";
                 const res = await fetch('/api/save-profile-meta', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -109,11 +109,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert("Account Settings Saved Successfully!");
-                    location.reload(); // Refresh to repaint header greetings
+                    alert("Account Profile Updated Successfully!");
+                    location.reload();
                 }
             } catch (err) {
-                alert("Failed to save changes.");
+                alert("Failed to sync naming updates.");
                 saveProfileBtn.innerText = "Save Profile Modifications";
             }
         });
@@ -128,9 +128,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (launchBtn) {
         launchBtn.addEventListener('click', async () => {
+            await fetchProductionQuestionMatrix();
+            
+            // Derive question list size configuration rules
+            const selectedRadioVolume = document.querySelector('input[name="itemVolume"]:checked').value;
+            const customValue = parseInt(customVolumeInput.value.trim());
+
+            if (!isNaN(customValue) && customValue > 0) {
+                targetSessionBlockLimit = Math.min(customValue, workstationQuestions.length);
+            } else if (selectedRadioVolume === 'max') {
+                targetSessionBlockLimit = workstationQuestions.length;
+            } else {
+                targetSessionBlockLimit = Math.min(parseInt(selectedRadioVolume), workstationQuestions.length);
+            }
+
+            // Slice target test array to match selection length precisely
+            workstationQuestions = workstationQuestions.slice(0, targetSessionBlockLimit);
+
+            if (workstationQuestions.length === 0) {
+                alert("Please select at least one active domain checkbox containing valid board questions.");
+                return;
+            }
+
             onboardingHub.classList.add('hidden');
             activeWorkstationGrid.classList.remove('hidden');
-            await fetchProductionQuestionMatrix();
             initializeVitalsMonitor();
             renderActiveQuestion();
         });
@@ -165,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 renderActiveQuestion();
             } else {
-                alert("Evaluation Matrix Block Exhausted.");
+                alert("Evaluation Block Complete! You have successfully completed this customized preparation run.");
             }
         });
     }
