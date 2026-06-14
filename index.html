@@ -9,6 +9,20 @@
 </head>
 <body class="theme-cream">
 
+    <div id="auth-gateway-overlay" class="auth-modal-screen">
+        <div class="auth-modal-frame">
+            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">🩺 MACPrep Secure Gateway</h2>
+            <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px;">
+                Enter your institutional clinician or student credentials to instantiate cross-device session tracking and unlock academic progress states.
+            </p>
+            <div class="auth-input-group">
+                <input type="email" id="auth-email-input" class="calc-text-input" placeholder="Enter academic email (e.g., user@residency.edu)" style="width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 12px;">
+                <button id="auth-submit-magic-btn" class="action-btn-trigger" style="width: 100%; padding: 12px;">Request Secure Access Handshake ➔</button>
+            </div>
+            <div id="auth-status-feedback" class="auth-feedback-text hidden"></div>
+        </div>
+    </div>
+
     <header class="global-header">
         <div id="brand-logo" class="header-brand-container" style="cursor: pointer;">
             <h1 class="brand-logo">🩺 MACPrep</h1>
@@ -33,7 +47,8 @@
             <div class="score-tab-matrix">
                 <span id="score-display" class="tabular-nums">PROGRESS: 0 / 100</span>
             </div>
-            <button id="header-exit-btn" class="nav-exit-btn hidden">← EXIT WORKSPACE</button>
+            <span id="user-profile-badge" class="user-email-badge">Loading Account...</span>
+            <button id="auth-logout-btn" class="tactical-flag-action-btn" style="margin-left: 8px; padding: 6px 10px;">Sign Out</button>
         </div>
     </header>
 
