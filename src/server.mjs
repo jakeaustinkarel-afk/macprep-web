@@ -12,52 +12,82 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize Supabase Client Connection
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-    console.error("⚠️ Server Warning: Missing Supabase environmental credential strings inside .env");
-}
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(express.json());
-// Serve your pristine responsive frontend workspace files automatically
 app.use(express.static(path.join(__dirname, '../')));
 
 // ==========================================================================
-// CORE REST API GATEWAY: STREAM QUESTIONS FROM POSTGRES
+// NEW ROUTE: CROSS-PLATFORM PROFILE AND PROGRESS SYNC ENGINE
 // ==========================================================================
-app.get('/api/questions', async (req, res) => {
-    console.log("📡 Incoming request at /api/questions gateway router... Querying cloud schema caches.");
-    
+app.post('/api/sync-profile', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email parameter required for device sync." });
+
+    console.log(`📡 Syncing cross-device operational parameters for: ${email}`);
+
     try {
-        // Query your precise production database cluster table rows
-        const { data, error } = await supabase
-            .from('macprep_questions')
-            .select('*');
+        // Query if profile already exists in our cloud table mapping layer
+        let { data: profile, error } = await supabase
+            .from('macprep_profiles')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .single();
 
-        if (error) throw error;
+        // If user profile is missing, automatically initialize a fresh cloud repository item for them
+        if (!profile) {
+            console.log(`✨ Generating fresh cross-platform profile bucket for: ${email}`);
+            const { data: newProfile, error: insertError } = await supabase
+                .from('macprep_profiles')
+                .insert([{ 
+                    email: email.toLowerCase().trim(), 
+                    premium_unlocked: false, 
+                    answered_count: 0,
+                    history: [] 
+                }])
+                .select()
+                .single();
 
-        console.log(`📦 Cloud handshake complete. Successfully retrieved ${data.length} items from 'macprep_questions'.`);
-        
-        // Return clear structured payload arrays straight down the pipe
-        res.status(200).json({
-            success: true,
-            questions: data
-        });
+            if (insertError) throw insertError;
+            profile = newProfile;
+        }
 
+        res.status(200).json({ success: true, profile });
     } catch (err) {
-        console.error("❌ Database query exception mapping layer: ", err.message);
-        res.status(500).json({
-            success: false,
-            message: "Failed to pull live matrix out of database cluster.",
-            error: err.message
-        });
+        console.error("❌ Profile Sync Failure Exception Matrix: ", err.message);
+        res.status(500).json({ error: err.message });
     }
 });
 
-// Start listening for inbound cross-device browser handshakes
+// Update profile progress dynamically across devices
+app.post('/api/update-progress', async (req, res) => {
+    const { email, answered_count, history } = req.body;
+    try {
+        const { error } = await supabase
+            .from('macprep_profiles')
+            .update({ answered_count, history })
+            .eq('email', email.toLowerCase().trim());
+
+        if (error) throw error;
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/questions', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('macprep_questions').select('*');
+        if (error) throw error;
+        res.status(200).json({ success: true, questions: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
-    console.log(`🚀 MACPrep Production Server running cleanly on port ${PORT}`);
+    console.log(`🚀 MACPrep Cross-Device Server running on port ${PORT}`);
 });

@@ -528,3 +528,41 @@ body {
 .price-recurrence { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
 
 .secure-checkout-notice { font-size: 0.75rem; color: var(--text-secondary); margin-top: 15px; }
+
+/* ==========================================================================
+   CROSS-PLATFORM SYNC UTILITIES ALIGNMENTS
+   ========================================================================== */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sync-device-btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--clinical-blue);
+    border: 1px solid var(--clinical-blue);
+    background: rgba(56, 189, 248, 0.05);
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.sync-device-btn:hover {
+    background: var(--clinical-blue);
+    color: var(--bg-dark);
+}
+
+.sync-notice-bar {
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid var(--clinical-blue);
+    color: #ffffff;
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 25px;
+    text-align: center;
+}
