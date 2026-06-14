@@ -1,10 +1,7 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Preserves All Premium Testing Vectors + Operationalizes Trust Footer Heartbeats and Error Pipelines
+ * Fixed: Scope resolution for global Supabase client handlers to restore authentication routines.
  */
-
-const SUPABASE_URL = "https://placeholder.supabase.co"; 
-const SUPABASE_ANON_KEY = "placeholder";
 
 let globalQuestionPool = [];
 let masterBibliographyRegistryCache = []; 
@@ -27,6 +24,17 @@ let certaintyCalibrationStore = {};
 let strictExamCountdownIntervalToken = null;
 let remainingQuestionSecondsCounter = 60;
 
+// ==========================================================================
+// 🛡️ GLOBAL CLIENT BOUNDS RESOLUTION
+// Declared at top-level to prevent silent browser ReferenceErrors
+// ==========================================================================
+let client = null; 
+
+const CONFIG = {
+    FREE_CEILING: 10,
+    TOTAL_TIER_CEILING: 100
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeSupabaseSessionMonitor();
     initializeInterfaceControls();
@@ -36,14 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeB2BRedemptionListeners();
     initializeReportCardPdfExporter();
     recoverFailsafeSessionStateCache();
-    initializeOperationalTrustShelf(); // Wakes up the heartbeat metrics and pipeline hooks
+    initializeOperationalTrustShelf();
 });
 
 function initializeSupabaseSessionMonitor() {
     if (typeof supabase === 'undefined') {
-        setupAnonymousFallback(); return;
+        setupAnonymousFallback(); 
+        return;
     }
-    const client = supabase.createClient(window.location.origin, "placeholder");
+    
+    // Initialize the global connection reference cleanly
+    client = supabase.createClient(window.location.origin, "placeholder");
+
     client.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
             activeUserSessionProfile = session.user;
@@ -56,63 +68,35 @@ function initializeSupabaseSessionMonitor() {
             document.getElementById('auth-gateway-overlay').classList.remove('hidden');
         }
     });
-}
 
-// ==========================================================================
-// 🏢 OPERATIONAL DECK SYSTEM METRICS & FEEDBACK PIPELINE
-// Runs localized heartbeat checks and routes student text flags down to Postgres
-// ==========================================================================
-async function initializeOperationalTrustShelf() {
-    const pingStartTimestamp = Date.now();
-    const dot = document.getElementById('heartbeat-dot');
-    const latencyText = document.getElementById('heartbeat-latency');
-    const statusText = document.getElementById('heartbeat-text');
-
-    try {
-        const response = await fetch('/api/questions/free?specialty=ALL');
-        const computedNetworkLatency = Date.now() - pingStartTimestamp;
+    // Wire up magic-link click actions within identical initialization scope
+    document.getElementById('auth-submit-magic-btn').addEventListener('click', async () => {
+        const emailInput = document.getElementById('auth-email-input').value.trim();
+        const feedback = document.getElementById('auth-status-feedback');
+        if (!emailInput) return;
         
-        if (response.ok && dot && latencyText) {
-            dot.className = "heartbeat-dot pulse-green";
-            latencyText.textContent = computedNetworkLatency;
-            statusText.textContent = "SUPABASE DB REST PATHWAY: NOMINAL [200 OK]";
-        }
-    } catch (e) {
-        if (dot && statusText) {
-            dot.className = "heartbeat-dot pulse-red";
-            statusText.textContent = "NETWORK CONNECTION INTERRUPT: DISCONNECTED";
-        }
-    }
+        feedback.classList.remove('hidden');
+        feedback.style.color = "var(--text-main)";
+        feedback.textContent = "Transmitting passwordless authorization handshake...";
 
-    // Active User Suggestion submission pipeline handlers
-    const submitBtn = document.getElementById('submit-feedback-btn');
-    if (submitBtn) {
-        submitBtn.addEventListener('click', async () => {
-            const type = document.getElementById('feedback-type').value;
-            const content = document.getElementById('feedback-content').value.trim();
-            const feedbackStatusNode = document.getElementById('feedback-status');
-            
-            if (!content) return;
+        try {
+            const { error } = await client.auth.signInWithOtp({ 
+                email: emailInput, 
+                options: { emailRedirectTo: window.location.origin } 
+            });
+            if (error) throw error;
+            feedback.style.color = "#15803d";
+            feedback.textContent = "📬 Magic Link dispatched! Verify your mailbox inbox to complete login.";
+        } catch (err) { 
+            feedback.style.color = "var(--accent-crimson)"; 
+            feedback.textContent = `Handshake rejection: ${err.message}`; 
+        }
+    });
 
-            try {
-                const res = await fetch('/api/feedback/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type, content,
-                        userEmail: activeUserSessionProfile ? activeUserSessionProfile.email : 'sandbox@macprep-sandbox.org'
-                    })
-                });
-                
-                if (res.ok && feedbackStatusNode) {
-                    feedbackStatusNode.classList.remove('hidden');
-                    feedbackStatusNode.textContent = "✓ Report Transmitted to Dev Queue";
-                    document.getElementById('feedback-content').value = "";
-                    setTimeout(() => feedbackStatusNode.classList.add('hidden'), 3000);
-                }
-            } catch (err) {}
-        });
-    }
+    document.getElementById('auth-logout-btn').addEventListener('click', async () => {
+        await client.auth.signOut(); 
+        window.location.reload();
+    });
 }
 
 async function syncUserCloudStateVectors(clientInstance) {
@@ -121,9 +105,12 @@ async function syncUserCloudStateVectors(clientInstance) {
         if (data) {
             if (data.progress_ledger) {
                 const parsed = typeof data.progress_ledger === 'string' ? JSON.parse(data.progress_ledger) : data.progress_ledger;
-                answeredRegistryState = parsed.answers || answeredRegistryState; flaggedQuestionsMap = parsed.flags || flaggedQuestionsMap;
-                structuralDecisionLatencyStore = parsed.latencies || structuralDecisionLatencyStore; certaintyCalibrationStore = parsed.certainties || certaintyCalibrationStore;
-                computedIncorrectRemediationPool = parsed.historical_misses || computedIncorrectRemediationPool; totalProgressCount = Object.keys(answeredRegistryState).length;
+                answeredRegistryState = parsed.answers || answeredRegistryState; 
+                flaggedQuestionsMap = parsed.flags || flaggedQuestionsMap;
+                structuralDecisionLatencyStore = parsed.latencies || structuralDecisionLatencyStore; 
+                certaintyCalibrationStore = parsed.certainties || certaintyCalibrationStore;
+                computedIncorrectRemediationPool = parsed.historical_misses || computedIncorrectRemediationPool;
+                totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
             if (data.is_developer) { isDeveloperAccessPrivileged = true; document.getElementById('developer-audit-panel')?.classList.remove('hidden'); }
@@ -135,6 +122,7 @@ async function syncUserCloudStateVectors(clientInstance) {
 function executeLocalFailsafeSaveBackup() {
     try { localStorage.setItem('macprep_failsafe_session_cache', JSON.stringify({ answers: answeredRegistryState, flags: flaggedQuestionsMap, certainties: certaintyCalibrationStore, latencies: structuralDecisionLatencyStore, mode: currentSessionMode, index: currentQuestionIndex })); } catch (e) {}
 }
+
 function recoverFailsafeSessionStateCache() {
     try {
         const cacheRaw = localStorage.getItem('macprep_failsafe_session_cache');
@@ -147,6 +135,7 @@ function recoverFailsafeSessionStateCache() {
 
 async function refreshB2BDirectorMasterPortalData() { await fetchB2BInstitutionalCohortRegistry(); await fetchB2BCohortAggregateAnalytics(); }
 async function fetchB2BInstitutionalCohortRegistry() { try { const data = await (await fetch(`/api/b2b/my-cohort-vouchers?directorId=${activeUserSessionProfile.id}`)).json(); if (data.codes) renderB2BVoucherControlMatrix(data.codes); } catch (err) {} }
+
 function renderB2BVoucherControlMatrix(list) {
     const tbody = document.getElementById('b2b-voucher-table-body'); if (!tbody) return; tbody.innerHTML = "";
     if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:12px; color:var(--text-muted); font-family:monospace;">🎫 No seats generated.</td></tr>`; return; }
@@ -174,12 +163,14 @@ function startActiveQuestionPacingClock() {
     zone.classList.remove('hidden'); remainingQuestionSecondsCounter = 60; txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`; bar.style.width = "100%";
     strictExamCountdownIntervalToken = setInterval(() => { remainingQuestionSecondsCounter--; txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`; bar.style.width = `${(remainingQuestionSecondsCounter / 60) * 100}%`; if (remainingQuestionSecondsCounter <= 0) { clearInterval(strictExamCountdownIntervalToken); executeAutomatedTimerExpirationAdvance(); } }, 1000);
 }
+
 async function executeAutomatedTimerExpirationAdvance() {
     certaintyCalibrationStore[currentQuestionIndex] = "BLIND_GUESS"; structuralDecisionLatencyStore[currentQuestionIndex] = 60000; answeredRegistryState[currentQuestionIndex] = "TIMEOUT";
     totalProgressCount++; document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / ${dynamicSessionBlockSizeCeiling}`; executeLocalFailsafeSaveBackup(); await pushClientProgressStateToSupabaseCloud();
     if (totalProgressCount >= dynamicSessionBlockSizeCeiling) { clearInterval(strictExamCountdownIntervalToken); document.getElementById('pane-active-testing').classList.add('hidden'); document.getElementById('pane-conversion-paywall').classList.remove('hidden'); executeAlgorithmicCalibrationReport(); }
     else { currentQuestionIndex++; renderTacticalFlagRibbon(); loadActiveQuestionVignette(); }
 }
+
 function morphParametricCapnographyWaveform(e, h) {
     const path = document.getElementById('dynamic-capno-path'); if (!path) return; const hY = Math.max(5, 38 - ((e || 35) * 0.8)); const wX = Math.max(12, 45 - ((h || 75) * 0.15));
     path.setAttribute('d', `M 0 38 L 15 38 L 20 ${hY} L ${20 + wX} ${hY} L ${25 + wX} 38 L 120 38`.trim().replace(/\s+/g, ' '));
@@ -244,6 +235,7 @@ function initializeReportCardPdfExporter() {
         window.print();
     });
 }
+
 function renderCanvasHistoricalTrendLine(b, h) {
     const canvas = document.getElementById('analytics-history-canvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); const ratio = window.devicePixelRatio || 1; canvas.width = 460 * ratio; canvas.height = 180 * ratio; canvas.style.width = "460px"; canvas.style.height = "180px"; ctx.scale(ratio, ratio); ctx.strokeStyle = document.body.classList.contains('theme-night') ? '#222222' : '#e5e7eb'; ctx.lineWidth = 0.5;
     for (let y = 20; y < 180; y += 40) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(420, y); ctx.stroke(); ctx.fillStyle = '#6b7280'; ctx.font = '9px monospace'; ctx.fillText(`${Math.round(((180 - y) / 180) * 100)}%`, 10, y + 3); }
@@ -284,33 +276,114 @@ function initializeInterfaceControls() {
         else { currentQuestionIndex = (currentQuestionIndex + 1) % Math.min(globalQuestionPool.length, dynamicSessionBlockSizeCeiling); renderTacticalFlagRibbon(); loadActiveQuestionVignette(); }
     });
 }
+
 function initializeSpecialtyMatrixFilters() {
     document.getElementById('modality-pills-container')?.addEventListener('click', async (e) => {
         const pill = e.target.closest('.modality-pill'); if (!pill) return; document.querySelectorAll('.modality-pill').forEach(p => p.classList.remove('active')); pill.classList.add('active');
         try { const response = await fetch(pill.getAttribute('data-specialty') !== 'ALL' ? `/api/questions/free?specialty=${encodeURIComponent(pill.getAttribute('data-specialty'))}` : '/api/questions/free'); if (response.ok) { globalQuestionPool = (await response.json()).questions; currentQuestionIndex = 0; renderTacticalFlagRibbon(); loadActiveQuestionVignette(); } } catch (err) {}
     });
 }
+
 function initializeAdvancedCalculatorRouting() {
     document.getElementById('execute-abl-btn')?.addEventListener('click', () => {
         const w = parseFloat(document.getElementById('calc-abl-weight').value); const h1 = parseFloat(document.getElementById('calc-abl-hct-start').value); const h2 = parseFloat(document.getElementById('calc-abl-hct-target').value);
         const out = document.getElementById('output-well-abl'); if (isNaN(w) || isNaN(h1) || isNaN(h2) || !out) return; out.classList.remove('hidden'); out.innerHTML = `📊 <strong>EBV Estimation:</strong> ${w * 70} mL<br>🎯 <strong>ABL Max Blood Loss Limit:</strong> ${Math.round((w * 70) * (h1 - h2) / h1)} mL`;
     });
 }
+
 function initializeBibliographySearchEngine() {
     document.getElementById('bib-search-input')?.addEventListener('input', (e) => {
         const query = e.target.value.trim().toLowerCase(); if (!query) { renderBibliographyTableRows(masterBibliographyRegistryCache); return; }
         renderBibliographyTableRows(masterBibliographyRegistryCache.filter(c => (c.source || "").toLowerCase().includes(query) || (c.doi || "").toLowerCase().includes(query) || (c.specialty || "").toLowerCase().includes(query)));
     });
 }
+
 function initializeB2BRedemptionListeners() {
     document.getElementById('b2b-mint-voucher-btn')?.addEventListener('click', async () => {
         try { const res = await fetch('/api/b2b/mint-voucher', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ directorId: activeUserSessionProfile.id, programPrefix: "AA" }) }); if (res.ok) await refreshB2BDirectorMasterPortalData(); } catch (err) {}
     });
+    
+    // Redeem voucher code inputs gate connection
+    document.getElementById('auth-redeem-voucher-btn')?.addEventListener('click', async () => {
+        const code = document.getElementById('auth-voucher-input').value.trim();
+        const email = document.getElementById('auth-email-input').value.trim();
+        const fb = document.getElementById('auth-status-feedback'); 
+        if (!code || !email || !fb) return;
+
+        fb.classList.remove('hidden'); 
+        fb.style.color = "var(--text-main)";
+        fb.textContent = "Processing voucher seat transaction validation...";
+
+        try {
+            const res = await fetch('/api/b2b/redeem-voucher', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ voucherCode: code, userId: activeUserSessionProfile ? activeUserSessionProfile.id : "anonymous-student", userEmail: email }) 
+            });
+            const output = await res.json();
+            if (res.ok) { 
+                fb.style.color = "#15803d"; 
+                fb.textContent = "🎉 Voucher Applied Successfully! Your institutional seat is activated. Refreshing workstation..."; 
+                setTimeout(() => { window.location.reload(); }, 1500); 
+            } else { 
+                throw new Error(output.error || "Voucher tracking constraint rejection."); 
+            }
+        } catch (err) { 
+            fb.style.color = "var(--accent-crimson)"; 
+            fb.textContent = `❌ Voucher Declined: ${err.message}`; 
+        }
+    });
 }
+
+async function initializeOperationalTrustShelf() {
+    const pingStartTimestamp = Date.now();
+    const dot = document.getElementById('heartbeat-dot');
+    const latencyText = document.getElementById('heartbeat-latency');
+    const statusText = document.getElementById('heartbeat-text');
+
+    try {
+        const response = await fetch('/api/questions/free?specialty=ALL');
+        const computedNetworkLatency = Date.now() - pingStartTimestamp;
+        if (response.ok && dot && latencyText) {
+            dot.className = "heartbeat-dot pulse-green";
+            latencyText.textContent = computedNetworkLatency;
+            statusText.textContent = "SUPABASE DB REST PATHWAY: NOMINAL [200 OK]";
+        }
+    } catch (e) {
+        if (dot && statusText) {
+            dot.className = "heartbeat-dot pulse-red";
+            statusText.textContent = "NETWORK CONNECTION INTERRUPT: DISCONNECTED";
+        }
+    }
+
+    document.getElementById('submit-feedback-btn')?.addEventListener('click', async () => {
+        const type = document.getElementById('feedback-type').value;
+        const content = document.getElementById('feedback-content').value.trim();
+        const feedbackStatusNode = document.getElementById('feedback-status');
+        if (!content) return;
+
+        try {
+            const res = await fetch('/api/feedback/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, content, userEmail: activeUserSessionProfile ? activeUserSessionProfile.email : 'sandbox@macprep-sandbox.org' })
+            });
+            if (res.ok && feedbackStatusNode) {
+                feedbackStatusNode.classList.remove('hidden');
+                feedbackStatusNode.textContent = "✓ Report Transmitted to Dev Queue";
+                document.getElementById('feedback-content').value = "";
+                setTimeout(() => feedbackStatusNode.classList.add('hidden'), 3000);
+            }
+        } catch (err) {}
+    });
+}
+
 async function pushClientProgressStateToSupabaseCloud() {
-    if (typeof supabase === 'undefined' || !activeUserSessionProfile) return; const client = supabase.createClient(window.location.origin, "placeholder");
-    try { await client.from('user_profiles').upsert({ id: activeUserSessionProfile.id, email: activeUserSessionProfile.email, progress_ledger: { answers: answeredRegistryState, flags: flaggedQuestionsMap, latencies: structuralDecisionLatencyStore, certainties: certaintyCalibrationStore, historical_misses: computedIncorrectRemediationPool, last_updated_at: new Date().toISOString() } }, { onConflict: 'id' }); } catch (err) {}
+    if (typeof supabase === 'undefined' || !activeUserSessionProfile) return;
+    const sync = { answers: answeredRegistryState, flags: flaggedQuestionsMap, latencies: structuralDecisionLatencyStore, certainties: certaintyCalibrationStore, historical_misses: computedIncorrectRemediationPool, last_updated_at: new Date().toISOString() };
+    try { await client.from('user_profiles').upsert({ id: activeUserSessionProfile.id, email: activeUserSessionProfile.email, progress_ledger: sync }, { onConflict: 'id' }); } catch (err) {}
 }
+
 async function fetchDynamicQuestionSequences() { try { globalQuestionPool = (await (await fetch('/api/questions/free')).json()).questions; } catch (err) {} }
 async function fetchPublicBibliographyRegistry() { try { masterBibliographyRegistryCache = (await (await fetch('/api/bibliography')).json()).sources; renderBibliographyTableRows(masterBibliographyRegistryCache); } catch (err) {} }
 function setupAnonymousFallback() { document.getElementById('auth-gateway-overlay').classList.add('hidden'); fetchDynamicQuestionSequences(); }
