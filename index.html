@@ -11,14 +11,23 @@
 
     <div id="auth-gateway-overlay" class="auth-modal-screen">
         <div class="auth-modal-frame">
-            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">🩺 MACPrep Secure Gateway</h2>
-            <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px;">
+            <h2 class="scholarly-title" style="text-align: center; font-size: 22px;">%🩺 MACPrep Secure Gateway</h2>
+            <p class="broadsheet-prose" style="text-align: center; font-size: 13px; margin-bottom: 20px; text-align: center;">
                 Enter your institutional AA program or certified anesthetist credentials to instantiate cross-device session tracking and unlock academic progress states.
             </p>
+            
             <div class="auth-input-group">
+                <label class="dev-label" style="display:block; margin-bottom: 4px;">1. Authenticate Account Identity</label>
                 <input type="email" id="auth-email-input" class="calc-text-input" placeholder="Enter academic email (e.g., student@aa-program.edu)" style="width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 12px;">
-                <button id="auth-submit-magic-btn" class="action-btn-trigger" style="width: 100%; padding: 12px;">Request Secure Access Handshake ➔</button>
+                <button id="auth-submit-magic-btn" class="action-btn-trigger" style="width: 100%; padding: 12px; margin-bottom: 20px;">Request Secure Access Handshake ➔</button>
             </div>
+
+            <div class="auth-input-group" style="border-top: 1px dashed var(--border-color); padding-top: 16px;">
+                <label class="dev-label" style="display:block; margin-bottom: 4px;">🎟️ Optional: Redeem B2B Institutional Program Voucher Code</label>
+                <input type="text" id="auth-voucher-input" class="calc-text-input" placeholder="Enter institutional code (e.g., MAC-EMORY-2026-XYZ)" style="width: 100%; box-sizing: border-box; margin-bottom: 10px; font-family: monospace; letter-spacing: 1px; padding: 10px;">
+                <button id="auth-redeem-voucher-btn" class="tactical-flag-action-btn" style="width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border-color); font-weight: bold;">Apply Institutional Seat Voucher Allocation</button>
+            </div>
+
             <div id="auth-status-feedback" class="auth-feedback-text hidden"></div>
         </div>
     </div>
@@ -85,11 +94,41 @@
                 </div>
             </div>
 
+            <div id="b2b-director-portal-dock" class="track-selection-container hidden" style="margin-bottom: 24px;">
+                <div class="constructor-panel-card" style="border: 2px dashed var(--accent-scrub); background: rgba(16, 185, 129, 0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:14px;">
+                        <h3 class="section-subtitle" style="margin:0; letter-spacing:0.5px; color:var(--text-main);">🏛️ AA ACADEMIC PROGRAM DIRECTOR CONTROLS</h3>
+                        <span class="brand-sub-badge" style="background:var(--accent-scrub); color:#fff; font-weight:bold;">PORTAL ACTIVE</span>
+                    </div>
+                    <p class="broadsheet-prose" style="font-size:13px; margin-bottom:16px;">
+                        Manage your student cohort's seat parameters, monitor activation milestones, and provision voucher code allocations below.
+                    </p>
+                    <div class="table-scroll-container" style="background:#fff; border:1px solid var(--border-color);">
+                        <table class="registry-data-matrix">
+                            <thead>
+                                <tr>
+                                    <th>Provisioned Voucher String Key</th>
+                                    <th>Allocation Status</th>
+                                    <th>Assigned Cohort Email Target</th>
+                                    <th>Action Handshake</th>
+                                </tr>
+                            </thead>
+                            <tbody id="b2b-voucher-table-body">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                        <button id="b2b-mint-voucher-btn" class="tactical-flag-action-btn" style="background:var(--text-main); color:var(--bg-primary); font-weight:bold; padding:8px 16px;">
+                            ➕ Mint New Group Seat Code Entry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="track-selection-container" style="margin-bottom: 30px;">
                 <div class="constructor-panel-card">
                     <h3 class="section-subtitle" style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:8px; letter-spacing:1px;">🎛️ ANESTHETIST SIMULATION SESSION CONSTRUCTOR</h3>
                     <div class="constructor-grid-layout">
-                        
                         <div class="constructor-field-block">
                             <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">1. WORKSPACE TESTING MODALITY</label>
                             <select id="config-session-mode" class="sprint-dropdown" style="width:100%; height:40px;">
@@ -97,7 +136,6 @@
                                 <option value="EXAM">⏱️ Strict Mock Examination Mode (Hidden Assets, Enforced Timer)</option>
                             </select>
                         </div>
-
                         <div class="constructor-field-block">
                             <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">2. SESSION BLOCK SIZE (VOLUME ALLOCATION)</label>
                             <select id="config-session-size" class="sprint-dropdown" style="width:100%; height:40px;">
@@ -107,7 +145,6 @@
                                 <option value="100">100 Questions (Comprehensive NCCAA / CDQ Matrix)</option>
                             </select>
                         </div>
-
                         <div class="constructor-field-block">
                             <label class="dev-label" style="font-weight:bold; display:block; margin-bottom:8px;">3. SOURCE MATERIAL TARGET POOL</label>
                             <select id="config-session-source" class="sprint-dropdown" style="width:100%; height:40px;">
@@ -116,9 +153,7 @@
                                 <option value="INCORRECT">❌ Remediate Weaknesses Pool (Missed Near-Misses)</option>
                             </select>
                         </div>
-
                     </div>
-                    
                     <button id="unified-start-btn" class="action-btn-trigger success-theme-btn" style="width:100%; padding:14px; margin-top:20px; font-size:13px; font-weight:bold; letter-spacing:0.5px;">
                         GENERATE PLATFORM BOARD SIMULATION RUN ➔
                     </button>
