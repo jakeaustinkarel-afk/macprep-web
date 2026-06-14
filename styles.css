@@ -1,19 +1,23 @@
 /* ==========================================================================
-   MACPREP EDITORIAL BROADSHEET SYSTEM DESIGN MATRIX
+   MACPREP HIGH-ACUITY CLINICAL DASHBOARD: PREMIUM DESIGN SYSTEM
    ========================================================================== */
 :root {
-    --bg-main: #fcfcf9;         /* Editorial warm broadsheet paper tone */
-    --bg-card: #ffffff;         /* Pure crisp white for utility panes */
-    --text-main: #111111;       /* Deep high-contrast ink black */
-    --text-muted: #555555;      /* Charcoal gray for sub-metadata layers */
-    --border-color: #111111;    /* Strong solid linework boundaries */
-    --accent-gold: #c5a059;     /* Deep muted gold for structural tags */
-    --font-serif: "Times New Roman", Times, serif;
-    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
+    --bg-dark: #0b0f19;          /* Deep surgical suite midnight blue background */
+    --bg-surface: #141b2d;       /* Sleek instrumentation panel card fill */
+    --bg-inset: #1f2942;         /* Accent highlight fill for fields and selections */
+    --text-primary: #f8fafc;     /* Clean crisp polar ice text */
+    --text-secondary: #94a3b8;   /* Muted steel gray for clinical labels */
+    --border-glow: #1e293b;      /* Seamless panel division boundaries */
+    
+    /* High-Visibility Clinical Warning Matrices */
+    --signal-green: #00f59b;     /* High acuity vital trace monitor neon */
+    --signal-gold: #f59e0b;      /* Warning indicator state gold */
+    --signal-blue: #38bdf8;      /* Adaptive track tracking primary vector blue */
+    
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Base Body Framework */
+/* Document Normalization */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -21,8 +25,8 @@
 }
 
 body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
     font-family: var(--font-sans);
     padding: 30px;
     line-height: 1.6;
@@ -33,86 +37,86 @@ body {
     display: none !important;
 }
 
-/* Broadsheet Academic Header */
+/* Premium Navigation Header Assembly */
 .broadsheet-header {
-    border-bottom: 4px double var(--border-color);
+    max-width: 1400px;
+    margin: 0 auto 35px auto;
+    border-bottom: 1px solid var(--border-glow);
     padding-bottom: 25px;
-    margin-bottom: 40px;
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
 }
 
 .logo-link {
     text-decoration: none;
-    color: var(--text-main);
+    color: var(--text-primary);
 }
 
 .logo-link h1 {
-    font-family: var(--font-serif);
-    font-size: 3.5rem;
-    font-weight: 700;
+    font-size: 2.2rem;
+    font-weight: 800;
     letter-spacing: -1px;
-    line-height: 0.9;
+    background: linear-gradient(90deg, var(--text-primary), var(--signal-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 1.1rem;
-    color: var(--text-muted);
-    margin-top: 8px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-weight: 500;
 }
 
 .tier-badge {
-    font-family: var(--font-serif);
-    font-weight: bold;
-    border: 2px solid var(--border-color);
-    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--signal-gold);
+    border: 1px solid var(--signal-gold);
+    background: rgba(245, 158, 11, 0.05);
+    padding: 6px 16px;
+    border-radius: 4px;
     text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    background: #ffffff;
+    letter-spacing: 0.5px;
 }
 
 /* ==========================================================================
-   STATE 1: ONBOARDING HUB PARAMETER DECK
+   CONFIGURATION CONTROL HUB: ONBOARDING INTERFACE
    ========================================================================== */
 .onboarding-hub {
     max-width: 950px;
     margin: 40px auto;
-    padding: 50px;
-    background: var(--bg-card);
-    border: 2px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
+    padding: 45px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-glow);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
 }
 
 .welcome-hero {
     text-align: center;
     margin-bottom: 40px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-glow);
     padding-bottom: 30px;
 }
 
 .welcome-hero h2 {
-    font-family: var(--font-serif);
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 700;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .welcome-hero p {
-    color: var(--text-muted);
-    font-size: 1.1rem;
-    font-family: var(--font-serif);
-    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
 }
 
 .setup-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 30px;
-    margin-bottom: 50px;
+    gap: 25px;
+    margin-bottom: 40px;
 }
 
 @media (min-width: 768px) {
@@ -120,25 +124,25 @@ body {
 }
 
 .setup-card {
-    background: var(--bg-main);
-    padding: 30px;
-    border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.4);
+    padding: 25px;
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
 }
 
 .setup-card h3 {
-    font-family: var(--font-serif);
-    font-size: 1.3rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
     margin-bottom: 20px;
-    border-bottom: 1px dashed var(--border-color);
-    padding-bottom: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 700;
 }
 
 .radio-group {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 15px;
 }
 
 .radio-label {
@@ -147,22 +151,33 @@ body {
     gap: 12px;
     cursor: pointer;
     font-size: 0.95rem;
-    line-height: 1.4;
+    background: var(--bg-surface);
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.radio-label:hover {
+    border-color: var(--signal-blue);
+    background: var(--bg-inset);
 }
 
 .radio-label input {
-    margin-top: 4px;
-    accent-color: var(--text-main);
+    margin-top: 3px;
+    accent-color: var(--signal-blue);
 }
 
 .select-wrapper select {
     width: 100%;
     padding: 14px;
-    border: 1px solid var(--border-color);
-    background: #ffffff;
+    border: 1px solid var(--border-glow);
+    background: var(--bg-dark);
+    color: var(--text-primary);
     font-size: 1rem;
-    font-family: var(--font-sans);
+    border-radius: 6px;
     outline: none;
+    cursor: pointer;
 }
 
 .radio-group-horizontal {
@@ -183,60 +198,63 @@ body {
 .chip-label span {
     display: block;
     padding: 14px;
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    font-size: 1rem;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-glow);
+    border-radius: 6px;
+    font-size: 0.95rem;
     font-weight: 600;
-    transition: all 0.15s ease;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.chip-label:hover span {
+    border-color: var(--signal-blue);
+    color: var(--text-primary);
 }
 
 .chip-label input:checked + span {
-    background: var(--text-main);
-    color: #ffffff;
-    border-color: var(--text-main);
+    background: var(--signal-blue);
+    color: var(--bg-dark);
+    border-color: var(--signal-blue);
 }
 
-/* Core Buttons Button-Suite */
+/* Global Actions Suite Button Set */
 .btn {
-    background: #ffffff;
-    color: var(--text-main);
-    border: 2px solid var(--border-color);
-    padding: 12px 24px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--signal-blue);
+    padding: 14px 28px;
     font-size: 1rem;
     font-weight: 700;
+    border-radius: 6px;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     cursor: pointer;
     transition: all 0.2s ease;
     width: 100%;
-    text-align: center;
 }
 
 .btn-primary {
-    background: var(--text-main);
-    color: #ffffff;
+    background: var(--signal-blue);
+    color: var(--bg-dark);
 }
 
 .btn-primary:hover {
-    background: #2a2a2a;
-}
-
-.launch-action {
-    text-align: center;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    transform: translateY(-1px);
 }
 
 .btn-large {
-    padding: 18px 50px;
-    font-size: 1.25rem;
+    padding: 18px 55px;
+    font-size: 1.1rem;
     width: auto;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
 }
 
 /* ==========================================================================
-   STATE 2: ACTIVE CLINICAL WORKSTATION ENGINE
+   PRODUCTION EVALUATION WORKSTATION CONSOLE LAYOUT
    ========================================================================== */
 .workstation-grid {
-    display: grid;
+    display: none; /* Controlled dynamically by app.js router toggle */
     grid-template-columns: 1fr;
     gap: 30px;
     max-width: 1400px;
@@ -248,84 +266,89 @@ body {
 }
 
 .main-content {
-    background: var(--bg-card);
-    border: 2px solid var(--border-color);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
     padding: 35px;
-    box-shadow: var(--shadow-sm);
 }
 
+/* Precision OR Vital Telemetry Ribbon Component */
 .telemetry-ribbon {
     display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    background: var(--text-main);
-    color: #ffffff;
+    background: #090d16;
+    border: 1px solid var(--border-glow);
+    border-radius: 6px;
     padding: 18px;
-    margin-bottom: 30px;
-    border-radius: 2px;
+    margin-bottom: 35px;
 }
 
 .vitals-metric {
     flex: 1;
-    min-width: 100px;
     text-align: center;
-    border-right: 1px dashed #444;
+    border-right: 1px dashed var(--border-glow);
 }
+
 .vitals-metric:last-child {
     border-right: none;
 }
 
 .vitals-metric .label {
     display: block;
-    font-size: 0.8rem;
-    color: #999;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 700;
     text-transform: uppercase;
-    font-weight: 600;
+    letter-spacing: 0.5px;
     margin-bottom: 4px;
 }
 
 .vitals-metric .value {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    font-family: "Courier New", Courier, monospace;
-    color: #00ff66; /* High acuity clinical green signal */
+    font-family: monospace;
+    color: var(--signal-green);
+    text-shadow: 0 0 10px rgba(0, 245, 155, 0.2);
 }
 
-.question-canvas {
-    padding: 10px 0;
+.vitals-metric .unit {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: 2px;
 }
 
+/* Question Canvas Interface elements */
 .meta-row {
     display: flex;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .modality-tag, .difficulty-tag {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    padding: 4px 10px;
-    border: 1px solid var(--border-color);
+    padding: 5px 12px;
+    border-radius: 4px;
     text-transform: uppercase;
 }
 
 .modality-tag {
-    background: var(--bg-main);
-    color: var(--text-main);
+    background: rgba(56, 189, 248, 0.1);
+    color: var(--signal-blue);
+    border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .difficulty-tag {
-    border-color: var(--accent-gold);
-    color: var(--accent-gold);
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--signal-gold);
+    border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .question-stem {
-    font-family: var(--font-serif);
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 500;
-    line-height: 1.5;
+    line-height: 1.6;
+    color: var(--text-primary);
     margin-bottom: 35px;
-    color: #000000;
 }
 
 .choices-stack {
@@ -339,47 +362,154 @@ body {
     display: flex;
     align-items: center;
     padding: 18px;
-    border: 1px solid var(--border-color);
-    background: #ffffff;
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid var(--border-glow);
+    border-radius: 6px;
     cursor: pointer;
     font-size: 1.05rem;
     transition: all 0.15s ease;
 }
 
 .choice-row:hover {
-    background: var(--bg-main);
+    border-color: var(--signal-blue);
+    background: var(--bg-inset);
     transform: translateX(4px);
 }
 
-/* Sidebar Utilities Suite */
+.choice-row strong {
+    background: var(--bg-inset);
+    color: var(--signal-blue);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    margin-right: 15px;
+    font-size: 0.95rem;
+}
+
+.choice-row.selected {
+    border-color: var(--signal-green);
+    background: rgba(0, 245, 155, 0.03);
+}
+
+.choice-row.selected strong {
+    background: var(--signal-green);
+    color: var(--bg-dark);
+}
+
+.action-row {
+    display: flex;
+    gap: 15px;
+}
+
+/* ==========================================================================
+   POLISHED CLINICAL CALCULATORS SUITE
+   ========================================================================== */
 .utility-sidebar {
-    background: var(--bg-card);
-    border: 2px solid var(--border-color);
-    padding: 35px;
-    box-shadow: var(--shadow-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-glow);
+    border-radius: 8px;
+    padding: 30px;
     height: fit-content;
 }
 
 .utility-sidebar h2 {
-    font-family: var(--font-serif);
-    font-size: 1.6rem;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 8px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-glow);
+    padding-bottom: 12px;
 }
 
-/* Styling enhancements for expanded blueprint dropdown selector panels */
-select id="topicFocus" optgroup {
-    font-family: var(--font-sans);
-    font-weight: 700;
-    color: var(--accent-gold);
-    background: var(--bg-main);
-    padding: 6px;
-}
-select id="topicFocus" option {
-    font-family: var(--font-sans);
-    font-weight: normal;
-    color: var(--text-main);
-    background: #ffffff;
+.tabs-header {
+    display: flex;
+    background: var(--bg-dark);
     padding: 4px;
+    border-radius: 6px;
+    margin-bottom: 25px;
+    border: 1px solid var(--border-glow);
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    background: var(--bg-inset);
+    color: var(--signal-blue);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.calc-tab-content h3 {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-glow);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: var(--signal-blue);
+}
+
+.btn-calc {
+    background: rgba(56, 189, 248, 0.05);
+    border: 1px solid var(--signal-blue);
+    color: var(--signal-blue);
+    font-weight: 600;
+}
+
+.btn-calc:hover {
+    background: var(--signal-blue);
+    color: var(--bg-dark);
+}
+
+.calc-result {
+    margin-top: 20px;
+    background: var(--bg-dark);
+    border: 1px dashed var(--border-glow);
+    padding: 15px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 1.05rem;
+    color: var(--signal-green);
+    line-height: 1.5;
 }
