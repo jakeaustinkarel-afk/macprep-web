@@ -13,71 +13,124 @@
             <h1>MACPrep</h1>
             <div class="subtitle">Anesthesia Workspace & Board Prep Matrix</div>
         </a>
-        
-        <div class="header-controls">
-            <button id="syncDeviceBtn" class="sync-device-btn">🔄 Sync Progress</button>
-            <button id="tierBadgeBtn" class="tier-badge-btn">TIER: GUEST (10% UNLOCKED)</button>
-        </div>
+        <button id="tierBadgeBtn" class="tier-badge-btn">
+            TIER: GUEST (10% UNLOCKED)
+        </button>
     </header>
 
     <main>
         <section id="onboardingHub" class="onboarding-hub">
-            <div class="welcome-hero">
-                <h2>Configure Evaluation Matrix</h2>
-                <p>Customize your high-signal board simulation parameters below to initialize the terminal workspace.</p>
-            </div>
-
+            
             <div id="syncWelcomeNotice" class="sync-notice-bar hidden"></div>
 
-            <div class="setup-grid">
-                <div class="setup-card full-width">
-                    <h3>Select Core Specialties / Modality Focus</h3>
-                    <div class="checkbox-matrix">
-                        <label class="check-label">
-                            <input type="checkbox" name="specialty" value="pharmacology" checked>
-                            <div class="check-custom-box"></div>
-                            <div class="check-meta">
-                                <strong>Clinical Pharmacology</strong>
-                                <span>Inhalation kinetics, IV profiles, neuromuscular blocks, local agents</span>
-                            </div>
-                        </label>
-                        <label class="check-label">
-                            <input type="checkbox" name="specialty" value="physics" checked>
-                            <div class="check-custom-box"></div>
-                            <div class="check-meta">
-                                <strong>Anesthesia Physics & Equipment</strong>
-                                <span>Variable-bypass vaporizers, circle systems, gas laws, scavenging physics</span>
-                            </div>
-                        </label>
+            <div class="hub-layout-split">
+                
+                <div class="auth-sidebar-card">
+                    <h3>System Access & Authentication</h3>
+                    <p class="auth-desc">Enter your email to create a new profile or sync your $50 premium access token instantly across multiple platforms.</p>
+                    
+                    <div class="form-group" style="margin: 15px 0;">
+                        <label>Verification Email Address</label>
+                        <input type="email" id="syncUserEmailInput" placeholder="name@institution.com">
+                    </div>
+                    
+                    <button id="executeSyncBtn" class="btn btn-secondary" style="width: 100%;">
+                        Establish Secure Connection
+                    </button>
+
+                    <div id="accountStatsContainer" class="account-stats-box hidden">
+                        <h4>Cloud Sync Active</h4>
+                        <div class="stat-line">Profile: <strong id="statEmail">--</strong></div>
+                        <div class="stat-line">Tier Access: <strong id="statTier">Guest</strong></div>
+                        <div class="stat-line">Items Logged: <strong id="statCount">0 Questions</strong></div>
                     </div>
                 </div>
 
-                <div class="setup-card">
-                    <h3>Workstation Operational Mode</h3>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="workstationMode" value="adaptive" checked>
-                            <div class="radio-meta">
-                                <strong>Adaptive Training Vector</strong>
-                                <span>Provides instantaneous rationales, explanations, and calculator tools.</span>
+                <div class="configuration-main">
+                    <div class="welcome-hero">
+                        <h2>Configure Evaluation Matrix</h2>
+                        <p>Select your specialties below to customize the active question pool selection array.</p>
+                    </div>
+
+                    <div class="setup-grid">
+                        <div class="setup-card full-width">
+                            <h3>Select Core Blueprinted Specialties (8 Domains)</h3>
+                            <div class="checkbox-matrix">
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="pharmacology" checked>
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>1. Clinical Pharmacology</strong><span>Inhalation kinetics, IV profiles, muscle relaxants, local agents</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="physics" checked>
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>2. Anesthesia Physics & Equipment</strong><span>Variable-bypass vaporizers, circle systems, gas laws, scavenging cylinders</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="pathophysiology" checked>
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>3. Advanced Pathophysiology & Co-morbidities</strong><span>Carcinoid crisis, malignant hyperthermia, cardiac valvular defects</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="regional" checked>
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>4. Regional & Neuraxial Modalities</strong><span>Epidural dynamics, spinal sensory blocks, localized tracing arrays</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="general-principles">
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>5. General & Surgical Anesthesia Principles</strong><span>Airway monitoring algorithm paths, induction hazards, patient positioning safety</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="peds-ob">
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>6. Pediatric & Obstetric Specialty Vector</strong><span>Neonatal resuscitation guidelines, maternal physiological changes</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="critical-care">
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>7. Critical Care & Resuscitation Subspecialties</strong><span>Arterial line trace anomalies, ventilator loops, vasopressor algorithms</span></div>
+                                </label>
+                                <label class="check-label">
+                                    <input type="checkbox" name="specialty" value="professional">
+                                    <div class="check-custom-box"></div>
+                                    <div class="check-meta"><strong>8. Professional Practice, Safety & Quality Vectors</strong><span>Surgical checklists, root-cause disclosure metrics, regulatory standards</span></div>
+                                </label>
                             </div>
-                        </label>
+                        </div>
+
+                        <div class="setup-card">
+                            <h3>Workstation Mode</h3>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="workstationMode" value="adaptive" checked>
+                                    <div class="radio-meta"><strong>Adaptive Training Vector</strong><span>Provides instantaneous rationales, math modules, and explanations.</span></div>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="workstationMode" value="mock">
+                                    <div class="radio-meta"><strong>Strict Exam Mode</strong><span>Blocks dynamic explanations and isolates auxiliary calculators.</span></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setup-card">
+                            <h3>Session Allotment Volume</h3>
+                            <div class="radio-group-horizontal">
+                                <label class="chip-label"><input type="radio" name="itemVolume" value="10" checked><span>10 Items</span></label>
+                                <label class="chip-label"><input type="radio" name="itemVolume" value="25"><span>25 Items</span></label>
+                                <label class="chip-label"><input type="radio" name="itemVolume" value="50"><span>50 Items</span></label>
+                                <label class="chip-label"><input type="radio" name="itemVolume" value="100"><span>100 Items</span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="launch-action">
+                        <button id="launchWorkstationBtn" class="btn btn-primary btn-large" style="width: 100%;">
+                            Initialize Operational Console
+                        </button>
                     </div>
                 </div>
 
-                <div class="setup-card">
-                    <h3>Session Item Allotment Volume</h3>
-                    <div class="radio-group-horizontal">
-                        <label class="chip-label"><input type="radio" name="itemVolume" value="10" checked><span>10 Items</span></label>
-                        <label class="chip-label"><input type="radio" name="itemVolume" value="25"><span>25 Items</span></label>
-                        <label class="chip-label"><input type="radio" name="itemVolume" value="50"><span>50 Items</span></label>
-                        <label class="chip-label"><input type="radio" name="itemVolume" value="100"><span>100 Items</span></label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="launch-action">
-                <button id="launchWorkstationBtn" class="btn btn-primary btn-large">Initialize Operational Console</button>
             </div>
         </section>
 
@@ -95,7 +148,7 @@
                     <span id="questionModality" class="modality-tag">--</span>
                     <span id="questionDifficulty" class="difficulty-tag">--</span>
                 </div>
-                <div id="questionStem" class="question-stem">Loading core matrix channels...</div>
+                <div id="questionStem" class="question-stem">Loading core cloud matrix channels...</div>
                 <div id="choicesContainer" class="choices-stack"></div>
 
                 <div class="action-row">
@@ -152,23 +205,6 @@
             </aside>
         </section>
     </main>
-
-    <div id="syncModal" class="paywall-overlay hidden">
-        <div class="paywall-card">
-            <button id="closeSyncBtn" class="paywall-close-x">&times;</button>
-            <div class="paywall-badge">CROSS-PLATFORM DEVICE SYNC</div>
-            <h2>Restore Session History</h2>
-            <p class="paywall-lead">Enter your email address to pull down your premium unlocked status and answered questions metrics onto this current screen container instantly.</p>
-            
-            <div class="form-row" style="margin-bottom: 20px;">
-                <div class="form-group">
-                    <input type="email" id="syncUserEmailInput" placeholder="Enter your registration email..." style="text-align: center; padding: 14px; font-size: 1rem;">
-                </div>
-            </div>
-
-            <button id="executeSyncBtn" class="btn btn-primary btn-large">Synchronize Device Access</button>
-        </div>
-    </div>
 
     <div id="paywallModal" class="paywall-overlay hidden">
         <div class="paywall-card">

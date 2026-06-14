@@ -566,3 +566,72 @@ body {
     margin-bottom: 25px;
     text-align: center;
 }
+
+/* ==========================================================================
+   AUTHENTICATION SIDEBAR AND UNIFIED SETUP SPLITS
+   ========================================================================== */
+.hub-layout-split {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-top: 20px;
+}
+@media (min-width: 992px) {
+    .hub-layout-split {
+        display: grid;
+        grid-template-columns: 3.5fr 8.5fr;
+        gap: 30px;
+    }
+}
+
+.auth-sidebar-card {
+    background: rgba(10, 14, 23, 0.6);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 8px;
+    height: fit-content;
+}
+.auth-sidebar-card h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--clinical-blue);
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+.auth-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.account-stats-box {
+    margin-top: 20px;
+    background: var(--bg-dark);
+    border: 1px dashed var(--border-color);
+    padding: 15px;
+    border-radius: 6px;
+}
+.account-stats-box h4 {
+    font-size: 0.75rem;
+    color: var(--clinical-green);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.stat-line {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.stat-line strong {
+    color: #fff;
+}
+
+.btn-secondary {
+    border-color: var(--text-secondary);
+    color: #fff;
+    padding: 10px;
+    font-size: 0.85rem;
+}
+.btn-secondary:hover {
+    background: rgba(255,255,255,0.05);
+}

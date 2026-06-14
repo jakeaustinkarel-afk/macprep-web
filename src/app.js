@@ -1,5 +1,5 @@
 // ==========================================================================
-// MACPREP FRONTEND CONTROLLER WITH CROSS-DEVICE CLOUD SYNC
+// MACPREP MASTERFRONTEND CORE - SYNCHRONIZED CLOUD CONSOLE
 // ==========================================================================
 
 let currentQuestionIndex = 0;
@@ -7,7 +7,7 @@ let workstationQuestions = [];
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
-// Device State Indicators
+// System Account Memory Layers
 let currentUserEmail = null;
 let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
@@ -20,36 +20,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
     
-    // UI Portal Targets
+    // Portal Targets
     const tierBadgeBtn = document.getElementById('tierBadgeBtn');
     const paywallModal = document.getElementById('paywallModal');
     const closePaywallBtn = document.getElementById('closePaywallBtn');
     
-    // Sync UI Targets
-    const syncDeviceBtn = document.getElementById('syncDeviceBtn');
-    const syncModal = document.getElementById('syncModal');
-    const closeSyncBtn = document.getElementById('closeSyncBtn');
+    // Sidebar Authentication Element Anchors
     const executeSyncBtn = document.getElementById('executeSyncBtn');
     const syncUserEmailInput = document.getElementById('syncUserEmailInput');
     const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
+    const accountStatsContainer = document.getElementById('accountStatsContainer');
 
-    // 1. Handle Profile Synchronization Prompts
-    if (syncDeviceBtn) {
-        syncDeviceBtn.addEventListener('click', () => syncModal.classList.remove('hidden'));
-    }
-    if (closeSyncBtn) {
-        closeSyncBtn.addEventListener('click', () => syncModal.classList.add('hidden'));
-    }
-
+    // Cross-Platform Sign In & Creation Logic Pipeline
     if (executeSyncBtn) {
         executeSyncBtn.addEventListener('click', async () => {
-            const email = syncUserEmailInput.value;
+            const email = syncUserEmailInput.value.trim();
             if (!email || !email.includes('@')) {
-                alert("Please input a valid verification email.");
+                alert("Please input a valid verification email address to create or sync your profile.");
                 return;
             }
 
             try {
+                executeSyncBtn.innerText = "Connecting Crypto Channels...";
                 const response = await fetch('/api/sync-profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -60,24 +52,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     currentUserEmail = data.profile.email;
                     isPremiumAccountUnlocked = data.profile.premium_unlocked;
-                    totalQuestionsAnsweredCount = data.profile.answered_count;
+                    totalQuestionsAnsweredCount = data.profile.answered_count || 0;
                     userQuestionHistoryArray = data.profile.history || [];
 
-                    // Instantly scale UI based on device record properties
+                    // Adjust Interface Tokens Dynamically
                     if (isPremiumAccountUnlocked) {
                         tierBadgeBtn.innerText = "TIER: LIFETIME PREMIUM (UNLOCKED)";
                         tierBadgeBtn.style.color = "#00ff88";
                         tierBadgeBtn.style.borderColor = "#00ff88";
+                        document.getElementById('statTier').innerText = "Premium Lifetime";
+                        document.getElementById('statTier').style.color = "#00ff88";
                     } else {
                         tierBadgeBtn.innerText = `TIER: GUEST (${totalQuestionsAnsweredCount}/100 FREE)`;
+                        document.getElementById('statTier').innerText = "Free Trial Guest";
                     }
 
-                    syncWelcomeNotice.innerText = `🔄 Live Cloud Sync Active: Logged in as ${currentUserEmail}. Progress pulled cleanly down to this device monitor layout.`;
+                    // Populate Sidebar Statistics Output
+                    document.getElementById('statEmail').innerText = currentUserEmail;
+                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Completed`;
+                    
+                    accountStatsContainer.classList.remove('hidden');
+                    syncWelcomeNotice.innerText = `🔄 Session Handshake Live: Synchronized as ${currentUserEmail}. Secure database tracing active.`;
                     syncWelcomeNotice.classList.remove('hidden');
-                    syncModal.classList.add('hidden');
+                    executeSyncBtn.innerText = "Connection Established";
                 }
             } catch (err) {
-                alert("Cloud system handshake timeout. Try again.");
+                alert("Database link latency detected. Please retry.");
+                executeSyncBtn.innerText = "Establish Secure Connection";
             }
         });
     }
@@ -109,14 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nextBtn) {
         nextBtn.addEventListener('click', async () => {
-            // Block tracking if free tier usage limit has been breached
             if (!isPremiumAccountUnlocked && totalQuestionsAnsweredCount >= FREE_TIER_MAX_LIMIT) {
                 paywallModal.classList.remove('hidden');
                 return;
             }
 
             if (currentQuestionIndex < workstationQuestions.length - 1) {
-                // Record answered item into history index array logic layers
                 const activeQ = workstationQuestions[currentQuestionIndex];
                 if (activeQ && activeQ.id && !userQuestionHistoryArray.includes(activeQ.id)) {
                     userQuestionHistoryArray.push(activeQ.id);
@@ -125,8 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentQuestionIndex++;
                 totalQuestionsAnsweredCount++;
                 
-                // Write updates to database instantly to sync globally
+                // Keep cloud records instantly up-to-date across form switches
                 if (currentUserEmail) {
+                    document.getElementById('statCount').innerText = `${userQuestionHistoryArray.length} Questions Completed`;
                     await fetch('/api/update-progress', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 renderActiveQuestion();
             } else {
-                alert("Evaluation Matrix Exhausted!");
+                alert("Evaluation Matrix Block Exhausted.");
             }
         });
     }
@@ -186,7 +186,6 @@ window.renderActiveQuestion = function() {
     
     const container = document.getElementById('choicesContainer');
     let choiceArray = Array.isArray(currentQ.choices) ? currentQ.choices : [];
-    if (choiceArray.length === 0 && currentQ.options) choiceArray = currentQ.options;
 
     container.innerHTML = choiceArray.map((choice, i) => {
         const letter = String.fromCharCode(65 + i);
@@ -215,7 +214,7 @@ window.switchCalc = function(calcId) {
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
 };
 
-// Calculations Suite
+// Math Engines
 window.calculateABL = function() {
     const weight = parseFloat(document.getElementById('ablWeight').value);
     const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);
