@@ -1,67 +1,51 @@
 /**
- * MACPrep — Hardened User Cross-Device Session Tracking Architecture
- * Connects native Supabase Auth magic handshakes to real-time database state vectors
+ * MACPrep — Core Academic Workstation Engine
+ * Integrates Developer Audit Tiers with Dynamic Cloud Auth Lifecycles
  */
 
-// Initialize global connection client mapping properties
-const SUPABASE_URL = "https://placeholder.supabase.co"; // Handled gracefully via server routing patterns
+const SUPABASE_URL = "https://placeholder.supabase.co"; // Hydrated via platform routing matrices
 const SUPABASE_ANON_KEY = "placeholder";
 
-// Local Application Runtime State Variables
 let globalQuestionPool = [];
 let currentQuestionIndex = 0;
 let totalProgressCount = 0;
 let answeredRegistryState = {};
 let flaggedQuestionsMap = {};
 let activeUserSessionProfile = null;
+let isDeveloperAccessPrivileged = false;
 
 const CONFIG = {
     FREE_CEILING: 10,
     TOTAL_TIER_CEILING: 100
 };
 
-// --- INITIALIZATION HOOK RUNNER ---
 document.addEventListener('DOMContentLoaded', () => {
     initializeSupabaseSessionMonitor();
     initializeInterfaceControls();
 });
 
-// ==========================================================================
-// 🛡️ SUPABASE CLOUD AUTHENTICATION LIFECYCLE CONTROLLER
-// Tracks active sign-ins across any computer or mobile platform seamlessly
-// ==========================================================================
 function initializeSupabaseSessionMonitor() {
-    // Check if the global builder object exists inside browser context paths
     if (typeof supabase === 'undefined') {
-        console.warn("Supabase Client engine running inside standalone network configuration paths.");
         setupAnonymousFallback();
         return;
     }
 
-    // Connect to your live project backend stream layer directly
     const client = supabase.createClient(window.location.origin, "placeholder");
 
-    // Monitor authorization state shifts across components
     client.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
             activeUserSessionProfile = session.user;
-            console.log(`🔐 Verified User Confirmed: ${activeUserSessionProfile.email}`);
-            
-            // Mask the login panel mask element and update headers
             document.getElementById('auth-gateway-overlay').classList.add('hidden');
             document.getElementById('user-profile-badge').textContent = activeUserSessionProfile.email;
             
-            // Stream progress data state from remote cloud rows rather than local device metrics
             await syncUserCloudStateVectors(client);
             fetchDynamicQuestionSequences();
         } else {
-            // Force authorization login gate block visibility
             document.getElementById('auth-gateway-overlay').classList.remove('hidden');
             document.getElementById('user-profile-badge').textContent = "Unauthenticated";
         }
     });
 
-    // Sign In Trigger Button Event Handlers
     document.getElementById('auth-submit-magic-btn').addEventListener('click', async () => {
         const emailInput = document.getElementById('auth-email-input').value.trim();
         const feedback = document.getElementById('auth-status-feedback');
@@ -84,20 +68,18 @@ function initializeSupabaseSessionMonitor() {
         }
     });
 
-    // Logout Action Hooks
     document.getElementById('auth-logout-btn').addEventListener('click', async () => {
         await client.auth.signOut();
         window.location.reload();
     });
 }
 
-// --- CLOUD STATE MACHINE SYNC PASSTHROUGHS ---
 async function syncUserCloudStateVectors(clientInstance) {
     try {
-        // Query the custom user registry table inside Supabase matching their email ID node
+        // Query profile metadata table rows
         const { data, error } = await clientInstance
             .from('user_profiles')
-            .select('progress_ledger, is_premium')
+            .select('progress_ledger, is_premium, is_developer')
             .eq('id', activeUserSessionProfile.id)
             .single();
 
@@ -111,22 +93,29 @@ async function syncUserCloudStateVectors(clientInstance) {
                 totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
-            // If flagged as premium inside the remote table row, increase trial constraints parameters
-            if (data.is_premium) {
-                console.log("💎 Premium Verified Account Slot Detected via cloud tables metadata!");
+
+            // HARDENED SECURITY PARITY LOOP: Grant unlimited bounds if marked as premium OR developer
+            if (data.is_premium || data.is_developer) {
+                console.log("🔓 Database Security Gate: Full question bank allocation authorized.");
                 CONFIG.FREE_CEILING = CONFIG.TOTAL_TIER_CEILING;
+            }
+
+            // Expose internal debugging panel tools if row maps true for developer column flags
+            if (data.is_developer) {
+                isDeveloperAccessPrivileged = true;
+                const devDock = document.getElementById('developer-audit-panel');
+                if (devDock) devDock.classList.remove('hidden');
             }
         }
     } catch (err) {
-        console.warn("Unable to map cloud state profiles, reverting safely to memory tracking rows.", err);
+        console.warn("Unable to sync cloud session tracking matrices.", err);
     }
 }
 
-// --- API LAYER: FETCH QUESTIONS SEQUENCES ---
 async function fetchDynamicQuestionSequences() {
     try {
         const response = await fetch('/api/questions/free');
-        if (!response.ok) throw new Error("Database interface error pass.");
+        if (!response.ok) throw new Error("Database interface breakdown error.");
         const data = await response.json();
         
         if (data.questions && data.questions.length > 0) {
@@ -135,18 +124,16 @@ async function fetchDynamicQuestionSequences() {
             loadActiveQuestionVignette();
         }
     } catch (err) {
-        document.getElementById('question-stem-text').textContent = "Failed to synchronize operational telemetry pipelines.";
+        document.getElementById('question-stem-text').textContent = "Failed to pull case metadata structures from active servers.";
     }
 }
 
-// --- FALLBACK INTERPOLATION MATRICES FOR OFFLINE CHECKS ---
 function setupAnonymousFallback() {
     document.getElementById('auth-gateway-overlay').classList.add('hidden');
     document.getElementById('user-profile-badge').textContent = "Sandbox Profile Mode";
     fetchDynamicQuestionSequences();
 }
 
-// --- UI GENERATOR: TACTICAL PROGRESS MARKERS ---
 function renderTacticalFlagRibbon() {
     const ribbon = document.getElementById('flag-tracker-ribbon');
     if (!ribbon) return;
@@ -170,7 +157,6 @@ function renderTacticalFlagRibbon() {
     }
 }
 
-// --- UI GENERATOR: LOAD ACTIVE QUESTIONS ROWS ---
 function loadActiveQuestionVignette() {
     if (!globalQuestionPool[currentQuestionIndex]) return;
     const currentQuestion = globalQuestionPool[currentQuestionIndex];
@@ -190,7 +176,6 @@ function loadActiveQuestionVignette() {
         }
     }
 
-    // Hydrate Telemetry
     if (currentQuestion.telemetry) {
         document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72";
         document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80";
@@ -198,7 +183,12 @@ function loadActiveQuestionVignette() {
         document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35";
     }
 
-    // Waveform Morphs
+    // Update internal developer quick preview reads
+    if (isDeveloperAccessPrivileged) {
+        const keyPreviewNode = document.getElementById('dev-key-badge-preview');
+        if (keyPreviewNode) keyPreviewNode.textContent = currentQuestion.correctAnswer || "N/A";
+    }
+
     const wavePathNode = document.getElementById('dynamic-capno-path');
     if (wavePathNode) {
         const specialtyKey = currentQuestion.specialty || "ALL";
@@ -260,6 +250,22 @@ function initializeInterfaceControls() {
         document.getElementById('pane-active-testing').classList.remove('hidden');
     });
 
+    // ==========================================================================
+    // ⚡ INTERACTIVE DEVELOPER WARP ENGINE CONTROLS
+    // ==========================================================================
+    const warpBtn = document.getElementById('dev-execute-warp-btn');
+    if (warpBtn) {
+        warpBtn.addEventListener('click', () => {
+            const indexInputVal = parseInt(document.getElementById('dev-warp-index-input').value, 10);
+            if (!isNaN(indexInputVal) && indexInputVal >= 1 && indexInputVal <= globalQuestionPool.length) {
+                currentQuestionIndex = indexInputVal - 1;
+                renderTacticalFlagRibbon();
+                loadActiveQuestionVignette();
+                console.log(`⚡ Developer Warp triggered smoothly to index item node: ${indexInputVal}`);
+            }
+        });
+    }
+
     document.querySelectorAll('.calibration-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const selectedCard = document.querySelector('.choice-card.selected');
@@ -273,7 +279,7 @@ function initializeInterfaceControls() {
 
             document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
             const rationaleBox = document.getElementById('rationale-analysis-master-box');
-            rationaleBox.classList.remove('hidden');
+            ration Box.classList.remove('hidden');
             document.getElementById('rationale-text-content').textContent = currentQuestion.explanation;
 
             document.querySelectorAll('.choice-card').forEach(c => {

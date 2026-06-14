@@ -188,6 +188,20 @@
                         <span><kbd class="hotkey-badge">Enter</kbd> Advance Case</span>
                     </div>
                 </div>
+
+                <div id="developer-audit-panel" class="developer-panel-dock hidden">
+                    <span class="dev-badge">🛠️ INTERNAL DEVELOPER AUDIT TOOLS ACTIVE</span>
+                    <div class="dev-controls-flex">
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <label class="dev-label">Warp to Index (1-1000):</label>
+                            <input type="number" id="dev-warp-index-input" class="calc-text-input" style="width:70px; padding:4px;" min="1" max="1000">
+                            <button id="dev-execute-warp-btn" class="tactical-flag-action-btn" style="background:#1c1a17; color:#fff; border:none;">WARP ⚡</button>
+                        </div>
+                        <div class="dev-peek-readout">
+                            <strong>Correct Key Badge Preview:</strong> <span id="dev-key-badge-preview" style="color:var(--accent-crimson); font-weight:bold;">--</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="workspace-right-pane">
