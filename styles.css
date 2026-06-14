@@ -585,3 +585,22 @@ body {
     display: inline-block;
     margin-right: 4px;
 }
+
+/* ==========================================================================
+   🧮 ADVANCED MATHEMATE RESOURCE READOUT LAB WELLS
+   ========================================================================== */
+.sunken-monospace-output-well {
+    margin-top: 12px;
+    background: #f4f1ea;
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #1c1a17;
+    line-height: 1.5;
+    border-radius: 3px;
+}
+.theme-night .sunken-monospace-output-well {
+    background: #181614;
+    color: #dfd7ca;
+}

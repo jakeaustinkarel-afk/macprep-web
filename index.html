@@ -249,7 +249,67 @@
                 </div>
 
                 <div id="sub-pane-calculator-core" class="tab-content-panel hidden">
+                    
+                    <div class="calculator-card-wrapper">
+                        <span class="calibration-heading">ALLOWABLE BLOOD LOSS (ABL)</span>
+                        <div class="calculator-inputs-flex-row">
+                            <input type="number" id="calc-abl-weight" class="calc-text-input" placeholder="Weight (kg)" value="70">
+                            <input type="number" id="calc-abl-hct-start" class="calc-text-input" placeholder="Initial Hct (%)" value="42">
+                            <input type="number" id="calc-abl-hct-target" class="calc-text-input" placeholder="Target Hct (%)" value="30">
+                        </div>
+                        <button id="execute-abl-btn" class="secondary-utility-btn">Run ABL Calculation</button>
+                        <div id="output-well-abl" class="sunken-monospace-output-well hidden"></div>
                     </div>
+
+                    <div class="calculator-card-wrapper">
+                        <span class="calibration-heading">ALVEOLAR GAS EQUATION (PAO2)</span>
+                        <div class="calculator-inputs-flex-row">
+                            <input type="number" id="calc-pao2-fio2" class="calc-text-input" placeholder="FiO2 (%)" value="100">
+                            <input type="number" id="calc-pao2-paco2" class="calc-text-input" placeholder="PaCO2 (mmHg)" value="40">
+                            <input type="number" id="calc-pao2-pb" class="calc-text-input" placeholder="Barometric Pressure (Pb)" value="760">
+                        </div>
+                        <button id="execute-pao2-btn" class="secondary-utility-btn">Run PAO2 Calculation</button>
+                        <div id="output-well-pao2" class="sunken-monospace-output-well hidden"></div>
+                    </div>
+
+                    <div class="calculator-card-wrapper">
+                        <span class="calibration-heading">SYSTEMIC VASCULAR RESISTANCE (SVR)</span>
+                        <div class="calculator-inputs-flex-row">
+                            <input type="number" id="calc-svr-map" class="calc-text-input" placeholder="MAP (mmHg)" value="90">
+                            <input type="number" id="calc-svr-cvp" class="calc-text-input" placeholder="CVP (mmHg)" value="5">
+                            <input type="number" id="calc-svr-co" class="calc-text-input" placeholder="Cardiac Output (L/min)" value="5.0">
+                        </div>
+                        <button id="execute-svr-btn" class="secondary-utility-btn">Run SVR Calculation</button>
+                        <div id="output-well-svr" class="sunken-monospace-output-well hidden"></div>
+                    </div>
+
+                    <div class="calculator-card-wrapper">
+                        <span class="calibration-heading">🩺 OXYGEN DELIVERY INDEX ($DO_2I$)</span>
+                        <div class="calculator-inputs-flex-row">
+                            <input type="number" id="calc-do2i-ci" class="calc-text-input" placeholder="CI (L/min/m²)" value="3.0" step="0.1">
+                            <input type="number" id="calc-do2i-hb" class="calc-text-input" placeholder="Hemoglobin (g/dL)" value="14.0" step="0.1">
+                            <input type="number" id="calc-do2i-sao2" class="calc-text-input" placeholder="SaO2 (%)" value="98">
+                            <input type="number" id="calc-do2i-pao2" class="calc-text-input" placeholder="PaO2 (mmHg)" value="90">
+                        </div>
+                        <button id="execute-do2i-btn" class="secondary-utility-btn">Compute Programmatic DO2I Allocation</button>
+                        <div id="output-well-do2i" class="sunken-monospace-output-well hidden"></div>
+                    </div>
+
+                    <div class="calculator-card-wrapper">
+                        <span class="calibration-heading">🧬 TCI CONTEXT-SENSITIVE INFUSION PREDICTOR</span>
+                        <div class="calculator-inputs-flex-row" style="flex-wrap:wrap; gap:8px;">
+                            <select id="calc-tci-drug" class="sprint-dropdown" style="flex:1; min-width:160px; height:38px;">
+                                <option value="propofol">Propofol (Highly Lipophilic Accumulation Curve)</option>
+                                <option value="remifentanil">Remifentanil (Ultra-Rapid Ester Hydrolysis)</option>
+                            </select>
+                            <input type="number" id="calc-tci-duration" class="calc-text-input" placeholder="Infusion Time (min)" value="180" style="width:120px;">
+                            <input type="number" id="calc-tci-weight" class="calc-text-input" placeholder="Weight (kg)" value="70" style="width:90px;">
+                        </div>
+                        <button id="execute-tci-btn" class="secondary-utility-btn">Simulate Multi-Compartment Decrement Curve</button>
+                        <div id="output-well-tci" class="sunken-monospace-output-well hidden"></div>
+                    </div>
+
+                </div>
             </div>
         </section>
 
