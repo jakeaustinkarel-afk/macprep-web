@@ -21,9 +21,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
-// Helper Matrix Subroutine: Cryptographic Password Hashing Engine
+// Helper Subroutine: Cryptographic Password Hashing Engine
 function hashPasswordString(password) {
-    // Generate a secure, deterministic key signature to isolate plaintext values
+    // Generate an isolated, deterministic key signature to protect raw plaintext strings
     return crypto.scryptSync(password, 'macprep_secure_salt_vector_2026', 64).toString('hex');
 }
 
@@ -38,7 +38,7 @@ app.post('/api/authenticate', async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
     const secureHash = hashPasswordString(password);
-    console.log(`📡 Security Gate: Action [${action}] matching query profiles for ${cleanEmail}`);
+    console.log(`📡 Security Gate: Action [${action}] incoming match query for ${cleanEmail}`);
 
     try {
         let { data: profile, error } = await supabase
@@ -56,13 +56,13 @@ app.post('/api/authenticate', async (req, res) => {
             const payloadRow = {
                 id: uniqueProfileId,
                 email: cleanEmail,
-                password: secureHash, // Insulated hash value
+                password: secureHash, 
                 premium_unlocked: false,
                 answered_count: 0,
                 history: []
             };
 
-            console.log(`📦 Injecting cryptographic row to profile cache grid... ID generated: ${uniqueProfileId}`);
+            console.log(`📦 Injecting secure row entry to cloud table... Assigned ID: ${uniqueProfileId}`);
 
             const { data: newProfile, error: createErr } = await supabase
                 .from('macprep_profiles')
@@ -72,7 +72,6 @@ app.post('/api/authenticate', async (req, res) => {
 
             if (createErr) throw createErr;
             
-            // Failover safe reconstruction fallback
             const fallbackProfile = newProfile || payloadRow;
 
             return res.status(200).json({ 
@@ -99,7 +98,7 @@ app.post('/api/authenticate', async (req, res) => {
     }
 });
 
-// Sync Progress Retrieval Hook
+// Dynamic Profile Tracing Sync Router Endpoints
 app.post('/api/sync-profile', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "Email validation parameter required." });
