@@ -1,811 +1,237 @@
-/* ==========================================================================
-   🖋️ MACPREP BROAD SHEET EDITORIAL SYSTEM CORE
-   ========================================================================== */
-
 :root {
-    --bg-primary: #fbf9f4;
-    --bg-secondary: #f3ede2;
-    --text-primary: #1c1a17;
-    --text-muted: #6e675f;
-    --border-color: #dfd7ca;
-    --accent-crimson: #9e2a2b;
-    --botanical-green: #2a6f97;
-    --gold-tint: #b56576;
-    --error-red: #bd3a42;
-    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --bg-primary: #fcfbf7;
+    --text-main: #111111;
+    --accent-subtle: #767676;
+    --border-editorial: #111111;
+    --correct-green: #2e7d32;
+    --incorrect-red: #c62828;
 }
 
-body.theme-cream {
-    --bg-primary: #fbf9f4; --bg-secondary: #f3ede2; --text-primary: #1c1a17; --border-color: #dfd7ca;
-}
-body.theme-scrub {
-    --bg-primary: #edf4f2; --bg-secondary: #dae7e1; --text-primary: #1a2e26; --border-color: #b9cfc4;
-}
-body.theme-drape {
-    --bg-primary: #f4f8fa; --bg-secondary: #e1edf3; --text-primary: #162a35; --border-color: #c4dae7;
-}
-body.theme-night {
-    --bg-primary: #141619; --bg-secondary: #1f2327; --text-primary: #e3e6eb; --text-muted: #9aa0a6; --border-color: #32373d;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
     background-color: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    line-height: 1.5;
-    overflow-x: hidden;
+    color: var(--text-main);
+    font-family: "Georgia", Times, serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 2rem;
 }
 
-/* --- SECURE FLUID ADAPTIVE APP HEADER SYSTEM --- */
-.global-header {
+.broadsheet-header {
+    border-bottom: 4px double var(--border-editorial);
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
-    background-color: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    flex-wrap: wrap;
-    gap: 12px;
+    align-items: flex-end;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
 }
-.header-brand-container {
+
+.broadsheet-header h1 {
+    font-size: 3.5rem;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    font-style: italic;
+    color: var(--accent-subtle);
+    margin: 0.2rem 0 0 0;
+}
+
+.tier-badge {
+    border: 1px solid var(--border-editorial);
+    font-family: monospace;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+    background-color: #fff;
+}
+
+/* Master Workstation Split Grid Arrangement */
+.workstation-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+}
+
+/* Dynamic Live Telemetry HUD Strip UI */
+.telemetry-ribbon {
+    background-color: #111;
+    color: #00ff00;
+    font-family: monospace;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    justify-content: space-around;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
 }
-.brand-logo { font-size: 20px; font-weight: 800; font-family: var(--font-serif); }
-.brand-sub-badge {
-    font-family: var(--font-mono); font-size: 9px; font-weight: bold; background: var(--bg-primary);
-    border: 1px solid var(--border-color); padding: 2px 6px; letter-spacing: 0.5px;
-}
-.header-controls {
+
+.vitals-metric .label { color: #aaa; font-weight: bold; }
+.vitals-metric .value { font-size: 1.2rem; font-weight: bold; }
+.vitals-metric .unit { color: #666; font-size: 0.8rem; }
+
+/* Question Layout Fields */
+.meta-row {
     display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap; /* Permits safe compression wrapping on mobile/split widths */
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
-.sprint-dropdown {
-    background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color);
-    padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 2px;
+.modality-tag {
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border-editorial);
+    font-size: 0.9rem;
 }
-.text-scaler-dock { display: flex; align-items: center; border: 1px solid var(--border-color); background: var(--bg-primary); }
-.font-btn { background: none; border: none; padding: 6px 10px; cursor: pointer; color: var(--text-primary); font-family: var(--font-mono); font-weight: bold; }
-.scaler-label { font-size: 9px; font-family: var(--font-mono); font-weight: bold; color: var(--text-muted); border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); padding: 0 6px; }
-.score-tab-matrix { font-family: var(--font-mono); font-size: 12px; font-weight: bold; background: var(--text-primary); color: var(--bg-primary); padding: 6px 12px; border-radius: 2px; }
-.nav-exit-btn { font-size: 11px; font-weight: bold; background: var(--accent-crimson); color: white; border: none; padding: 7px 14px; cursor: pointer; border-radius: 2px; }
 
-/* --- TIMERS & ALERTS --- */
-.timer-rail-container { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; font-weight: bold; }
-.timer-countdown-bar { width: 40px; height: 4px; background: var(--border-color); position: relative; }
-.network-alert-overlay { background: var(--accent-crimson); color: white; padding: 6px; font-size: 11px; font-family: var(--font-mono); text-align: center; }
+.difficulty-tag {
+    color: var(--incorrect-red);
+    font-family: monospace;
+    font-weight: bold;
+}
 
-/* --- ARCHITECTURAL VIEWPORT LAYOUT WRAPPERS --- */
-.main-viewport-shell { max-width: 1300px; margin: 0 auto; padding: 32px 24px; }
+.question-stem {
+    font-size: 1.3rem;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.choices-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 2rem;
+}
+
+.choice-item {
+    border: 1px solid #ddd;
+    background-color: #fff;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.choice-item:hover {
+    background-color: #f4f1ea;
+    border-color: var(--border-editorial);
+}
+
+.choice-item.correct {
+    background-color: #e8f5e9 !important;
+    border-color: var(--correct-green) !important;
+    color: var(--correct-green);
+    font-weight: bold;
+}
+
+.choice-item.incorrect {
+    background-color: #ffebee !important;
+    border-color: var(--incorrect-red) !important;
+    color: var(--incorrect-red);
+}
+
+.action-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    border: 1px solid var(--border-editorial);
+    background-color: #fff;
+    padding: 0.8rem 1.5rem;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn:hover:not(:disabled) { background-color: #111; color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background-color: #111; color: #fff; }
+
+/* Explanations & Citations Layout Panel */
+.explanation-box {
+    margin-top: 2.5rem;
+    padding: 1.5rem;
+    border-left: 4px solid var(--border-editorial);
+    background-color: #f5f4ed;
+}
+
+.literature-trail {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+/* Sidebar Utilities & Calculator Component Interfaces */
+.calculator-panel {
+    border: 1px solid var(--border-editorial);
+    background-color: #fff;
+    padding: 1.5rem;
+}
+
+.tabs-header {
+    display: flex;
+    border-bottom: 1px solid var(--border-editorial);
+    margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--accent-subtle);
+}
+
+.tab-btn.active {
+    color: var(--text-main);
+    border-bottom: 2px solid var(--border-editorial);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.form-group input, .form-group select {
+    padding: 0.5rem;
+    border: 1px solid var(--border-editorial);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.btn-calc { width: 100%; margin-top: 0.5rem; }
+
+.calc-result {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #fcfbf7;
+    border: 1px dashed var(--border-editorial);
+    font-family: monospace;
+    text-align: left;
+}
+
 .hidden { display: none !important; }
 
-/* STATE 1: DASHBOARD LANDING */
-.broadsheet-hero-section { border-bottom: 2px double var(--border-color); padding-bottom: 24px; margin-bottom: 32px; }
-.editorial-vector-masthead { width: 100%; margin-bottom: 20px; }
-.scholarly-title { font-family: var(--font-serif); font-size: 32px; font-weight: 400; letter-spacing: -0.5px; margin-bottom: 12px; }
-.broadsheet-prose { font-family: var(--font-serif); font-size: 16px; color: var(--text-primary); line-height: 1.6; }
-.text-measure { max-width: 750px; }
-.sunken-hardware-well { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 12px; display: inline-flex; gap: 16px; font-family: var(--font-mono); font-size: 11px; font-weight: bold; margin-top: 20px; }
-.well-divider { color: var(--border-color); }
-
-.modality-filter-dock { margin-top: 32px; }
-.section-subtitle { font-family: var(--font-mono); font-size: 11px; font-weight: bold; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 12px; }
-.modality-pills-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.modality-pill { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 20px; transition: all 0.15s ease; }
-.modality-pill.active, .modality-pill:hover { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
-
-/* REGISTRY INDEX */
-.bibliography-registry-wrapper { margin-top: 48px; border-top: 1px solid var(--border-color); padding-top: 32px; }
-.registry-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.registry-search-bar { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 16px; font-size: 13px; width: 320px; }
-.table-scroll-container { width: 100%; border: 1px solid var(--border-color); background: var(--bg-primary); }
-.registry-data-matrix { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-.registry-data-matrix th { background: var(--bg-secondary); padding: 10px 16px; font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
-.registry-data-matrix td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); line-height: 1.4; }
-.footnote-citation-badge { font-family: var(--font-mono); font-size: 10px; font-weight: bold; text-decoration: none; color: var(--accent-crimson); }
-.cme-reimburse-link { font-size: 12px; font-weight: bold; color: var(--accent-crimson); background: none; border: none; cursor: pointer; margin-top: 14px; text-decoration: underline; }
-
-/* STATE 2: 60/40 TESTING WORKSPACE */
-.workspace-asymmetric-pane { display: flex; gap: 40px; align-items: flex-start; }
-.workspace-left-pane { flex: 0 0 58%; position: sticky; top: 100px; }
-.workspace-right-pane { flex: 0 0 42%; }
-
-.floating-patient-profile-banner { font-family: var(--font-mono); font-size: 9px; font-weight: bold; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px; }
-.monitor-telemetry-ribbon { background: #000; border: 2px solid #222; padding: 16px; border-radius: 4px; margin-bottom: 24px; color: #fff; }
-.vitals-ticker-row { display: flex; justify-content: space-between; margin-bottom: 12px; }
-.vital-block { display: flex; flex-direction: column; }
-.vital-label { font-family: var(--font-mono); font-size: 10px; color: #666; font-weight: bold; }
-.vital-value { font-family: var(--font-mono); font-size: 24px; font-weight: bold; color: #22c55e; line-height: 1; margin: 2px 0; }
-.vital-unit { font-size: 9px; color: #444; font-family: var(--font-mono); }
-.svg-waveform-container { width: 100%; height: 40px; background: #050505; border-top: 1px solid #111; padding-top: 4px; }
-.capnography-canvas { width: 100%; height: 100%; }
-
-.question-stem-card { background: var(--bg-secondary); border-left: 3px solid var(--accent-crimson); padding: 24px; margin-bottom: 24px; position: relative; }
-.scholarly-question-stem { font-family: var(--font-serif); font-size: 18px; color: var(--text-primary); line-height: 1.6; }
-
-/* TAB LAYOUT MATRIX */
-.workspace-tab-bar { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; gap: 4px; }
-.workspace-tab { background: none; border: 1px solid transparent; padding: 8px 16px; font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: var(--text-muted); cursor: pointer; border-bottom: none; }
-.workspace-tab.active { background: var(--bg-primary); border-color: var(--border-color); color: var(--text-primary); position: relative; top: 1px; }
-.tab-content-panel { width: 100%; }
-
-/* OPTIONS CARDS */
-.choices-layout-stack { display: flex; flex-direction: column; gap: 10px; }
-.choice-card-row { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: all 0.1s ease; position: relative; }
-.choice-card-row:hover { border-color: var(--text-primary); }
-.choice-badge { font-family: var(--font-mono); font-size: 11px; font-weight: bold; border: 1px solid var(--border-color); padding: 2px 6px; background: var(--bg-primary); border-radius: 2px; }
-.choice-body-text { font-size: 14px; font-weight: 500; color: var(--text-primary); line-height: 1.4; padding-top: 1px; flex: 1; }
-.choice-strike-handle { font-family: var(--font-mono); font-size: 12px; color: var(--border-color); cursor: pointer; padding: 0 4px; transition: color 0.1s; }
-.choice-strike-handle:hover { color: var(--error-red); }
-
-/* CARD HIGHLIGHT STATES */
-.choice-card-row.tentative-gold { border-color: #d4af37; background: #fffdf5; box-shadow: 0 0 0 1px #d4af37; }
-.choice-card-row.struck-out { opacity: 0.35; }
-.choice-card-row.struck-out .choice-body-text { text-decoration: line-through; }
-.choice-card-row.eval-correct { border-color: #2a6f97 !important; background: #f0f7f4 !important; box-shadow: 0 0 0 1px #2a6f97; }
-.choice-card-row.eval-incorrect { border-color: #bd3a42 !important; background: #fff5f5 !important; box-shadow: 0 0 0 1px #bd3a42; }
-
-/* LOCK LOCK SUBMISSIONS */
-.calibration-lock-panel { margin-top: 20px; background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px; text-align: center; }
-.calibration-heading { font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 12px; letter-spacing: 0.5px; }
-.calibration-buttons-row { display: flex; gap: 8px; justify-content: center; }
-.calibration-btn { background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 16px; font-size: 11px; font-weight: bold; font-family: var(--font-mono); cursor: pointer; flex: 1; }
-.calibration-btn:hover { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
-
-/* RATIONALE OUTCOME DRAWER */
-.rationale-analysis-well { margin-top: 24px; border-top: 2px dashed var(--border-color); padding-top: 20px; }
-.rationale-subheading { font-family: var(--font-mono); font-size: 11px; font-weight: bold; color: var(--accent-crimson); margin-bottom: 8px; }
-.footnote-citation-drawer { margin-top: 16px; background: var(--bg-secondary); padding: 12px; border: 1px solid var(--border-color); }
-.caption-label { font-family: var(--font-mono); font-size: 9px; font-weight: bold; color: var(--text-muted); display: block; }
-.citation-abstract-link { background: none; border: none; font-family: var(--font-serif); font-size: 13px; color: var(--accent-crimson); text-decoration: underline; cursor: pointer; margin-top: 4px; text-align: left; }
-.abstract-drawer-panel { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); }
-.abstract-italic-prose { font-family: var(--font-serif); font-size: 13px; font-style: italic; color: var(--text-muted); line-height: 1.5; }
-.action-btn-trigger { background: var(--text-primary); color: var(--bg-primary); font-size: 13px; font-weight: bold; border: none; padding: 12px 24px; cursor: pointer; border-radius: 2px; transition: opacity 0.1s; text-align: center; }
-.action-btn-trigger:hover { opacity: 0.9; }
-.success-theme-btn { background: #2a6f97; color: white; }
-
-/* UTILITY SPREADSHEETS FORMULAS */
-.calculator-card-wrapper { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px; margin-bottom: 16px; }
-.calculator-inputs-flex-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.calc-text-input { background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; font-size: 12px; font-family: var(--font-mono); flex: 1; width: 100%; }
-.secondary-utility-btn { background: none; border: 1px solid var(--text-primary); color: var(--text-primary); padding: 6px 12px; font-size: 11px; font-family: var(--font-mono); font-weight: bold; cursor: pointer; }
-.secondary-utility-btn:hover { background: var(--text-primary); color: var(--bg-primary); }
-.sunken-monospace-output-well { background: #000; color: #22c55e; font-family: var(--font-mono); font-size: 12px; padding: 10px; margin-top: 12px; border-radius: 2px; }
-
-/* TRACK CONTROLS DOCK Dashboard */
-.track-selection-container { margin: 40px 0; }
-.fork-row-layout { display: flex; gap: 24px; }
-.fork-card-blueprint { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 24px; display: flex; flex-direction: column; align-items: flex-start; }
-.blueprint-card-icon-header { margin-bottom: 12px; }
-.fork-title { font-family: var(--font-serif); font-size: 20px; font-weight: 400; margin-bottom: 6px; }
-.fork-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
-
-/* STATE 3: CONVERSION MATRIX */
-.paywall-view-pane { max-width: 650px; margin: 40px auto; }
-.paywall-card-frame { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 32px; border-radius: 4px; }
-.scholarly-competency-heatmap-container { border-top: 1px solid var(--border-color); padding-top: 20px; }
-.heatmap-grid-matrix { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-.heatmap-cell-block { background: var(--bg-primary); border: 1px solid var(--border-color); padding: 10px 14px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; font-weight: bold; }
-.pricing-tier-well { display: block; text-align: center; padding: 16px; margin-bottom: 16px; }
-.pricing-headline { font-size: 20px; font-weight: bold; color: var(--accent-crimson); font-family: var(--font-serif); }
-
-/* Hotkey UI badge layouts */
-.keyboard-legend-card { margin-top: 24px; border-top: 1px dashed var(--border-color); padding-top: 16px; }
-.legend-header { font-family: var(--font-mono); font-size: 9px; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 6px; letter-spacing: 0.5px; }
-.legend-flex-row { display: flex; gap: 16px; font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
-.hotkey-badge { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 3px; padding: 1px 5px; font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: var(--text-primary); box-shadow: 0 1px 0 rgba(0,0,0,0.05); }
-
-.diagnostic-evaluation-box-wrapper { margin: 20px 0; width: 100%; }
-.diagnostic-metric-row { display: flex; gap: 16px; }
-.diag-card-inner { flex: 1; background-color: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-.diag-giant-stat { font-family: var(--font-mono); font-size: 32px; font-weight: bold; color: var(--accent-crimson); margin: 8px 0; line-height: 1; }
-.text-left { text-align: left !important; }
-
-/* ==========================================================================
-   🌐 RESPONSIVE FLEXBOX MEDIA QUERY CONSTRAINTS
-   ========================================================================== */
-@media screen and (max-width: 1024px) {
-    .main-viewport-shell { padding: 16px; }
-    .workspace-asymmetric-pane { flex-direction: column; gap: 24px; }
-    .workspace-left-pane { position: static; width: 100%; flex: none; }
-    .workspace-right-pane { width: 100%; flex: none; }
-    .fork-row-layout { flex-direction: column; gap: 16px; align-items: center; }
-    .fork-card-blueprint { width: 100%; max-width: 100%; }
-    .table-scroll-container { overflow-x: auto; }
-    .registry-header-row { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .registry-search-bar { width: 100%; }
+/* --- Responsive Layout Media Queries --- */
+@media (max-width: 1024px) {
+    body { padding: 1rem; }
+    .broadsheet-header h1 { font-size: 2.5rem; }
+    .workstation-grid { grid-template-columns: 1fr; gap: 2.5rem; }
 }
 
-@media screen and (max-width: 768px) {
-    .global-header { padding: 12px 16px; }
-    .header-controls { width: 100%; justify-content: space-between; gap: 8px; }
-    .text-scaler-dock { display: none !important; } /* Clean hide non-essential elements */
-}
-
-@media screen and (max-width: 640px) {
-    .vitals-ticker-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .vital-unit { text-align: left; }
-    .diagnostic-metric-row { flex-direction: column; gap: 12px; }
-}
-
-/* ==========================================================================
-   📂 PROFESSIONAL ACADEMIC INSTITUTIONAL INVOICE SYSTEM STYLE RULES
-   ========================================================================== */
-.invoice-print-container {
-    display: none; /* Keep hidden on screen layouts by default */
-    background: #ffffff;
-    color: #111111;
-    font-family: var(--font-sans);
-    padding: 20px;
-}
-.invoice-header-block {
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 2px solid #111111;
-    padding-bottom: 20px;
-    margin-bottom: 24px;
-}
-.invoice-title { font-family: var(--font-serif); font-size: 26px; font-weight: bold; }
-.invoice-subtext { font-size: 12px; color: #444; margin-top: 2px; }
-.invoice-status-badge { font-size: 18px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-bottom: 6px; }
-.invoice-meta-text { font-size: 12px; color: #111; margin-top: 2px; }
-.invoice-billing-split { display: flex; justify-content: space-between; margin-bottom: 32px; }
-.invoice-heading-label { font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #666; display: block; margin-bottom: 6px; }
-.invoice-address-text { font-size: 13px; line-height: 1.4; }
-.invoice-ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-.invoice-ledger-table th { border-bottom: 1px solid #111111; font-family: var(--font-mono); font-size: 11px; font-weight: bold; color: #444; padding: 8px 12px; text-align: left; }
-.invoice-ledger-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #e5e7eb; line-height: 1.4; }
-.invoice-totals-block { width: 320px; margin-left: auto; margin-bottom: 40px; }
-.totals-line-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
-.total-highlight-row { border-top: 1px dashed #111; font-weight: bold; font-size: 15px; padding-top: 8px; margin-top: 4px; }
-.invoice-footer-legal-well { border: 1px solid #dfd7ca; background: #fafafa; padding: 16px; font-size: 11px; color: #555; line-height: 1.5; }
-
-/* ==========================================================================
-   🖨️ NATIVE SYSTEM HARDWARE PRINT PORT INTERPOLATION OVERRIDES
-   ========================================================================== */
-@media print {
-    /* 1. Eliminate all interactive screen elements entirely */
-    body, html, .global-header, .main-viewport-shell, #primary-viewport-container, section, button, select, input {
-        display: none !important;
-        background: none !important;
-        box-shadow: none !important;
-    }
-    
-    /* 2. Enforce absolute visibility constraints onto the academic receipt sheet block */
-    .invoice-print-container {
-        display: block !important;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    
-    /* 3. Strip custom user palette accents back to traditional printer-friendly ink ranges */
-    .invoice-status-badge {
-        color: #000000 !important;
-        border: 2px solid #000000;
-        padding: 4px 10px;
-        display: inline-block;
-    }
-}
-
-/* ==========================================================================
-   📂 ACADEMIC REIMBURSEMENT LEDGER SHEET STYLE MATRICES
-   ========================================================================== */
-.invoice-print-container {
-    display: none; /* Keep hidden on interactive screen states */
-    background: #ffffff;
-    color: #111111;
-    font-family: var(--font-sans);
-    padding: 20px;
-}
-.invoice-header-block {
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 2px solid #111111;
-    padding-bottom: 20px;
-    margin-bottom: 24px;
-}
-.invoice-title { font-family: var(--font-serif); font-size: 26px; font-weight: bold; color: #1c1a17 !important; }
-.invoice-subtext { font-size: 12px; color: #444; margin-top: 2px; }
-.invoice-status-badge { font-size: 18px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-bottom: 6px; }
-.invoice-meta-text { font-size: 12px; color: #111; margin-top: 2px; }
-.invoice-billing-split { display: flex; justify-content: space-between; margin-bottom: 32px; }
-.invoice-heading-label { font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #666; display: block; margin-bottom: 6px; }
-.invoice-address-text { font-size: 13px; line-height: 1.4; color: #111 !important; }
-.invoice-ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-.invoice-ledger-table th { border-bottom: 1px solid #111111; font-family: var(--font-mono); font-size: 11px; font-weight: bold; color: #444; padding: 8px 12px; text-align: left; }
-.invoice-ledger-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #e5e7eb; line-height: 1.4; color: #111 !important; }
-.invoice-totals-block { width: 320px; margin-left: auto; margin-bottom: 40px; }
-.totals-line-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #111 !important; }
-.total-highlight-row { border-top: 1px dashed #111; font-weight: bold; font-size: 15px; padding-top: 8px; margin-top: 4px; }
-.invoice-footer-legal-well { border: 1px solid #dfd7ca; background: #fafafa; padding: 16px; font-size: 11px; color: #555; line-height: 1.5; }
-
-/* ==========================================================================
-   🖨️ HARDWARE PRINT MEDIA QUERY STAGE INTERCEPTORS
-   ========================================================================== */
-@media print {
-    /* Strip away all interactive structural page elements */
-    body, html, .global-header, .main-viewport-shell, #primary-viewport-container, section, button, select, input, .keyboard-legend-card, .workspace-tab-bar {
-        display: none !important;
-        background: none !important;
-        box-shadow: none !important;
-    }
-    
-    /* Enforce block display mechanics strictly on the academic receipt container layer */
-    .invoice-print-container {
-        display: block !important;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    
-    .invoice-status-badge {
-        color: #000000 !important;
-        border: 2px solid #000000;
-        padding: 4px 10px;
-        display: inline-block;
-    }
-}
-
-/* ==========================================================================
-   🎮 OPTION A INTERACTIVE POLISH THEME UTILITIES
-   ========================================================================== */
-.tactical-flag-ribbon {
-    display: flex;
-    gap: 4px;
-    padding: 8px 16px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    overflow-x: auto;
-    font-family: var(--font-mono);
-    font-size: 11px;
-}
-.ribbon-node {
-    padding: 4px 8px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 3px;
-    cursor: pointer;
-    min-width: 24px;
-    text-align: center;
-    color: var(--text-muted);
-}
-.ribbon-node.current {
-    border-color: var(--accent-crimson);
-    color: var(--text-main);
-    font-weight: bold;
-}
-.ribbon-node.flagged {
-    background: #fef08a !important;
-    border-color: #ca8a04 !important;
-    color: #854d0e !important;
-}
-.ribbon-node.answered {
-    background: #d1fae5;
-    color: #065f46;
-}
-.floating-patient-profile-banner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 16px;
-}
-.tactical-flag-action-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    padding: 4px 10px;
-    font-size: 12px;
-    font-family: var(--font-sans);
-    cursor: pointer;
-    border-radius: 4px;
-    color: var(--text-main);
-    transition: all 0.2s ease;
-}
-.tactical-flag-action-btn.active {
-    background: #fef08a;
-    border-color: #ca8a04;
-    color: #854d0e;
-}
-.choice-card.struck-out {
-    opacity: 0.35;
-    text-decoration: line-through;
-    transform: scale(0.98);
-    pointer-events: none; /* Block selection until un-struck */
-}
-.choice-card .strike-overlay-hint {
-    float: right;
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--accent-crimson);
-    opacity: 0.8;
-}
-
-/* ==========================================================================
-   🔐 PRODUCTION ACCREDITATION SIGN-IN LAYER LAYOUTS
-   ========================================================================== */
-.auth-modal-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(28, 26, 23, 0.98); /* Solid Editorial Mask */
-    z-index: 99999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-.auth-modal-frame {
-    background: #fbf9f4;
-    border: 2px solid #1c1a17;
-    padding: 40px;
-    max-width: 480px;
-    width: 100%;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-}
-.user-email-badge {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    background: var(--bg-secondary);
-    padding: 6px 12px;
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-}
-.auth-feedback-text {
-    margin-top: 16px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    text-align: center;
-    color: var(--accent-crimson);
-}
-
-/* ==========================================================================
-   🛠️ INTERNAL DEVELOPER AUDIT CONTROL DOCK STYLES
-   ========================================================================== */
-.developer-panel-dock {
-    margin-top: 16px;
-    background: #fffbeb;
-    border: 1px dashed #d97706;
-    padding: 16px;
-    border-radius: 4px;
-}
-.dev-badge {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: bold;
-    color: #b45309;
-    background: #fef3c7;
-    padding: 2px 6px;
-    display: inline-block;
-    margin-bottom: 10px;
-}
-.dev-controls-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-.dev-label {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: #78350f;
-}
-.dev-peek-readout {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: #111;
-}
-
-/* ==========================================================================
-   📈 ADVANCED INTRAOPERATIVE DIAGNOSTIC CHART UTILITIES
-   ========================================================================== */
-.clinical-chart-wrapper {
-    margin: 12px 16px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 12px;
-}
-.chart-header-row {
-    border-bottom: 1px dashed var(--border-color);
-    padding-bottom: 6px;
-    margin-bottom: 10px;
-}
-.chart-mono-label {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-}
-.chart-canvas-dock {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    position: relative;
-    overflow: hidden;
-}
-.theme-night .chart-canvas-dock {
-    background: #111111;
-}
-.chart-grid-line {
-    stroke: #e5e7eb;
-    stroke-width: 0.5;
-}
-.theme-night .chart-grid-line {
-    stroke: #222222;
-}
-
-/* ==========================================================================
-   📉 CLINICAL VELOCITY CANVAS HISTORICAL TREND CARDS
-   ========================================================================== */
-.history-chart-canvas-dock {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 4px;
-}
-.theme-night .history-chart-canvas-dock {
-    background: #111111;
-}
-#analytics-history-canvas {
-    width: 100%;
-    height: 180px;
-    display: block;
-}
-.chart-legend-flex {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--border-color);
-}
-.legend-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 4px;
-}
-
-/* ==========================================================================
-   🧮 ADVANCED MATHEMATE RESOURCE READOUT LAB WELLS
-   ========================================================================== */
-.sunken-monospace-output-well {
-    margin-top: 12px;
-    background: #f4f1ea;
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: #1c1a17;
-    line-height: 1.5;
-    border-radius: 3px;
-}
-.theme-night .sunken-monospace-output-well {
-    background: #181614;
-    color: #dfd7ca;
-}
-
-/* ==========================================================================
-   🎨 RETINA & ACCESSIBILITY CONTRAST VARIANT CORRECTIONS
-   ========================================================================== */
-:root {
-    --state-success-bg: #e8f5e9;
-    --state-success-border: var(--accent-scrub);
-    --state-danger-bg: #ffebee;
-    --state-danger-border: var(--accent-crimson);
-}
-
-.theme-night {
-    --state-success-bg: #064e3b;
-    --state-success-border: #10b981;
-    --state-danger-bg: #7f1d1d;
-    --state-danger-border: #f43f5e;
-}
-
-/* Redefine chart wrapper bounds to stabilize screen elements */
-.clinical-chart-wrapper {
-    margin: 12px 16px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 12px;
-    height: 200px; /* Lock height dimensions firmly to absolute constants */
-    box-sizing: border-box;
-}
-
-.chart-placeholder-empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 160px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    border: 1px dashed var(--border-color);
-    background: transparent;
-}
-
-/* ==========================================================================
-   🎛️ OPTION 2: SESSION CONSTRUCTOR DASHBOARD LAYOUTS
-   ========================================================================== */
-.constructor-panel-card {
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    padding: 24px;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-}
-.constructor-grid-layout {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin-top: 14px;
-}
-.constructor-field-block {
-    display: flex;
-    flex-direction: column;
-}
-
-/* ==========================================================================
-   📄 OPTION 2: PRINT MEDIA STABILIZATION ENGINES
-   ========================================================================== */
-#printable-report-card-pane {
-    display: none; /* Hide inside browser window scope layouts completely */
-}
-
-@media print {
-    /* Completely eliminate standard UI view layers from printer feeds */
-    body *, .global-header, .main-viewport-shell, #auth-gateway-overlay, button, select, input {
-        display: none !important;
-    }
-    
-    html, body {
-        background: #ffffff !important;
-        color: #000000 !important;
-        font-size: 12pt !important;
-    }
-
-    #printable-report-card-pane {
-        display: block !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    .invoice-header-block {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        border-bottom: 2px solid #000 !important;
-        padding-bottom: 12px !important;
-    }
-
-    .invoice-billing-split {
-        display: flex !important;
-        justify-content: space-between !important;
-        margin-top: 20px !important;
-    }
-}
-
-/* ==========================================================================
-   🏢 BRAND TRUST & OPERATIONAL FOOTER UTILITY SHELF
-   ========================================================================== */
-.operational-trust-shelf {
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    padding: 20px 24px;
-    display: grid;
-    grid-template-columns: 1.2fr 1.5fr 1.3fr;
-    gap: 24px;
-    margin-top: 60px;
-    box-sizing: border-box;
-}
-
-@media (max-width: 900px) {
-    .operational-trust-shelf {
-        grid-template-columns: 1fr;
-        gap: 20px;
-        text-align: center;
-    }
-    .operational-trust-shelf #feedback-form-dock {
-        justify-content: center;
-    }
-}
-
-.shelf-col {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-}
-
-.heartbeat-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-}
-
-.heartbeat-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.pulse-green {
-    background: #10b981;
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-    animation: heartbeat-pulse-loop 2s infinite;
-}
-
-.pulse-red {
-    background: #ef4444;
-}
-
-@keyframes heartbeat-pulse-loop {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-/* ==========================================================================
-   🎨 ALTERNATIVE 1: SEMANTIC MONITOR telemetry VARIABLES (OPTICAL OVERHAUL)
-   ========================================================================== */
-:root {
-    --chart-grid: #e5e7eb;
-    --chart-aline: #ef4444;
-    --chart-teg: #3b82f6;
-    --chart-fill-teg: rgba(59, 130, 246, 0.08);
-    --chart-capno: #22c55e;
-}
-
-.theme-scrub {
-    --chart-grid: #cbd5e1;
-    --chart-aline: #b91c1c;
-    --chart-teg: #2563eb;
-    --chart-fill-teg: rgba(37, 99, 235, 0.06);
-    --chart-capno: #16a34a;
-}
-
-.theme-drape {
-    --chart-grid: #cbd5e1;
-    --chart-aline: #dc2626;
-    --chart-teg: #0284c7;
-    --chart-fill-teg: rgba(2, 132, 199, 0.06);
-    --chart-capno: #059669;
-}
-
-.theme-night {
-    --chart-grid: #2e2a24;
-    --chart-aline: #ff4766; /* Vibrant Tactical Neon Crimson */
-    --chart-teg: #00d2ff;   /* Cyber High-Contrast Neon Cyan */
-    --chart-fill-teg: rgba(0, 210, 255, 0.12);
-    --chart-capno: #39ff14; /* High-Visibility Electric Lime Green */
-}
-
-/* Enforce style synchronization properties across SVG paths */
-.chart-grid-line {
-    stroke: var(--chart-grid);
-    stroke-width: 1;
+@media (max-width: 600px) {
+    .broadsheet-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .telemetry-ribbon { flex-wrap: wrap; gap: 0.8rem; justify-content: flex-start; }
+    .vitals-metric { flex-basis: 40%; }
+    .question-stem { font-size: 1.1rem; }
 }

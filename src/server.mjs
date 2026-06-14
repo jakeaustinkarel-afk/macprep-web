@@ -1,162 +1,82 @@
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
-import crypto from 'crypto';
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Fix: Dynamically track root directory whether running locally or on Render
+const ROOT_DIR = path.join(__dirname, '..');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-const PROD_CLIENT_URL = process.env.CLIENT_URL || 'https://macprep-web.onrender.com';
-const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin || origin === 'http://localhost:3000' || origin === PROD_CLIENT_URL) {
-            callback(null, true);
-        } else {
-            callback(new Error('Origin access unauthorized by MACPrep infrastructure gates.'));
-        }
-    },
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Stripe-Signature']
-};
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-app.use(cors(corsOptions));
+// 1. Stripe Webhook Endpoint (Must stay ABOVE express.json() raw body tracking)
+app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
 
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret_key_matrix';
-
-// Stripe Webhook Endpoint (Raw byte interceptor matches signatures first)
-app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }), async (req, res) => {
-    const signatureHeader = req.headers['stripe-signature'];
-    if (!signatureHeader) return res.status(400).send('Missing Stripe Signature Header.');
     try {
-        const structuralPairs = signatureHeader.split(',').reduce((acc, pair) => {
-            const [key, val] = pair.split('='); if (key && val) acc[key.trim()] = val.trim(); return acc;
-        }, {});
-        const timestamp = structuralPairs['t'];
-        const incomingV1Signature = structuralPairs['v1'];
-        const rawPayloadString = req.body.toString('utf8');
-        const expectedSignature = crypto.createHmac('sha256', STRIPE_WEBHOOK_SECRET).update(`${timestamp}.${rawPayloadString}`).digest('hex');
-        if (incomingV1Signature !== expectedSignature) return res.status(401).send('Cryptographic Signature Verification Mismatch.');
-        res.status(200).json({ received: true });
-    } catch (err) { res.status(500).send(err.message); }
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        console.error(`❌ Webhook Signature Verification Failed: ${err.message}`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const userId = session.metadata?.userId;
+
+        console.log(`✨ Successful Checkout detected for User ID: ${userId}`);
+        
+        if (userId) {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ status: 'PREMIUM_UNLOCKED' })
+                .eq('id', userId);
+
+            if (error) {
+                console.error(`❌ Supabase Sync Failure for ${userId}:`, error);
+            } else {
+                console.log(`✅ User ${userId} successfully upgraded to PREMIUM_UNLOCKED status.`);
+            }
+        }
+    }
+
+    res.json({ received: true });
 });
 
+// 2. Regular JSON Parser for ordinary API routes
 app.use(express.json());
 
-// Absolute directory tracking resolution pass
-const ROOT_PROJECT_DIRECTORY_PATH = path.resolve(__dirname, '../');
-console.log(`📂 Routing Diagnostic: Mapping static assets to root folder: ${ROOT_PROJECT_DIRECTORY_PATH}`);
+// 3. Fix: Serve ALL static front-end assets properly from the root folder
+app.use(express.static(ROOT_DIR));
 
-// Serve all secondary file assets (styles.css, app.js, images) directly out of root
-app.use(express.static(ROOT_PROJECT_DIRECTORY_PATH));
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_KEY || 'placeholder');
-
-const networkTrafficScraperLimiterMap = new Map();
-function enforceAssetProtectionGuardrails(req, res, next) {
-    const clientIpToken = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'global_ip';
-    const currentTimeIndex = Date.now();
-    if (!networkTrafficScraperLimiterMap.has(clientIpToken)) networkTrafficScraperLimiterMap.set(clientIpToken, []);
-    const sanitizedTimestamps = networkTrafficScraperLimiterMap.get(clientIpToken).filter(time => currentTimeIndex - time < 60000);
-    if (sanitizedTimestamps.length >= 60) return res.status(429).json({ error: "Rate limit saturation ceiling breached." });
-    sanitizedTimestamps.push(currentTimeIndex); networkTrafficScraperLimiterMap.set(clientIpToken, sanitizedTimestamps);
-    next();
-}
-
-app.use('/api/questions', enforceAssetProtectionGuardrails);
-
-app.post('/api/feedback/submit', enforceAssetProtectionGuardrails, async (req, res) => {
-    const { type, content, userEmail } = req.body;
-    if (!content) return res.status(400).json({ error: "Feedback statement content tokens are absent." });
+// 4. API Endpoint to serve questions
+app.get('/api/questions', async (req, res) => {
     try {
-        await supabase.from('user_feedback').insert({
-            feedback_type: type || 'GENERAL',
-            content: content.trim(),
-            user_email: userEmail || 'anonymous@macprep-sandbox.org',
-            created_at: new Date().toISOString()
-        });
-        res.status(200).json({ success: true, message: "Handshake verified; feedback logged cleanly." });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const { data, error } = await supabase.from('macprep_questions').select('*');
+        if (error) throw error;
+        res.json({ questions: data });
+    } catch (err) {
+        console.error('❌ Error fetching questions:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.get('/api/b2b/cohort-analytics', async (req, res) => {
-    const directorId = req.query.directorId; if (!directorId) return res.status(400).json({ error: "Missing token." });
-    try {
-        const { data: vouchers } = await supabase.from('program_vouchers').select('claimed_by_id').eq('owner_director_id', directorId).eq('is_claimed', true);
-        const studentIds = (vouchers || []).map(v => v.claimed_by_id).filter(id => id !== null);
-        if (studentIds.length === 0) return res.status(200).json({ status: "success", summary: {} });
-        const { data: profiles } = await supabase.from('user_profiles').select('progress_ledger').in('id', studentIds);
-        const { data: questions } = await supabase.from('questions').select('id, specialty, correct_answer');
-        const questionsMap = {}; (questions || []).forEach(q => { questionsMap[q.id] = { specialty: q.specialty, correctAnswer: q.correct_answer }; });
-        const cohortSummaryMatrix = {};
-        (profiles || []).forEach(prof => {
-            if (!prof.progress_ledger) return;
-            const answers = (typeof prof.progress_ledger === 'string' ? JSON.parse(prof.progress_ledger) : prof.progress_ledger).answers || {};
-            Object.keys(answers).forEach(qIndex => {
-                const qInfo = questionsMap[qIndex] || Object.values(questionsMap).find((v, idx) => idx === parseInt(qIndex, 10)); if (!qInfo) return;
-                if (!cohortSummaryMatrix[qInfo.specialty]) cohortSummaryMatrix[qInfo.specialty] = { correct: 0, total: 0 };
-                cohortSummaryMatrix[qInfo.specialty].total++; if (answers[qIndex] === qInfo.correctAnswer) cohortSummaryMatrix[qInfo.specialty].correct++;
-            });
-        });
-        res.status(200).json({ status: "success", summary: cohortSummaryMatrix });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/b2b/redeem-voucher', async (req, res) => {
-    const { voucherCode, userId, userEmail } = req.body;
-    try {
-        const { data: voucher } = await supabase.from('program_vouchers').select('*').eq('voucher_key', voucherCode.trim().toUpperCase()).single();
-        if (!voucher || voucher.is_claimed) return res.status(400).json({ error: "Invalid or claimed voucher code." });
-        await supabase.from('program_vouchers').update({ is_claimed: true, claimed_by_id: userId, claimed_by_email: userEmail, claimed_at: new Date().toISOString() }).eq('id', voucher.id);
-        await supabase.from('user_profiles').update({ is_premium: true }).eq('id', userId);
-        res.status(200).json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/b2b/my-cohort-vouchers', async (req, res) => {
-    try { const { data } = await supabase.from('program_vouchers').select('*').eq('owner_director_id', req.query.directorId); res.status(200).json({ status: "success", codes: data || [] }); } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/b2b/mint-voucher', async (req, res) => {
-    try {
-        const token = crypto.randomBytes(4).toString('hex').toUpperCase(); const key = `MAC-${req.body.programPrefix || 'AA'}-2026-${token}`;
-        const { data } = await supabase.from('program_vouchers').insert({ owner_director_id: req.body.directorId, voucher_key: key, is_claimed: false }).select().single();
-        res.status(201).json({ success: true, code: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/questions/free', async (req, res) => {
-    try {
-        let dbQuery = supabase.from('questions').select('*');
-        if (req.query.specialty && req.query.specialty !== 'ALL') dbQuery = dbQuery.eq('specialty', req.query.specialty);
-        const { data: questions } = await dbQuery;
-        res.status(200).json({ questions: (questions || []).map(q => ({
-            id: q.id, specialty: q.specialty, stem: q.stem, choices: typeof q.choices === 'string' ? JSON.parse(q.choices) : q.choices, correctAnswer: q.correct_answer, explanation: q.explanation, telemetry: typeof q.telemetry === 'string' ? JSON.parse(q.telemetry) : q.telemetry
-        })) });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/bibliography', async (req, res) => {
-    try { res.status(200).json({ sources: (await supabase.from('bibliography_registry').select('*')).data || [] }); } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// ==========================================================================
-// 🛡️ WILDCARD CATCH-ALL ROUTING MATRIX
-// Guarantees all non-API paths resolve strictly back to index.html layouts
-// ==========================================================================
+// 5. Fix: Direct the main landing route explicit request to index.html
 app.get('*', (req, res) => {
-    res.sendFile(path.join(ROOT_PROJECT_DIRECTORY_PATH, 'index.html'));
+    res.sendFile(path.join(ROOT_DIR, 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`🚀 Secure SQL Streaming Engine Active on Port: ${PORT}`); 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`📡 Express Workstation Engine Online: Operating securely on Port ${PORT}`);
 });
