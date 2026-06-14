@@ -31,6 +31,7 @@ app.use(cors(corsOptions));
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret_key_matrix';
 
+// Stripe Webhook Endpoint (Raw byte interceptor matches signatures first)
 app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }), async (req, res) => {
     const signatureHeader = req.headers['stripe-signature'];
     if (!signatureHeader) return res.status(400).send('Missing Stripe Signature Header.');
@@ -48,7 +49,17 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }
 });
 
 app.use(express.json());
+
+// Serve static assets from the root project directory cleanly
 app.use(express.static(path.join(__dirname, '../')));
+
+// ==========================================================================
+// 🎯 EXPLICIT ROOT ROUTE ROUTING GATE
+// Explicitly handles base URLs to prevent cloud deployment 404 omissions
+// ==========================================================================
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -67,28 +78,18 @@ function enforceAssetProtectionGuardrails(req, res, next) {
 
 app.use('/api/questions', enforceAssetProtectionGuardrails);
 
-// ==========================================================================
-// 📬 OPERATIONAL GATEWAY: SUGGESTION & CLINICAL ERRATA INGESTION API
-// Safely maps student flags and structural software bugs to secure logs
-// ==========================================================================
 app.post('/api/feedback/submit', enforceAssetProtectionGuardrails, async (req, res) => {
     const { type, content, userEmail } = req.body;
     if (!content) return res.status(400).json({ error: "Feedback statement content tokens are absent." });
-
     try {
-        const { error } = await supabase
-            .from('user_feedback')
-            .insert({
-                feedback_type: type || 'GENERAL',
-                content: content.trim(),
-                user_email: userEmail || 'anonymous@macprep-sandbox.org',
-                created_at: new Date().toISOString()
-            });
-
+        await supabase.from('user_feedback').insert({
+            feedback_type: type || 'GENERAL',
+            content: content.trim(),
+            user_email: userEmail || 'anonymous@macprep-sandbox.org',
+            created_at: new Date().toISOString()
+        });
         res.status(200).json({ success: true, message: "Handshake verified; feedback logged cleanly." });
-    } catch (err) {
-        res.status(500).json({ error: "Feedback persistence fault.", details: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/b2b/cohort-analytics', async (req, res) => {
@@ -115,11 +116,13 @@ app.get('/api/b2b/cohort-analytics', async (req, res) => {
 });
 
 app.post('/api/b2b/redeem-voucher', async (req, res) => {
+    const { voucherCode, userId, userEmail } = req.body;
     try {
-        const { data: voucher } = await supabase.from('program_vouchers').select('*').eq('voucher_key', req.body.voucherCode.trim().toUpperCase()).single();
-        if (!voucher || voucher.is_claimed) return res.status(400).json({ error: "Invalid voucher." });
-        await supabase.from('program_vouchers').update({ is_claimed: true, claimed_by_id: req.body.userId, claimed_by_email: req.body.userEmail, claimed_at: new Date().toISOString() }).eq('id', voucher.id);
-        await supabase.from('user_profiles').update({ is_premium: true }).eq('id', req.body.userId); res.status(200).json({ success: true });
+        const { data: voucher } = await supabase.from('program_vouchers').select('*').eq('voucher_key', voucherCode.trim().toUpperCase()).single();
+        if (!voucher || voucher.is_claimed) return res.status(400).json({ error: "Invalid or claimed voucher code." });
+        await supabase.from('program_vouchers').update({ is_claimed: true, claimed_by_id: userId, claimed_by_email: userEmail, claimed_at: new Date().toISOString() }).eq('id', voucher.id);
+        await supabase.from('user_profiles').update({ is_premium: true }).eq('id', userId);
+        res.status(200).json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -150,4 +153,4 @@ app.get('/api/bibliography', async (req, res) => {
     try { res.status(200).json({ sources: (await supabase.from('bibliography_registry').select('*')).data || [] }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Secure SQL Streaming Engine Active on Port: ${PORT}`); });
+app.listen(PORT, '0.0.0.0', () => { console.log("🚀 Secure SQL Streaming Engine Active."); });
