@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workspace Controller
- * Unified One-Track Engine & Deep Diagnostic Paywall Analytics Subsystem
+ * Unified One-Track Engine with Deep Analytics & Local Resume Cache Engines
  */
 
 // Global State Variables
@@ -18,10 +18,11 @@ const FREE_TIER_LIMIT_CEILING = 100;
 
 // Deep Diagnostic Telemetry Trackers
 let metricsCertainAndCorrect = 0;
-let metricsCertainButIncorrect = 0;  // Core component of the Near-Miss Blindspot Quotient
+let metricsCertainButIncorrect = 0;
 let metricsEducatedGuesses = 0;
-let metricsBlindGuesses = 0;        // Core component of the Clinical Hesitation Index
+let metricsBlindGuesses = 0;
 
+// High-Quality Static Fallback Question Matrix Object
 const localFallbackQuestion = {
     id: "q_fallback_001",
     specialty: "PHARM",
@@ -46,6 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCalculatorLogics();
     setupThemeAndScalingLogics();
     setupGlobalKeyboardHotkeys();
+    
+    // RESUME CACHE HOOK: Check for persistent background sessions on initial boot
+    loadSessionStateFromCache();
 });
 
 async function initializeBibliographyData() {
@@ -139,6 +143,8 @@ function setupDashboardEventHandlers() {
         exitBtn.addEventListener('click', () => {
             clearInterval(examTimerInterval);
             clearInterval(dynamicWaveformInterval);
+            // Clear cache variables completely on manual explicit session abandon
+            clearSessionStateCache();
             if (dashboardPane) dashboardPane.classList.remove('hidden');
             if (testingPane) testingPane.classList.add('hidden');
             if (exitBtn) exitBtn.classList.add('hidden');
@@ -220,6 +226,9 @@ async function loadActiveSessionQuestion() {
     document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     startWaveformSimulationAnimation(currentLiveQuestion.waveformType || "NORMAL");
+
+    // PERSISTENT CACHE SAVE: Save current state to cache
+    saveSessionStateToCache();
 }
 
 function setupWorkspaceTabHandlers() {
@@ -238,10 +247,9 @@ function setupWorkspaceTabHandlers() {
             const selectedAnswer = goldCard.getAttribute('data-label');
             const isCorrect = (selectedAnswer === currentLiveQuestion.correctAnswer);
 
-            // PROCESS PSYCHOMETRIC CERTAINTY PROFILES
             if (certaintyMode === 'CERTAIN') {
                 if (isCorrect) metricsCertainAndCorrect++;
-                else metricsCertainButIncorrect++; // Increments near-miss parameters
+                else metricsCertainButIncorrect++;
             } else if (certaintyMode === 'EDUCATED_GUESS') {
                 metricsEducatedGuesses++;
             } else if (certaintyMode === 'BLIND_GUESS') {
@@ -270,29 +278,28 @@ function setupWorkspaceTabHandlers() {
             if (scoreDisplay) {
                 scoreDisplay.textContent = `PROGRESS: ${totalQuestionsAnsweredInSession} / ${FREE_TIER_LIMIT_CEILING}`;
             }
+
+            // PERSISTENT CACHE SAVE: Save current scores on answer lock
+            saveSessionStateToCache();
         });
     });
 
-    // ADVANCE CASE HANDLER WITH LIVE PSYCHOLOGICAL CALCULATIONS
     document.getElementById('advance-next-case-btn').addEventListener('click', async () => {
         if (totalQuestionsAnsweredInSession >= FREE_TIER_LIMIT_CEILING) {
+            // Drop cache files on ultimate conversion milestone target hit
+            clearSessionStateCache();
+            
             document.getElementById('pane-active-testing').classList.add('hidden');
             document.getElementById('header-exit-btn').classList.add('hidden');
             document.getElementById('timer-zone').classList.add('hidden');
 
-            // 1. Calculate Real-Time Pathological Blindspots
             const totalCertainResponses = metricsCertainAndCorrect + metricsCertainButIncorrect;
-            const blindspotRatio = totalCertainResponses > 0 
-                ? Math.round((metricsCertainButIncorrect / totalCertainResponses) * 100) 
-                : 33; // Psychological realistic fallback calculation baseline
-
+            const blindspotRatio = totalCertainResponses > 0 ? Math.round((metricsCertainButIncorrect / totalCertainResponses) * 100) : 33;
             const hesitationRatio = Math.round((metricsBlindGuesses / totalQuestionsAnsweredInSession) * 100) || 28;
 
-            // 2. Hydrate Giant Stat Elements
             document.getElementById('metric-blindspot-value').textContent = `${blindspotRatio}%`;
             document.getElementById('metric-hesitation-value').textContent = `${hesitationRatio}%`;
 
-            // 3. Render Speciality Competency Bars
             const heatmapTarget = document.getElementById('heatmap-injection-target-grid');
             if (heatmapTarget) {
                 heatmapTarget.innerHTML = '';
@@ -310,7 +317,6 @@ function setupWorkspaceTabHandlers() {
                 specialties.forEach(mod => {
                     const block = document.createElement('div');
                     block.className = 'heatmap-cell-block';
-                    // Apply relative caution indicators based on accuracy parameters
                     const alertColor = mod.score < 65 ? 'var(--error-red)' : mod.score < 75 ? 'var(--gold-tint)' : 'var(--botanical-green)';
                     block.innerHTML = `
                         <span class="heatmap-cell-title">${mod.name}</span>
@@ -330,6 +336,104 @@ function setupWorkspaceTabHandlers() {
         document.getElementById('pane-conversion-paywall').classList.add('hidden');
         document.getElementById('pane-dashboard-home').classList.remove('hidden');
     });
+}
+
+/**
+ * ==========================================================================
+ * 💾 RESUME ENGINE UTILITIES (LOCALSTORAGE WORKSPACE LEDGERS)
+ * Caches workflow elements across sudden clinical emergency exits
+ * ==========================================================================
+ */
+function saveSessionStateToCache() {
+    try {
+        const cachePayload = {
+            totalQuestionsAnsweredInSession,
+            metricsCertainAndCorrect,
+            metricsCertainButIncorrect,
+            metricsEducatedGuesses,
+            metricsBlindGuesses,
+            currentLiveQuestion
+        };
+        localStorage.setItem('macprep_active_session_ledger', JSON.stringify(cachePayload));
+    } catch (e) {
+        console.error('Failed to write progress metrics onto browser window local cache.', e);
+    }
+}
+
+function loadSessionStateFromCache() {
+    try {
+        const cachedRaw = localStorage.getItem('macprep_active_session_ledger');
+        if (!cachedRaw) return;
+
+        const ledger = JSON.parse(cachedRaw);
+        if (ledger && ledger.totalQuestionsAnsweredInSession > 0) {
+            // Restore numerical state values
+            totalQuestionsAnsweredInSession = ledger.totalQuestionsAnsweredInSession;
+            metricsCertainAndCorrect = ledger.metricsCertainAndCorrect;
+            metricsCertainButIncorrect = ledger.metricsCertainButIncorrect;
+            metricsEducatedGuesses = ledger.metricsEducatedGuesses;
+            metricsBlindGuesses = ledger.metricsBlindGuesses;
+            currentLiveQuestion = ledger.currentLiveQuestion;
+
+            // Trigger structural DOM interface workspace shifts
+            document.getElementById('pane-dashboard-home').classList.add('hidden');
+            document.getElementById('pane-active-testing').classList.remove('hidden');
+            document.getElementById('header-exit-btn').classList.remove('hidden');
+            document.getElementById('timer-zone').classList.remove('hidden');
+
+            const scoreDisplay = document.getElementById('score-display');
+            if (scoreDisplay) {
+                scoreDisplay.textContent = `PROGRESS: ${totalQuestionsAnsweredInSession} / ${FREE_TIER_LIMIT_CEILING}`;
+            }
+
+            // Hydrate parameters safely
+            document.getElementById('question-stem-text').textContent = currentLiveQuestion.stem;
+            document.getElementById('vital-hr').textContent = currentLiveQuestion.telemetry?.hr || "74";
+            document.getElementById('vital-bp').textContent = currentLiveQuestion.telemetry?.bp || "120/80";
+            document.getElementById('vital-spo2').textContent = currentLiveQuestion.telemetry?.spo2 || "99";
+            document.getElementById('vital-etco2').textContent = currentLiveQuestion.telemetry?.etco2 || "38";
+
+            // Rebuild option card columns
+            const choicesStack = document.getElementById('choices-stack-container');
+            if (choicesStack && currentLiveQuestion.choices) {
+                choicesStack.innerHTML = '';
+                currentLiveQuestion.choices.forEach(choice => {
+                    const card = document.createElement('div');
+                    card.className = 'choice-card-row';
+                    card.setAttribute('data-label', choice.originalLabel);
+                    card.innerHTML = `
+                        <div class="choice-accent-keyline"></div>
+                        <span class="choice-badge">${choice.originalLabel}</span>
+                        <p class="choice-body-text">${choice.text}</p>
+                        <div class="choice-strike-handle">⎯</div>
+                    `;
+                    card.addEventListener('click', () => {
+                        if (card.classList.contains('struck-out')) return;
+                        if (!document.getElementById('rationale-analysis-master-box').classList.contains('hidden')) return;
+                        document.querySelectorAll('.choice-card-row').forEach(c => c.classList.remove('tentative-gold'));
+                        card.classList.add('tentative-gold');
+                        document.getElementById('calibration-submission-lock-panel').classList.remove('hidden');
+                    });
+                    card.querySelector('.choice-strike-handle').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        card.classList.toggle('struck-out');
+                        card.classList.remove('tentative-gold');
+                    });
+                    choicesStack.appendChild(card);
+                });
+            }
+
+            startWorkspaceCountdownTimer();
+            startWaveformSimulationAnimation(currentLiveQuestion.waveformType || "NORMAL");
+            console.log(`✨ Persistent local checkpoint restored. Workflow resumed at item ${totalQuestionsAnsweredInSession}.`);
+        }
+    } catch (err) {
+        console.warn('Unable to deserialize cached state strings.', err);
+    }
+}
+
+function clearSessionStateCache() {
+    localStorage.removeItem('macprep_active_session_ledger');
 }
 
 document.getElementById('tab-toggle-question').addEventListener('click', (e) => {
