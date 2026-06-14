@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Integrates Option 2 (PDF Report Cards) and Option 3 (60-second Enforced Exam Timers)
+ * Upgraded with Responsive Parametric SVG Capnography Waveforms & Failsafe Session Auto-Saves
  */
 
 const SUPABASE_URL = "https://placeholder.supabase.co"; 
@@ -20,14 +20,10 @@ let currentSessionMode = "STUDY";
 let dynamicSessionBlockSizeCeiling = 10;
 let computedIncorrectRemediationPool = {}; 
 
-// Spaced-Repetition Analytics Tracking Store
 let caseVignetteLoadTimestamp = Date.now();
 let structuralDecisionLatencyStore = {}; 
 let certaintyCalibrationStore = {};      
 
-// ==========================================================================
-// ⏱️ OPTION 3: ST_NATIONAL BOARD PACING COUNTDOWN STATES
-// ==========================================================================
 let strictExamCountdownIntervalToken = null;
 let remainingQuestionSecondsCounter = 60;
 
@@ -38,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeAdvancedCalculatorRouting();
     initializeBibliographySearchEngine();
     initializeB2BRedemptionListeners();
-    initializeReportCardPdfExporter(); // Hooks trigger onto option 2 buttons
+    initializeReportCardPdfExporter();
+    recoverFailsafeSessionStateCache(); // Check for local tab-closure safety backups instantly on launch
 });
 
 function initializeSupabaseSessionMonitor() {
@@ -66,15 +63,53 @@ async function syncUserCloudStateVectors(clientInstance) {
         if (data) {
             if (data.progress_ledger) {
                 const parsed = typeof data.progress_ledger === 'string' ? JSON.parse(data.progress_ledger) : data.progress_ledger;
-                answeredRegistryState = parsed.answers || {}; flaggedQuestionsMap = parsed.flags || {};
-                structuralDecisionLatencyStore = parsed.latencies || {}; certaintyCalibrationStore = parsed.certainties || {};
-                computedIncorrectRemediationPool = parsed.historical_misses || {}; totalProgressCount = Object.keys(answeredRegistryState).length;
+                // Cloud data overrides local cache fallback values if present
+                answeredRegistryState = parsed.answers || answeredRegistryState; 
+                flaggedQuestionsMap = parsed.flags || flaggedQuestionsMap;
+                structuralDecisionLatencyStore = parsed.latencies || structuralDecisionLatencyStore; 
+                certaintyCalibrationStore = parsed.certainties || certaintyCalibrationStore;
+                computedIncorrectRemediationPool = parsed.historical_misses || computedIncorrectRemediationPool;
+                totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
             if (data.is_developer) { isDeveloperAccessPrivileged = true; document.getElementById('developer-audit-panel')?.classList.remove('hidden'); }
             if (data.is_program_director) { isProgramDirectorAuthenticated = true; document.getElementById('b2b-director-portal-dock').classList.remove('hidden'); refreshB2BDirectorMasterPortalData(); }
         }
     } catch (err) {}
+}
+
+// ==========================================================================
+// 🛡️ SYSTEMIC PROTECTION: FAILSAFE CACHE HANDLERS
+// Instantly restores current state tracking matrices if a tab drops or refreshes
+// ==========================================================================
+function executeLocalFailsafeSaveBackup() {
+    try {
+        const stateBundle = {
+            answers: answeredRegistryState,
+            flags: flaggedQuestionsMap,
+            certainties: certaintyCalibrationStore,
+            latencies: structuralDecisionLatencyStore,
+            mode: currentSessionMode,
+            index: currentQuestionIndex
+        };
+        localStorage.setItem('macprep_failsafe_session_cache', JSON.stringify(stateBundle));
+    } catch (e) { console.warn("Failsafe drive save blocked.", e); }
+}
+
+function recoverFailsafeSessionStateCache() {
+    try {
+        const cacheRaw = localStorage.getItem('macprep_failsafe_session_cache');
+        if (cacheRaw) {
+            const cache = JSON.parse(cacheRaw);
+            answeredRegistryState = cache.answers || {};
+            flaggedQuestionsMap = cache.flags || {};
+            certaintyCalibrationStore = cache.certainties || {};
+            structuralDecisionLatencyStore = cache.latencies || {};
+            currentSessionMode = cache.mode || "STUDY";
+            currentQuestionIndex = cache.index || 0;
+            console.log("⚡ Failsafe Activated: Restored previous testing position matrix cleanly from device storage.");
+        }
+    } catch (e) { localStorage.removeItem('macprep_failsafe_session_cache'); }
 }
 
 async function refreshB2BDirectorMasterPortalData() {
@@ -90,7 +125,7 @@ async function fetchB2BInstitutionalCohortRegistry() {
 
 function renderB2BVoucherControlMatrix(vouchersList) {
     const tbody = document.getElementById('b2b-voucher-table-body'); if (!tbody) return; tbody.innerHTML = "";
-    if (vouchersList.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:12px; color:var(--text-muted); font-family:monospace;">🎫 No seats currently generated.</td></tr>`; return; }
+    if (vouchersList.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:12px; color:var(--text-muted); font-family:monospace;">🎫 No seats generated.</td></tr>`; return; }
     vouchersList.forEach(code => {
         const row = document.createElement('tr');
         row.innerHTML = `<td style="font-family:var(--font-mono); font-weight:bold; font-size:12px; color:var(--accent-crimson);">${code.voucher_key}</td><td style="font-family:var(--font-mono); font-size:11px;">${code.is_claimed ? "🟢 ACTIVE" : "⚪ UNCLAIMED"}</td><td style="font-size:12px; color:var(--text-muted);">${code.claimed_by_email || "Pending Assignment..."}</td><td><button class="tactical-flag-action-btn" style="font-size:10px; padding:2px 6px;" onclick="navigator.clipboard.writeText('${code.voucher_key}'); alert('Voucher key copied!');">📋 Copy</button></td>`;
@@ -119,50 +154,31 @@ function renderB2BCohortHeatmapGrid(summaryMatrix) {
     });
 }
 
-// ==========================================================================
-// ⏱️ TIMER SYSTEM CONSTRAINTS OPERATIONALIZATION (OPTION 3)
-// Instantiates a hard 60s countdown; auto-locks inputs and force-advances if zeroed
-// ==========================================================================
 function startActiveQuestionPacingClock() {
     clearInterval(strictExamCountdownIntervalToken);
-    
     const zone = document.getElementById('timer-zone');
     const txt = document.getElementById('timer-text');
     const bar = document.getElementById('timer-bar');
-    
     if (!zone || !txt || !bar) return;
+    if (currentSessionMode !== "EXAM") { zone.classList.add('hidden'); return; }
 
-    if (currentSessionMode !== "EXAM") {
-        zone.classList.add('hidden'); return;
-    }
-
-    zone.classList.remove('hidden');
-    remainingQuestionSecondsCounter = 60;
-    txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`;
-    bar.style.width = "100%";
+    zone.classList.remove('hidden'); remainingQuestionSecondsCounter = 60;
+    txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`; bar.style.width = "100%";
 
     strictExamCountdownIntervalToken = setInterval(() => {
-        remainingQuestionSecondsCounter--;
-        txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`;
+        remainingQuestionSecondsCounter--; txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`;
         bar.style.width = `${(remainingQuestionSecondsCounter / 60) * 100}%`;
-
-        if (remainingQuestionSecondsCounter <= 0) {
-            clearInterval(strictExamCountdownIntervalToken);
-            executeAutomatedTimerExpirationAdvance();
-        }
+        if (remainingQuestionSecondsCounter <= 0) { clearInterval(strictExamCountdownIntervalToken); executeAutomatedTimerExpirationAdvance(); }
     }, 1000);
 }
 
 async function executeAutomatedTimerExpirationAdvance() {
-    console.log("⏱️ Timer Expired: Forcing baseline placeholder choice validation vectors.");
-    
     certaintyCalibrationStore[currentQuestionIndex] = "BLIND_GUESS";
     structuralDecisionLatencyStore[currentQuestionIndex] = 60000;
-    answeredRegistryState[currentQuestionIndex] = "TIMEOUT"; // Mark row indices skipped
-
-    totalProgressCount++;
-    document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / ${dynamicSessionBlockSizeCeiling}`;
+    answeredRegistryState[currentQuestionIndex] = "TIMEOUT";
+    totalProgressCount++; document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / ${dynamicSessionBlockSizeCeiling}`;
     
+    executeLocalFailsafeSaveBackup(); // Commit state changes locally
     await pushClientProgressStateToSupabaseCloud();
 
     if (totalProgressCount >= dynamicSessionBlockSizeCeiling) {
@@ -171,10 +187,39 @@ async function executeAutomatedTimerExpirationAdvance() {
         document.getElementById('pane-conversion-paywall').classList.remove('hidden');
         executeAlgorithmicCalibrationReport();
     } else {
-        currentQuestionIndex++;
-        renderTacticalFlagRibbon();
-        loadActiveQuestionVignette();
+        currentQuestionIndex++; renderTacticalFlagRibbon(); loadActiveQuestionVignette();
     }
+}
+
+// ==========================================================================
+// 🎨 VISUAL VISUAL REALISM UPGRADE: PARAMETRIC SVG WAVE MORPHER
+// Translates raw case EtCO2 and HR parameters into a responsive vector curve
+// ==========================================================================
+function morphParametricCapnographyWaveform(etco2Val, hrVal) {
+    const waveLinePath = document.getElementById('dynamic-capno-path');
+    if (!waveLinePath) return;
+
+    // Default reference scales if telemetry values are absent
+    const etco2 = etco2Val || 35;
+    const hr = hrVal || 75;
+
+    // Convert physiological indicators directly into vector geometry metrics
+    // Taller ETCO2 pushes plateau heights upward toward the canvas top y-axis
+    const plateauHeightCalculatedY = Math.max(5, 38 - (etco2 * 0.8)); 
+    
+    // Higher HR horizontal compresses the breath duration cycle widths
+    const baselineInspirationWidthX = Math.max(12, 45 - (hr * 0.15));
+
+    // Construct a custom, unified SVG responsive path string
+    const targetStringPathVector = `
+        M 0 38 
+        L 15 38 
+        L 20 ${plateauHeightCalculatedY} 
+        L ${20 + baselineInspirationWidthX} ${plateauHeightCalculatedY} 
+        L ${25 + baselineInspirationWidthX} 38 
+        L 120 38
+    `;
+    waveLinePath.setAttribute('d', targetStringPathVector.trim().replace(/\s+/g, ' '));
 }
 
 function loadActiveQuestionVignette() {
@@ -182,8 +227,8 @@ function loadActiveQuestionVignette() {
     const currentQuestion = globalQuestionPool[currentQuestionIndex];
     caseVignetteLoadTimestamp = Date.now(); 
 
-    // Instantiate clock conditions for Option 3 immediately upon loading vignette bounds
     startActiveQuestionPacingClock();
+    executeLocalFailsafeSaveBackup(); // Cache state position securely
 
     document.getElementById('rationale-analysis-master-box').classList.add('hidden');
     document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
@@ -215,6 +260,9 @@ function loadActiveQuestionVignette() {
             document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80";
             document.getElementById('vital-spo2').textContent = currentQuestion.telemetry.spo2 || "99";
             document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35";
+            
+            // Execute the live capnography morph transformation pass
+            morphParametricCapnographyWaveform(currentQuestion.telemetry.etco2, currentQuestion.telemetry.hr);
         }
         const specialty = currentQuestion.specialty || "ALL"; const uppercaseStem = currentQuestion.stem.toUpperCase();
         if (specialty === "CARDIOVASCULAR MANAGEMENT" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH")) {
@@ -237,8 +285,8 @@ function loadActiveQuestionVignette() {
 }
 
 function executeAlgorithmicCalibrationReport() {
-    clearInterval(strictExamCountdownIntervalToken); // Freeze any clock processes
-    document.getElementById('timer-zone')?.classList.add('hidden');
+    clearInterval(strictExamCountdownIntervalToken); document.getElementById('timer-zone')?.classList.add('hidden');
+    localStorage.removeItem('macprep_failsafe_session_cache'); // Clear local safe buffers on full completions
 
     let totalCasesEvaluated = Object.keys(answeredRegistryState).length; if (totalCasesEvaluated === 0) return;
     let incorrectCount = 0; let blindspotNearMissCount = 0; let hesitationGuessCount = 0; const specialtyPerformanceMatrix = {};
@@ -253,7 +301,6 @@ function executeAlgorithmicCalibrationReport() {
     
     document.getElementById('metric-blindspot-value').textContent = `${incorrectCount > 0 ? Math.round((blindspotNearMissCount / incorrectCount) * 100) : 0}%`;
     document.getElementById('metric-hesitation-value').textContent = `${Math.round((hesitationGuessCount / totalCasesEvaluated) * 100)}%`;
-    
     const heatmapContainer = document.getElementById('heatmap-injection-target-grid'); if (!heatmapContainer) return;
     heatmapContainer.innerHTML = "";
     
@@ -266,34 +313,16 @@ function executeAlgorithmicCalibrationReport() {
     renderCanvasHistoricalTrendLine(incorrectCount > 0 ? Math.round((blindspotNearMissCount / incorrectCount) * 100) : 0, Math.round((hesitationGuessCount / totalCasesEvaluated) * 100));
 }
 
-// ==========================================================================
-// 📄 FRONTEND REPORT CARD INJECTION & PRINT BINDINGS (OPTION 2)
-// Compiles score fields onto hidden layout elements and evoking window.print
-// ==========================================================================
 function initializeReportCardPdfExporter() {
-    const btn = document.getElementById('export-report-card-btn');
-    if (!btn) return;
-
+    const btn = document.getElementById('export-report-card-btn'); if (!btn) return;
     btn.addEventListener('click', () => {
-        console.log("📄 Exporting unalterable evaluation vectors frame sheet...");
-        
-        // Populate text placeholders
         document.getElementById('print-rc-email').textContent = activeUserSessionProfile ? activeUserSessionProfile.email : "sandbox@aa-program.edu";
         document.getElementById('print-rc-date').textContent = new Date().toLocaleString();
         document.getElementById('print-rc-blindspot').textContent = document.getElementById('metric-blindspot-value').textContent;
         document.getElementById('print-rc-hesitation').textContent = document.getElementById('metric-hesitation-value').textContent;
-        
-        // Generate pseudo verification token hash string
         document.getElementById('print-rc-hash').textContent = 'whsec_' + Math.random().toString(16).substring(2, 10).toUpperCase();
-
-        // Populate subspecialty text rows straight onto printable section
-        const rcHeatmap = document.getElementById('print-rc-heatmap-target');
-        const mainHeatmap = document.getElementById('heatmap-injection-target-grid');
-        if (rcHeatmap && mainHeatmap) {
-            rcHeatmap.innerHTML = mainHeatmap.innerHTML;
-        }
-
-        // Fire browser core print engine hooks flawlessly
+        const rcHeatmap = document.getElementById('print-rc-heatmap-target'); const mainHeatmap = document.getElementById('heatmap-injection-target-grid');
+        if (rcHeatmap && mainHeatmap) rcHeatmap.innerHTML = mainHeatmap.innerHTML;
         window.print();
     });
 }
@@ -338,6 +367,7 @@ function initializeInterfaceControls() {
                 totalProgressCount++; document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / ${dynamicSessionBlockSizeCeiling}`;
                 if (totalProgressCount >= dynamicSessionBlockSizeCeiling) document.getElementById('advance-next-case-btn').textContent = "VIEW METRICS REPORT ➔";
             }
+            executeLocalFailsafeSaveBackup(); // Save state locally
             await pushClientProgressStateToSupabaseCloud();
         });
     });
@@ -347,7 +377,6 @@ function initializeInterfaceControls() {
     });
     document.getElementById('paywall-return-home-btn').addEventListener('click', () => { window.location.reload(); });
 }
-
 function initializeSpecialtyMatrixFilters() {
     document.getElementById('modality-pills-container')?.addEventListener('click', async (e) => {
         const pill = e.target.closest('.modality-pill'); if (!pill) return;

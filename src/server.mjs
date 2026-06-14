@@ -31,6 +31,7 @@ app.use(cors(corsOptions));
 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret_key_matrix';
 
+// Stripe Webhook Endpoint (Raw parser interceptor matches signatures cleanly first)
 app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }), async (req, res) => {
     const signatureHeader = req.headers['stripe-signature'];
     if (!signatureHeader) return res.status(400).send('Missing Stripe Signature Header.');
@@ -43,9 +44,6 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/octet-stream' }
         const rawPayloadString = req.body.toString('utf8');
         const expectedSignature = crypto.createHmac('sha256', STRIPE_WEBHOOK_SECRET).update(`${timestamp}.${rawPayloadString}`).digest('hex');
         if (incomingV1Signature !== expectedSignature) return res.status(401).send('Cryptographic Signature Verification Mismatch.');
-        if (JSON.parse(rawPayloadString).type === 'checkout.session.completed') {
-            console.log(`💰 Individual Payment Verified.`);
-        }
         res.status(200).json({ received: true });
     } catch (err) { res.status(500).send(err.message); }
 });
@@ -58,84 +56,79 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 const supabase = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_KEY || 'placeholder');
 
 // ==========================================================================
-// 🏛️ B2B AA PROGRAM COHORT PERFORMANCE ANALYTICS API (UPGRADED)
+// 🛡️ SAFETY GATEWAY: ANTI-SCRAPING API RATE LIMITER MIDDLEWARE
+// Secures your 1,000 question curriculum asset bank from automated scraping loops
+// ==========================================================================
+const networkTrafficScraperLimiterMap = new Map();
+
+function enforceAssetProtectionGuardrails(req, res, next) {
+    const clientIpToken = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'global_ip';
+    const currentTimeIndex = Date.now();
+    
+    if (!networkTrafficScraperLimiterMap.has(clientIpToken)) {
+        networkTrafficScraperLimiterMap.set(clientIpToken, []);
+    }
+    
+    const requestTimestampHistory = networkTrafficScraperLimiterMap.get(clientIpToken);
+    // Clear out request logs older than 60 seconds
+    const sanitizedTimestamps = requestTimestampHistory.filter(time => currentTimeIndex - time < 60000);
+    
+    // Strict restriction constraint threshold: maximum 60 calls per minute
+    if (sanitizedTimestamps.length >= 60) {
+        console.warn(`🛑 Scraper Blocked: IP rate limit hit on source endpoint paths: ${clientIpToken}`);
+        return res.status(429).json({ error: "Rate limit saturation ceiling breached. Requests throttled to safeguard content." });
+    }
+    
+    sanitizedTimestamps.push(currentTimeIndex);
+    networkTrafficScraperLimiterMap.set(clientIpToken, sanitizedTimestamps);
+    next();
+}
+
+// Attach rate-limiting guardrails to curriculum collection routes
+app.use('/api/questions', enforceAssetProtectionGuardrails);
+
+// ==========================================================================
+// 🏛️ B2B AA PROGRAM COHORT PERFORMANCE ENDPOINTS
 // ==========================================================================
 app.get('/api/b2b/cohort-analytics', async (req, res) => {
     const directorId = req.query.directorId;
-    if (!directorId) return res.status(400).json({ error: "Missing admin identifier token index values." });
-
+    if (!directorId) return res.status(400).json({ error: "Missing admin identifier token." });
     try {
-        // 1. Gather all unique claimed student UUID profiles associated with this admin
-        const { data: vouchers, error: vError } = await supabase
-            .from('program_vouchers')
-            .select('claimed_by_id')
-            .eq('owner_director_id', directorId)
-            .eq('is_claimed', true);
-
+        const { data: vouchers, error: vError } = await supabase.from('program_vouchers').select('claimed_by_id').eq('owner_director_id', directorId).eq('is_claimed', true);
         if (vError) throw vError;
-        
         const studentIds = vouchers.map(v => v.claimed_by_id).filter(id => id !== null);
-        if (studentIds.length === 0) {
-            return res.status(200).json({ status: "success", summary: {} });
-        }
+        if (studentIds.length === 0) return res.status(200).json({ status: "success", summary: {} });
 
-        // 2. Fetch aggregate user progress logs from profiles records
-        const { data: profiles, error: pError } = await supabase
-            .from('user_profiles')
-            .select('progress_ledger')
-            .in('id', studentIds);
-
+        const { data: profiles, error: pError } = await supabase.from('user_profiles').select('progress_ledger').in('id', studentIds);
         if (pError) throw pError;
-
-        // 3. Extract correct answers mapped to master question ID keys
-        const { data: questions, error: qError } = await supabase
-            .from('questions')
-            .select('id, specialty, correct_answer');
-
+        const { data: questions, error: qError } = await supabase.from('questions').select('id, specialty, correct_answer');
         if (qError) throw qError;
 
-        const questionsMap = {};
-        questions.forEach(q => {
-            questionsMap[q.id] = { specialty: q.specialty, correctAnswer: q.correct_answer };
-        });
-
-        // 4. Run an aggregate cross-comparison evaluation loop across the student body arrays
+        const questionsMap = {}; questions.forEach(q => { questionsMap[q.id] = { specialty: q.specialty, correctAnswer: q.correct_answer }; });
         const cohortSummaryMatrix = {};
 
         profiles.forEach(prof => {
             if (!prof.progress_ledger) return;
             const ledger = typeof prof.progress_ledger === 'string' ? JSON.parse(prof.progress_ledger) : prof.progress_ledger;
             const answers = ledger.answers || {};
-
             Object.keys(answers).forEach(qIndex => {
-                // Resolve question key details safely by primary key or sequence matching index fallback
                 const qInfo = questionsMap[qIndex] || Object.values(questionsMap).find((v, idx) => idx === parseInt(qIndex, 10));
                 if (!qInfo) return;
-
-                const specName = qInfo.specialty || "GENERAL COHORT STUDY";
-                if (!cohortSummaryMatrix[specName]) {
-                    cohortSummaryMatrix[specName] = { correct: 0, total: 0 };
-                }
-                
+                const specName = qInfo.specialty || "GENERAL STUDY";
+                if (!cohortSummaryMatrix[specName]) cohortSummaryMatrix[specName] = { correct: 0, total: 0 };
                 cohortSummaryMatrix[specName].total++;
-                if (answers[qIndex] === qInfo.correctAnswer) {
-                    cohortSummaryMatrix[specName].correct++;
-                }
+                if (answers[qIndex] === qInfo.correctAnswer) cohortSummaryMatrix[specName].correct++;
             });
         });
-
         res.status(200).json({ status: "success", summary: cohortSummaryMatrix });
-    } catch (err) {
-        res.status(500).json({ error: "Cohort analytical compilation loop exception.", details: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- REMAINING COMPLETED INFRASTRUCTURE ROUTE HOOKS PERFECTLY PRESERVED ---
 app.post('/api/b2b/redeem-voucher', async (req, res) => {
     const { voucherCode, userId, userEmail } = req.body;
     try {
         const { data: voucher, error } = await supabase.from('program_vouchers').select('*').eq('voucher_key', voucherCode.trim().toUpperCase()).single();
-        if (error || !voucher || voucher.is_claimed) return res.status(400).json({ error: "Invalid or claimed voucher code." });
+        if (error || !voucher || voucher.is_claimed) return res.status(400).json({ error: "Invalid voucher." });
         await supabase.from('program_vouchers').update({ is_claimed: true, claimed_by_id: userId, claimed_by_email: userEmail, claimed_at: new Date().toISOString() }).eq('id', voucher.id);
         await supabase.from('user_profiles').update({ is_premium: true }).eq('id', userId);
         res.status(200).json({ success: true });
@@ -143,16 +136,12 @@ app.post('/api/b2b/redeem-voucher', async (req, res) => {
 });
 
 app.get('/api/b2b/my-cohort-vouchers', async (req, res) => {
-    try {
-        const { data } = await supabase.from('program_vouchers').select('*').eq('owner_director_id', req.query.directorId);
-        res.status(200).json({ status: "success", codes: data || [] });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    try { const { data } = await supabase.from('program_vouchers').select('*').eq('owner_director_id', req.query.directorId); res.status(200).json({ status: "success", codes: data || [] }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/b2b/mint-voucher', async (req, res) => {
     try {
-        const token = crypto.randomBytes(4).toString('hex').toUpperCase();
-        const key = `MAC-${req.body.programPrefix || 'AA'}-2026-${token}`;
+        const token = crypto.randomBytes(4).toString('hex').toUpperCase(); const key = `MAC-${req.body.programPrefix || 'AA'}-2026-${token}`;
         const { data } = await supabase.from('program_vouchers').insert({ owner_director_id: req.body.directorId, voucher_key: key, is_claimed: false }).select().single();
         res.status(201).json({ success: true, code: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
