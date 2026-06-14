@@ -666,3 +666,44 @@ body {
     display: flex;
     flex-direction: column;
 }
+
+/* ==========================================================================
+   📄 OPTION 2: PRINT MEDIA STABILIZATION ENGINES
+   ========================================================================== */
+#printable-report-card-pane {
+    display: none; /* Hide inside browser window scope layouts completely */
+}
+
+@media print {
+    /* Completely eliminate standard UI view layers from printer feeds */
+    body *, .global-header, .main-viewport-shell, #auth-gateway-overlay, button, select, input {
+        display: none !important;
+    }
+    
+    html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-size: 12pt !important;
+    }
+
+    #printable-report-card-pane {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .invoice-header-block {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-bottom: 2px solid #000 !important;
+        padding-bottom: 12px !important;
+    }
+
+    .invoice-billing-split {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-top: 20px !important;
+    }
+}

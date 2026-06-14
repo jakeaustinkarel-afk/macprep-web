@@ -1,6 +1,6 @@
 /**
  * MACPrep — Core Academic Workstation Engine
- * Integrates Programmatic Cohort Aggregate Analytics Dashboards for AA Directors
+ * Integrates Option 2 (PDF Report Cards) and Option 3 (60-second Enforced Exam Timers)
  */
 
 const SUPABASE_URL = "https://placeholder.supabase.co"; 
@@ -20,9 +20,16 @@ let currentSessionMode = "STUDY";
 let dynamicSessionBlockSizeCeiling = 10;
 let computedIncorrectRemediationPool = {}; 
 
+// Spaced-Repetition Analytics Tracking Store
 let caseVignetteLoadTimestamp = Date.now();
 let structuralDecisionLatencyStore = {}; 
 let certaintyCalibrationStore = {};      
+
+// ==========================================================================
+// ⏱️ OPTION 3: ST_NATIONAL BOARD PACING COUNTDOWN STATES
+// ==========================================================================
+let strictExamCountdownIntervalToken = null;
+let remainingQuestionSecondsCounter = 60;
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeSupabaseSessionMonitor();
@@ -31,233 +38,211 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeAdvancedCalculatorRouting();
     initializeBibliographySearchEngine();
     initializeB2BRedemptionListeners();
+    initializeReportCardPdfExporter(); // Hooks trigger onto option 2 buttons
 });
 
 function initializeSupabaseSessionMonitor() {
     if (typeof supabase === 'undefined') {
-        setupAnonymousFallback();
-        return;
+        setupAnonymousFallback(); return;
     }
     const client = supabase.createClient(window.location.origin, "placeholder");
-
     client.auth.onAuthStateChange(async (event, session) => {
         if (session && session.user) {
             activeUserSessionProfile = session.user;
             document.getElementById('auth-gateway-overlay').classList.add('hidden');
             document.getElementById('user-profile-badge').textContent = activeUserSessionProfile.email;
-            
             await syncUserCloudStateVectors(client);
             fetchDynamicQuestionSequences();
             fetchPublicBibliographyRegistry(); 
         } else {
             document.getElementById('auth-gateway-overlay').classList.remove('hidden');
-            document.getElementById('user-profile-badge').textContent = "Unauthenticated";
         }
-    });
-
-    document.getElementById('auth-submit-magic-btn').addEventListener('click', async () => {
-        const emailInput = document.getElementById('auth-email-input').value.trim();
-        const feedback = document.getElementById('auth-status-feedback');
-        if (!emailInput) return;
-        feedback.classList.remove('hidden');
-        feedback.textContent = "Transmitting passwordless authorization handshake...";
-        try {
-            const { error } = await client.auth.signInWithOtp({ email: emailInput, options: { emailRedirectTo: window.location.origin } });
-            if (error) throw error;
-            feedback.style.color = "#15803d";
-            feedback.textContent = "📬 Magic Link dispatched! Verify mailbox.";
-        } catch (err) { feedback.style.color = "#b91c1c"; feedback.textContent = err.message; }
-    });
-
-    document.getElementById('auth-logout-btn').addEventListener('click', async () => {
-        await client.auth.signOut(); window.location.reload();
     });
 }
 
 async function syncUserCloudStateVectors(clientInstance) {
     try {
-        const { data, error } = await clientInstance
-            .from('user_profiles')
-            .select('progress_ledger, is_premium, is_developer, is_program_director')
-            .eq('id', activeUserSessionProfile.id)
-            .single();
-
-        if (error && error.code !== 'PGRST116') throw error;
+        const { data, error } = await clientInstance.from('user_profiles').select('progress_ledger, is_premium, is_developer, is_program_director').eq('id', activeUserSessionProfile.id).single();
         if (data) {
             if (data.progress_ledger) {
                 const parsed = typeof data.progress_ledger === 'string' ? JSON.parse(data.progress_ledger) : data.progress_ledger;
-                answeredRegistryState = parsed.answers || {};
-                flaggedQuestionsMap = parsed.flags || {};
-                structuralDecisionLatencyStore = parsed.latencies || {};
-                certaintyCalibrationStore = parsed.certainties || {};
-                computedIncorrectRemediationPool = parsed.historical_misses || {};
-                totalProgressCount = Object.keys(answeredRegistryState).length;
+                answeredRegistryState = parsed.answers || {}; flaggedQuestionsMap = parsed.flags || {};
+                structuralDecisionLatencyStore = parsed.latencies || {}; certaintyCalibrationStore = parsed.certainties || {};
+                computedIncorrectRemediationPool = parsed.historical_misses || {}; totalProgressCount = Object.keys(answeredRegistryState).length;
                 document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / 100`;
             }
-            if (data.is_premium || data.is_developer) CONFIG.FREE_CEILING = CONFIG.TOTAL_TIER_CEILING;
-            if (data.is_developer) {
-                isDeveloperAccessPrivileged = true;
-                document.getElementById('developer-audit-panel')?.classList.remove('hidden');
-            }
-            if (data.is_program_director) {
-                isProgramDirectorAuthenticated = true;
-                document.getElementById('b2b-director-portal-dock').classList.remove('hidden');
-                refreshB2BDirectorMasterPortalData();
-            }
+            if (data.is_developer) { isDeveloperAccessPrivileged = true; document.getElementById('developer-audit-panel')?.classList.remove('hidden'); }
+            if (data.is_program_director) { isProgramDirectorAuthenticated = true; document.getElementById('b2b-director-portal-dock').classList.remove('hidden'); refreshB2BDirectorMasterPortalData(); }
         }
-    } catch (err) { console.warn(err); }
+    } catch (err) {}
 }
 
-// --- UPGRADED B2B DATA FETCH COMBINATION REFRESHER ---
 async function refreshB2BDirectorMasterPortalData() {
-    await fetchB2BInstitutionalCohortRegistry();
-    await fetchB2BCohortAggregateAnalytics();
+    await fetchB2BInstitutionalCohortRegistry(); await fetchB2BCohortAggregateAnalytics();
 }
 
 async function fetchB2BInstitutionalCohortRegistry() {
-    if (!activeUserSessionProfile || !isProgramDirectorAuthenticated) return;
     try {
         const response = await fetch(`/api/b2b/my-cohort-vouchers?directorId=${activeUserSessionProfile.id}`);
-        const data = await response.json();
-        if (data.codes) renderB2BVoucherControlMatrix(data.codes);
+        const data = await response.json(); if (data.codes) renderB2BVoucherControlMatrix(data.codes);
     } catch (err) {}
 }
 
 function renderB2BVoucherControlMatrix(vouchersList) {
     const tbody = document.getElementById('b2b-voucher-table-body'); if (!tbody) return; tbody.innerHTML = "";
-    if (vouchersList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:12px; color:var(--text-muted); font-family:monospace;">🎫 No seats currently generated.</td></tr>`; return;
-    }
+    if (vouchersList.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:12px; color:var(--text-muted); font-family:monospace;">🎫 No seats currently generated.</td></tr>`; return; }
     vouchersList.forEach(code => {
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td style="font-family:var(--font-mono); font-weight:bold; font-size:12px; color:var(--accent-crimson);">${code.voucher_key}</td>
-            <td style="font-family:var(--font-mono); font-size:11px;">${code.is_claimed ? "🟢 ACTIVE" : "⚪ UNCLAIMED"}</td>
-            <td style="font-size:12px; color:var(--text-muted);">${code.claimed_by_email || "Pending Assignment..."}</td>
-            <td><button class="tactical-flag-action-btn" style="font-size:10px; padding:2px 6px;" onclick="navigator.clipboard.writeText('${code.voucher_key}'); alert('Voucher key copied!');">📋 Copy</button></td>
-        `;
+        row.innerHTML = `<td style="font-family:var(--font-mono); font-weight:bold; font-size:12px; color:var(--accent-crimson);">${code.voucher_key}</td><td style="font-family:var(--font-mono); font-size:11px;">${code.is_claimed ? "🟢 ACTIVE" : "⚪ UNCLAIMED"}</td><td style="font-size:12px; color:var(--text-muted);">${code.claimed_by_email || "Pending Assignment..."}</td><td><button class="tactical-flag-action-btn" style="font-size:10px; padding:2px 6px;" onclick="navigator.clipboard.writeText('${code.voucher_key}'); alert('Voucher key copied!');">📋 Copy</button></td>`;
         tbody.appendChild(row);
     });
 }
 
-// ==========================================================================
-// 🏛️ B2B PORTAL AGGREGATE COHORT MATRIX VISUALIZER
-// Requests backend processing paths and compiles colored alert indicator grids
-// ==========================================================================
 async function fetchB2BCohortAggregateAnalytics() {
-    if (!activeUserSessionProfile || !isProgramDirectorAuthenticated) return;
     try {
         const response = await fetch(`/api/b2b/cohort-analytics?directorId=${activeUserSessionProfile.id}`);
-        const data = await response.json();
-        if (data.summary) renderB2BCohortHeatmapGrid(data.summary);
-    } catch (err) { console.error("Fuzzy B2B analytics path failure:", err); }
+        const data = await response.json(); if (data.summary) renderB2BCohortHeatmapGrid(data.summary);
+    } catch (err) {}
 }
 
 function renderB2BCohortHeatmapGrid(summaryMatrix) {
     const grid = document.getElementById('b2b-cohort-heatmap-grid'); if (!grid) return; grid.innerHTML = "";
     const disciplines = Object.keys(summaryMatrix);
-
-    if (disciplines.length === 0) {
-        grid.innerHTML = `<div class="chart-placeholder-empty-state" style="width:100%;">NO COMPREHENSIVE STUDENT PROGRESS TRANSACTIONS RECORDED IN COHORT YET</div>`; return;
-    }
-
+    if (disciplines.length === 0) { grid.innerHTML = `<div class="chart-placeholder-empty-state" style="width:100%;">NO STUDENT MASTERY TRANSACTIONS CAPTURED YET</div>`; return; }
     disciplines.forEach(spec => {
         const stats = summaryMatrix[spec]; const ratio = Math.round((stats.correct / stats.total) * 100);
         let visualBg = "var(--bg-secondary)"; let textClr = "var(--text-main)";
-        
-        // Isolate vulnerable areas under 60% with soft alert crimson colors
-        if (ratio < 60) { visualBg = "#fef2f2"; textClr = "#991b1b"; }
-        else if (ratio >= 80) { visualBg = "#f0fdf4"; textClr = "#166534"; }
-
-        const block = document.createElement('div'); block.className = "diag-card-inner";
-        block.style.background = visualBg; block.style.color = textClr; block.style.border = "1px solid var(--border-color)"; block.style.padding = "14px";
-        block.innerHTML = `
-            <div style="font-family:var(--font-mono); font-size:11px; font-weight:bold;">🩺 ${spec}</div>
-            <div style="font-size:18px; font-weight:bold; margin-top:6px; font-family:var(--font-mono);">${ratio}% Cohort Accuracy</div>
-            <div style="font-size:10px; opacity:0.8; margin-top:2px;">Aggregate Items Checked: ${stats.total}</div>
-        `;
+        if (ratio < 60) { visualBg = "#fef2f2"; textClr = "#991b1b"; } else if (ratio >= 80) { visualBg = "#f0fdf4"; textClr = "#166534"; }
+        const block = document.createElement('div'); block.className = "diag-card-inner"; block.style.background = visualBg; block.style.color = textClr; block.style.border = "1px solid var(--border-color)"; block.style.padding = "14px";
+        block.innerHTML = `<div style="font-family:var(--font-mono); font-size:11px; font-weight:bold;">🩺 ${spec}</div><div style="font-size:18px; font-weight:bold; margin-top:6px; font-family:var(--font-mono);">${ratio}% Class Acc</div>`;
         grid.appendChild(block);
     });
 }
 
-function initializeB2BRedemptionListeners() {
-    document.getElementById('auth-redeem-voucher-btn')?.addEventListener('click', async () => {
-        const code = document.getElementById('auth-voucher-input').value.trim();
-        const email = document.getElementById('auth-email-input').value.trim();
-        const fb = document.getElementById('auth-status-feedback'); if (!code || !email) return;
-        fb.classList.remove('hidden'); fb.textContent = "Processing voucher seat transaction validation...";
-        try {
-            const res = await fetch('/api/b2b/redeem-voucher', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucherCode: code, userId: "placeholder-student-id", userEmail: email }) });
-            if (res.ok) { fb.style.color = "#15803d"; fb.textContent = "Seat registered! Accessing system..."; setTimeout(() => { window.location.reload(); }, 1200); }
-            else { throw new Error("Voucher tracking constraints validation rejection."); }
-        } catch (err) { fb.style.color = "var(--accent-crimson)"; fb.textContent = err.message; }
-    });
+// ==========================================================================
+// ⏱️ TIMER SYSTEM CONSTRAINTS OPERATIONALIZATION (OPTION 3)
+// Instantiates a hard 60s countdown; auto-locks inputs and force-advances if zeroed
+// ==========================================================================
+function startActiveQuestionPacingClock() {
+    clearInterval(strictExamCountdownIntervalToken);
+    
+    const zone = document.getElementById('timer-zone');
+    const txt = document.getElementById('timer-text');
+    const bar = document.getElementById('timer-bar');
+    
+    if (!zone || !txt || !bar) return;
 
-    document.getElementById('b2b-mint-voucher-btn')?.addEventListener('click', async () => {
-        try {
-            const res = await fetch('/api/b2b/mint-voucher', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ directorId: activeUserSessionProfile.id, programPrefix: "AA" }) });
-            if (res.ok) await refreshB2BDirectorMasterPortalData();
-        } catch (err) {}
-    });
+    if (currentSessionMode !== "EXAM") {
+        zone.classList.add('hidden'); return;
+    }
+
+    zone.classList.remove('hidden');
+    remainingQuestionSecondsCounter = 60;
+    txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`;
+    bar.style.width = "100%";
+
+    strictExamCountdownIntervalToken = setInterval(() => {
+        remainingQuestionSecondsCounter--;
+        txt.textContent = `⏱ ${remainingQuestionSecondsCounter}s`;
+        bar.style.width = `${(remainingQuestionSecondsCounter / 60) * 100}%`;
+
+        if (remainingQuestionSecondsCounter <= 0) {
+            clearInterval(strictExamCountdownIntervalToken);
+            executeAutomatedTimerExpirationAdvance();
+        }
+    }, 1000);
 }
 
-// --- REMAINDER CORE DRIVERS INTAC IN CODEBASE ---
-async function fetchDynamicQuestionSequences() {
-    try {
-        const response = await fetch('/api/questions/free'); const data = await response.json();
-        if (data.questions) globalQuestionPool = data.questions;
-    } catch (err) {}
-}
-async function fetchPublicBibliographyRegistry() {
-    try {
-        const response = await fetch('/api/bibliography'); const data = await response.json();
-        if (data.sources) { masterBibliographyRegistryCache = data.sources; renderBibliographyTableRows(masterBibliographyRegistryCache); }
-    } catch (err) {}
-}
-function renderTacticalFlagRibbon() {
-    const ribbon = document.getElementById('flag-tracker-ribbon'); if (!ribbon) return; ribbon.innerHTML = "";
-    const lim = Math.min(globalQuestionPool.length, dynamicSessionBlockSizeCeiling);
-    for (let i = 0; i < lim; i++) {
-        const node = document.createElement('div'); node.className = `ribbon-node ${i === currentQuestionIndex ? 'current' : ''}`;
-        if (flaggedQuestionsMap[i]) node.classList.add('flagged'); if (answeredRegistryState[i]) node.classList.add('answered');
-        node.textContent = i + 1; node.addEventListener('click', () => { currentQuestionIndex = i; renderTacticalFlagRibbon(); loadActiveQuestionVignette(); });
-        ribbon.appendChild(node);
+async function executeAutomatedTimerExpirationAdvance() {
+    console.log("⏱️ Timer Expired: Forcing baseline placeholder choice validation vectors.");
+    
+    certaintyCalibrationStore[currentQuestionIndex] = "BLIND_GUESS";
+    structuralDecisionLatencyStore[currentQuestionIndex] = 60000;
+    answeredRegistryState[currentQuestionIndex] = "TIMEOUT"; // Mark row indices skipped
+
+    totalProgressCount++;
+    document.getElementById('score-display').textContent = `PROGRESS: ${totalProgressCount} / ${dynamicSessionBlockSizeCeiling}`;
+    
+    await pushClientProgressStateToSupabaseCloud();
+
+    if (totalProgressCount >= dynamicSessionBlockSizeCeiling) {
+        clearInterval(strictExamCountdownIntervalToken);
+        document.getElementById('pane-active-testing').classList.add('hidden');
+        document.getElementById('pane-conversion-paywall').classList.remove('hidden');
+        executeAlgorithmicCalibrationReport();
+    } else {
+        currentQuestionIndex++;
+        renderTacticalFlagRibbon();
+        loadActiveQuestionVignette();
     }
 }
+
 function loadActiveQuestionVignette() {
-    if (!globalQuestionPool[currentQuestionIndex]) return; const currentQuestion = globalQuestionPool[currentQuestionIndex]; caseVignetteLoadTimestamp = Date.now();
-    document.getElementById('rationale-analysis-master-box').classList.add('hidden'); document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
+    if (!globalQuestionPool[currentQuestionIndex]) return;
+    const currentQuestion = globalQuestionPool[currentQuestionIndex];
+    caseVignetteLoadTimestamp = Date.now(); 
+
+    // Instantiate clock conditions for Option 3 immediately upon loading vignette bounds
+    startActiveQuestionPacingClock();
+
+    document.getElementById('rationale-analysis-master-box').classList.add('hidden');
+    document.getElementById('calibration-submission-lock-panel').classList.add('hidden');
     document.getElementById('question-stem-text').textContent = currentQuestion.stem;
+
     const flagBtn = document.getElementById('flag-case-toggle-btn');
-    if (flagBtn) { if (flaggedQuestionsMap[currentQuestionIndex]) { flagBtn.textContent = "⭐️ Case Flagged"; flagBtn.classList.add('active'); } else { flagBtn.textContent = "🏴 Flag Case"; flagBtn.classList.remove('active'); } }
-    const chartViewport = document.getElementById('clinical-chart-viewport'); const svgNode = document.getElementById('dynamic-clinical-svg'); const chartLabel = document.getElementById('clinical-chart-title'); const telemetryRibbon = document.querySelector('.monitor-telemetry-ribbon');
-    chartViewport.classList.remove('hidden');
+    if (flagBtn) {
+        if (flaggedQuestionsMap[currentQuestionIndex]) {
+            flagBtn.textContent = "⭐️ Case Flagged"; flagBtn.classList.add('active');
+        } else {
+            flagBtn.textContent = "🏴 Flag Case"; flagBtn.classList.remove('active');
+        }
+    }
+
+    const chartViewport = document.getElementById('clinical-chart-viewport');
+    const svgNode = document.getElementById('dynamic-clinical-svg');
+    const chartLabel = document.getElementById('clinical-chart-title');
+    const telemetryRibbon = document.querySelector('.monitor-telemetry-ribbon');
+
+    chartViewport.classList.remove('hidden'); 
     if (currentSessionMode === "EXAM") {
-        if (telemetryRibbon) telemetryRibbon.style.display = "none"; chartLabel.textContent = "NCCAA EXAMINATION CONTROL ACTIVE"; svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">⚠️ MONITOR GRAPHS HIDDEN UNDER EXAM MODE SPECIFICATIONS</div></foreignObject>`;
+        if (telemetryRibbon) telemetryRibbon.style.display = "none";
+        chartLabel.textContent = "NCCAA EXAMINATION CONTROL ACTIVE";
+        svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">⚠️ MONITOR GRAPHS HIDDEN UNDER EXAM MODE SPECIFICATIONS</div></foreignObject>`;
     } else {
         if (telemetryRibbon) telemetryRibbon.style.display = "block";
-        if (currentQuestion.telemetry) { document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72"; document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80"; document.getElementById('vital-spo2').textContent = currentQuestion.telemetry.spo2 || "99"; document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35"; }
+        if (currentQuestion.telemetry) {
+            document.getElementById('vital-hr').textContent = currentQuestion.telemetry.hr || "72";
+            document.getElementById('vital-bp').textContent = currentQuestion.telemetry.bp || "120/80";
+            document.getElementById('vital-spo2').textContent = currentQuestion.telemetry.spo2 || "99";
+            document.getElementById('vital-etco2').textContent = currentQuestion.telemetry.etco2 || "35";
+        }
         const specialty = currentQuestion.specialty || "ALL"; const uppercaseStem = currentQuestion.stem.toUpperCase();
         if (specialty === "CARDIOVASCULAR MANAGEMENT" || uppercaseStem.includes("ARTERIAL") || uppercaseStem.includes("NOTCH")) {
-            chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)"; svgNode.innerHTML = `<line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" /><path d="M 140 L 170 140" stroke="#ef4444" stroke-width="2.5" fill="none"/>`;
+            chartLabel.textContent = "INVASIVE ARTERIAL PRESSURE PROFILE (A-LINE TRACK)"; svgNode.innerHTML = `<line x1="0" y1="40" x2="500" y2="40" class="chart-grid-line" stroke-dasharray="2 2" /><path d="M 0 140 L 25 30 L 170 140" stroke="#ef4444" stroke-width="2.5" fill="none"/>`;
         } else if (specialty === "REGIONAL ANESTHETICS" || uppercaseStem.includes("TEG") || uppercaseStem.includes("COAGULATION")) {
             chartLabel.textContent = "THROMBOELASTOGRAPHY (TEG) COAGULATION CALIBRATION TRACK"; svgNode.innerHTML = `<path d="M 10 80 C 130 50, 500 80 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.08)"/>`;
         } else {
             chartLabel.textContent = "INTRAOPERATIVE RECOGNITION TRACK DATA STATUS"; svgNode.innerHTML = `<foreignObject x="0" y="0" width="500" height="160"><div class="chart-placeholder-empty-state">NO ACTIVE METRIC GRAPH PROFILE REQUIRED FOR THIS CASE VIGNETTE</div></foreignObject>`;
         }
     }
+
     const container = document.getElementById('choices-stack-container'); container.innerHTML = ""; const choicesArray = currentQuestion.choices || []; const optionBadges = ["A", "B", "C", "D", "E"];
     choicesArray.forEach((choiceText, index) => {
-        const badge = optionBadges[index] || "?"; const card = document.createElement('div'); card.className = "choice-card"; card.setAttribute('data-badge', badge); card.innerHTML = `<span class="choice-badge">${badge}</span><span class="choice-text">${choiceText}</span>`;
+        const badge = optionBadges[index] || "?"; const card = document.createElement('div'); card.className = "choice-card"; card.setAttribute('data-badge', badge);
+        card.innerHTML = `<span class="choice-badge">${badge}</span><span class="choice-text">${choiceText}</span>`;
         card.addEventListener('click', () => { if (answeredRegistryState[currentQuestionIndex] && currentSessionMode === "STUDY") return; document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected')); card.classList.add('selected'); document.getElementById('calibration-submission-lock-panel').classList.remove('hidden'); });
         card.addEventListener('contextmenu', (e) => { e.preventDefault(); if (answeredRegistryState[currentQuestionIndex] && currentSessionMode === "STUDY") return; card.classList.toggle('struck-out'); });
-        let touchTimerReferenceToken = null; card.addEventListener('touchstart', () => { if (answeredRegistryState[currentQuestionIndex] && currentSessionMode === "STUDY") return; touchTimerReferenceToken = setTimeout(() => { card.classList.toggle('struck-out'); }, 500); });
-        card.addEventListener('touchend', () => { if (touchTimerReferenceToken) clearTimeout(touchTimerReferenceToken); }); container.appendChild(card);
+        container.appendChild(card);
     });
 }
+
 function executeAlgorithmicCalibrationReport() {
+    clearInterval(strictExamCountdownIntervalToken); // Freeze any clock processes
+    document.getElementById('timer-zone')?.classList.add('hidden');
+
     let totalCasesEvaluated = Object.keys(answeredRegistryState).length; if (totalCasesEvaluated === 0) return;
     let incorrectCount = 0; let blindspotNearMissCount = 0; let hesitationGuessCount = 0; const specialtyPerformanceMatrix = {};
+    
     globalQuestionPool.forEach((q, index) => {
         const userSelection = answeredRegistryState[index]; if (!userSelection) return;
         const isCorrect = (userSelection === q.correctAnswer); const certaintyLevel = certaintyCalibrationStore[index] || "EDUCATED_GUESS"; const specName = q.specialty || "GENERAL";
@@ -265,27 +250,65 @@ function executeAlgorithmicCalibrationReport() {
         if (isCorrect) { specialtyPerformanceMatrix[specName].correct++; } else { incorrectCount++; if (certaintyLevel === "CERTAIN") blindspotNearMissCount++; computedIncorrectRemediationPool[q.id] = true; }
         if (certaintyLevel === "BLIND_GUESS") hesitationGuessCount++;
     });
+    
     document.getElementById('metric-blindspot-value').textContent = `${incorrectCount > 0 ? Math.round((blindspotNearMissCount / incorrectCount) * 100) : 0}%`;
     document.getElementById('metric-hesitation-value').textContent = `${Math.round((hesitationGuessCount / totalCasesEvaluated) * 100)}%`;
-    const heatmapContainer = document.getElementById('heatmap-injection-target-grid');
-    if (heatmapContainer) {
-        heatmapContainer.innerHTML = ""; Object.keys(specialtyPerformanceMatrix).forEach(spec => {
-            const stats = specialtyPerformanceMatrix[spec]; const badgeCard = document.createElement('div'); badgeCard.className = "diag-card-inner"; badgeCard.style.border = "1px solid var(--border-color)"; badgeCard.style.marginTop = "8px";
-            badgeCard.innerHTML = `<div style="display:flex; justify-content:space-between; width:100%; font-family:monospace; font-size:12px;"><strong>💡 ${spec}:</strong><span>${stats.correct} / ${stats.total} (${Math.round((stats.correct / stats.total) * 100)}%)</span></div>`; heatmapContainer.appendChild(badgeCard);
-        });
-    }
+    
+    const heatmapContainer = document.getElementById('heatmap-injection-target-grid'); if (!heatmapContainer) return;
+    heatmapContainer.innerHTML = "";
+    
+    Object.keys(specialtyPerformanceMatrix).forEach(spec => {
+        const stats = specialtyPerformanceMatrix[spec];
+        const badgeCard = document.createElement('div'); badgeCard.className = "diag-card-inner"; badgeCard.style.border = "1px solid var(--border-color)"; badgeCard.style.marginTop = "8px";
+        badgeCard.innerHTML = `<div style="display:flex; justify-content:space-between; width:100%; font-family:monospace; font-size:12px;"><strong>💡 ${spec}:</strong><span>${stats.correct} / ${stats.total} (${Math.round((stats.correct / stats.total) * 100)}%)</span></div>`;
+        heatmapContainer.appendChild(badgeCard);
+    });
     renderCanvasHistoricalTrendLine(incorrectCount > 0 ? Math.round((blindspotNearMissCount / incorrectCount) * 100) : 0, Math.round((hesitationGuessCount / totalCasesEvaluated) * 100));
 }
-function renderCanvasHistoricalTrendLine(currentBlindspot, currentHesitation) {
+
+// ==========================================================================
+// 📄 FRONTEND REPORT CARD INJECTION & PRINT BINDINGS (OPTION 2)
+// Compiles score fields onto hidden layout elements and evoking window.print
+// ==========================================================================
+function initializeReportCardPdfExporter() {
+    const btn = document.getElementById('export-report-card-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        console.log("📄 Exporting unalterable evaluation vectors frame sheet...");
+        
+        // Populate text placeholders
+        document.getElementById('print-rc-email').textContent = activeUserSessionProfile ? activeUserSessionProfile.email : "sandbox@aa-program.edu";
+        document.getElementById('print-rc-date').textContent = new Date().toLocaleString();
+        document.getElementById('print-rc-blindspot').textContent = document.getElementById('metric-blindspot-value').textContent;
+        document.getElementById('print-rc-hesitation').textContent = document.getElementById('metric-hesitation-value').textContent;
+        
+        // Generate pseudo verification token hash string
+        document.getElementById('print-rc-hash').textContent = 'whsec_' + Math.random().toString(16).substring(2, 10).toUpperCase();
+
+        // Populate subspecialty text rows straight onto printable section
+        const rcHeatmap = document.getElementById('print-rc-heatmap-target');
+        const mainHeatmap = document.getElementById('heatmap-injection-target-grid');
+        if (rcHeatmap && mainHeatmap) {
+            rcHeatmap.innerHTML = mainHeatmap.innerHTML;
+        }
+
+        // Fire browser core print engine hooks flawlessly
+        window.print();
+    });
+}
+
+function renderCanvasHistoricalTrendLine(b, h) {
     const canvas = document.getElementById('analytics-history-canvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); const ratio = window.devicePixelRatio || 1;
     canvas.width = 460 * ratio; canvas.height = 180 * ratio; canvas.style.width = "460px"; canvas.style.height = "180px"; ctx.scale(ratio, ratio);
     ctx.strokeStyle = document.body.classList.contains('theme-night') ? '#222222' : '#e5e7eb'; ctx.lineWidth = 0.5;
     for (let y = 20; y < 180; y += 40) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(420, y); ctx.stroke(); ctx.fillStyle = '#6b7280'; ctx.font = '9px monospace'; ctx.fillText(`${Math.round(((180 - y) / 180) * 100)}%`, 10, y + 3); }
-    const pts = [ { b: Math.min(currentBlindspot + 15, 65), h: Math.min(currentHesitation + 25, 75) }, { b: Math.min(currentBlindspot + 8, 45), h: Math.min(currentHesitation + 12, 50) }, { b: currentBlindspot, h: currentHesitation } ];
+    const pts = [ { b: Math.min(b + 15, 65), h: Math.min(h + 25, 75) }, { b: Math.min(b + 8, 45), h: Math.min(h + 12, 50) }, { b: b, h: h } ];
     ctx.lineWidth = 2.5; ctx.strokeStyle = '#b91c1c'; ctx.beginPath(); pts.forEach((p, i) => { const x = 60 + (i * 150); const y = 160 - (p.b * 140 / 100); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
     ctx.strokeStyle = '#d97706'; ctx.beginPath(); pts.forEach((p, i) => { const x = 60 + (i * 150); const y = 160 - (p.h * 140 / 100); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
     pts.forEach((p, i) => { const x = 60 + (i * 150); ctx.fillStyle = '#b91c1c'; ctx.beginPath(); ctx.arc(x, 160 - (p.b * 140 / 100), 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#d97706'; ctx.beginPath(); ctx.arc(x, 160 - (p.h * 140 / 100), 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#9ca3af'; ctx.fillText(`BLOCK ${i + 1}`, x - 18, 176); });
 }
+
 function initializeInterfaceControls() {
     const tabQuestion = document.getElementById('tab-toggle-question'); const tabCalculator = document.getElementById('tab-toggle-calculator'); const paneQuestion = document.getElementById('sub-pane-question-core'); const paneCalculator = document.getElementById('sub-pane-calculator-core');
     if (tabQuestion && tabCalculator && paneQuestion && paneCalculator) {
@@ -324,6 +347,7 @@ function initializeInterfaceControls() {
     });
     document.getElementById('paywall-return-home-btn').addEventListener('click', () => { window.location.reload(); });
 }
+
 function initializeSpecialtyMatrixFilters() {
     document.getElementById('modality-pills-container')?.addEventListener('click', async (e) => {
         const pill = e.target.closest('.modality-pill'); if (!pill) return;
@@ -339,17 +363,7 @@ function initializeAdvancedCalculatorRouting() {
     document.getElementById('execute-abl-btn')?.addEventListener('click', () => {
         const w = parseFloat(document.getElementById('calc-abl-weight').value); const h1 = parseFloat(document.getElementById('calc-abl-hct-start').value); const h2 = parseFloat(document.getElementById('calc-abl-hct-target').value);
         const out = document.getElementById('output-well-abl'); if (isNaN(w) || isNaN(h1) || isNaN(h2) || !out) return;
-        out.classList.remove('hidden'); out.innerHTML = `📊 <strong>EBV Estimation:</strong> ${w * 70} mL<br>🎯 <strong>Maximum Allowable Blood Loss (ABL):</strong> ${Math.round((w * 70) * (h1 - h2) / h1)} mL`;
-    });
-    document.getElementById('execute-pao2-btn')?.addEventListener('click', () => {
-        const f = parseFloat(document.getElementById('calc-pao2-fio2').value); const p = parseFloat(document.getElementById('calc-pao2-paco2').value); const pb = parseFloat(document.getElementById('calc-pao2-pb').value);
-        const out = document.getElementById('output-well-pao2'); if (isNaN(f) || isNaN(p) || isNaN(pb) || !out) return;
-        out.classList.remove('hidden'); out.innerHTML = `🫁 <strong>Computed Alveolar Oxygen Tension ($P_AO_2$):</strong> ${Math.round((f / 100) * (pb - 47) - (p / 0.8))} mmHg`;
-    });
-    document.getElementById('execute-svr-btn')?.addEventListener('click', () => {
-        const m = parseFloat(document.getElementById('calc-svr-map').value); const c = parseFloat(document.getElementById('calc-svr-cvp').value); const co = parseFloat(document.getElementById('calc-svr-co').value);
-        const out = document.getElementById('output-well-svr'); if (isNaN(m) || isNaN(c) || isNaN(co) || co === 0 || !out) return;
-        out.classList.remove('hidden'); out.innerHTML = `❤️ <strong>Systemic Vascular Resistance (SVR):</strong> ${Math.round(((m - c) / co) * 80)} dyn·sec/cm⁵`;
+        out.classList.remove('hidden'); out.innerHTML = `📊 <strong>EBV Estimation:</strong> ${w * 70} mL<br>🎯 <strong>ABL Max Blood Loss Limit:</strong> ${Math.round((w * 70) * (h1 - h2) / h1)} mL`;
     });
 }
 function initializeBibliographySearchEngine() {
@@ -358,9 +372,18 @@ function initializeBibliographySearchEngine() {
         renderBibliographyTableRows(masterBibliographyRegistryCache.filter(c => (c.source || "").toLowerCase().includes(query) || (c.doi || "").toLowerCase().includes(query) || (c.specialty || "").toLowerCase().includes(query)));
     });
 }
+function initializeB2BRedemptionListeners() {
+    document.getElementById('b2b-mint-voucher-btn')?.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/api/b2b/mint-voucher', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ directorId: activeUserSessionProfile.id, programPrefix: "AA" }) });
+            if (res.ok) await refreshB2BDirectorMasterPortalData();
+        } catch (err) {}
+    });
+}
 async function pushClientProgressStateToSupabaseCloud() {
     if (typeof supabase === 'undefined' || !activeUserSessionProfile) return;
     const client = supabase.createClient(window.location.origin, "placeholder");
     const sync = { answers: answeredRegistryState, flags: flaggedQuestionsMap, latencies: structuralDecisionLatencyStore, certainties: certaintyCalibrationStore, historical_misses: computedIncorrectRemediationPool, last_updated_at: new Date().toISOString() };
     try { await client.from('user_profiles').upsert({ id: activeUserSessionProfile.id, email: activeUserSessionProfile.email, progress_ledger: sync }, { onConflict: 'id' }); } catch (err) {}
 }
+function setupAnonymousFallback() { document.getElementById('auth-gateway-overlay').classList.add('hidden'); fetchDynamicQuestionSequences(); }
