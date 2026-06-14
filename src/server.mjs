@@ -1,64 +1,63 @@
 import express from 'express';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createClient } from '@supabase/supabase-js';
-import Stripe from 'stripe';
-import dotenv from 'dotenv';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Force path resolution to explicitly point to the absolute repository root
-const ROOT_DIR = path.resolve(__dirname, '..');
-
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// Initialize Supabase Client Connection
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Stripe Webhook Route
-app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-        console.error(`❌ Webhook Error: ${err.message}`);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-    res.json({ received: true });
-});
+if (!supabaseUrl || !supabaseKey) {
+    console.error("⚠️ Server Warning: Missing Supabase environmental credential strings inside .env");
+}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(express.json());
+// Serve your pristine responsive frontend workspace files automatically
+app.use(express.static(path.join(__dirname, '../')));
 
-// Explicitly serve static assets from the absolute root directory path
-app.use(express.static(ROOT_DIR));
-
-// Endpoint to fetch board questions
+// ==========================================================================
+// CORE REST API GATEWAY: STREAM QUESTIONS FROM POSTGRES
+// ==========================================================================
 app.get('/api/questions', async (req, res) => {
+    console.log("📡 Incoming request at /api/questions gateway router... Querying cloud schema caches.");
+    
     try {
-        const { data, error } = await supabase.from('macprep_questions').select('*');
+        // Query your precise production database cluster table rows
+        const { data, error } = await supabase
+            .from('macprep_questions')
+            .select('*');
+
         if (error) throw error;
-        res.json({ questions: data });
+
+        console.log(`📦 Cloud handshake complete. Successfully retrieved ${data.length} items from 'macprep_questions'.`);
+        
+        // Return clear structured payload arrays straight down the pipe
+        res.status(200).json({
+            success: true,
+            questions: data
+        });
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("❌ Database query exception mapping layer: ", err.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to pull live matrix out of database cluster.",
+            error: err.message
+        });
     }
 });
 
-// Explicit route handling targeting the absolute path to index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(ROOT_DIR, 'index.html'));
-});
-
-// Fallback all generic requests back to index.html for smooth client-side rendering routing
-app.get('*', (req, res) => {
-    res.sendFile(path.join(ROOT_DIR, 'index.html'));
-});
-
-const PORT = process.env.PORT || 3000;
+// Start listening for inbound cross-device browser handshakes
 app.listen(PORT, () => {
-    console.log(`📡 Express Workstation Engine Online: Operating securely on Port ${PORT}`);
-    console.log(`📂 Serving static user interfaces out of absolute location: ${ROOT_DIR}`);
+    console.log(`🚀 MACPrep Production Server running cleanly on port ${PORT}`);
 });
