@@ -1,10 +1,10 @@
 // ==========================================================================
-// MACPREP RUNTIME SYSTEM CONTROLLER - COMPLETE LIFECYCLE SYNC
+// MACPREP PRODUCTION CLIENT SYSTEM CONTROLLER - SECURE RECOVERY VECTOR
 // ==========================================================================
 
 let currentQuestionIndex = 0;
 let workstationQuestions = [];
-let targetSessionBlockLimit = 10; // Default count fallback
+let targetSessionBlockLimit = 10; 
 let totalQuestionsAnsweredCount = 0;
 const FREE_TIER_MAX_LIMIT = 100;
 
@@ -13,6 +13,41 @@ let isPremiumAccountUnlocked = false;
 let userQuestionHistoryArray = [];
 let userFirstName = null;
 let userLastName = null;
+
+// Global Synchronizer: Repaints Header Elements Instantly
+function renderPersonalizedHeaderIdentity(email, firstName) {
+    const headerAuthContainer = document.getElementById('headerAuthContainer');
+    const tierBadgeBtn = document.getElementById('tierBadgeBtn');
+    if (!headerAuthContainer) return;
+
+    console.log("🎨 Repainting header identity layer for user profile.");
+    const displayName = firstName ? `Welcome, ${firstName}!` : `Welcome User!`;
+    
+    headerAuthContainer.innerHTML = `
+        <div class="user-profile-badge" style="display: flex; align-items: center; gap: 12px; padding: 4px 8px; background: rgba(15,21,36,0.6); border: 1px solid var(--border-color); border-radius: 6px;">
+            <button id="triggerProfileViewBtn" class="profile-avatar-btn" style="background: transparent; border: 1px solid var(--clinical-green); color: var(--clinical-green); padding: 6px 12px; border-radius: 4px; font-weight:700; cursor:pointer;">${displayName}</button>
+            <button id="authLogoutBtn" class="nav-text-link" style="color: #f43f5e; background:transparent; border:none; font-size:0.85rem; cursor:pointer;">Sign Out</button>
+        </div>
+    `;
+
+    // Re-bind click event dynamically to launch full-screen profile layout cards
+    document.getElementById('triggerProfileViewBtn').addEventListener('click', () => {
+        document.getElementById('onboardingHub').classList.add('hidden');
+        document.getElementById('activeWorkstationGrid').classList.add('hidden');
+        
+        document.getElementById('profileFirstName').value = userFirstName || '';
+        document.getElementById('profileLastName').value = userLastName || '';
+        document.getElementById('profileEmailStatic').value = currentUserEmail;
+        
+        document.getElementById('profileSettingsScreen').classList.remove('hidden');
+    });
+
+    document.getElementById('authLogoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        sessionStorage.clear();
+        location.reload();
+    });
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     const onboardingHub = document.getElementById('onboardingHub');
@@ -24,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const prevBtn = document.getElementById('prevBtn');
     const paywallModal = document.getElementById('paywallModal');
     const closePaywallBtn = document.getElementById('closePaywallBtn');
-    const headerAuthContainer = document.getElementById('headerAuthContainer');
     const syncWelcomeNotice = document.getElementById('syncWelcomeNotice');
 
     const saveProfileBtn = document.getElementById('saveProfileBtn');
@@ -34,17 +68,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileEmailStatic = document.getElementById('profileEmailStatic');
     const customVolumeInput = document.getElementById('customVolumeInput');
 
-    // FIX: Match exact key name saved by register.html / login.html
+    // Firm recovery handshake check
     currentUserEmail = localStorage.getItem('macprep_user_email');
     const savedPremium = localStorage.getItem('macprep_premium_unlocked');
     isPremiumAccountUnlocked = (savedPremium === 'true');
 
     if (currentUserEmail) {
+        // Enforce an immediate layout paint before fetching remote items to prevent visual latency
+        renderPersonalizedHeaderIdentity(currentUserEmail, localStorage.getItem('macprep_user_first_name'));
         await executeProfileSynchronizer();
     }
 
     async function executeProfileSynchronizer() {
         try {
+            console.log(`📡 Fetching cloud metadata attributes for: ${currentUserEmail}`);
             const syncResponse = await fetch('/api/sync-profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,46 +89,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const syncData = await syncResponse.json();
             
-            if (syncData.success) {
+            if (syncData.success && syncData.profile) {
                 totalQuestionsAnsweredCount = syncData.profile.answered_count || 0;
                 userQuestionHistoryArray = syncData.profile.history || [];
                 isPremiumAccountUnlocked = syncData.profile.premium_unlocked;
                 userFirstName = syncData.profile.first_name;
                 userLastName = syncData.profile.last_name;
                 
+                // Keep local registers up to date
                 localStorage.setItem('macprep_premium_unlocked', isPremiumAccountUnlocked);
+                if (userFirstName) localStorage.setItem('macprep_user_first_name', userFirstName);
                 
-                // Redraw top-right button to show personalized identity name
-                const displayIdentity = userFirstName ? `Welcome, ${userFirstName}!` : `Welcome User!`;
-                headerAuthContainer.innerHTML = `
-                    <div class="user-profile-badge" style="display: flex; align-items: center; gap: 12px; padding: 4px 8px; background: rgba(18,24,38,0.6); border: 1px solid var(--border-color); border-radius: 6px;">
-                        <button id="triggerProfileViewBtn" class="profile-avatar-btn" style="background: transparent; border: 1px solid var(--clinical-blue); color: var(--clinical-blue); padding: 6px 12px; border-radius: 4px; font-weight:700; cursor:pointer;">${displayIdentity}</button>
-                        <button id="authLogoutBtn" class="nav-text-link" style="color: #ef4444; background:transparent; border:none; font-size:0.85rem; cursor:pointer;">Sign Out</button>
-                    </div>
-                `;
+                // Repaint header with absolute precision matching true data properties
+                renderPersonalizedHeaderIdentity(currentUserEmail, userFirstName);
 
-                // Wire up profile section view trigger link
-                document.getElementById('triggerProfileViewBtn').addEventListener('click', () => {
-                    onboardingHub.classList.add('hidden');
-                    activeWorkstationGrid.classList.add('hidden');
-                    
-                    profileFirstName.value = userFirstName || '';
-                    profileLastName.value = userLastName || '';
-                    profileEmailStatic.value = currentUserEmail;
-                    
-                    profileSettingsScreen.classList.remove('hidden');
-                });
-
-                document.getElementById('authLogoutBtn').addEventListener('click', () => {
-                    localStorage.clear();
-                    location.reload();
-                });
+                const tierBadgeBtn = document.getElementById('tierBadgeBtn');
+                if (tierBadgeBtn) {
+                    if (isPremiumAccountUnlocked) {
+                        tierBadgeBtn.innerText = "TIER: PREMIUM MEMBER (UNLOCKED)";
+                        tierBadgeBtn.style.color = "#00e699";
+                        tierBadgeBtn.style.borderColor = "#00e699";
+                    } else {
+                        tierBadgeBtn.innerText = `TIER: GUEST (${totalQuestionsAnsweredCount}/100 FREE)`;
+                    }
+                }
 
                 syncWelcomeNotice.innerHTML = `⚡ Cross-Platform Sync Active: Authenticated as <strong>${currentUserEmail}</strong>. Track logs secured.`;
                 syncWelcomeNotice.classList.remove('hidden');
             }
         } catch (e) {
-            console.warn("Cloud connection sync latency.");
+            console.error("Cloud synchronization timeout deferred: ", e);
         }
     }
 
@@ -109,11 +136,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const data = await res.json();
                 if (data.success) {
+                    localStorage.setItem('macprep_user_first_name', fName);
                     alert("Account Profile Updated Successfully!");
                     location.reload();
                 }
             } catch (err) {
-                alert("Failed to sync naming updates.");
+                alert("Failed to sync profile adjustments.");
                 saveProfileBtn.innerText = "Save Profile Modifications";
             }
         });
@@ -130,7 +158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         launchBtn.addEventListener('click', async () => {
             await fetchProductionQuestionMatrix();
             
-            // Derive question list size configuration rules
             const selectedRadioVolume = document.querySelector('input[name="itemVolume"]:checked').value;
             const customValue = parseInt(customVolumeInput.value.trim());
 
@@ -142,11 +169,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 targetSessionBlockLimit = Math.min(parseInt(selectedRadioVolume), workstationQuestions.length);
             }
 
-            // Slice target test array to match selection length precisely
             workstationQuestions = workstationQuestions.slice(0, targetSessionBlockLimit);
 
             if (workstationQuestions.length === 0) {
-                alert("Please select at least one active domain checkbox containing valid board questions.");
+                alert("Please satisfy input criteria with at least one active domain checkbox choice.");
                 return;
             }
 
@@ -222,7 +248,7 @@ async function fetchProductionQuestionMatrix() {
             currentQuestionIndex = 0;
         }
     } catch (err) {
-        console.error("Failover activated:", err);
+        console.error("Failover activated: ", err);
     }
 }
 
@@ -262,47 +288,4 @@ window.switchCalc = function(calcId) {
     const targetContent = document.getElementById(`calc-${calcId}`);
     if (targetContent) targetContent.classList.remove('hidden');
     if (event && event.currentTarget) event.currentTarget.classList.add('active');
-};
-
-// Calculations Suite
-window.calculateABL = function() {
-    const weight = parseFloat(document.getElementById('ablWeight').value);
-    const ebvFactor = parseFloat(document.getElementById('ablEbvFactor').value);
-    const initialHct = parseFloat(document.getElementById('ablInitialHct').value);
-    const minHct = parseFloat(document.getElementById('ablMinHct').value);
-    const resultBox = document.getElementById('ablResult');
-    if (isNaN(weight) || isNaN(initialHct) || isNaN(minHct) || initialHct <= minHct) {
-        resultBox.innerText = "Error: Invalid Input Metrics";
-        return;
-    }
-    const totalEbv = weight * ebvFactor;
-    const abl = Math.round((totalEbv * (initialHct - minHct)) / initialHct);
-    resultBox.innerHTML = `Estimated EBV: ${Math.round(totalEbv)} mL<br><strong>Max Allowable Loss: ${abl} mL</strong>`;
-};
-
-window.calculatePedsMetrics = function() {
-    const age = parseFloat(document.getElementById('pedsAge').value);
-    const weight = parseFloat(document.getElementById('pedsWeight').value);
-    const resultBox = document.getElementById('pedsResult');
-    if (isNaN(age) || isNaN(weight)) {
-        resultBox.innerText = "Error: Invalid Input Metrics";
-        return;
-    }
-    let hourlyRate = weight <= 10 ? weight * 4 : weight <= 20 ? 40 + ((weight - 10) * 2) : 60 + ((weight - 20) * 1);
-    const ettSize = (age / 4) + 3.5;
-    resultBox.innerHTML = `Maint. Fluid Rate: ${hourlyRate} mL/hr<br><strong>Cuffed ETT ID Size: ${ettSize.toFixed(1)} mm</strong>`;
-};
-
-window.calculateAnionGap = function() {
-    const na = parseFloat(document.getElementById('agNa').value);
-    const cl = parseFloat(document.getElementById('agCl').value);
-    const hco3 = parseFloat(document.getElementById('agHco3').value);
-    const resultBox = document.getElementById('agResult');
-    if (isNaN(na) || isNaN(cl) || isNaN(hco3)) {
-        resultBox.innerText = "Error: Invalid Electrolyte Metrics";
-        return;
-    }
-    const anionGap = na - (cl + hco3);
-    let status = anionGap > 12 ? "High AG Metabolic Acidosis (MUDPILES Vector)" : anionGap < 8 ? "Low Anion Gap Array" : "Normal Range (8-12)";
-    resultBox.innerHTML = `Calculated AG: ${anionGap} mEq/L<br><small style="color: #94a3b8">${status}</small>`;
 };
