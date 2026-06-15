@@ -17,7 +17,6 @@ let userLastName = null;
 // Global Synchronizer: Repaints Header Elements Instantly
 function renderPersonalizedHeaderIdentity(email, firstName) {
     const headerAuthContainer = document.getElementById('headerAuthContainer');
-    const tierBadgeBtn = document.getElementById('tierBadgeBtn');
     if (!headerAuthContainer) return;
 
     console.log("🎨 Repainting header identity layer for user profile.");
@@ -68,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileEmailStatic = document.getElementById('profileEmailStatic');
     const customVolumeInput = document.getElementById('customVolumeInput');
 
-    // Firm recovery handshake check
+    // FIXED: Enforce exact string matching key token used by auth layouts
     currentUserEmail = localStorage.getItem('macprep_user_email');
     const savedPremium = localStorage.getItem('macprep_premium_unlocked');
     isPremiumAccountUnlocked = (savedPremium === 'true');
