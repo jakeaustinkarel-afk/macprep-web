@@ -5,7 +5,7 @@
   "main": "src/server.mjs",
   "scripts": {
     "start": "node src/server.mjs",
-    "build": "echo 'Static multi-waveform canvas and core assets fully initialized.'"
+    "build": "echo 'No custom client-side compile compilation steps required for vanilla broadsheet layers.'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

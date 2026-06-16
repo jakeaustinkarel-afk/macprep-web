@@ -4,3 +4,6 @@ server_test.log
 node_modules/
 .env
 server_test.log
+node_modules/
+.env
+server_test.log

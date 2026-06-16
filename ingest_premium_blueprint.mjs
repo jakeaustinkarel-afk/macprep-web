@@ -1,64 +1,62 @@
-/**
- * MACPrep — Institutional Question Bank Bulk Ingestion Pipeline
- * Seamlessly injects batches of 500, 1,000, or 1,500 clinical board items straight into Supabase.
- */
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.error('❌ Ingestion Blocked: Missing environmental credentials inside your .env sheet.');
+if (!supabaseUrl || !supabaseKey) {
+    console.error("❌ Environment Variables Missing: Ensure SUPABASE_URL and a valid key are inside your local .env configuration.");
     process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// ==========================================================================
-// 📋 NEW CONTENT INGESTION BATCH ARRAY
-// Paste your new batches of questions directly inside this array brackets.
-// ==========================================================================
+// Complete clinical question block satisfying all database non-null constraints
 const NEW_PREMIUM_QUESTION_BATCH = [
     {
-        specialty: "HIGH-ACUITY CRISES",
-        stem: "During a high-stakes pediatric surgical pass under general anesthesia, the certified anesthetist notes a sudden, unexplained drop in EtCO2 down to 12 mmHg, accompanied by acute hypotension and a high-pitched, metallic 'mill-wheel' murmur on precordial doppler auscultation. Which immediate action represents the highest-leverage initial intervention?",
+        modality: "Clinical Pharmacology",
+        difficulty: "BOARD HARD",
+        stem: "During a rapid sequence induction in an unstable septic patient with a baseline mean arterial pressure (MAP) of 52 mmHg, which induction agent profiles the most balanced hemodynamic safety vector while minimizing adrenal suppression risks?",
         choices: [
-            "Hyperventilate the patient with 100% oxygen and turn them into the left lateral decubitus Trendelenburg position (Durant maneuver)",
-            "Administer a rapid IV bolus of 50 mg dantrolene sodium directly into a central core port line",
-            "Perform immediate needle thoracostomy in the second intercostal space at the midclavicular line",
-            "Initiate a continuous infusion of high-dose epinephrine at 0.5 mcg/kg/min",
-            "Execute an emergency cricothyroidotomy utilizing a cuffed 6.0 endotracheal tube"
+            "Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds",
+            "Propofol 2 mg/kg IV high-velocity syringe bolus",
+            "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization",
+            "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols"
         ],
-        correct_answer: "A",
-        explanation: "The clinical sequence of a sudden drop in EtCO2, hypotension, and a classic 'mill-wheel' murmur indicates a massive venous air embolism. The immediate treatment is stopping nitrous oxide, flooding the field with saline, administering 100% oxygen, and placing the patient in the Durant maneuver (left lateral decubitus Trendelenburg) to trap the air bubble in the apex of the right ventricle.",
-        telemetry: JSON.stringify({ hr: "138", bp: "62/34", spo2: "89", etco2: "12" })
+        correct_answer: "C",
+        explanation: "Ketamine represents the optimal selection for rapid sequence induction in this scenario due to its ability to stimulate systemic catecholamine release, which preserves systemic vascular resistance (SVR) and mean arterial pressure (MAP) in a baseline hypotensive patient. While Etomidate is also hemodynamically stable, it explicitly induces transient adrenal suppression via 11-beta-hydroxylase inhibition, which is associated with increased mortality profiles in severe sepsis."
     }
-    // 💡 To scale by 500 or 1,500 items, simply comma-separate additional question objects here!
 ];
 
-async function executeBulkIngestionPipeline() {
-    console.log(`📡 Opening connection channel to MACPrep Postgres cluster arrays...`);
-    console.log(`📦 Preparing to stream ${NEW_PREMIUM_QUESTION_BATCH.length} newly authored board items...`);
+async function runBulkIngestion() {
+    console.log("📡 Opening connection channel to MACPrep Postgres cluster arrays...");
+    console.log(`📦 Preparing to stream ${NEW_PREMIUM_QUESTION_BATCH.length} items into 'macprep_questions' table...`);
+
+    // Mapping layers matching every required column rule in your Postgres table
+    const normalizedRows = NEW_PREMIUM_QUESTION_BATCH.map(q => ({
+        id: crypto.randomUUID(), 
+        modality: q.modality,
+        difficulty: q.difficulty,
+        stem: q.stem,
+        choices: q.choices,
+        correct_answer: q.correct_answer,
+        explanation: q.explanation
+    }));
 
     try {
-        // Direct batch injection mapping straight to database table rows
         const { data, error } = await supabase
-            .from('questions')
-            .insert(NEW_PREMIUM_QUESTION_BATCH);
+            .from('macprep_questions') 
+            .insert(normalizedRows);
 
         if (error) throw error;
 
-        console.log(`\n🎉 INGESTION SUCCESSFUL!`);
-        console.log(`🚀 All questions successfully validated and synchronized to the live database cloud ledger.`);
-        process.exit(0);
+        console.log("⚡ Success: Curriculum data parameters seeded into cloud infrastructure tables!");
     } catch (err) {
-        console.error(`\n❌ Pipeline Error: Ingestion failed due to structural data exceptions:`);
-        console.error(err.message);
-        process.exit(1);
+        console.error(`❌ Pipeline Error: Ingestion failed due to structural data exceptions:\n${err.message}`);
     }
 }
 
-executeBulkIngestionPipeline();
+runBulkIngestion();
