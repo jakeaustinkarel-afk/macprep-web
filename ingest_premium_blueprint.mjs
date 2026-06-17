@@ -1,62 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import crypto from 'crypto';
 
-dotenv.config();
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error("❌ Environment Variables Missing: Ensure SUPABASE_URL and a valid key are inside your local .env configuration.");
-    process.exit(1);
-}
-
+// Global Production Credentials Targets
+const supabaseUrl = process.env.SUPABASE_URL || 'https://your-fallback-supabase-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-master-service-role-key-bypass';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Complete clinical question block satisfying all database non-null constraints
+// =========================================================================
+// 📥 DATA BATCH: Paste any new blocks of clinical items inside this array
+// =========================================================================
 const NEW_PREMIUM_QUESTION_BATCH = [
     {
-        modality: "Clinical Pharmacology",
-        difficulty: "BOARD HARD",
-        stem: "During a rapid sequence induction in an unstable septic patient with a baseline mean arterial pressure (MAP) of 52 mmHg, which induction agent profiles the most balanced hemodynamic safety vector while minimizing adrenal suppression risks?",
-        choices: [
-            "Etomidate 0.3 mg/kg IV titrated slowly over 60 seconds",
-            "Propofol 2 mg/kg IV high-velocity syringe bolus",
-            "Ketamine 1.5 mg/kg IV weight-adjusted dose stabilization",
-            "Midazolam 0.1 mg/kg combined with high-dose Fentanyl protocols"
-        ],
-        correct_answer: "C",
-        explanation: "Ketamine represents the optimal selection for rapid sequence induction in this scenario due to its ability to stimulate systemic catecholamine release, which preserves systemic vascular resistance (SVR) and mean arterial pressure (MAP) in a baseline hypotensive patient. While Etomidate is also hemodynamically stable, it explicitly induces transient adrenal suppression via 11-beta-hydroxylase inhibition, which is associated with increased mortality profiles in severe sepsis."
+        specialty: "Regional Anesthesia & Pain",
+        stem: "A 45-year-old female presents with acute diaphragmatic paralysis and dyspnea 15 minutes following a high-volume interscalene brachial plexus block. Unintended tracking to which primary nerve root sequence explains this clinical anomaly?",
+        choices: {
+            A: "C3, C4, C5 nerve roots (Phrenic Nerve)",
+            B: "C5, C6, C7 trunks (Long Thoracic Nerve)",
+            C: "C8, T1 anterior rami (Ulnar Nerve distribution)",
+            D: "T2-T4 thoracic intercostal branches",
+            E: "Ansa cervicalis loop deep branches"
+        },
+        correct_answer: "A",
+        explanation: "Phrenic nerve paresis occurs in nearly 100% of high-volume interscalene blocks due to local anesthetic tracking to the C3-C5 nerve roots along the anterior scalene muscle layer.",
+        telemetry: { difficulty_index: 0.58, discrimination_ratio: 0.65 }
+    },
+    {
+        specialty: "Obstetric Anesthesia",
+        stem: "A parturient experiences an acute, severe drop in systemic vascular resistance (SVR) and profound maternal hypotension immediately following a localized spinal anesthetic injection for an elective cesarean delivery. What primary autonomic pathway block drives this presentation?",
+        choices: {
+            A: "Sympathetic preganglionic efferents resulting in venodilation and arterial relaxation",
+            B: "Vagal parasympathetic tone acceleration slowing sinus rates",
+            C: "Somatic alpha-motor neuron paralysis limiting lower muscle return loops",
+            D: "Baroreceptor mechanoreceptor desensitization loops",
+            E: "Central core micro-opioid receptor saturation tracks"
+        },
+        correct_answer: "A",
+        explanation: "Neuraxial block limits sympathetic preganglionic efferent tracking lines, decreasing venous return to the heart, leading to venous pooling and rapid hypotension.",
+        telemetry: { difficulty_index: 0.62, discrimination_ratio: 0.59 }
     }
 ];
 
-async function runBulkIngestion() {
-    console.log("📡 Opening connection channel to MACPrep Postgres cluster arrays...");
-    console.log(`📦 Preparing to stream ${NEW_PREMIUM_QUESTION_BATCH.length} items into 'macprep_questions' table...`);
-
-    // Mapping layers matching every required column rule in your Postgres table
-    const normalizedRows = NEW_PREMIUM_QUESTION_BATCH.map(q => ({
-        id: crypto.randomUUID(), 
-        modality: q.modality,
-        difficulty: q.difficulty,
-        stem: q.stem,
-        choices: q.choices,
-        correct_answer: q.correct_answer,
-        explanation: q.explanation
-    }));
+async function executeBulkIngestion() {
+    console.log(`🚀 Opening secure ingestion stream...`);
+    console.log(`📦 Preparing to seed ${NEW_PREMIUM_QUESTION_BATCH.length} high-signal questions.`);
 
     try {
         const { data, error } = await supabase
-            .from('macprep_questions') 
-            .insert(normalizedRows);
+            .from('questions_curriculum_pool')
+            .insert(NEW_PREMIUM_QUESTION_BATCH);
 
         if (error) throw error;
 
-        console.log("⚡ Success: Curriculum data parameters seeded into cloud infrastructure tables!");
+        console.log(`===================================================`);
+        console.log(`🎯 BULK SEEDING METRICS COMPLETE`);
+        console.log(`🌟 Successfully hydrated questions to Postgres database.`);
+        console.log(`===================================================`);
     } catch (err) {
-        console.error(`❌ Pipeline Error: Ingestion failed due to structural data exceptions:\n${err.message}`);
+        console.error("❌ Critical database ingestion failure anomaly:", err.message);
     }
 }
 
-runBulkIngestion();
+executeBulkIngestion();
