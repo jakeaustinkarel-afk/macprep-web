@@ -18,11 +18,11 @@
             <h2>National Certifying & Recertifying Examination Workstation</h2>
             <p class="hero-subtext">An advanced psychometric training module mapped entirely to national anesthesiologist assistant evaluation standards.</p>
             <div class="landing-auth-card" id="landing-login-box">
-                <div class="auth-card-inner">
-                    <div class="input-group"><label>Workstation Account Email</label><input type="email" id="auth-email-input" placeholder="Enter email"></div>
-                    <div class="input-group"><label>Account Password</label><input type="password" id="auth-password-input" placeholder="Enter password"></div>
-                    <button class="btn btn-auth-trigger" onclick="authenticateStudentSession()">Access Examination Workspace ➡️</button>
-                </div>
+                <form class="auth-card-inner" onsubmit="event.preventDefault(); authenticateStudentSession();">
+                    <div class="input-group"><label>Workstation Account Email</label><input type="email" id="auth-email-input" placeholder="Enter email" required></div>
+                    <div class="input-group"><label>Account Password</label><input type="password" id="auth-password-input" placeholder="Enter password" required></div>
+                    <button type="submit" class="btn btn-auth-trigger">Access Examination Workspace ➡️</button>
+                </form>
             </div>
         </main>
     </div>
@@ -103,7 +103,6 @@
                 <div class="aux-editorial-page">
                     <h2>💬 Feedback & Clinical Community Reviews</h2>
                     <p class="section-lead">Submit private platform optimization suggestions directly to the development lead, or share your board preparation review with the community.</p>
-                    
                     <div class="workspace-container" style="grid-template-columns: 1fr 1fr; gap: 30px; margin-top:20px;">
                         <div class="dock-card">
                             <h3>💡 Submit a Private Suggestion</h3>
@@ -113,7 +112,6 @@
                             </div>
                             <button class="btn" style="margin-top:15px; width:100%;" onclick="submitPrivateUserSuggestion()">Transmit Private Suggestion 🔒</button>
                         </div>
-
                         <div class="dock-card">
                             <h3>🌟 Write a Board Prep Review</h3>
                             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">Share your training experience with other SAAs and CAAs. Public reviews are visible across the community dashboard layer.</p>
@@ -135,7 +133,6 @@
                             <button class="btn" style="margin-top:15px; width:100%; background:var(--accent-color);" onclick="submitPublicUserReview()">Post Public Practitioner Review 🌍</button>
                         </div>
                     </div>
-
                     <div class="dock-card" style="margin-top: 30px;">
                         <h3>✨ Verified Peer Evaluation Feed</h3>
                         <div id="public-reviews-feed-root" style="margin-top:15px; max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
@@ -230,7 +227,6 @@
                 <div class="aux-editorial-page">
                     <h2>⚡ System Control & Admin Telemetry Console</h2>
                     <p class="section-lead">High-clearance operational terminal monitoring system transactions, active bug diagnostics files, and hidden user suggestion feeds.</p>
-                    
                     <div class="workspace-container" style="grid-template-columns: 1fr 1fr; gap: 30px; margin-top:20px;">
                         <div class="dock-card">
                             <h3>🐛 Active Diagnostic Bug Logs</h3>
@@ -238,7 +234,6 @@
                                 No unassigned system tickets logged in this runtime container slice.
                             </div>
                         </div>
-                        
                         <div class="dock-card">
                             <h3>🔒 Hidden User Suggestions Inbox (Jake Only)</h3>
                             <div id="admin-suggestions-logs" style="font-family: monospace; font-size:12px; line-height:1.4; color: #0284c7; max-height:300px; overflow-y:auto;">
@@ -246,7 +241,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="dock-card" style="margin-top: 30px;">
                         <h3>🌟 Identity & Access Controls Bypass</h3>
                         <p style="font-size: 13px; color:#475569; margin-bottom: 15px;">Simulate account permissions or toggle runtime environment values inside this active deployment token frame.</p>
