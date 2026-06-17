@@ -105,7 +105,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 👤 FIXED: AVATAR DATA-TAG ATTRIBUTES & SYNC HANDLERS
+// 👤 PRACTITIONER METADATA PERSISTENCE LAYER
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -143,7 +143,7 @@ async function synchronizeCloudUserData() {
             }
         }
     } catch (err) {
-        console.warn("⚠️ Utilizing local backup cache tracks.");
+        console.warn("⚠️ Utilizing local fallback cache tracks.");
         const localMeta = localStorage.getItem(`macprep_prof_meta_${cleanKey}`);
         if (localMeta) {
             const parsed = JSON.parse(localMeta);
@@ -416,29 +416,6 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // FIXED PASS: Evaluates fields cleanly before running active cloud network upserts
-    const nameEl = document.getElementById("prof-name");
-    const instEl = document.getElementById("prof-inst");
-    if (state.userEmail && nameEl && instEl) {
-        const nameVal = nameEl.value.trim();
-        const badgeElement = document.getElementById("profile-avatar-badge");
-        const rawAvatarString = badgeElement ? (badgeElement.dataset.avatarRaw || "") : "";
-
-        fetch('/api/user/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: state.userEmail,
-                name: nameVal === "Anesthesia Care Team Professional" ? "" : nameVal,
-                title: document.getElementById("prof-title").value,
-                id_num: document.getElementById("prof-id").value.trim(),
-                institution: instEl.value.trim(),
-                avatar_data: rawAvatarString,
-                performance: state.performance
-            })
-        }).catch(() => {});
-    }
-
     writeActiveWorkstationProgressCheckpoint(); 
     renderAnalyticsEngine();
 }
@@ -533,6 +510,26 @@ window.calculateTCIMatrix = function() {
     }
 };
 
+window.handleAvatarImageUpload = function(inputNode) {
+    const file = inputNode.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const badgeElement = document.getElementById("profile-avatar-badge");
+        if (badgeElement) {
+            badgeElement.innerText = ""; 
+            let base64Result = e.target.result;
+            badgeElement.style.backgroundImage = `url("${base64Result}")`;
+            badgeElement.style.backgroundSize = "cover";
+            badgeElement.style.backgroundPosition = "center";
+            badgeElement.style.border = "2px solid var(--text-primary)";
+            badgeElement.dataset.avatarRaw = base64Result;
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
 window.regenerateProfileAvatarBadge = function() {
     const nameInput = document.getElementById("prof-name");
     const badgeElement = document.getElementById("profile-avatar-badge");
@@ -550,26 +547,6 @@ window.regenerateProfileAvatarBadge = function() {
     badgeElement.innerText = initials.slice(0, 2);
 };
 
-window.handleAvatarImageUpload = function(inputNode) {
-    const file = inputNode.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const badgeElement = document.getElementById("profile-avatar-badge");
-        if (badgeElement) {
-            badgeElement.innerText = ""; 
-            let base64Result = e.target.result;
-            badgeElement.style.backgroundImage = `url("${base64Result}")`;
-            badgeElement.style.backgroundSize = "cover";
-            badgeElement.style.backgroundPosition = "center";
-            badgeElement.style.border = "2px solid var(--text-primary)";
-            badgeElement.dataset.avatarRaw = base64Result; // Store clean raw data
-        }
-    };
-    reader.readAsDataURL(file);
-};
-
 setTimeout(() => {
     const nextBtn = document.getElementById("next-item-btn");
     if (nextBtn) {
@@ -585,6 +562,7 @@ setTimeout(() => {
     }
 }, 500);
 
+// FIXED: Rogue variable definition completely eradicated from animation frames logic
 function initializeWaveformEngine() {
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
     function animate() {
@@ -593,11 +571,13 @@ function initializeWaveformEngine() {
         let pathString = "";
         let color = "#10b981"; 
         let hValue = 55;       
+        let isObstructive = false;
 
         if (currentQuestion) {
             const lookstack = (currentQuestion.stem + " " + (currentQuestion.explanation || "")).toLowerCase();
             if (lookstack.match(/(bronchospasm|shark-fin|resistance)/)) {
                 color = "#f59e0b"; 
+                isObstructive = true;
             }
         }
 
@@ -607,19 +587,32 @@ function initializeWaveformEngine() {
             let y = 100;
 
             if (hValue > 0) {
-                if (cycle >= 0.2 && cycle < 0.3) {
-                    y = 100 - (((cycle - 0.2) / 0.1) * hValue);
-                } else if (cycle >= 0.3 && cycle < 1.3) {
-                    y = 100 - hValue;
-                } else if (cycle >= 1.3 && cycle < 1.4) {
-                    y = (100 - hValue) + (((cycle - 1.3) / 0.1) * hValue);
+                if (isObstructive) {
+                    if (cycle >= 0.2 && cycle < 1.3) {
+                        y = 100 - (Math.sin(((cycle - 0.2) / 1.1) * (Math.PI / 2.2)) * hValue);
+                    } else if (cycle >= 1.3 && cycle < 1.45) {
+                        y = (100 - hValue) + (((cycle - 1.3) / 0.15) * hValue);
+                        if (y > 100) y = 100;
+                    }
+                } else {
+                    if (cycle >= 0.2 && cycle < 0.3) {
+                        y = 100 - (((cycle - 0.2) / 0.1) * hValue);
+                    } else if (cycle >= 0.3 && cycle < 1.3) {
+                        y = 100 - hValue;
+                    } else if (cycle >= 1.3 && cycle < 1.4) {
+                        y = (100 - hValue) + (((cycle - 1.3) / 0.1) * hValue);
+                        if (y > 100) y = 100;
+                    }
                 }
             }
             if (x === 0) pathString += `M ${x} ${y}`;
             else pathString += ` L ${x} ${y}`;
         }
         const wavePath = document.getElementById("wave-path");
-        if (wavePath) wavePath.setAttribute("d", pathString);
+        if (wavePath) {
+            wavePath.setAttribute("d", pathString);
+            wavePath.setAttribute("stroke", color);
+        }
         state.animationFrameId = requestAnimationFrame(animate);
     }
     animate();
