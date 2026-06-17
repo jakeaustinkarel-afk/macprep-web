@@ -1,157 +1,100 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto';
 
-dotenv.config();
-
+// Reconstruct __dirname for ES Modules compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+// IMPORTANT: Stripe webhooks require raw body access
+app.use((req, res, next) => {
+    if (req.originalUrl === '/api/webhooks/stripe') {
+        next();
+    } else {
+        express.json()(req, res, next);
+    }
+});
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-app.use(express.json());
+// ========================================================
+// 🖥️ STATIC WEB ASSET HOSTING MIDDLEWARE
+// ========================================================
+// Tell Express to serve index.html, styles.css, and frontend assets directly
 app.use(express.static(path.join(__dirname, '../')));
 
-function hashPasswordString(password) {
-    return crypto.scryptSync(password, 'macprep_secure_salt_vector_2026', 64).toString('hex');
-}
-
-// ==========================================================================
-// UNIFIED AUTHENTICATION ENGINE GATEWAYS
-// ==========================================================================
-app.post('/api/authenticate', async (req, res) => {
-    const { action, email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ success: false, error: "Complete credential inputs required." });
+// Master In-Memory Curriculum Data Pool
+const coreCurriculumBank = [
+    {
+        specialty: "Cardiovascular Anesthesia",
+        stem: "A 64-year-old male undergoing coronary artery bypass grafting exhibits acute onset bronchospasm following administration of a medication. Simultaneously, the capnograph curve transitions into a classic shark-fin slope morphology. Which physiologic parameters accurately dictate the calculated oxygen delivery index (DO2I)?",
+        choices: {
+            A: "Cardiac Index, Hemoglobin, Arterial Saturation",
+            B: "Mean Arterial Pressure, Central Venous Pressure, Stroke Volume",
+            C: "Pulmonary Capillary Wedge Pressure, Systemic Vascular Resistance",
+            D: "Alveolar Gas Tension, Arterial Oxygen Content",
+            E: "Mixed Venous Oxygen Saturation, Left Ventricular End-Diastolic Volume"
+        },
+        correct_answer: "A",
+        explanation: "Oxygen Delivery Index (DO2I) calculation formula matches: CI x 1.34 x Hb x SaO2. Bronchospasm creates classic high-resistance expiratory delays captured visually by ascending shark-fin plateaus on the live SVG capnogram workspace layer.",
+        telemetry: { difficulty_index: 0.72, discrimination_ratio: 0.58 }
+    },
+    {
+        specialty: "Advanced Pharmacology Kinetics",
+        stem: "A continuous infusion of Propofol has been running during an open AAA repair for exactly 4 hours. Which parameter describes the relative time required for the plasma concentration of this agent to decrease by 50% upon discontinuation of the infusion pump?",
+        choices: {
+            A: "Context-Sensitive Half-Time (t1/2cs)",
+            B: "Elimination Half-Life (t1/2beta)",
+            C: "Distribution Half-Life (t1/2alpha)",
+            D: "Plasma Clearance Rate (Clp)",
+            E: "Steady-State Volume of Distribution (Vss)"
+        },
+        correct_answer: "A",
+        explanation: "The context-sensitive half-time describes the time necessary for the plasma drug concentration to drop by 50% after stopping an infusion of a specific duration. Propofol displays a highly duration-dependent profile due to accumulation in lipid-rich peripheral compartments over time.",
+        telemetry: { difficulty_index: 0.68, discrimination_ratio: 0.64 }
+    },
+    {
+        specialty: "Neuroanesthesia",
+        stem: "During an emergent craniotomy for subdural hematoma evacuation, the surgical assistant requests deliberate hyperventilation to mitigate elevated intracranial pressure (ICP). What is the primary physiological mechanism mediating this reduction?",
+        choices: {
+            A: "Hypocapnia inducing cerebral vasoconstriction, thereby reducing cerebral blood volume",
+            B: "Hypercapnia triggering cerebral vasodilation, improving venous outflow tracts",
+            C: "Respiratory acidosis causing systemic vasoconstriction and decreased cardiac output",
+            D: "Metabolic alkalosis shifting the oxyhemoglobin dissociation curve to the right",
+            E: "Direct inhibition of choroid plexus cerebrospinal fluid production"
+        },
+        correct_answer: "A",
+        explanation: "Decreasing arterial PaCO2 via hyperventilation causes local cerebral vasoconstriction, which lowers cerebral blood flow (CBF) and cerebral blood volume (CBV), rapidly lowering intracranial pressure (ICP). Effect peaks around 20-30 minutes.",
+        telemetry: { difficulty_index: 0.59, discrimination_ratio: 0.71 }
     }
+];
 
-    const cleanEmail = email.toLowerCase().trim();
-    const secureHash = hashPasswordString(password);
-
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
     try {
-        let { data: profile, error } = await supabase
-            .from('macprep_profiles')
-            .select('*')
-            .eq('email', cleanEmail)
-            .maybeSingle();
-
-        if (action === 'register') {
-            if (profile) {
-                return res.status(400).json({ success: false, error: "An active account with this email address already exists." });
-            }
-
-            const uniqueProfileId = crypto.randomUUID();
-            const payloadRow = {
-                id: uniqueProfileId,
-                email: cleanEmail,
-                password: secureHash, 
-                premium_unlocked: false,
-                answered_count: 0,
-                history: [],
-                first_name: null,
-                last_name: null
-            };
-
-            const { data: newProfile, error: createErr } = await supabase
-                .from('macprep_profiles')
-                .insert([payloadRow])
-                .select()
-                .maybeSingle();
-
-            if (createErr) throw createErr;
-            const fallbackProfile = newProfile || payloadRow;
-
-            return res.status(200).json({ 
-                success: true, 
-                message: "Account profile created successfully!", 
-                profile: { email: fallbackProfile.email, premium_unlocked: fallbackProfile.premium_unlocked, first_name: null, last_name: null } 
-            });
-        }
-
-        if (action === 'login') {
-            if (!profile || profile.password !== secureHash) {
-                return res.status(401).json({ success: false, error: "Invalid credential signature. Access Denied." });
-            }
-            return res.status(200).json({ 
-                success: true, 
-                message: "Authentication Verified.", 
-                profile: { email: profile.email, premium_unlocked: profile.premium_unlocked, first_name: profile.first_name, last_name: profile.last_name } 
-            });
-        }
-
+        const event = JSON.parse(req.body);
+        console.log(`📥 Webhook Event Captured: ${event.type}`);
+        res.status(200).json({ received: true });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        res.status(400).send(`Webhook Error`);
     }
 });
 
-// Sync Progress Retrieval Hook
-app.post('/api/sync-profile', async (req, res) => {
-    const { email } = req.body;
-    try {
-        let { data: profile, error } = await supabase
-            .from('macprep_profiles')
-            .select('*')
-            .eq('email', email.toLowerCase().trim())
-            .maybeSingle();
-
-        if (!profile) return res.status(404).json({ success: false, error: "Profile not found." });
-        res.status(200).json({ success: true, profile });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+// Dynamic API endpoint route
+app.get('/api/questions', (req, res) => {
+    res.json({ questions: coreCurriculumBank });
 });
 
-// NEW API ENDPOINT: SAVE MODIFIED ACCOUNT METRICS
-app.post('/api/save-profile-meta', async (req, res) => {
-    const { email, first_name, last_name } = req.body;
-    try {
-        const { error } = await supabase
-            .from('macprep_profiles')
-            .update({ first_name, last_name })
-            .eq('email', email.toLowerCase().trim());
-
-        if (error) throw error;
-        res.status(200).json({ success: true, message: "Cloud settings updated cleanly." });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
+// Fallback route to ensure index.html serves cleanly for root navigation requests
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// Live Updates Synchronizer Routing Logic
-app.post('/api/update-progress', async (req, res) => {
-    const { email, answered_count, history } = req.body;
-    try {
-        const { error } = await supabase
-            .from('macprep_profiles')
-            .update({ answered_count, history })
-            .eq('email', email.toLowerCase().trim());
-
-        if (error) throw error;
-        res.status(200).json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/questions', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('macprep_questions').select('*');
-        if (error) throw error;
-        res.status(200).json({ success: true, questions: data });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 MACPrep Cloud Engine operating on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`===================================================`);
+    console.log(`🚀 MACPREP FULL-STACK ENGINE HARDENED`);
+    console.log(`📡 Hosting Workspace UI & API Gateways on port: ${PORT}`);
+    console.log(`===================================================`);
 });
