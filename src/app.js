@@ -11,7 +11,6 @@ let state = {
     isPremium: false, 
     animationFrameId: null,
     wavePhase: 0,
-    // Database Cache Mappings
     performance: {
         totalAnswered: 0,
         totalCorrect: 0,
@@ -27,9 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     calculateTCIMatrix();
 });
 
-// ==========================================
-// SECURE VERIFICATION & ADMIN BYPASS CHANNELS
-// ==========================================
 function evaluateAuthGatewayState() {
     const landingView = document.getElementById("public-landing-page");
     const appShellView = document.getElementById("authenticated-app-shell");
@@ -49,12 +45,39 @@ function evaluateAuthGatewayState() {
         }
 
         switchMainInteriorPanel('workspace');
-        fetchCurriculumBlock(); // Pulls full data bank and syncs cloud profiles
+        fetchCurriculumBlock();
     } else {
         if (landingView) landingView.classList.remove("hidden");
         if (appShellView) appShellView.classList.add("hidden");
     }
 }
+
+// =========================================================================
+// 💳 STRIPE CLIENT GATEWAY REDIRECTION TRIGGER
+// =========================================================================
+window.initializePremiumStripeCheckout = async function() {
+    if (!state.userEmail) return alert("Session authentication missing.");
+    
+    try {
+        console.log(`💳 Initializing Stripe Checkout session for: ${state.userEmail}`);
+        const response = await fetch('/api/checkout/create-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: state.userEmail })
+        });
+
+        const data = await response.json();
+        if (data.url) {
+            // Redirect user seamlessly to Stripe's secure billing servers
+            window.location.href = data.url;
+        } else {
+            alert("Checkout pipeline initialization error. Please try again.");
+        }
+    } catch (err) {
+        console.error("Failed executing Stripe forward transit routes:", err);
+        alert("Billing transit connection error.");
+    }
+};
 
 window.authenticateStudentSession = function() {
     const emailInput = document.getElementById("auth-email-input").value.trim();
@@ -75,6 +98,10 @@ window.authenticateStudentSession = function() {
 };
 
 window.terminateStudentSession = function() {
+    if (state.userEmail) {
+        const cleanKey = state.userEmail.replace(/[^a-zA-Z0-9]/g, "_");
+        localStorage.removeItem(`macprep_active_session_${cleanKey}`);
+    }
     localStorage.removeItem("macprep_user_email");
     state.userEmail = null;
     state.isPremium = false;
@@ -92,62 +119,6 @@ window.switchMainInteriorPanel = function(targetViewName) {
     const targetNavBtn = document.getElementById(`nav-link-${targetViewName}`);
     if (targetNavBtn) targetNavBtn.classList.add("active");
 };
-
-// =========================================================================
-// 🔄 ASYNC CLOUD SYNC ENGINE (Supabase Pipeline Replacements)
-// =========================================================================
-async function synchronizeCloudUserData() {
-    if (!state.userEmail) return;
-    try {
-        // Pull down real-time performance vectors and profile configurations from our unified server API
-        const response = await fetch(`/api/user/profile?email=${encodeURIComponent(state.userEmail)}`);
-        if (!response.ok) return;
-        
-        const data = await response.json();
-        if (data.profile) {
-            state.performance = data.profile.performance || state.performance;
-            
-            // Map form inputs if standing inside profile tab console views
-            const nameInput = document.getElementById("prof-name");
-            const titleSelect = document.getElementById("prof-title");
-            const idInput = document.getElementById("prof-id");
-            const instInput = document.getElementById("prof-inst");
-            const badgeElement = document.getElementById("profile-avatar-badge");
-
-            if (nameInput && data.profile.name) nameInput.value = data.profile.name;
-            if (titleSelect && data.profile.title) titleSelect.value = data.profile.title;
-            if (idInput && data.profile.id_num) idInput.value = data.profile.id_num;
-            if (instInput && data.profile.institution) instInput.value = data.profile.institution;
-            
-            if (badgeElement && data.profile.avatar_data) {
-                badgeElement.innerText = "";
-                badgeElement.style.backgroundImage = data.profile.avatar_data;
-                badgeElement.style.backgroundSize = "cover";
-                badgeElement.style.backgroundPosition = "center";
-                badgeElement.style.border = "2px solid var(--text-primary)";
-            } else {
-                regenerateProfileAvatarBadge();
-            }
-            
-            renderAnalyticsEngine();
-        }
-        
-        // Pull down any active uncompleted session recovery checkpoints
-        const sessionResponse = await fetch(`/api/user/session?email=${encodeURIComponent(state.userEmail)}`);
-        if (sessionResponse.ok) {
-            const sessionData = await sessionResponse.json();
-            if (sessionData.session && sessionData.session.questions && sessionData.session.current_index > 0) {
-                // Store temporarily on state to reference if they click resume
-                state.pendingRecoveredSession = sessionData.session;
-                const recoveryModal = document.getElementById("session-recovery-banner");
-                if (recoveryModal) recoveryModal.classList.remove("hidden");
-            }
-        }
-    } catch (err) {
-        console.error("Cloud synchronization track failed, using fallback parameters:", err);
-        regenerateProfileAvatarBadge();
-    }
-}
 
 window.savePractitionerProfileData = async function() {
     if (!state.userEmail) return;
@@ -171,13 +142,66 @@ window.savePractitionerProfileData = async function() {
         if (response.ok) {
             alert("Cloud Practitioner Profile synchronized securely to Postgres tables.");
             regenerateProfileAvatarBadge();
-        } else {
-            alert("Server sync warning: Profile changes kept in temporary buffers.");
         }
     } catch (err) {
         console.error("Profile cloud upsert failed:", err);
     }
 };
+
+async function hydrateUserPersistentSession() {
+    if (!state.userEmail) return;
+    try {
+        const response = await fetch(`/api/user/profile?email=${encodeURIComponent(state.userEmail)}`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.profile) {
+            state.performance = data.profile.performance || state.performance;
+            
+            // Check database tier property flag to override trial caps
+            if (data.profile.is_premium === true) {
+                state.isPremium = true;
+            }
+
+            const nameInput = document.getElementById("prof-name");
+            const titleSelect = document.getElementById("prof-title");
+            const idInput = document.getElementById("prof-id");
+            const instInput = document.getElementById("prof-inst");
+            const badgeElement = document.getElementById("profile-avatar-badge");
+
+            if (nameInput && data.profile.name) nameInput.value = data.profile.name;
+            if (titleSelect && data.profile.title) titleSelect.value = data.profile.title;
+            if (idInput && data.profile.id_num) idInput.value = data.profile.id_num;
+            if (instInput && data.profile.institution) instInput.value = data.profile.institution;
+            
+            if (badgeElement && data.profile.avatar_data) {
+                badgeElement.innerText = "";
+                badgeElement.style.backgroundImage = data.profile.avatar_data;
+                badgeElement.style.backgroundSize = "cover";
+                badgeElement.style.backgroundPosition = "center";
+                badgeElement.style.border = "2px solid var(--text-primary)";
+            } else {
+                regenerateProfileAvatarBadge();
+            }
+            
+            renderAnalyticsEngine();
+            populateDynamicVolumeDropdownOptions();
+        }
+
+        const sessionResponse = await fetch(`/api/user/session?email=${encodeURIComponent(state.userEmail)}`);
+        if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+            if (sessionData.session && sessionData.session.questions && sessionData.session.current_index > 0) {
+                state.pendingRecoveredSession = sessionData.session;
+                const recoveryModal = document.getElementById("session-recovery-banner");
+                if (recoveryModal) recoveryModal.classList.remove("hidden");
+            }
+        }
+    } catch (err) {
+        console.error("Cloud hydration error:", err);
+        regenerateProfileAvatarBadge();
+    }
+}
 
 async function writeActiveWorkstationProgressCheckpoint() {
     if (!state.userEmail || state.questions.length === 0) return;
@@ -196,7 +220,7 @@ async function writeActiveWorkstationProgressCheckpoint() {
             body: JSON.stringify(payload)
         });
     } catch (err) {
-        console.error("Failed capturing network session boundary checkpoints:", err);
+        console.error("Failed writing checkpoint parameters:", err);
     }
 }
 
@@ -214,22 +238,18 @@ window.handleSessionRecoveryChoice = async function(shouldResume) {
         if (parsed.specialty_filter) document.getElementById("filter-specialty").value = parsed.specialty_filter;
         if (parsed.volume_filter) document.getElementById("filter-volume").value = parsed.volume_filter;
 
-        console.log(`🔄 Recovered Postgres Cloud session tracking cleanly at item index: ${state.currentIndex}`);
         applyCustomBlockConfiguration(true); 
     } else {
         try {
             await fetch(`/api/user/session?email=${encodeURIComponent(state.userEmail)}`, { method: 'DELETE' });
         } catch (err) {
-            console.error("Failed dropping cloud track rows:", err);
+            console.error("Failed dropping session tracking row:", err);
         }
         applyCustomBlockConfiguration(false);
     }
     state.pendingRecoveredSession = null;
 };
 
-// ==========================================
-// BLOCK SEEDING & SHUFFLE SPLITTER FLOWS
-// ==========================================
 function shuffleCurriculumArray(targetArray) {
     let m = targetArray.length, t, i;
     while (m) {
@@ -332,12 +352,11 @@ window.returnToHomeDashboard = function() {
 
 async function fetchCurriculumBlock() {
     try {
-        const response = await fetch("http://localhost:3000/api/questions");
+        const response = await fetch("/api/questions");
         const data = await response.json();
         state.masterQuestionsPool = data.questions || [];
         
-        populateDynamicVolumeDropdownOptions(); 
-        await synchronizeCloudUserData(); // FIXED: Hydrates practitioner vectors out of real Postgres table records
+        await hydrateUserPersistentSession();
         
         if (!state.pendingRecoveredSession) {
             applyCustomBlockConfiguration(false);   
@@ -428,7 +447,6 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // Push calculation metrics up to PostgreSQL rows on item resolution answers
     savePractitionerProfileOnChoice();
     writeActiveWorkstationProgressCheckpoint(); 
     renderAnalyticsEngine();
@@ -453,7 +471,7 @@ async function savePractitionerProfileOnChoice() {
             body: JSON.stringify(payload)
         });
     } catch (e) {
-        console.error("Silent background metrics push warning:", e);
+        console.error("Silent sync tracking anomaly:", e);
     }
 }
 
@@ -577,6 +595,25 @@ window.regenerateProfileAvatarBadge = function() {
     badgeElement.innerText = initials.slice(0, 2);
 };
 
+window.handleAvatarImageUpload = function(inputNode) {
+    const file = inputNode.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const badgeElement = document.getElementById("profile-avatar-badge");
+        if (badgeElement) {
+            badgeElement.innerText = ""; 
+            badgeElement.style.backgroundImage = `url('${e.target.result}')`;
+            badgeElement.style.backgroundSize = "cover";
+            badgeElement.style.backgroundPosition = "center";
+            badgeElement.style.border = "2px solid var(--text-primary)";
+            savePractitionerProfileOnChoice();
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
 setTimeout(() => {
     const nextBtn = document.getElementById("next-item-btn");
     if (nextBtn) {
@@ -588,7 +625,7 @@ setTimeout(() => {
                 initializeWaveformEngine();
             } else {
                 alert("Core quiz block sequence fully mapped! Great session.");
-                handleSessionRecoveryChoice(false); // Clear session safely out of Postgres upon full block clears
+                handleSessionRecoveryChoice(false);
             }
         });
     }

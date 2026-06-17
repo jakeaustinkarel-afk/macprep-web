@@ -3,154 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MACPrep Workspace | Premium Board Review</title>
+    <title>MACPrep | National Anesthesia Assessment Workstation</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="surgical-emerald-theme">
-    <div class="workspace-container">
-        <main class="main-workstation">
-            <header class="workstation-header">
-                <div class="brand-block" onclick="returnToHomeDashboard()" style="cursor: pointer;">
-                    <h1>MACPrep</h1>
-                    <span class="badge premium-badge">Premium Access</span>
-                </div>
-                <div class="progress-block">
-                    <span id="current-specialty">Loading Specialty...</span>
-                    <span id="question-pacing-counter">Item 0 of 0</span>
-                </div>
-            </header>
 
-            <section class="dock-card session-config-panel">
-                <div class="config-title">🛠️ WORKSTATION BLOCK BUILDER (CUSTOM SPLITTER)</div>
-                <div class="config-controls-row">
-                    <div class="control-unit">
-                        <label for="filter-specialty">Sub-Specialty Filter</label>
-                        <select id="filter-specialty" onchange="applyCustomBlockConfiguration()">
-                            <option value="all">All Anesthesia Modules (Comprehensive Exam)</option>
-                            <option value="Cardiovascular Anesthesia">Cardiovascular Anesthesia</option>
-                            <option value="Advanced Pharmacology Kinetics">Advanced Pharmacology Kinetics</option>
-                            <option value="Neuroanesthesia">Neuroanesthesia</option>
-                        </select>
+    <div id="public-landing-page" class="landing-viewport">
+        <header class="landing-header">
+            <div class="landing-logo"><h1>MACPrep</h1></div>
+            <div class="landing-sub-brand">Anesthesia Care Team Evaluation Terminal</div>
+        </header>
+
+        <main class="landing-hero-section">
+            <span class="hero-eyebrow">📋 BOARD BLUEPRINT RUNTIME</span>
+            <h2>National Certifying & Recertifying Examination Workstation</h2>
+            <p class="hero-subtext">An advanced psychometric training module mapped entirely to national anesthesiologist assistant evaluation standards. Access peer-reviewed item blocks, live respiratory capnography simulation parameters, and real-time performance vector indexing.</p>
+            
+            <div class="landing-auth-card" id="landing-login-box">
+                <div class="auth-card-inner">
+                    <div class="input-group">
+                        <label for="auth-email-input">Workstation Account Email</label>
+                        <input type="email" id="auth-email-input" placeholder="Enter your email address">
                     </div>
-                    <div class="control-unit">
-                        <label for="filter-volume">Target Question Volume Limit</label>
-                        <select id="filter-volume" onchange="applyCustomBlockConfiguration()">
-                            <option value="all">Full Structural Stream</option>
-                            <option value="1">1 Board Item (Rapid Fire)</option>
-                            <option value="2">2 Board Items (Targeted Block)</option>
-                        </select>
+                    <div class="input-group">
+                        <label for="auth-password-input">Account Password</label>
+                        <input type="password" id="auth-password-input" placeholder="Enter your secret passphrase">
                     </div>
+                    <button class="btn btn-auth-trigger" onclick="authenticateStudentSession()">Access Examination Workspace ➡️</button>
                 </div>
-            </section>
-
-            <section class="simulator-display-panel">
-                <div class="panel-meta">
-                    <span class="panel-title">🫁 HIGH-FIDELITY LIVE CAPNOGRAPHY SIMULATOR</span>
-                    <span id="current-physio-state" class="state-indicator status-normal">NORMAL PHYSIOLOGY</span>
-                </div>
-                <div class="svg-container">
-                    <svg id="capnograph-wave" viewBox="0 0 800 120" preserveAspectRatio="none">
-                        <path id="wave-path" d="M 0 100 Q 20 100 40 100 T 80 100" fill="none" stroke="#10b981" stroke-width="3"/>
-                    </svg>
-                </div>
-            </section>
-
-            <section class="question-surface">
-                <div id="question-stem" class="broadsheet-stem">
-                    Streaming certified premium curriculum blocks...
-                </div>
-
-                <div id="choices-container" class="choices-stack">
-                    </div>
-
-                <div id="explanation-container" class="explanation-card hidden">
-                    <h3 id="explanation-title">Clinical Rationale Match</h3>
-                    <p id="explanation-text"></p>
-                    <button id="next-item-btn" class="btn btn-primary">Advance to Next Sequence ➡️</button>
-                </div>
-            </section>
+            </div>
         </main>
+    </div>
 
-        <aside class="diagnostic-dock">
-            <section class="dock-card analytics-card">
-                <h2>📊 PERFORMANCE VECTOR ANALYTICS</h2>
-                <div class="analytics-grid">
-                    <div class="vector-stat">
-                        <span class="stat-label">Global Accuracy</span>
-                        <span id="analytics-accuracy" class="stat-value">0%</span>
-                    </div>
-                    <div class="vector-stat">
-                        <span class="stat-label">Items Cleared</span>
-                        <span id="analytics-total" class="stat-value">0</span>
-                    </div>
-                </div>
+    <div id="authenticated-app-shell" class="app-interior-viewport hidden">
+        
+        <nav class="side-navigation-drawer">
+            <div class="drawer-header">
+                <h3>MACPrep</h3>
+                <span id="drawer-user-tag">User Identity</span>
+            </div>
+            <div class="drawer-links-stack">
+                <button class="drawer-btn active" id="nav-link-workspace" onclick="switchMainInteriorPanel('workspace')">💻 Exam Workstation</button>
+                <button class="drawer-btn" id="nav-link-profile" onclick="switchMainInteriorPanel('profile')">👤 Practitioner Profile</button>
+                <button class="drawer-btn" id="nav-link-faq" onclick="switchMainInteriorPanel('faq')">❓ Workstation FAQ</button>
+                <button class="drawer-btn" id="nav-link-update" onclick="switchMainInteriorPanel('update')">📋 System Update Log</button>
+                <button class="drawer-btn" id="nav-link-privacy" onclick="switchMainInteriorPanel('privacy')">🛡️ Privacy Policy</button>
+            </div>
+            <div class="drawer-footer">
+                <button class="action-btn disconnect-btn" onclick="terminateStudentSession()">Sign Out</button>
+            </div>
+        </nav>
+
+        <div class="shell-content-interior">
+            
+            <div id="view-panel-workspace" class="sub-view-panel">
                 
-                <div class="specialty-bars-container">
-                    <h3>Specialty Mastery Maps</h3>
-                    <div id="mastery-bars">
+                <div id="session-recovery-banner" class="session-recovery-modal hidden">
+                    <div class="recovery-box-inner">
+                        <div class="recovery-text-block">
+                            <strong>🔄 Active Session State Detected</strong>
+                            <p>You have an uncompleted block profile saved for this specialty mapping criteria. Would you like to resume your exact prior position or start a completely fresh shuffled quiz block stream?</p>
                         </div>
-                </div>
-
-                <div class="psychometric-signals">
-                    <h3>Psychometric Telemetry Tracking</h3>
-                    <div class="signal-row">
-                        <span>Target Difficulty Index (b):</span>
-                        <span id="telemetry-diff" class="signal-badge">N/A</span>
-                    </div>
-                    <div class="signal-row">
-                        <span>Discrimination Ratio (a):</span>
-                        <span id="telemetry-disc" class="signal-badge">N/A</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="dock-card calculator-card">
-                <h2>🧮 ADVANCED CLINICAL CORE CALCULATORS</h2>
-                <div class="calc-tabs">
-                    <button class="tab-btn active" onclick="switchCalcTab('do2i')">DO₂I Predictor</button>
-                    <button class="tab-btn" onclick="switchCalcTab('tci')">TCI Half-Time</button>
-                </div>
-
-                <div id="calc-panel-do2i" class="calc-tab-panel">
-                    <p class="calc-formula-label">Oxygen Delivery Index: DO₂I = CI × 13.4 × Hb × SaO₂</p>
-                    <div class="input-group">
-                        <label>Cardiac Index (L/min/m²)</label>
-                        <input type="number" id="input-do2i-ci" value="3.0" step="0.1" oninput="calculateDO2I()">
-                    </div>
-                    <div class="input-group">
-                        <label>Hemoglobin (g/dL)</label>
-                        <input type="number" id="input-do2i-hb" value="14.0" step="0.1" oninput="calculateDO2I()">
-                    </div>
-                    <div class="input-group">
-                        <label>Arterial Saturation (SaO₂ %)</label>
-                        <input type="number" id="input-do2i-sao2" value="99" max="100" oninput="calculateDO2I()">
-                    </div>
-                    <div class="calc-result-box">
-                        <span class="result-label">Predicted DO₂I:</span>
-                        <span id="result-do2i-value" class="result-value">557.4 mL/min/m²</span>
-                        <span id="result-do2i-status" class="status-badge status-normal">Normal (500-600)</span>
+                        <div class="recovery-actions-row">
+                            <button class="action-btn resume-confirm-btn" onclick="handleSessionRecoveryChoice(true)">Resume Block Track</button>
+                            <button class="action-btn clear-fresh-btn" onclick="handleSessionRecoveryChoice(false)">Start Fresh Block</button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="calc-panel-tci" class="calc-tab-panel hidden">
-                    <p class="calc-formula-label">Context-Sensitive Half-Times (t1/2cs) Matrix by Infusion Run Duration</p>
-                    <div class="input-group">
-                        <label>Select Primary Kinetic Agent</label>
-                        <select id="tci-agent-select" onchange="calculateTCIMatrix()">
-                            <option value="propofol">Propofol (Diprivan K-Pool)</option>
-                            <option value="remifentanil">Remifentanil (Rapid Ester Cleared)</option>
-                        </select>
-                    </div>
-                    <div class="tci-matrix-table">
-                        <div class="tci-row header-row"><span>Duration</span><span>Estimated t1/2cs</span></div>
-                        <div class="tci-row"><span>1 Hour Run</span><span id="tci-1h">-</span></div>
-                        <div class="tci-row"><span>3 Hour Run</span><span id="tci-3h">-</span></div>
-                        <div class="tci-row"><span>8 Hour Run</span><span id="tci-8h">-</span></div>
-                    </div>
-                    <p class="calc-info-note">*Remifentanil maintains a stable context-sensitive half-time of ~3-5 minutes regardless of runtime duration due to structural breakdown by non-specific plasma esterases.</p>
+                <div class="workspace-container">
+                    <main class="main-workstation">
+                        <header class="workstation-header">
+                            <div class="brand-block" onclick="returnToHomeDashboard()" style="cursor: pointer;">
+                                <h1>MACPrep Workspace</h1>
+                            </div>
+                            <div class="progress-block">
+                                <span id="question-pacing-counter" class="header-pacing-tag">Item 0 of 0</span>
+                            </div>
+                        </header>
+
+                        <section class="dock-card session-config-panel">
+                            <div class="panel-control-header">
+                                <div class="config-title">🛠️ WORKSPACE VOLUME & CRITERIA CONTROL</div>
+                                <div class="user-identity-dock" id="user-identity-box">
+                                    <span id="user-display-tag" class="user-welcome-label">Loading Account...</span>
+                                </div>
+                            </div>
+                            <div class="config-controls-row">
+                                <div class="control-unit">
+                                    <label for="filter-specialty">Core Anesthesia Specialty Module</label>
+                                    <select id="filter-specialty" onchange="applyCustomBlockConfiguration(false)">
+                                        <option value="all">All Anesthesia Modules (Comprehensive Core Pool)</option>
+                                        <option value="Cardiovascular Anesthesia">Cardiovascular Anesthesia</option>
+                                        <option value="Advanced Pharmacology Kinetics">Advanced Pharmacology Kinetics</option>
+                                        <option value="Neuroanesthesia">Neuroanesthesia</option>
+                                        <option value="Regional Anesthesia & Pain">Regional Anesthesia & Pain</option>
+                                        <option value="Pediatric Anesthesia">Pediatric Anesthesia</option>
+                                        <option value="Obstetric Anesthesia">Obstetric Anesthesia</option>
+                                        <option value="Thoracic Anesthesia">Thoracic Anesthesia</option>
+                                        <option value="General Principles & Safety">General Principles & Safety</option>
+                                    </select>
+                                </div>
+                                <div class="control-unit">
+                                    <label for="filter-volume">Target Block Sizing</label>
+                                    <select id="filter-volume" onchange="applyCustomBlockConfiguration(false)">
+                                        </select>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div id="premium-upgrade-promo-banner" class="premium-upsell-banner hidden">
+                            <span>🔒 Non-Premium Account limited to 10% of total dynamic question bank capacity. Upgrade to Premium for uninhibited 2,500-question access.</span>
+                            <button class="upsell-inline-btn" onclick="initializePremiumStripeCheckout()">Upgrade to Premium ($50)</button>
+                        </div>
+
+                        <div class="specialty-breadcrumb-bar">
+                            <span id="current-specialty">LOADING SPECIALTY MODALITY...</span>
+                        </div>
+
+                        <section class="simulator-display-panel">
+                            <div class="panel-meta">
+                                <span class="panel-title">🫁 HIGH-FIDELITY LIVE CAPNOGRAPHY SIMULATOR</span>
+                                <span id="current-physio-state" class="state-indicator status-normal">NORMAL PHYSIOLOGY</span>
+                            </div>
+                            <div class="svg-container">
+                                <svg id="capnograph-wave" viewBox="0 0 800 120" preserveAspectRatio="none">
+                                    <path id="wave-path" d="M 0 100 Q 20 100 40 100 T 80 100" fill="none" stroke="#10b981" stroke-width="3"/>
+                                </svg>
+                            </div>
+                        </section>
+
+                        <section class="question-surface">
+                            <div id="question-stem" class="broadsheet-stem">
+                                Streaming certified premium curriculum blocks...
+                            </div>
+                            <div id="choices-container" class="choices-stack"></div>
+                            <div id="explanation-container" class="explanation-card hidden">
+                                <h3 id="explanation-title">Clinical Rationale Match</h3>
+                                <p id="explanation-text"></p>
+                                <button id="next-item-btn" class="btn btn-primary">Advance to Next Sequence ➡️</button>
+                            </div>
+                        </section>
+                    </main>
+
+                    <aside class="diagnostic-dock">
+                        <section class="dock-card analytics-card">
+                            <h2>📊 PERFORMANCE VECTOR ANALYTICS</h2>
+                            <div class="analytics-grid">
+                                <div class="vector-stat">
+                                    <span class="stat-label">Global Accuracy</span>
+                                    <span id="analytics-accuracy" class="stat-value">0%</span>
+                                </div>
+                                <div class="vector-stat">
+                                    <span class="stat-label">Items Cleared</span>
+                                    <span id="analytics-total" class="stat-value">0</span>
+                                </div>
+                            </div>
+                            <div class="specialty-bars-container">
+                                <h3>Specialty Mastery Maps</h3>
+                                <div id="mastery-bars"></div>
+                            </div>
+                            <div class="psychometric-signals">
+                                <h3>Psychometric Telemetry Tracking</h3>
+                                <div class="signal-row"><span>Target Difficulty Index (b):</span><span id="telemetry-diff" class="signal-badge">N/A</span></div>
+                                <div class="signal-row"><span>Discrimination Ratio (a):</span><span id="telemetry-disc" class="signal-badge">N/A</span></div>
+                            </div>
+                        </section>
+
+                        <section class="dock-card calculator-card">
+                            <h2>🧮 ADVANCED CLINICAL CORE CALCULATORS</h2>
+                            <div class="calc-tabs">
+                                <button class="tab-btn active" id="btn-calc-do2i" onclick="switchCalcTab('do2i')">DO₂I Predictor</button>
+                                <button class="tab-btn" id="btn-calc-tci" onclick="switchCalcTab('tci')">TCI Half-Time</button>
+                            </div>
+                            <div id="calc-panel-do2i" class="calc-tab-panel">
+                                <p class="calc-formula-label">Oxygen Delivery Index: DO₂I = CI × 13.4 × Hb × SaO₂</p>
+                                <div class="input-group"><label>Cardiac Index (L/min/m²)</label><input type="number" id="input-do2i-ci" value="3.0" step="0.1" oninput="calculateDO2I()"></div>
+                                <div class="input-group"><label>Hemoglobin (g/dL)</label><input type="number" id="input-do2i-hb" value="14.0" step="0.1" oninput="calculateDO2I()"></div>
+                                <div class="input-group"><label>Arterial Saturation (SaO₂ %)</label><input type="number" id="input-do2i-sao2" value="99" max="100" oninput="calculateDO2I()"></div>
+                                <div class="calc-result-box"><span class="result-label">Predicted DO₂I:</span><span id="result-do2i-value" class="result-value">557.4 mL/min/m²</span><span id="result-do2i-status" class="status-badge status-normal">Normal (500-600)</span></div>
+                            </div>
+                            <div id="calc-panel-tci" class="calc-tab-panel hidden">
+                                <p class="calc-formula-label">Context-Sensitive Half-Times (t1/2cs) Matrix by Infusion Run Duration</p>
+                                <div class="input-group">
+                                    <label>Select Primary Kinetic Agent</label>
+                                    <select id="tci-agent-select" onchange="calculateTCIMatrix()">
+                                        <option value="propofol">Propofol (Diprivan K-Pool)</option>
+                                        <option value="remifentanil">Remifentanil (Rapid Ester Cleared)</option>
+                                    </select>
+                                </div>
+                                <div class="tci-matrix-table">
+                                    <div class="tci-row header-row"><span>Duration</span><span>Estimated t1/2cs</span></div>
+                                    <div class="tci-row"><span>1 Hour Run</span><span id="tci-1h">-</span></div>
+                                    <div class="tci-row"><span>3 Hour Run</span><span id="tci-3h">-</span></div>
+                                    <div class="tci-row"><span>8 Hour Run</span><span id="tci-8h">-</span></div>
+                                </div>
+                            </div>
+                        </section>
+                    </aside>
                 </div>
-            </section>
-        </aside>
+            </div>
+
+            <div id="view-panel-profile" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>👤 Practitioner Profile</h2>
+                    <p class="section-lead">Configure your account identity profile attributes to map against certification records.</p>
+                    <div class="premium-profile-grid">
+                        <div class="profile-avatar-sidebar">
+                            <div class="avatar-frame-wrapper" id="profile-avatar-badge">AA</div>
+                            <label class="avatar-upload-trigger">
+                                📷 Change Avatar Image
+                                <input type="file" id="avatar-file-input" style="display: none;" onchange="handleAvatarImageUpload(this)">
+                            </label>
+                            <p class="avatar-upload-note">Supports PNG, JPEG, or standard system vectors.</p>
+                        </div>
+                        <div class="profile-fields-container">
+                            <div class="premium-form-row"><div class="input-group-premium"><label>Full Professional Name</label><input type="text" id="prof-name" value="Anesthesia Care Team Professional" oninput="regenerateProfileAvatarBadge()"></div></div>
+                            <div class="premium-form-row">
+                                <div class="input-group-premium"><label>Clinical Title & Status Track</label>
+                                    <select id="prof-title"><option value="caa">CAA (Certified Anesthesiologist Assistant)</option><option value="saa">SAA (Student Anesthesiologist Assistant)</option></select>
+                                </div>
+                            </div>
+                            <div class="premium-form-row"><div class="input-group-premium"><label>National Certification Number (NCCAA ID)</label><input type="text" id="prof-id" placeholder="e.g. CAA-9482-A"></div></div>
+                            <div class="premium-form-row"><div class="input-group-premium"><label>Affiliated Medical Institution / Group Practice</label><input type="text" id="prof-inst" placeholder="e.g. Memorial Anesthesia Department"></div></div>
+                            <button class="btn premium-update-btn" onclick="savePractitionerProfileData()">Update Profile</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-panel-faq" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>❓ Workstation FAQ</h2>
+                    <p class="section-lead">Technical and psychometric documentation covering assessment parameters.</p>
+                    <div class="faq-accordion-scroll-stack">
+                        <div class="faq-item"><h4>1. Is a personal email address valid for profile hydration?</h4><p>Yes. MACPrep dynamically accommodates personal and institutional/hospital domains with zero routing or performance tracking variances.</p></div>
+                        <div class="faq-item"><h4>2. How often is the 1,000-question master pool blueprint updated?</h4><p>Curriculum items undergo constant validation checks against national core content matrices to reflect immediate practice adjustments.</p></div>
+                        <div class="faq-item"><h4>3. How do distractor cross-offs affect grading metrics?</h4><p>Using the "Slash" function isolates item distractors visually without committing a definitive answer string, protecting evaluation counts.</p></div>
+                        <div class="faq-item"><h4>4. What formula governs the live DO2I calculator tab?</h4><p>The calculation runs the physiological formula: $DO_2I = CI \times 1.34 \times Hb \times (SaO_2 / 100) \times 10$, flagging systemic perfusion hazards.</p></div>
+                        <div class="faq-item"><h4>5. Why does Remifentanil show a fixed context-sensitive half-time?</h4><p>Unlike propofol, remifentanil undergoes ultra-rapid metabolism via non-specific blood and tissue esterases, keeping half-time stable at 3-5 minutes regardless of runtime duration.</p></div>
+                        <div class="faq-item"><h4>6. Can I filter quiz blocks to isolate a single specialty?</h4><p>Yes. The Workstation Configuration block splitter allows users to isolate sub-specialty paths like Neuroanesthesia or Obstetric Anesthesia completely.</p></div>
+                        <div class="faq-item"><h4>7. How does the capnography wave identify a bronchospasm?</h4><p>The simulator uses non-linear mathematical equations to replace flat plateaus with ascending exponential slopes, drawing an iconic shark-fin waveform.</p></div>
+                        <div class="faq-item"><h4>8. Is my diagnostic data exposed to institutional tracking channels?</h4><p>No. Performance analytics, mastery maps, and item histories cache securely within isolated client local tracks to prioritize privacy.</p></div>
+                        <div class="faq-item"><h4>9. What do the Difficulty Index (b) and Discrimination Ratio (a) indicate?</h4><p>These psychometric telemetry parameters measure question difficulty and how effectively the item distinguishes high-performing practitioners.</p>
+                        <div class="faq-item"><h4>10. How can I reset all history logs to baseline values?</h4><p>Click "Sign Out" or run a local cache clear to wipe state histories and restore full unspent testing balances.</p></div>
+                        <div class="faq-item"><h4>11. Does the platform accommodate continuous recertification targets?</h4><p>Yes. Wording and testing blocks support practicing CAAs working through continuous certification intervals alongside SAAs prepping for initial boards.</p></div>
+                        <div class="faq-item"><h4>12. Can I use the calculator panels during an active timed session?</h4><p>Yes. The side dock calculators function completely independent of the question loop to allow for real-time validation checks.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-panel-update" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>📋 System Architecture Update Log</h2>
+                    <div class="log-entry"><strong>v2.1.0 (Current Sprint Release)</strong><ul><li>Upgraded multiple-choice option fields with pristine structured side-border frames.</li><li>Reorganized Practitioner Profile panel layouts with independent input grids and initials avatars.</li><li>Expanded comprehensive workstation FAQ list to 12 professional case studies.</li><li>Refined legal protection parameters inside the global Privacy Policy.</li></ul></div>
+                </div>
+            </div>
+
+            <div id="view-panel-privacy" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>🛡️ Privacy Policy</h2>
+                    <p class="section-lead">Effective Date: June 2026. Data Governance, Compliance, and Security Statement.</p>
+                    <div class="legal-depth-block">
+                        <h3>1. Data Collection & Processing Scope</h3><p>MACPrep collects minimal professional identifier data—specifically account email addresses and profile metrics—solely to maintain persistent session metrics. No personal medical information or telemetry data from private surgical practices is captured or parsed.</p>
+                        <h3>2. Encryption & Storage Safeguards</h3><p>Session tokens, payment status flags, and performance histories are isolated behind layered encryption protocols. Local client parameters track securely inside storage clusters with cryptographic sign-off rules enforced by Supabase security modules.</p>
+                        <h3>3. Institutional Third-Party Sharing Rules</h3><p>Individual practitioner records, miss patterns, and calculation scores are confidential. Personal testing vectors are never shared, sold, or distributed to licensing agencies, hospital networks, or third-party academic channels.</p>
+                        <h3>4. Compliance & User Data Rights</h3><p>In alignment with professional evaluation platform data safety standards, practitioners retain full deletion rights. Clicking "Sign Out" or requesting an administrative clear completely purges cached accounts from our tables within 24 hours.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <script src="src/app.js"></script>
