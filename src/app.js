@@ -105,7 +105,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 👤 FIXED: IMMUTABLE IMAGE PATHS AND CACHE ALIGNMENT KEYS
+// 👤 FIXED: AVATAR DATA-TAG ATTRIBUTES & SYNC HANDLERS
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -133,17 +133,17 @@ async function synchronizeCloudUserData() {
             
             if (badgeElement && data.profile.avatar_data) {
                 badgeElement.innerText = "";
-                let rawImg = data.profile.avatar_data;
-                if (!rawImg.startsWith("url")) rawImg = `url("${rawImg}")`;
-                badgeElement.style.backgroundImage = rawImg;
+                badgeElement.style.backgroundImage = `url("${data.profile.avatar_data}")`;
                 badgeElement.style.backgroundSize = "cover";
                 badgeElement.style.backgroundPosition = "center";
+                badgeElement.style.border = "2px solid var(--text-primary)";
+                badgeElement.dataset.avatarRaw = data.profile.avatar_data;
             } else {
                 regenerateProfileAvatarBadge();
             }
         }
     } catch (err) {
-        console.warn("⚠️ Utilizing local fallback cache tracks.");
+        console.warn("⚠️ Utilizing local backup cache tracks.");
         const localMeta = localStorage.getItem(`macprep_prof_meta_${cleanKey}`);
         if (localMeta) {
             const parsed = JSON.parse(localMeta);
@@ -154,11 +154,11 @@ async function synchronizeCloudUserData() {
             
             if (badgeElement && parsed.avatarData) {
                 badgeElement.innerText = "";
-                let rawImg = parsed.avatarData;
-                if (!rawImg.startsWith("url")) rawImg = `url("${rawImg}")`;
-                badgeElement.style.backgroundImage = rawImg;
+                badgeElement.style.backgroundImage = `url("${parsed.avatarData}")`;
                 badgeElement.style.backgroundSize = "cover";
                 badgeElement.style.backgroundPosition = "center";
+                badgeElement.style.border = "2px solid var(--text-primary)";
+                badgeElement.dataset.avatarRaw = parsed.avatarData;
             } else {
                 regenerateProfileAvatarBadge();
             }
@@ -178,12 +178,7 @@ window.savePractitionerProfileData = async function() {
     const instVal = document.getElementById("prof-inst").value.trim();
     const badgeElement = document.getElementById("profile-avatar-badge");
     
-    let rawAvatarString = badgeElement.style.backgroundImage || "";
-    if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) {
-        rawAvatarString = rawAvatarString.slice(5, -2);
-    } else if (rawAvatarString.startsWith('url(')) {
-        rawAvatarString = rawAvatarString.slice(4, -1);
-    }
+    const rawAvatarString = badgeElement ? (badgeElement.dataset.avatarRaw || "") : "";
 
     const localPayload = {
         name: nameVal,
@@ -361,9 +356,6 @@ function renderCurrentQuestion() {
     document.getElementById("question-stem").innerText = q.stem;
     document.getElementById("explanation-container").classList.add("hidden");
 
-    if (document.getElementById("telemetry-diff")) document.getElementById("telemetry-diff").innerText = q.telemetry?.difficulty_index || "0.65";
-    if (document.getElementById("telemetry-disc")) document.getElementById("telemetry-disc").innerText = q.telemetry?.discrimination_ratio || "0.60";
-
     const container = document.getElementById("choices-container");
     if (!container) return;
     container.innerHTML = "";
@@ -424,14 +416,13 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // FIXED PASS: Auto-saves check the existence of form elements before overriding cached profiles
+    // FIXED PASS: Evaluates fields cleanly before running active cloud network upserts
     const nameEl = document.getElementById("prof-name");
-    if (state.userEmail && nameEl) {
+    const instEl = document.getElementById("prof-inst");
+    if (state.userEmail && nameEl && instEl) {
         const nameVal = nameEl.value.trim();
         const badgeElement = document.getElementById("profile-avatar-badge");
-        let rawAvatarString = badgeElement ? (badgeElement.style.backgroundImage || "") : "";
-        if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) rawAvatarString = rawAvatarString.slice(5, -2);
-        else if (rawAvatarString.startsWith('url(')) rawAvatarString = rawAvatarString.slice(4, -1);
+        const rawAvatarString = badgeElement ? (badgeElement.dataset.avatarRaw || "") : "";
 
         fetch('/api/user/profile', {
             method: 'POST',
@@ -439,9 +430,9 @@ function evaluateSelection(selectedKey) {
             body: JSON.stringify({
                 email: state.userEmail,
                 name: nameVal === "Anesthesia Care Team Professional" ? "" : nameVal,
-                title: document.getElementById("prof-title") ? document.getElementById("prof-title").value : "caa",
-                id_num: document.getElementById("prof-id") ? document.getElementById("prof-id").value.trim() : "",
-                institution: document.getElementById("prof-inst") ? document.getElementById("prof-inst").value.trim() : "",
+                title: document.getElementById("prof-title").value,
+                id_num: document.getElementById("prof-id").value.trim(),
+                institution: instEl.value.trim(),
                 avatar_data: rawAvatarString,
                 performance: state.performance
             })
@@ -573,6 +564,7 @@ window.handleAvatarImageUpload = function(inputNode) {
             badgeElement.style.backgroundSize = "cover";
             badgeElement.style.backgroundPosition = "center";
             badgeElement.style.border = "2px solid var(--text-primary)";
+            badgeElement.dataset.avatarRaw = base64Result; // Store clean raw data
         }
     };
     reader.readAsDataURL(file);
@@ -601,6 +593,13 @@ function initializeWaveformEngine() {
         let pathString = "";
         let color = "#10b981"; 
         let hValue = 55;       
+
+        if (currentQuestion) {
+            const lookstack = (currentQuestion.stem + " " + (currentQuestion.explanation || "")).toLowerCase();
+            if (lookstack.match(/(bronchospasm|shark-fin|resistance)/)) {
+                color = "#f59e0b"; 
+            }
+        }
 
         for (let x = 0; x <= 800; x += 2) {
             let cycle = ((x / 160) - state.wavePhase) % 2;
