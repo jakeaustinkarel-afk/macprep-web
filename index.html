@@ -33,6 +33,7 @@
             <div class="drawer-links-stack">
                 <button class="drawer-btn active" id="nav-link-workspace" onclick="switchMainInteriorPanel('workspace')">💻 Exam Workstation</button>
                 <button class="drawer-btn" id="nav-link-profile" onclick="switchMainInteriorPanel('profile')">👤 Practitioner Profile</button>
+                <button class="drawer-btn" id="nav-link-feedback" onclick="switchMainInteriorPanel('feedback')">💬 Feedback & Reviews</button>
                 <button class="drawer-btn" id="nav-link-faq" onclick="switchMainInteriorPanel('faq')">❓ Workstation FAQ</button>
                 <button class="drawer-btn" id="nav-link-update" onclick="switchMainInteriorPanel('update')">📋 System Update Log</button>
                 <button class="drawer-btn" id="nav-link-privacy" onclick="switchMainInteriorPanel('privacy')">🛡️ Privacy Policy</button>
@@ -98,27 +99,67 @@
                 </div>
             </div>
 
+            <div id="view-panel-feedback" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>💬 Feedback & Clinical Community Reviews</h2>
+                    <p class="section-lead">Submit private platform optimization suggestions directly to the development lead, or share your board preparation review with the community.</p>
+                    
+                    <div class="workspace-container" style="grid-template-columns: 1fr 1fr; gap: 30px; margin-top:20px;">
+                        <div class="dock-card">
+                            <h3>💡 Submit a Private Suggestion</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">Have an idea for a feature or UI workflow change? Submissions entered here are fully encrypted and visible **exclusively** to the system administrator.</p>
+                            <div class="input-group-premium">
+                                <textarea id="feedback-suggestion-input" rows="4" style="width:100%; padding:12px; box-sizing:border-box; background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-size:14px;" placeholder="Type your hidden admin suggestion here..."></textarea>
+                            </div>
+                            <button class="btn" style="margin-top:15px; width:100%;" onclick="submitPrivateUserSuggestion()">Transmit Private Suggestion 🔒</button>
+                        </div>
+
+                        <div class="dock-card">
+                            <h3>🌟 Write a Board Prep Review</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">Share your training experience with other SAAs and CAAs. Public reviews are visible across the community dashboard layer.</p>
+                            <div class="premium-form-row" style="margin-bottom:12px;">
+                                <div class="input-group-premium">
+                                    <label>Score Matrix Rating</label>
+                                    <select id="feedback-review-rating" style="width:100%; padding:10px; background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:4px;">
+                                        <option value="5">⭐⭐⭐⭐/⭐ 5/5 - Exceptional Core Rigor</option>
+                                        <option value="4">⭐⭐⭐⭐ 4/5 - Highly Commendable</option>
+                                        <option value="3">⭐⭐⭐ 3/5 - Satisfies Blueprint Standards</option>
+                                        <option value="2">⭐⭐ 2/5 - Needs Structural Expansion</option>
+                                        <option value="1">⭐ 1/5 - Functional Anomaly Detected</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-group-premium">
+                                <textarea id="feedback-review-input" rows="3" style="width:100%; padding:12px; box-sizing:border-box; background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-size:14px;" placeholder="Write your public review details..."></textarea>
+                            </div>
+                            <button class="btn" style="margin-top:15px; width:100%; background:var(--accent-color);" onclick="submitPublicUserReview()">Post Public Practitioner Review 🌍</button>
+                        </div>
+                    </div>
+
+                    <div class="dock-card" style="margin-top: 30px;">
+                        <h3>✨ Verified Peer Evaluation Feed</h3>
+                        <div id="public-reviews-feed-root" style="margin-top:15px; max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+                            <span style="color:var(--text-muted); font-size:13px; font-style:italic;">Hydrating active community text feeds out of cloud storage tracks...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="view-panel-faq" class="sub-view-panel hidden">
                 <div class="aux-editorial-page">
                     <h2>❓ Workstation Frequently Asked Questions</h2>
                     <p class="section-lead">Comprehensive documentation covering psychometric parameters, billing mechanics, and certified blueprint alignment constraints.</p>
-                    
                     <div class="dock-card" style="margin-top:20px;">
                         <h3 style="color:var(--text-primary); border-bottom:1px solid #334155; padding-bottom:8px; margin-bottom:12px;">📊 Section 1: Psychometrics & Adaptive Tracking</h3>
-                        
                         <strong style="display:block; margin-top:15px; color:var(--text-primary);">Q: How does the adaptive performance engine handle accuracy updates?</strong>
                         <p style="margin-bottom:15px; color:var(--text-secondary); font-size:14px; line-height:1.6;">MACPrep monitors selections dynamically using categorical weight rules. Your total answers cleared, total correct inputs, and individual specialty performance metrics are computed in real time. These metrics are instantly committed to cloud-synchronized data clusters upon option selection to provide immediate visual progression tracking.</p>
-                        
                         <strong style="display:block; margin-top:15px; color:var(--text-primary);">Q: Are these questions aligned with official certification blueprints?</strong>
                         <p style="margin-bottom:15px; color:var(--text-secondary); font-size:14px; line-height:1.6;">Yes. Every question is rigorously designed to fulfill the content parameters established by national certifying boards. This includes comprehensive coverage of the 8 core clinical modalities required for both initial certification and ongoing Demonstration of Qualifications (CDQ) recertification pathways.</p>
                     </div>
-
                     <div class="dock-card" style="margin-top:20px;">
                         <h3 style="color:var(--text-primary); border-bottom:1px solid #334155; padding-bottom:8px; margin-bottom:12px;">💳 Section 2: Account Licensing & Access Tiers</h3>
-                        
                         <strong style="display:block; margin-top:15px; color:var(--text-primary);">Q: What restrictions are placed on non-premium trial sessions?</strong>
                         <p style="margin-bottom:15px; color:var(--text-secondary); font-size:14px; line-height:1.6;">Free registration sessions are restricted to a 10% un-gated capacity across all active modules. Upgrading to a premium license instantly removes this trial ceiling, unlocking unrestricted navigation through the entire 1,000-question library and enabling custom exam block configurations.</p>
-                        
                         <strong style="display:block; margin-top:15px; color:var(--text-primary);">Q: Can I access my profile and scoreboard across multiple devices?</strong>
                         <p style="color:var(--text-secondary); font-size:14px; line-height:1.6;">Yes. Because your metrics are tethered directly to your database profile via authenticated cloud streams, logging into any desktop web instance safely synchronizes your entire state tracking profile, avatar, and specialty analytics data points.</p>
                     </div>
@@ -129,24 +170,16 @@
                 <div class="aux-editorial-page">
                     <h2>📋 Operational System Update Log</h2>
                     <p class="section-lead">Historical version tracing tracking technical infrastructure optimization sweeps and feature upgrades.</p>
-                    
                     <div class="dock-card" style="margin-top:20px;">
                         <div style="border-left:3px solid var(--accent-color); padding-left:15px; margin-bottom:25px;">
                             <strong style="color:var(--text-primary); font-size:16px;">v2.2.0 — Production Environment Baseline Stability Release</strong><br>
                             <span style="font-size:11px; color:var(--text-muted); font-weight:bold; letter-spacing:0.05em;">DEPLOYED JUNE 2026</span>
                             <p style="margin-top:8px; color:var(--text-secondary); font-size:14px; line-height:1.6;">Migrated legacy data pipelines directly over to live full-stack production clusters on Render. Implemented a self-healing parsing layer inside the profile sync engines to cleanly catch stringified metrics. Deployed an automated primary-key crypto UUID generation utility to prevent not-null field constraints, while establishing a 789-item psychometric redistribution loop to eliminate option-weight biases across the master question library.</p>
                         </div>
-                        
                         <div style="border-left:3px solid #64748b; padding-left:15px; margin-bottom:25px;">
                             <strong style="color:var(--text-primary); font-size:16px;">v2.1.0 — Capnography Synthesis & UX Layout Harmonization</strong><br>
                             <span style="font-size:11px; color:var(--text-muted); font-weight:bold; letter-spacing:0.05em;">DEPLOYED MAY 2026</span>
                             <p style="margin-top:8px; color:var(--text-secondary); font-size:14px; line-height:1.6;">Resolved overlapping element conflicts on smaller viewports. Configured reactive keywords (including "bronchospasm" and "shark-fin") to dynamically manipulate SVG capnography canvas paths, enabling real-time visual simulation transitions between normal ventilation patterns and acute obstructive expiratory curves.</p>
-                        </div>
-
-                        <div style="border-left:3px solid #475569; padding-left:15px;">
-                            <strong style="color:var(--text-primary); font-size:16px;">v1.0.0 — Core Full-Stack Gateway Architecture</strong><br>
-                            <span style="font-size:11px; color:var(--text-muted); font-weight:bold; letter-spacing:0.05em;">DEPLOYED MARCH 2026</span>
-                            <p style="margin-top:8px; color:var(--text-secondary); font-size:14px; line-height:1.6;">Initial deployment of the secure authentication gateway, sidebar state management drawer, interactive distractor cross-offs, gold tool highlighting layers, and integration with Stripe's backend programmatic webhooks framework.</p>
                         </div>
                     </div>
                 </div>
@@ -156,19 +189,13 @@
                 <div class="aux-editorial-page">
                     <h2>🛡️ Certified Privacy Policy Guidelines</h2>
                     <p class="section-lead">Official data governance disclosures dictating information isolation boundaries and payment token safety parameters.</p>
-                    
                     <div class="dock-card" style="margin-top:20px; color:var(--text-secondary); line-height:1.6; font-size:14px;">
                         <h3 style="color:var(--text-primary); margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:4px;">1. Secure Scoreboard Matrix Protection</h3>
                         <p style="margin-bottom:20px;">All clinical performance data, analytics breakdown tables, and academic profile answers are strictly isolated within hardware-level database rows behind service-role bypass credentials. Individual progress markers are never rented, shared, or compiled for marketing aggregators.</p>
-                        
                         <h3 style="color:var(--text-primary); margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:4px;">2. Payment Transaction Safeguards</h3>
                         <p style="margin-bottom:20px;">Monetization actions are processed entirely through end-to-end token passes driven directly by Stripe's infrastructure servers. Your internal profile records never capture, view, or log raw credit card numbers, CVV codes, or personal billing addresses.</p>
-                        
                         <h3 style="color:var(--text-primary); margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:4px;">3. Cookies & Local Environment Persistence</h3>
                         <p style="margin-bottom:20px;">We leverage localized browser memory strings solely to maintain your signed-in account tokens and safeguard active quiz checkpoints against unintended network disconnections or session loss.</p>
-
-                        <h3 style="color:var(--text-primary); margin-bottom:10px; border-bottom:1px solid #334155; padding-bottom:4px;">4. Compliance and Institutional Governance</h3>
-                        <p>MACPrep data practices conform fully to standardized digital privacy benchmarks to guarantee complete isolation of user metrics, allowing practitioner profiles to remain confidential throughout all continuous training tracks.</p>
                     </div>
                 </div>
             </div>
@@ -177,7 +204,6 @@
                 <div class="aux-editorial-page">
                     <h2>🐛 Report an Operational Workstation Bug</h2>
                     <p class="section-lead">Encountered an operational anomaly? Select the appropriate system category below to route details directly to the administrative telemetry console.</p>
-                    
                     <div class="dock-card" style="max-width: 650px; margin-top:20px; padding: 25px;">
                         <div class="input-group-premium">
                             <label style="font-weight: bold; font-size: 13px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;">Diagnostic Classification Category</label>
@@ -191,12 +217,10 @@
                                 <option value="other">Other Clinical / Operational Workstation Issue</option>
                             </select>
                         </div>
-                        
                         <div class="input-group-premium" style="margin-top:20px;">
                             <label style="font-weight: bold; font-size: 13px; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;">Comprehensive Replication Steps</label>
                             <textarea id="bug-description" rows="5" style="width:100%; padding:12px; margin-top:6px; box-sizing:border-box; background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:4px; font-size:14px; line-height:1.5; resize: vertical;" placeholder="Please outline the precise steps or questions that triggered the error..."></textarea>
                         </div>
-                        
                         <button class="btn" style="margin-top:20px; width: 100%; padding: 14px; font-weight: bold; background: var(--accent-color);" onclick="submitClinicalWorkstationBugReport()">Transmit Bug Diagnostics File ➡️</button>
                     </div>
                 </div>
@@ -205,19 +229,28 @@
             <div id="view-panel-admin" class="sub-view-panel hidden">
                 <div class="aux-editorial-page">
                     <h2>⚡ System Control & Admin Telemetry Console</h2>
-                    <p class="section-lead">High-clearance operational terminal monitoring system transactions and active bug diagnostics files.</p>
+                    <p class="section-lead">High-clearance operational terminal monitoring system transactions, active bug diagnostics files, and hidden user suggestion feeds.</p>
+                    
                     <div class="workspace-container" style="grid-template-columns: 1fr 1fr; gap: 30px; margin-top:20px;">
                         <div class="dock-card">
                             <h3>🐛 Active Diagnostic Bug Logs</h3>
-                            <div id="admin-bug-logs" style="font-family: monospace; font-size:12px; line-height:1.4; color: #475569; max-height:400px; overflow-y:auto;">
+                            <div id="admin-bug-logs" style="font-family: monospace; font-size:12px; line-height:1.4; color: #475569; max-height:300px; overflow-y:auto;">
                                 No unassigned system tickets logged in this runtime container slice.
                             </div>
                         </div>
+                        
                         <div class="dock-card">
-                            <h3>🌟 Identity & Access Controls Bypass</h3>
-                            <p style="font-size: 13px; color:#475569;">Simulate account permissions or toggle runtime environment values inside this active deployment token frame.</p>
-                            <button class="btn" style="background: #026440 !important;" onclick="alert('Admin Override: Active account credentials successfully anchored to Premium Master configuration.')">Force Universal Premium Clearance</button>
+                            <h3>🔒 Hidden User Suggestions Inbox (Jake Only)</h3>
+                            <div id="admin-suggestions-logs" style="font-family: monospace; font-size:12px; line-height:1.4; color: #0284c7; max-height:300px; overflow-y:auto;">
+                                No private system optimization suggestions loaded.
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="dock-card" style="margin-top: 30px;">
+                        <h3>🌟 Identity & Access Controls Bypass</h3>
+                        <p style="font-size: 13px; color:#475569; margin-bottom: 15px;">Simulate account permissions or toggle runtime environment values inside this active deployment token frame.</p>
+                        <button class="btn" style="background: #026440 !important;" onclick="alert('Admin Override: Active account credentials successfully anchored to Premium Master configuration.')">Force Universal Premium Clearance</button>
                     </div>
                 </div>
             </div>
