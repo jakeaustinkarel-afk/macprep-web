@@ -3,14 +3,14 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Reconstruct __dirname for ES Modules compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Enable Cross-Origin Resource Sharing for production microservices
 app.use(cors());
 
-// IMPORTANT: Stripe webhooks require raw body access
 app.use((req, res, next) => {
     if (req.originalUrl === '/api/webhooks/stripe') {
         next();
@@ -19,13 +19,12 @@ app.use((req, res, next) => {
     }
 });
 
-// ========================================================
-// 🖥️ STATIC WEB ASSET HOSTING MIDDLEWARE
-// ========================================================
-// Tell Express to serve index.html, styles.css, and frontend assets directly
+// Serve static frontend tracking assets from root directory definitions
 app.use(express.static(path.join(__dirname, '../')));
 
-// Master In-Memory Curriculum Data Pool
+// =========================================================================
+// 📊 COMPREHENSIVE MULTI-SPECIALTY BLUEPRINT DATABASE SEED (ALL 8 CATEGORIES)
+// =========================================================================
 const coreCurriculumBank = [
     {
         specialty: "Cardiovascular Anesthesia",
@@ -35,7 +34,7 @@ const coreCurriculumBank = [
             B: "Mean Arterial Pressure, Central Venous Pressure, Stroke Volume",
             C: "Pulmonary Capillary Wedge Pressure, Systemic Vascular Resistance",
             D: "Alveolar Gas Tension, Arterial Oxygen Content",
-            E: "Mixed Venous Oxygen Saturation, Left Ventricular End-Diastolic Volume"
+            E: "Mixed Venous Oxygen Saturation, Left Venricular End-Displacement Volume"
         },
         correct_answer: "A",
         explanation: "Oxygen Delivery Index (DO2I) calculation formula matches: CI x 1.34 x Hb x SaO2. Bronchospasm creates classic high-resistance expiratory delays captured visually by ascending shark-fin plateaus on the live SVG capnogram workspace layer.",
@@ -66,35 +65,103 @@ const coreCurriculumBank = [
             E: "Direct inhibition of choroid plexus cerebrospinal fluid production"
         },
         correct_answer: "A",
-        explanation: "Decreasing arterial PaCO2 via hyperventilation causes local cerebral vasoconstriction, which lowers cerebral blood flow (CBF) and cerebral blood volume (CBV), rapidly lowering intracranial pressure (ICP). Effect peaks around 20-30 minutes.",
+        explanation: "Regulatory protocols define that decreasing arterial PaCO2 via controlled hyperventilation causes localized cerebral vasoconstriction, lowering cerebral blood flow (CBF) and cerebral blood volume (CBV), reducing intracranial tension rapidly.",
         telemetry: { difficulty_index: 0.59, discrimination_ratio: 0.71 }
+    },
+    {
+        specialty: "Regional Anesthesia & Pain",
+        stem: "Following an ultrasound-guided interscalene brachial plexus block for total shoulder arthroplasty, a patient develops ipsilateral ptosis, miosis, and anhidrosis. This presentation is directly caused by the unintended tracking of local anesthetic to which neural structure?",
+        choices: {
+            A: "Stellate Ganglion (Sympathetic Chain)",
+            B: "Phrenic Nerve roots (C3-C5)",
+            C: "Recurrent Laryngeal Nerve",
+            D: "Suprascapular Nerve branches",
+            E: "Vagus Nerve Trunk"
+        },
+        correct_answer: "A",
+        explanation: "Ipsilateral ptosis, miosis, and anhidrosis constitute Horner's Syndrome, caused by local anesthetic tracking medially to block sympathetic efferent outputs passing through the stellate ganglion chain.",
+        telemetry: { difficulty_index: 0.52, discrimination_ratio: 0.66 }
+    },
+    {
+        specialty: "Pediatric Anesthesia",
+        stem: "A 4-year-old child presenting with post-intubation croup is treated with nebulized racemic epinephrine. What is the primary receptor mechanism targeted to reduce mucosal edema in the subglottic airway?",
+        choices: {
+            A: "Alpha-1 adrenergic vasoconstriction",
+            B: "Beta-2 adrenergic smooth muscle relaxation",
+            C: "Beta-1 adrenergic positive inotropy",
+            D: "Alpha-2 adrenergic central sedation",
+            E: "Muscarinic-3 antagonist bronchodilation"
+        },
+        correct_answer: "A",
+        explanation: "Racemic epinephrine works primary via Alpha-1 adrenergic receptor activation, which causes localized vasoconstriction of precapillary arterioles in the upper airway mucosa, rapidly decreasing subglottic edema.",
+        telemetry: { difficulty_index: 0.61, discrimination_ratio: 0.59 }
+    },
+    {
+        specialty: "Obstetric Anesthesia",
+        stem: "A parturient undergoing emergent cesarean delivery under general anesthesia experiences sudden, severe cardiovascular collapse immediately following fetal extraction. Amniotic fluid embolism (AFE) is suspected. Which triad of features traditionally defines this pathology?",
+        choices: {
+            A: "Acute hypoxia, severe hypotension, and profound coagulopathy (DIC)",
+            B: "Hypertension, bradycardia, and irregular respirations",
+            C: "Tachycardia, respiratory alkalosis, and localized deep vein thrombosis",
+            D: "Pulmonary edema, systemic hypertension, and thrombocytosis",
+            E: "Hyperthermia, muscle rigidity, and metabolic acidosis"
+        },
+        correct_answer: "A",
+        explanation: "Amniotic fluid embolism presents abruptly as a biphasic cardiorespiratory and hematologic crisis classically defined by acute hypoxemia, severe systemic hypotension/right heart failure, and consumption coagulopathy/DIC.",
+        telemetry: { difficulty_index: 0.70, discrimination_ratio: 0.63 }
+    },
+    {
+        specialty: "Thoracic Anesthesia",
+        stem: "During one-lung ventilation (OLV) for a left thoracoscopic lung resection, the pulse oximeter drops abruptly to 84%. After verifying correct double-lumen tube positioning with a fiberoptic bronchoscope, what is the most appropriate initial physiological intervention?",
+        choices: {
+            A: "Apply Continuous Positive Airway Pressure (CPAP) to the non-ventilated lung",
+            B: "Apply Positive End-Expiratory Pressure (PEEP) to the non-ventilated lung",
+            C: "Increase the inspired oxygen fraction (FiO2) to 1.5",
+            D: "Administer a systemic bolus dose of an intravenous vasodilator",
+            E: "Immediately abort the surgical procedure and reinflate both lungs"
+        },
+        correct_answer: "A",
+        explanation: "Applying low-flow CPAP (2-5 cmH2O) with 100% O2 to the non-ventilated lung oxygenates the blood still shunting through that lung without inflating it enough to obscure the operative view.",
+        telemetry: { difficulty_index: 0.66, discrimination_ratio: 0.68 }
+    },
+    {
+        specialty: "General Principles & Safety",
+        stem: "An anesthesia workstation pipeline oxygen pressure alarm triggers. The backup oxygen cylinders are open, but the cylinder gauge indicates 400 psi. What is the approximate remaining volume of oxygen in this standard E-cylinder, and how long will it last at a flow rate of 10 L/min?",
+        choices: {
+            A: "Approximately 130 Liters; lasts ~13 minutes",
+            B: "Approximately 660 Liters; lasts ~66 minutes",
+            C: "Approximately 330 Liters; lasts ~33 minutes",
+            D: "Approximately 50 Liters; lasts ~5 minutes",
+            E: "Approximately 200 Liters; lasts ~20 minutes"
+        },
+        correct_answer: "A",
+        explanation: "A full E-cylinder holds 1900-2200 psi (~660 Liters). Pressure is directly proportional to volume: (400 psi / 1900 psi) * 660 Liters = ~138 Liters. At 10 L/min, this provides roughly 13-14 minutes of operation.",
+        telemetry: { difficulty_index: 0.74, discrimination_ratio: 0.55 }
     }
 ];
 
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
     try {
         const event = JSON.parse(req.body);
-        console.log(`📥 Webhook Event Captured: ${event.type}`);
         res.status(200).json({ received: true });
     } catch (err) {
         res.status(400).send(`Webhook Error`);
     }
 });
 
-// Dynamic API endpoint route
 app.get('/api/questions', (req, res) => {
     res.json({ questions: coreCurriculumBank });
 });
 
-// Fallback route to ensure index.html serves cleanly for root navigation requests
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../index.html'));
 });
 
+// FIXED: Listen on environment production assigned ports or default down to 3000 safely
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`===================================================`);
-    console.log(`🚀 MACPREP FULL-STACK ENGINE HARDENED`);
-    console.log(`📡 Hosting Workspace UI & API Gateways on port: ${PORT}`);
+    console.log(`🚀 MACPREP DEPLOYMENT RUNTIME CONTAINER ACTIVE`);
+    console.log(`📡 Cloud Load-Balancer mapped to port: ${PORT}`);
     console.log(`===================================================`);
 });
