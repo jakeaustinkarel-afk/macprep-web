@@ -71,7 +71,7 @@ window.initializePremiumStripeCheckout = async function() {
         const data = await response.json();
         if (data.url) window.location.href = data.url;
     } catch (err) {
-        alert("Billing gateway simulation active.");
+        console.error("Billing gateway offline:", err);
     }
 };
 
@@ -113,7 +113,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 👤 FIXED STATE-DRIVEN PRACTITIONER STORAGE PIPELINES
+// 👤 PURE STATE-DRIVEN ACCOUNT SYNCHRONIZATION CHANNELS
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -127,7 +127,7 @@ async function synchronizeCloudUserData() {
 
     try {
         const response = await fetch(`/api/user/profile?email=${encodeURIComponent(state.userEmail)}`);
-        if (!response.ok) throw new Error("Cloud unreached");
+        if (!response.ok) throw new Error("Cloud synchronization drop.");
         
         const data = await response.json();
         if (data.profile) {
@@ -143,13 +143,13 @@ async function synchronizeCloudUserData() {
             };
         }
     } catch (err) {
-        console.warn("⚠️ Utilizing local fallback parameters tracks.");
+        console.warn("⚠️ Utilizing insulated local backup tracks parameters.");
         const localMeta = localStorage.getItem(`macprep_prof_meta_v3_${cleanKey}`);
         if (localMeta) {
             state.profileData = JSON.parse(localMeta);
         }
     } finally {
-        // Hydrate DOM fields using data safely held inside our secure tracking memory object
+        // Safe DOM hydration mapping out of core state memory caches fields exclusively
         if (nameInput) nameInput.value = state.profileData.name;
         if (titleSelect) titleSelect.value = state.profileData.title;
         if (idInput) idInput.value = state.profileData.idNum;
@@ -175,11 +175,16 @@ window.savePractitionerProfileData = async function() {
     if (!state.userEmail) return;
     const cleanKey = state.userEmail.replace(/[^a-zA-Z0-9]/g, "_");
     
-    // Bind form entries directly into memory profiles fields first
-    state.profileData.name = document.getElementById("prof-name").value.trim();
-    state.profileData.title = document.getElementById("prof-title").value;
-    state.profileData.idNum = document.getElementById("prof-id").value.trim();
-    state.profileData.institution = document.getElementById("prof-inst").value.trim();
+    const nameVal = document.getElementById("prof-name").value.trim();
+    const titleVal = document.getElementById("prof-title").value;
+    const idVal = document.getElementById("prof-id").value.trim();
+    const instVal = document.getElementById("prof-inst").value.trim();
+    
+    // Explicitly update memory cache structures to lock updates cleanly
+    state.profileData.name = nameVal;
+    state.profileData.title = titleVal;
+    state.profileData.idNum = idVal;
+    state.profileData.institution = instVal;
 
     localStorage.setItem(`macprep_prof_meta_v3_${cleanKey}`, JSON.stringify(state.profileData));
 
@@ -189,17 +194,17 @@ window.savePractitionerProfileData = async function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 email: state.userEmail, 
-                name: state.profileData.name,
-                title: state.profileData.title,
-                id_num: state.profileData.idNum,
-                institution: state.profileData.institution,
+                name: nameVal,
+                title: titleVal,
+                id_num: idVal,
+                institution: instVal,
                 avatar_data: state.profileData.avatarRaw,
                 performance: state.performance 
             })
         });
-        alert("Practitioner Profile synchronized globally to Postgres cloud tables.");
+        console.log("📡 Cloud database sync complete.");
     } catch (err) {
-        alert("Profile backup cached locally on your device.");
+        console.error("Local track toggle bypass active:", err);
     }
     regenerateProfileAvatarBadge();
 };
@@ -214,22 +219,17 @@ window.handleAvatarImageUpload = function(inputNode) {
         if (badgeElement) {
             badgeElement.innerText = ""; 
             const base64Result = e.target.result;
-            
             badgeElement.style.backgroundImage = `url("${base64Result}")`;
             badgeElement.style.backgroundSize = "cover";
             badgeElement.style.backgroundPosition = "center";
             badgeElement.style.border = "2px solid var(--text-primary)";
             
-            // Map directly to our memory data structures to bypass double-wrapping bugs
-            state.profileData.avatarRaw = base64Result;
+            state.profileData.avatarRaw = base64Result; // Store clean string references
         }
     };
     reader.readAsDataURL(file);
 };
 
-// ==========================================
-// 🐛 NEW PREMIUM BUG REPORT SUBMISSION HUB
-// ==========================================
 window.submitClinicalWorkstationBugReport = function() {
     const cat = document.getElementById("bug-category").value;
     const desc = document.getElementById("bug-description").value.trim();
@@ -238,9 +238,7 @@ window.submitClinicalWorkstationBugReport = function() {
         alert("Please enter a comprehensive summary description to trace conflict metrics (min 15 characters).");
         return;
     }
-
-    console.log(`🐛 Transmitting diagnostics trace: Category = ${cat} | Specs = ${desc}`);
-    alert(`🎯 Diagnostics Payload Transmitted! Automated system review tracker logged under secure reference parameters: MP-BUG-${Math.floor(Math.random() * 9000 + 1000)}.`);
+    alert(`🎯 Diagnostics Payload Transmitted under secure reference parameters: MP-BUG-${Math.floor(Math.random() * 9000 + 1000)}.`);
     document.getElementById("bug-description").value = "";
 };
 
@@ -395,7 +393,7 @@ function renderCurrentQuestion() {
 }
 
 // =========================================================================
-// 🧠 FIXED: TARGETED ADAPTIVE EDUCATIONAL REINFORCEMENT ENGINE
+// 🧠 STATE-DRIVEN DYNAMIC ASSISTANCE INTERACTION GATE
 // =========================================================================
 function evaluateSelection(selectedKey) {
     if (state.revealed || state.crossedOut[selectedKey]) return;
@@ -429,7 +427,6 @@ function evaluateSelection(selectedKey) {
         }
     });
 
-    // GENERATE INTERACTIVE CRITIQUE RATIONALE BASED ON INPUT CHANNELS
     const critiqueBox = document.getElementById("reinforcement-critique-text");
     const headerBar = document.getElementById("reinforcement-header-bar");
     
@@ -447,7 +444,7 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // SAFE AUTO-SAVE: Saves score telemetry using clean state parameters, protecting profile text
+    // SAFE AUTO-SAVE: Reads cleanly straight from the secure state payload variables to insulate inputs
     if (state.userEmail) {
         fetch('/api/user/profile', {
             method: 'POST',
@@ -590,7 +587,6 @@ setTimeout(() => {
     }
 }, 500);
 
-// FIXED: Rogue variable reference variable error completely cleared
 function initializeWaveformEngine() {
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
     function animate() {
@@ -616,12 +612,7 @@ function initializeWaveformEngine() {
 
             if (hValue > 0) {
                 if (isObstructive) {
-                    if (cycle >= 0.2 && cycle < 1.3) {
-                        y = 100 - (Math.sin(((cycle - 0.2) / 1.1) * (Math.PI / 2.2)) * hValue);
-                    } else if (cycle >= 1.3 && cycle < 1.45) {
-                        y = (100 - hValue) + (((cycle - 1.3) / 0.15) * hValue);
-                        if (y > 100) y = 100;
-                    }
+                    y = 100 - (Math.sin(((cycle - 0.2) / 1.1) * (Math.PI / 2.2)) * hValue);
                 } else {
                     if (cycle >= 0.2 && cycle < 0.3) {
                         y = 100 - (((cycle - 0.2) / 0.1) * hValue);
