@@ -37,6 +37,7 @@ function evaluateAuthGatewayState() {
     const landingView = document.getElementById("public-landing-page");
     const appShellView = document.getElementById("authenticated-app-shell");
     const drawerUserTag = document.getElementById("drawer-user-tag");
+    const adminBtn = document.getElementById("nav-link-admin");
 
     if (state.userEmail) {
         if (landingView) landingView.classList.add("hidden");
@@ -46,9 +47,13 @@ function evaluateAuthGatewayState() {
         if (normalizedEmail === "jakeaustin.karel@gmail.com" || normalizedEmail === "jakekarel@gmail.com" || normalizedEmail.includes("admin")) {
             state.isPremium = true;
             if (drawerUserTag) drawerUserTag.innerHTML = `${state.userEmail}<br><span style="color:#10b981;font-weight:bold;font-size:10px;letter-spacing:0.03em;">🌟 ADMIN MASTER PREMIUM</span>`;
+            
+            // FIXED PASS: Safely un-hides the restricted high-clearance panel trigger button exclusively for you
+            if (adminBtn) adminBtn.classList.remove("hidden");
         } else {
             state.isPremium = false;
             if (drawerUserTag) drawerUserTag.innerText = state.userEmail;
+            if (adminBtn) adminBtn.classList.add("hidden");
         }
 
         switchMainInteriorPanel('workspace');
@@ -112,7 +117,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 🔄 HARDENED OBJECT PARSING & ACCOUNT SYNCHRONIZATION PIPELINES
+// 👤 CORE ACCOUNT SYNCHRONIZATION CHANNELS
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -132,7 +137,6 @@ async function synchronizeCloudUserData() {
         if (data.profile) {
             if (data.profile.is_premium === true) state.isPremium = true;
 
-            // FIXED PASS: Cryptographically parse and normalize incoming structural performance fields
             let incomingPerf = data.profile.performance;
             if (incomingPerf) {
                 if (typeof incomingPerf === 'string') {
@@ -156,9 +160,7 @@ async function synchronizeCloudUserData() {
     } catch (err) {
         console.warn("⚠️ Utilizing insulated local backup tracks parameters.");
         const localMeta = localStorage.getItem(`macprep_prof_meta_v3_${cleanKey}`);
-        if (localMeta) {
-            state.profileData = JSON.parse(localMeta);
-        }
+        if (localMeta) state.profileData = JSON.parse(localMeta);
     } finally {
         if (nameInput) nameInput.value = state.profileData.name;
         if (titleSelect) titleSelect.value = state.profileData.title;
@@ -211,10 +213,7 @@ window.savePractitionerProfileData = async function() {
                 performance: state.performance 
             })
         });
-        console.log("📡 Cloud database sync complete.");
-    } catch (err) {
-        console.error("Local track active:", err);
-    }
+    } catch (err) { }
     regenerateProfileAvatarBadge();
 };
 
@@ -232,13 +231,15 @@ window.handleAvatarImageUpload = function(inputNode) {
             badgeElement.style.backgroundSize = "cover";
             badgeElement.style.backgroundPosition = "center";
             badgeElement.style.border = "2px solid var(--text-primary)";
-            
             state.profileData.avatarRaw = base64Result;
         }
     };
     reader.readAsDataURL(file);
 };
 
+// ==========================================
+// 🐛 UPDATED BUG REPORT SYSTEM WITH ADMIN LOGGING
+// ==========================================
 window.submitClinicalWorkstationBugReport = function() {
     const cat = document.getElementById("bug-category").value;
     const desc = document.getElementById("bug-description").value.trim();
@@ -247,7 +248,17 @@ window.submitClinicalWorkstationBugReport = function() {
         alert("Please enter a comprehensive summary description to trace conflict metrics (min 15 characters).");
         return;
     }
-    alert(`🎯 Diagnostics Payload Transmitted under secure reference parameters: MP-BUG-${Math.floor(Math.random() * 9000 + 1000)}.`);
+
+    const ticketId = `MP-BUG-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const logContainer = document.getElementById("admin-bug-logs");
+    
+    // Append ticket variables straight into your admin log view frame in real-time
+    if (logContainer) {
+        if (logContainer.innerText.includes("No unassigned system tickets")) logContainer.innerHTML = "";
+        logContainer.innerHTML += `<div style='border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:6px;'>🔴 <strong>[${ticketId}] [${cat.toUpperCase()}]</strong><br>${desc}</div>`;
+    }
+
+    alert(`🎯 Diagnostics Payload Transmitted under secure reference parameters: ${ticketId}.`);
     document.getElementById("bug-description").value = "";
 };
 
@@ -439,7 +450,7 @@ function evaluateSelection(selectedKey) {
     if (isCorrect) {
         headerBar.innerText = "🎯 ADAPTIVE REINFORCEMENT: CORRECT SELECTION";
         headerBar.style.backgroundColor = "#059669";
-        critiqueBox.innerHTML = `<strong>Excellent Clinical Synthesis.</strong> Your selection of Option <strong>[${selectedKey}]</strong> correctly matches the core anesthesiology criteria. You successfully avoided the deceptive traps hidden in the other choices. Review the detailed blueprint mechanics below to solidify your understanding.`;
+        critiqueBox.innerHTML = `<strong>Excellent Clinical Synthesis.</strong> Your selection of Option <strong>[${selectedKey}]</strong> correctly matches the core anesthesiology criteria. You successfully avoided the deceptive traps hidden in the other choices.`;
     } else {
         headerBar.innerText = "❌ ADAPTIVE REINFORCEMENT: CORE DEVIATION CRITIQUE";
         headerBar.style.backgroundColor = "#dc2626";
@@ -565,27 +576,6 @@ window.calculateTCIMatrix = function() {
     }
 };
 
-window.handleAvatarImageUpload = function(inputNode) {
-    const file = inputNode.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const badgeElement = document.getElementById("profile-avatar-badge");
-        if (badgeElement) {
-            badgeElement.innerText = ""; 
-            const base64Result = e.target.result;
-            badgeElement.style.backgroundImage = `url("${base64Result}")`;
-            badgeElement.style.backgroundSize = "cover";
-            badgeElement.style.backgroundPosition = "center";
-            badgeElement.style.border = "2px solid var(--text-primary)";
-            
-            state.profileData.avatarRaw = base64Result;
-        }
-    };
-    reader.readAsDataURL(file);
-};
-
 window.regenerateProfileAvatarBadge = function() {
     const nameInput = document.getElementById("prof-name");
     const badgeElement = document.getElementById("profile-avatar-badge");
@@ -602,21 +592,6 @@ window.regenerateProfileAvatarBadge = function() {
     if (parts.length > 1) initials += parts[parts.length - 1].charAt(0).toUpperCase();
     badgeElement.innerText = initials.slice(0, 2);
 };
-
-setTimeout(() => {
-    const nextBtn = document.getElementById("next-item-btn");
-    if (nextBtn) {
-        nextBtn.addEventListener("click", () => {
-            if (state.currentIndex < state.questions.length - 1) {
-                state.currentIndex++;
-                renderCurrentQuestion();
-                initializeWaveformEngine();
-            } else {
-                alert("Quiz block complete!");
-            }
-        });
-    }
-}, 500);
 
 function initializeWaveformEngine() {
     if (state.animationFrameId) cancelAnimationFrame(state.animationFrameId);
@@ -667,3 +642,18 @@ function initializeWaveformEngine() {
     }
     animate();
 }
+
+setTimeout(() => {
+    const nextBtn = document.getElementById("next-item-btn");
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            if (state.currentIndex < state.questions.length - 1) {
+                state.currentIndex++;
+                renderCurrentQuestion();
+                initializeWaveformEngine();
+            } else {
+                alert("Quiz block complete!");
+            }
+        });
+    }
+}, 500);
