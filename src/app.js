@@ -63,7 +63,7 @@ window.initializePremiumStripeCheckout = async function() {
         const data = await response.json();
         if (data.url) window.location.href = data.url;
     } catch (err) {
-        alert("Billing gateway simulation active locally.");
+        alert("Billing gateway simulation active.");
     }
 };
 
@@ -105,24 +105,26 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 🛡️ REFACTORED FAULT-TOLERANT CLOUD SYNC PIPELINE
+// 👤 FIXED: DATA RECOVERY AND IMAGE ESCAPE MACHINE
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
+    const cleanKey = state.userEmail.replace(/[^a-zA-Z0-9]/g, "_");
+    
+    const nameInput = document.getElementById("prof-name");
+    const titleSelect = document.getElementById("prof-title");
+    const idInput = document.getElementById("prof-id");
+    const instInput = document.getElementById("prof-inst");
+    const badgeElement = document.getElementById("profile-avatar-badge");
+
     try {
         const response = await fetch(`/api/user/profile?email=${encodeURIComponent(state.userEmail)}`);
-        if (!response.ok) throw new Error("Database network offline.");
+        if (!response.ok) throw new Error("Cloud offline");
         
         const data = await response.json();
         if (data.profile) {
             state.performance = data.profile.performance || state.performance;
             if (data.profile.is_premium === true) state.isPremium = true;
-
-            const nameInput = document.getElementById("prof-name");
-            const titleSelect = document.getElementById("prof-title");
-            const idInput = document.getElementById("prof-id");
-            const instInput = document.getElementById("prof-inst");
-            const badgeElement = document.getElementById("profile-avatar-badge");
 
             if (nameInput && data.profile.name) nameInput.value = data.profile.name;
             if (titleSelect && data.profile.title) titleSelect.value = data.profile.title;
@@ -131,20 +133,40 @@ async function synchronizeCloudUserData() {
             
             if (badgeElement && data.profile.avatar_data) {
                 badgeElement.innerText = "";
-                badgeElement.style.backgroundImage = data.profile.avatar_data;
+                // Securely read pure raw data tracks
+                let rawImg = data.profile.avatar_data;
+                if (!rawImg.startsWith("url")) rawImg = `url("${rawImg}")`;
+                badgeElement.style.backgroundImage = rawImg;
                 badgeElement.style.backgroundSize = "cover";
                 badgeElement.style.backgroundPosition = "center";
+                badgeElement.style.border = "2px solid var(--text-primary)";
+            } else {
+                regenerateProfileAvatarBadge();
             }
         }
     } catch (err) {
-        console.warn("⚠️ Supabase cluster unreached. Engaging fault-tolerant local cache tracks.");
-        // Local state hydration safeguard fallback pass
-        const localMetaKey = `macprep_prof_meta_${state.userEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
-        const localMeta = localStorage.getItem(localMetaKey);
+        console.warn("⚠️ Utilizing local sandbox backup parameters.");
+        const localMeta = localStorage.getItem(`macprep_prof_meta_${cleanKey}`);
         if (localMeta) {
             const parsed = JSON.parse(localMeta);
-            if (document.getElementById("prof-name")) document.getElementById("prof-name").value = parsed.name || "";
-            if (document.getElementById("prof-id")) document.getElementById("prof-id").value = parsed.idNum || "";
+            if (nameInput && parsed.name) nameInput.value = parsed.name;
+            if (titleSelect && parsed.title) titleSelect.value = parsed.title;
+            if (idInput && parsed.idNum) idInput.value = parsed.idNum;
+            if (instInput && parsed.institution) instInput.value = parsed.institution; // FIXED: Re-mapped directly to instInput target fields
+            
+            if (badgeElement && parsed.avatarData) {
+                badgeElement.innerText = "";
+                let rawImg = parsed.avatarData;
+                if (!rawImg.startsWith("url")) rawImg = `url("${rawImg}")`;
+                badgeElement.style.backgroundImage = rawImg;
+                badgeElement.style.backgroundSize = "cover";
+                badgeElement.style.backgroundPosition = "center";
+                badgeElement.style.border = "2px solid var(--text-primary)";
+            } else {
+                regenerateProfileAvatarBadge();
+            }
+        } else {
+            regenerateProfileAvatarBadge();
         }
     }
 }
@@ -153,12 +175,26 @@ window.savePractitionerProfileData = async function() {
     if (!state.userEmail) return;
     const cleanKey = state.userEmail.replace(/[^a-zA-Z0-9]/g, "_");
     
-    // Save to local cache first so it's instantly protected locally
+    const nameVal = document.getElementById("prof-name").value.trim();
+    const titleVal = document.getElementById("prof-title").value;
+    const idVal = document.getElementById("prof-id").value.trim();
+    const instVal = document.getElementById("prof-inst").value.trim();
+    const badgeElement = document.getElementById("profile-avatar-badge");
+    
+    // Extract clean asset paths without duplicate wrapping tokens
+    let rawAvatarString = badgeElement.style.backgroundImage || "";
+    if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) {
+        rawAvatarString = rawAvatarString.slice(5, -2);
+    } else if (rawAvatarString.startsWith('url(')) {
+        rawAvatarString = rawAvatarString.slice(4, -1);
+    }
+
     const localPayload = {
-        name: document.getElementById("prof-name").value.trim(),
-        title: document.getElementById("prof-title").value,
-        idNum: document.getElementById("prof-id").value.trim(),
-        institution: document.getElementById("prof-inst").value.trim()
+        name: nameVal,
+        title: titleVal,
+        idNum: idVal,
+        institution: instVal,
+        avatarData: rawAvatarString
     };
     localStorage.setItem(`macprep_prof_meta_${cleanKey}`, JSON.stringify(localPayload));
 
@@ -166,7 +202,15 @@ window.savePractitionerProfileData = async function() {
         await fetch('/api/user/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: state.userEmail, ...localPayload, performance: state.performance })
+            body: JSON.stringify({ 
+                email: state.userEmail, 
+                name: nameVal,
+                title: titleVal,
+                id_num: idVal,
+                institution: instVal,
+                avatar_data: rawAvatarString,
+                performance: state.performance 
+            })
         });
         alert("Practitioner Profile synchronized globally.");
     } catch (err) {
@@ -189,9 +233,7 @@ async function writeActiveWorkstationProgressCheckpoint() {
                 volume_filter: document.getElementById("filter-volume").value
             })
         });
-    } catch (err) {
-        // Silently tolerate local sandbox disconnections
-    }
+    } catch (err) { }
 }
 
 window.handleSessionRecoveryChoice = function(shouldResume) {
@@ -215,7 +257,6 @@ function populateDynamicVolumeDropdownOptions() {
     const volSelect = document.getElementById("filter-volume");
     if (!volSelect) return;
     
-    // Fallback safely to current pool count if master pull returns vacant anomalies
     const poolSize = state.masterQuestionsPool.length || 8;
     const tenPercentValue = Math.floor(poolSize * 0.1) || 1; 
 
@@ -296,7 +337,6 @@ window.returnToHomeDashboard = function() {
 };
 
 async function fetchCurriculumBlock() {
-    // Re-ensure control drop items render regardless of network states
     try {
         const response = await fetch("/api/questions");
         const data = await response.json();
@@ -304,7 +344,6 @@ async function fetchCurriculumBlock() {
     } catch (err) {
         console.error("Content hydration failed:", err);
     } finally {
-        // CRITICAL FIXED PASS: Drop menu option hydration fires universally inside 'finally' blocks
         populateDynamicVolumeDropdownOptions(); 
         await synchronizeCloudUserData();
         applyCustomBlockConfiguration(false);   
@@ -388,6 +427,29 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-title").innerText = isCorrect ? "✅ Clinical Rationale Match" : "❌ Near-Miss Core Deviation";
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
+
+    // Push calculation metrics up to PostgreSQL rows on item resolution answers dynamically
+    if (state.userEmail) {
+        const nameVal = document.getElementById("prof-name") ? document.getElementById("prof-name").value.trim() : "";
+        const badgeElement = document.getElementById("profile-avatar-badge");
+        let rawAvatarString = badgeElement ? (badgeElement.style.backgroundImage || "") : "";
+        if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) rawAvatarString = rawAvatarString.slice(5, -2);
+        else if (rawAvatarString.startsWith('url(')) rawAvatarString = rawAvatarString.slice(4, -1);
+
+        fetch('/api/user/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: state.userEmail,
+                name: nameVal === "Anesthesia Care Team Professional" ? "" : nameVal,
+                title: document.getElementById("prof-title") ? document.getElementById("prof-title").value : "caa",
+                id_num: document.getElementById("prof-id") ? document.getElementById("prof-id").value.trim() : "",
+                institution: document.getElementById("prof-inst") ? document.getElementById("prof-inst").value.trim() : "",
+                avatar_data: rawAvatarString,
+                performance: state.performance
+            })
+        }).catch(() => {});
+    }
 
     writeActiveWorkstationProgressCheckpoint(); 
     renderAnalyticsEngine();
@@ -500,6 +562,26 @@ window.regenerateProfileAvatarBadge = function() {
     badgeElement.innerText = initials.slice(0, 2);
 };
 
+window.handleAvatarImageUpload = function(inputNode) {
+    const file = inputNode.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const badgeElement = document.getElementById("profile-avatar-badge");
+        if (badgeElement) {
+            badgeElement.innerText = ""; 
+            // Strip out any surrounding wrappers before injecting clean base64 data strings
+            let base64Result = e.target.result;
+            badgeElement.style.backgroundImage = `url("${base64Result}")`;
+            badgeElement.style.backgroundSize = "cover";
+            badgeElement.style.backgroundPosition = "center";
+            badgeElement.style.border = "2px solid var(--text-primary)";
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
 setTimeout(() => {
     const nextBtn = document.getElementById("next-item-btn");
     if (nextBtn) {
@@ -523,13 +605,11 @@ function initializeWaveformEngine() {
         let pathString = "";
         let color = "#10b981"; 
         let hValue = 55;       
-        let isObstructive = false;
 
         if (currentQuestion) {
             const lookstack = (currentQuestion.stem + " " + q.explanation || "").toLowerCase();
             if (lookstack.match(/(bronchospasm|shark-fin|resistance)/)) {
                 color = "#f59e0b"; 
-                isObstructive = true;
             }
         }
 
