@@ -105,7 +105,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 👤 FIXED: DATA RECOVERY AND IMAGE ESCAPE MACHINE
+// 👤 FIXED: IMMUTABLE IMAGE PATHS AND CACHE ALIGNMENT KEYS
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -133,26 +133,24 @@ async function synchronizeCloudUserData() {
             
             if (badgeElement && data.profile.avatar_data) {
                 badgeElement.innerText = "";
-                // Securely read pure raw data tracks
                 let rawImg = data.profile.avatar_data;
                 if (!rawImg.startsWith("url")) rawImg = `url("${rawImg}")`;
                 badgeElement.style.backgroundImage = rawImg;
                 badgeElement.style.backgroundSize = "cover";
                 badgeElement.style.backgroundPosition = "center";
-                badgeElement.style.border = "2px solid var(--text-primary)";
             } else {
                 regenerateProfileAvatarBadge();
             }
         }
     } catch (err) {
-        console.warn("⚠️ Utilizing local sandbox backup parameters.");
+        console.warn("⚠️ Utilizing local fallback cache tracks.");
         const localMeta = localStorage.getItem(`macprep_prof_meta_${cleanKey}`);
         if (localMeta) {
             const parsed = JSON.parse(localMeta);
             if (nameInput && parsed.name) nameInput.value = parsed.name;
             if (titleSelect && parsed.title) titleSelect.value = parsed.title;
             if (idInput && parsed.idNum) idInput.value = parsed.idNum;
-            if (instInput && parsed.institution) instInput.value = parsed.institution; // FIXED: Re-mapped directly to instInput target fields
+            if (instInput && parsed.institution) instInput.value = parsed.institution; 
             
             if (badgeElement && parsed.avatarData) {
                 badgeElement.innerText = "";
@@ -161,7 +159,6 @@ async function synchronizeCloudUserData() {
                 badgeElement.style.backgroundImage = rawImg;
                 badgeElement.style.backgroundSize = "cover";
                 badgeElement.style.backgroundPosition = "center";
-                badgeElement.style.border = "2px solid var(--text-primary)";
             } else {
                 regenerateProfileAvatarBadge();
             }
@@ -181,7 +178,6 @@ window.savePractitionerProfileData = async function() {
     const instVal = document.getElementById("prof-inst").value.trim();
     const badgeElement = document.getElementById("profile-avatar-badge");
     
-    // Extract clean asset paths without duplicate wrapping tokens
     let rawAvatarString = badgeElement.style.backgroundImage || "";
     if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) {
         rawAvatarString = rawAvatarString.slice(5, -2);
@@ -428,9 +424,10 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // Push calculation metrics up to PostgreSQL rows on item resolution answers dynamically
-    if (state.userEmail) {
-        const nameVal = document.getElementById("prof-name") ? document.getElementById("prof-name").value.trim() : "";
+    // FIXED PASS: Auto-saves check the existence of form elements before overriding cached profiles
+    const nameEl = document.getElementById("prof-name");
+    if (state.userEmail && nameEl) {
+        const nameVal = nameEl.value.trim();
         const badgeElement = document.getElementById("profile-avatar-badge");
         let rawAvatarString = badgeElement ? (badgeElement.style.backgroundImage || "") : "";
         if (rawAvatarString.startsWith('url("') || rawAvatarString.startsWith("url('")) rawAvatarString = rawAvatarString.slice(5, -2);
@@ -571,7 +568,6 @@ window.handleAvatarImageUpload = function(inputNode) {
         const badgeElement = document.getElementById("profile-avatar-badge");
         if (badgeElement) {
             badgeElement.innerText = ""; 
-            // Strip out any surrounding wrappers before injecting clean base64 data strings
             let base64Result = e.target.result;
             badgeElement.style.backgroundImage = `url("${base64Result}")`;
             badgeElement.style.backgroundSize = "cover";
@@ -605,13 +601,6 @@ function initializeWaveformEngine() {
         let pathString = "";
         let color = "#10b981"; 
         let hValue = 55;       
-
-        if (currentQuestion) {
-            const lookstack = (currentQuestion.stem + " " + q.explanation || "").toLowerCase();
-            if (lookstack.match(/(bronchospasm|shark-fin|resistance)/)) {
-                color = "#f59e0b"; 
-            }
-        }
 
         for (let x = 0; x <= 800; x += 2) {
             let cycle = ((x / 160) - state.wavePhase) % 2;
