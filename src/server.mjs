@@ -2,29 +2,147 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-// Enable Cross-Origin Resource Sharing for production microservices
 app.use(cors());
+
+// SUPABASE CLOUD POSTGRES ENGINE CONFIGURATION
+const supabaseUrl = process.env.SUPABASE_URL || 'https://your-fallback-supabase-project.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-master-service-role-key-bypass';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use((req, res, next) => {
     if (req.originalUrl === '/api/webhooks/stripe') {
         next();
     } else {
-        express.json()(req, res, next);
+        express.json({ limit: '10mb' })(req, res, next); // Expanded limit boundaries for raw base64 avatar images streams
     }
 });
 
-// Serve static frontend tracking assets from root directory definitions
 app.use(express.static(path.join(__dirname, '../')));
 
 // =========================================================================
-// 📊 COMPREHENSIVE MULTI-SPECIALTY BLUEPRINT DATABASE SEED (ALL 8 CATEGORIES)
+// 🏛️ RELATIONAL ROUTING GATEWAYS (SUPABASE TRANSITS)
 // =========================================================================
+
+// Endpoint 1: Fetch Practitioner Profile Out of Live Postgres rows
+app.get('/api/user/profile', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "Missing identity tracking parameter email." });
+
+    try {
+        const { data, error } = await supabase
+            .from('practitioner_profiles')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            console.error("Supabase profile pull warning:", error);
+            throw error;
+        }
+
+        res.json({ profile: data || null });
+    } catch (err) {
+        res.status(500).json({ error: "Database transaction failure routes." });
+    }
+});
+
+// Endpoint 2: Upsert Profile parameters dynamically
+app.post('/api/user/profile', async (req, res) => {
+    const { email, name, title, id_num, institution, avatar_data, performance } = req.body;
+    if (!email) return res.status(400).json({ error: "Missing identity parameter email fields." });
+
+    try {
+        const { data, error } = await supabase
+            .from('practitioner_profiles')
+            .upsert({
+                email: email.toLowerCase().trim(),
+                name,
+                title,
+                id_num,
+                institution,
+                avatar_data,
+                performance,
+                updated_at: new Date()
+            }, { onConflict: 'email' });
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Database upsert failed:", err);
+        res.status(500).json({ error: "Failed writing data lines." });
+    }
+});
+
+// Endpoint 3: Fetch active persistent session checkpoint recovery states
+app.get('/api/user/session', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "Missing query target email." });
+
+    try {
+        const { data, error } = await supabase
+            .from('active_workstation_sessions')
+            .select('*')
+            .eq('email', email.toLowerCase().trim())
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        res.json({ session: data || null });
+    } catch (err) {
+        res.status(500).json({ error: "Session query transaction error." });
+    }
+});
+
+// Endpoint 4: Write live active progress checkpoints rows
+app.post('/api/user/session', async (req, res) => {
+    const { email, questions, current_index, specialty_filter, volume_filter } = req.body;
+    if (!email) return res.status(400).json({ error: "Missing boundary mapping targets email." });
+
+    try {
+        const { error } = await supabase
+            .from('active_workstation_sessions')
+            .upsert({
+                email: email.toLowerCase().trim(),
+                questions,
+                current_index,
+                specialty_filter,
+                volume_filter,
+                updated_at: new Date()
+            }, { onConflict: 'email' });
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed storing checkpoint tracking parameters." });
+    }
+});
+
+// Endpoint 5: Drop session tracks once complete
+app.delete('/api/user/session', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "Missing targeted drop parameter email." });
+
+    try {
+        const { error } = await supabase
+            .from('active_workstation_sessions')
+            .delete()
+            .eq('email', email.toLowerCase().trim());
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "Failed pruning session memory columns." });
+    }
+});
+
+// ==========================================
+// CORE CONTENT STREAM CHANNELS
+// ==========================================
 const coreCurriculumBank = [
     {
         specialty: "Cardiovascular Anesthesia",
@@ -34,7 +152,7 @@ const coreCurriculumBank = [
             B: "Mean Arterial Pressure, Central Venous Pressure, Stroke Volume",
             C: "Pulmonary Capillary Wedge Pressure, Systemic Vascular Resistance",
             D: "Alveolar Gas Tension, Arterial Oxygen Content",
-            E: "Mixed Venous Oxygen Saturation, Left Venricular End-Displacement Volume"
+            E: "Mixed Venous Oxygen Saturation, Left Ventricular End-Displacement Volume"
         },
         correct_answer: "A",
         explanation: "Oxygen Delivery Index (DO2I) calculation formula matches: CI x 1.34 x Hb x SaO2. Bronchospasm creates classic high-resistance expiratory delays captured visually by ascending shark-fin plateaus on the live SVG capnogram workspace layer.",
@@ -87,13 +205,13 @@ const coreCurriculumBank = [
         stem: "A 4-year-old child presenting with post-intubation croup is treated with nebulized racemic epinephrine. What is the primary receptor mechanism targeted to reduce mucosal edema in the subglottic airway?",
         choices: {
             A: "Alpha-1 adrenergic vasoconstriction",
-            B: "Beta-2 adrenergic smooth muscle relaxation",
+            B: "Beta-2 adrenergic muscle relaxation",
             C: "Beta-1 adrenergic positive inotropy",
             D: "Alpha-2 adrenergic central sedation",
             E: "Muscarinic-3 antagonist bronchodilation"
         },
         correct_answer: "A",
-        explanation: "Racemic epinephrine works primary via Alpha-1 adrenergic receptor activation, which causes localized vasoconstriction of precapillary arterioles in the upper airway mucosa, rapidly decreasing subglottic edema.",
+        explanation: "Alpha-1 mediated vasoconstriction of local upper mucosal vascular paths limits fluid transudation, reducing croup-induced stridor swelling metrics immediately.",
         telemetry: { difficulty_index: 0.61, discrimination_ratio: 0.59 }
     },
     {
@@ -107,7 +225,7 @@ const coreCurriculumBank = [
             E: "Hyperthermia, muscle rigidity, and metabolic acidosis"
         },
         correct_answer: "A",
-        explanation: "Amniotic fluid embolism presents abruptly as a biphasic cardiorespiratory and hematologic crisis classically defined by acute hypoxemia, severe systemic hypotension/right heart failure, and consumption coagulopathy/DIC.",
+        explanation: "AFE processes trigger an catastrophic systemic visual sequence tracking acute hypoxemia, acute right ventricular failure collapse parameters, and immediate disseminated intravascular coagulation consumption spikes.",
         telemetry: { difficulty_index: 0.70, discrimination_ratio: 0.63 }
     },
     {
@@ -157,7 +275,6 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../index.html'));
 });
 
-// FIXED: Listen on environment production assigned ports or default down to 3000 safely
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`===================================================`);
