@@ -16,7 +16,6 @@ let state = {
         totalCorrect: 0,
         specialtyBreakdown: {}
     },
-    // MEMORY STATE SAFEGUARD: Hard core localized configuration buffers
     profileData: {
         name: "Anesthesia Care Team Professional",
         title: "caa",
@@ -113,7 +112,7 @@ window.switchMainInteriorPanel = function(targetViewName) {
 };
 
 // =========================================================================
-// 👤 PURE STATE-DRIVEN ACCOUNT SYNCHRONIZATION CHANNELS
+// 🔄 HARDENED OBJECT PARSING & ACCOUNT SYNCHRONIZATION PIPELINES
 // =========================================================================
 async function synchronizeCloudUserData() {
     if (!state.userEmail) return;
@@ -127,12 +126,24 @@ async function synchronizeCloudUserData() {
 
     try {
         const response = await fetch(`/api/user/profile?email=${encodeURIComponent(state.userEmail)}`);
-        if (!response.ok) throw new Error("Cloud synchronization drop.");
+        if (!response.ok) throw new Error("Cloud unreached");
         
         const data = await response.json();
         if (data.profile) {
-            state.performance = data.profile.performance || state.performance;
             if (data.profile.is_premium === true) state.isPremium = true;
+
+            // FIXED PASS: Cryptographically parse and normalize incoming structural performance fields
+            let incomingPerf = data.profile.performance;
+            if (incomingPerf) {
+                if (typeof incomingPerf === 'string') {
+                    try { incomingPerf = JSON.parse(incomingPerf); } catch(e) { incomingPerf = null; }
+                }
+                if (incomingPerf && typeof incomingPerf === 'object') {
+                    state.performance.totalAnswered = parseInt(incomingPerf.totalAnswered, 10) || 0;
+                    state.performance.totalCorrect = parseInt(incomingPerf.totalCorrect, 10) || 0;
+                    state.performance.specialtyBreakdown = incomingPerf.specialtyBreakdown || {};
+                }
+            }
 
             state.profileData = {
                 name: data.profile.name || "Anesthesia Care Team Professional",
@@ -149,7 +160,6 @@ async function synchronizeCloudUserData() {
             state.profileData = JSON.parse(localMeta);
         }
     } finally {
-        // Safe DOM hydration mapping out of core state memory caches fields exclusively
         if (nameInput) nameInput.value = state.profileData.name;
         if (titleSelect) titleSelect.value = state.profileData.title;
         if (idInput) idInput.value = state.profileData.idNum;
@@ -180,7 +190,6 @@ window.savePractitionerProfileData = async function() {
     const idVal = document.getElementById("prof-id").value.trim();
     const instVal = document.getElementById("prof-inst").value.trim();
     
-    // Explicitly update memory cache structures to lock updates cleanly
     state.profileData.name = nameVal;
     state.profileData.title = titleVal;
     state.profileData.idNum = idVal;
@@ -204,7 +213,7 @@ window.savePractitionerProfileData = async function() {
         });
         console.log("📡 Cloud database sync complete.");
     } catch (err) {
-        console.error("Local track toggle bypass active:", err);
+        console.error("Local track active:", err);
     }
     regenerateProfileAvatarBadge();
 };
@@ -224,7 +233,7 @@ window.handleAvatarImageUpload = function(inputNode) {
             badgeElement.style.backgroundPosition = "center";
             badgeElement.style.border = "2px solid var(--text-primary)";
             
-            state.profileData.avatarRaw = base64Result; // Store clean string references
+            state.profileData.avatarRaw = base64Result;
         }
     };
     reader.readAsDataURL(file);
@@ -392,9 +401,6 @@ function renderCurrentQuestion() {
     });
 }
 
-// =========================================================================
-// 🧠 STATE-DRIVEN DYNAMIC ASSISTANCE INTERACTION GATE
-// =========================================================================
 function evaluateSelection(selectedKey) {
     if (state.revealed || state.crossedOut[selectedKey]) return;
     
@@ -444,7 +450,6 @@ function evaluateSelection(selectedKey) {
     document.getElementById("explanation-text").innerText = q.explanation;
     document.getElementById("explanation-container").classList.remove("hidden");
 
-    // SAFE AUTO-SAVE: Reads cleanly straight from the secure state payload variables to insulate inputs
     if (state.userEmail) {
         fetch('/api/user/profile', {
             method: 'POST',
@@ -466,6 +471,9 @@ function evaluateSelection(selectedKey) {
 }
 
 function renderAnalyticsEngine() {
+    if (!state.performance) state.performance = { totalAnswered: 0, totalCorrect: 0, specialtyBreakdown: {} };
+    if (!state.performance.specialtyBreakdown) state.performance.specialtyBreakdown = {};
+
     const accuracy = state.performance.totalAnswered > 0 
         ? Math.round((state.performance.totalCorrect / state.performance.totalAnswered) * 100) 
         : 0;
@@ -490,13 +498,15 @@ function renderAnalyticsEngine() {
     
     coreSpecialties.forEach(spec => {
         const data = state.performance.specialtyBreakdown[spec] || { attempts: 0, corrects: 0 };
-        const specAccuracy = data.attempts > 0 ? Math.round((data.corrects / data.attempts) * 100) : 0;
+        const specAttempts = data.attempts || 0;
+        const specCorrects = data.corrects || 0;
+        const specAccuracy = specAttempts > 0 ? Math.round((specCorrects / specAttempts) * 100) : 0;
 
         const barWrapper = document.createElement("div");
         barWrapper.className = "mastery-bar-row";
         barWrapper.innerHTML = `
             <div class="bar-meta"><span>${spec}</span><span>${specAccuracy}%</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width: ${data.attempts === 0 ? 0 : specAccuracy}%"></div></div>
+            <div class="bar-track"><div class="bar-fill" style="width: ${specAttempts === 0 ? 0 : specAccuracy}%"></div></div>
         `;
         barsContainer.appendChild(barWrapper);
     });
@@ -553,6 +563,27 @@ window.calculateTCIMatrix = function() {
         if (document.getElementById("tci-3h")) document.getElementById("tci-3h").innerText = "3 - 5 Minutes";
         if (document.getElementById("tci-8h")) document.getElementById("tci-8h").innerText = "3 - 5 Minutes";
     }
+};
+
+window.handleAvatarImageUpload = function(inputNode) {
+    const file = inputNode.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const badgeElement = document.getElementById("profile-avatar-badge");
+        if (badgeElement) {
+            badgeElement.innerText = ""; 
+            const base64Result = e.target.result;
+            badgeElement.style.backgroundImage = `url("${base64Result}")`;
+            badgeElement.style.backgroundSize = "cover";
+            badgeElement.style.backgroundPosition = "center";
+            badgeElement.style.border = "2px solid var(--text-primary)";
+            
+            state.profileData.avatarRaw = base64Result;
+        }
+    };
+    reader.readAsDataURL(file);
 };
 
 window.regenerateProfileAvatarBadge = function() {
