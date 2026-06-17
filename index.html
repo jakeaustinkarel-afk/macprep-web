@@ -48,6 +48,7 @@
                 <button class="drawer-btn" id="nav-link-faq" onclick="switchMainInteriorPanel('faq')">❓ Workstation FAQ</button>
                 <button class="drawer-btn" id="nav-link-update" onclick="switchMainInteriorPanel('update')">📋 System Update Log</button>
                 <button class="drawer-btn" id="nav-link-privacy" onclick="switchMainInteriorPanel('privacy')">🛡️ Privacy Policy</button>
+                <button class="drawer-btn" id="nav-link-bugs" onclick="switchMainInteriorPanel('bugs')">🐛 Report a Bug</button>
             </div>
             <div class="drawer-footer">
                 <button class="action-btn disconnect-btn" onclick="terminateStudentSession()">Sign Out</button>
@@ -113,7 +114,7 @@
                         </section>
 
                         <div id="premium-upgrade-promo-banner" class="premium-upsell-banner hidden">
-                            <span>🔒 Non-Premium Account limited to 10% of total dynamic question bank capacity. Upgrade to Premium for uninhibited 2,500-question access.</span>
+                            <span>🔒 Non-Premium Account limited to 10% of total question bank capacity. Upgrade to Premium for full 2,500-question access.</span>
                             <button class="upsell-inline-btn" onclick="initializePremiumStripeCheckout()">Upgrade to Premium ($50)</button>
                         </div>
 
@@ -138,9 +139,13 @@
                                 Streaming certified premium curriculum blocks...
                             </div>
                             <div id="choices-container" class="choices-stack"></div>
+                            
                             <div id="explanation-container" class="explanation-card hidden">
+                                <div id="reinforcement-header-bar" class="reinforcement-alert-tag">🎯 ASSESSMENT METRICS PROFILE</div>
                                 <h3 id="explanation-title">Clinical Rationale Match</h3>
-                                <p id="explanation-text"></p>
+                                <div class="reinforcement-critique-box" id="reinforcement-critique-text">
+                                    </div>
+                                <p id="explanation-text" class="core-rationale-text-body"></p>
                                 <button id="next-item-btn" class="btn btn-primary">Advance to Next Sequence ➡️</button>
                             </div>
                         </section>
@@ -245,7 +250,7 @@
                         <div class="faq-item"><h4>6. Can I filter quiz blocks to isolate a single specialty?</h4><p>Yes. The Workstation Configuration block splitter allows users to isolate sub-specialty paths like Neuroanesthesia or Obstetric Anesthesia completely.</p></div>
                         <div class="faq-item"><h4>7. How does the capnography wave identify a bronchospasm?</h4><p>The simulator uses non-linear mathematical equations to replace flat plateaus with ascending exponential slopes, drawing an iconic shark-fin waveform.</p></div>
                         <div class="faq-item"><h4>8. Is my diagnostic data exposed to institutional tracking channels?</h4><p>No. Performance analytics, mastery maps, and item histories cache securely within isolated client local tracks to prioritize privacy.</p></div>
-                        <div class="faq-item"><h4>9. What do the Difficulty Index (b) and Discrimination Ratio (a) indicate?</h4><p>These psychometric telemetry parameters measure question difficulty and how effectively the item distinguishes high-performing practitioners.</p>
+                        <div class="faq-item"><h4>9. What do the Difficulty Index (b) and Discrimination Ratio (a) indicate?</h4><p>These psychometric telemetry parameters measure question difficulty and how effectively the item distinguishes high-performing practitioners.</p></div>
                         <div class="faq-item"><h4>10. How can I reset all history logs to baseline values?</h4><p>Click "Sign Out" or run a local cache clear to wipe state histories and restore full unspent testing balances.</p></div>
                         <div class="faq-item"><h4>11. Does the platform accommodate continuous recertification targets?</h4><p>Yes. Wording and testing blocks support practicing CAAs working through continuous certification intervals alongside SAAs prepping for initial boards.</p></div>
                         <div class="faq-item"><h4>12. Can I use the calculator panels during an active timed session?</h4><p>Yes. The side dock calculators function completely independent of the question loop to allow for real-time validation checks.</p></div>
@@ -256,13 +261,14 @@
             <div id="view-panel-update" class="sub-view-panel hidden">
                 <div class="aux-editorial-page">
                     <h2>📋 System Architecture Update Log</h2>
+                    <p class="section-lead">Platform release parameters log tracks for MACPrep workstation nodes.</p>
                     <div class="log-entry">
-                        <strong>v2.1.0 (Current Production Baseline)</strong>
+                        <strong>v2.2.0 (June 2026 Production Update)</strong>
                         <ul>
-                            <li>Upgraded multiple-choice option fields with pristine structured side-border frames.</li>
-                            <li>Reorganized Practitioner Profile panel layouts with independent input grids and initials avatars.</li>
-                            <li>Expanded comprehensive workstation FAQ list to 12 professional case studies.</li>
-                            <li>Refined legal protection parameters inside the global Privacy Policy.</li>
+                            <li>Implemented direct state-driven user profile protection blocks to prevent local unhydrated DOM scrapes.</li>
+                            <li>Integrated live custom base64 string serialization filters for seamless avatar rendering.</li>
+                            <li>Added deep contextual adaptive reinforcement rationales to give tailored feedback on incorrect distractors.</li>
+                            <li>Deployed the diagnostic Bug Submission console channel with automated validation responses.</li>
                         </ul>
                     </div>
                 </div>
@@ -275,8 +281,32 @@
                     <div class="legal-depth-block">
                         <h3>1. Data Collection & Processing Scope</h3><p>MACPrep collects minimal professional identifier data—specifically account email addresses and profile metrics—solely to maintain persistent session metrics. No personal medical information or telemetry data from private surgical practices is captured or parsed.</p>
                         <h3>2. Encryption & Storage Safeguards</h3><p>Session tokens, payment status flags, and performance histories are isolated behind layered encryption protocols. Local client parameters track securely inside storage clusters with cryptographic sign-off rules enforced by Supabase security modules.</p>
-                        <h3>3. Institutional Third-Party Sharing Rules</h3><p>Individual practitioner records, miss patterns, and calculation scores are confidential. Personal testing vectors are never shared, sold, or distributed to licensing agencies, hospital networks, or third-party academic channels.</p>
+                        <h3>3. Institutional Third-Party Sharing Rules</h3><p>Individual practitioner records, miss patterns, and calculation scores are completely confidential. Personal testing vectors are never shared, sold, or distributed to licensing agencies, hospital networks, or third-party academic channels.</p>
                         <h3>4. Compliance & User Data Rights</h3><p>In alignment with professional evaluation platform data safety standards, practitioners retain full deletion rights. Clicking "Sign Out" or requesting an administrative clear completely purges cached accounts from our tables within 24 hours.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-panel-bugs" class="sub-view-panel hidden">
+                <div class="aux-editorial-page">
+                    <h2>🐛 Report an Operational Workstation Bug</h2>
+                    <p class="section-lead">Identify telemetry rendering layout conflicts or logic bugs to trigger an automated optimization sweep.</p>
+                    
+                    <div class="dock-card profile-entry-grid" style="max-width: 600px;">
+                        <div class="input-group-premium" style="margin-bottom: 16px;">
+                            <label>Identified Conflict Area / Category</label>
+                            <select id="bug-category">
+                                <option value="ui">UI/UX Layout Gutter Gaps Alignment</option>
+                                <option value="calculator">Clinical Core Calculators Math Anomaly</option>
+                                <option value="capnograph">Capnography Wave physics Engine Morphing</option>
+                                <option value="auth">Profile Persistent Account Authentication</option>
+                            </select>
+                        </div>
+                        <div class="input-group-premium" style="margin-bottom: 20px;">
+                            <label>Detailed Steps to Replicate Behavioral Conflict</label>
+                            <textarea id="bug-description" rows="6" placeholder="e.g. When transitioning from OB block modes back to comprehensive library sizing, the telemetry accuracy tag retains stale variables on screen." style="width:100%; border:1px solid var(--border-color); border-radius:4px; padding:12px; font-family:inherit; font-size:13.5px; box-sizing:border-box;"></textarea>
+                        </div>
+                        <button class="btn" onclick="submitClinicalWorkstationBugReport()">Transmit Bug Diagnostics File</button>
                     </div>
                 </div>
             </div>
