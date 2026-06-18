@@ -683,3 +683,46 @@ setTimeout(() => {
         if (state.currentIndex < state.questions.length - 1) { state.currentIndex++; renderCurrentQuestion(); initializeWaveformEngine(); }
     });
 }, 500);
+
+// ==========================================
+// STRIPE COMMERCIAL PREMIUM CHECKOUT LINK COUPLING
+// ==========================================
+async function initiatePremiumCheckout() {
+  const userEmail = localStorage.getItem('macprep_user_email');
+  if (!userEmail) {
+    alert("🩺 Authentication Notice: Please sign in or register an account before purchasing full platform premium access.");
+    return;
+  }
+
+  const payButton = document.getElementById('premium-checkout-trigger');
+  if (payButton) {
+    payButton.innerText = "CONNECTING SECURE ROUTE...";
+    payButton.disabled = true;
+  }
+
+  try {
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: userEmail })
+    });
+
+    const session = await response.json();
+
+    if (session.url) {
+      console.log("📡 Secure Session Established. Handing over context link token to Stripe checkout frame...");
+      window.location.href = session.url;
+    } else {
+      throw new Error(session.error || "Failed to extract active routing payload url.");
+    }
+  } catch (err) {
+    console.error("❌ Stripe Gateway Initializer Intercept Failure:", err.message);
+    alert("⚠️ Connection Fault: Unable to reach the billing engine. Please try again shortly.");
+    if (payButton) {
+      payButton.innerText = "UPGRADE TO FULL PREMIUM ACCESS";
+      payButton.disabled = false;
+    }
+  }
+}
