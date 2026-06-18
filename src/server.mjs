@@ -208,3 +208,46 @@ app.post('/api/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+// ==========================================
+// SECURE STRIPE WEBHOOK COMPLETION CONTROLLER
+// ==========================================
+app.post('/api/webhook/stripe', Express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    // Validate signature via the raw byte stream payload buffer
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error(`⚠️ Webhook Signature Verification Intercept Failure: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle successful purchase captures
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const customerEmail = session.customer_details?.email || session.customer_email;
+
+    if (customerEmail) {
+      console.log(`📡 Stripe payment confirmed for account identifier: ${customerEmail}. Syncing user status arrays...`);
+      
+      try {
+        // Upgrade user premium permissions row matrix inside your cloud Supabase infrastructure
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_premium: true })
+          .eq('email', customerEmail.toLowerCase().trim());
+
+        if (error) throw error;
+        console.log(`🏆 Success! User permission records updated dynamically inside Postgres indices.`);
+      } catch (dbErr) {
+        console.error(`❌ Database Write Intercept Failure for ${customerEmail}: `, dbErr.message);
+        return res.status(500).send("Internal Database Storage Sync Fault.");
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
