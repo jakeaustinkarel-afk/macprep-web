@@ -177,3 +177,34 @@ app.listen(PORT, () => {
     console.log(`🚀 Hardened MACPrep Cluster online running on port ${PORT}`);
     console.log(`Database Link Status: ${supabase ? 'CONNECTED' : 'OFFLINE'}`);
 });
+
+
+// ==========================================
+// STRIPE SECURE CHECKOUT SESSION CONTROLLER
+// ==========================================
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Missing required identifier: user email parameter." });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      customer_email: email,
+      line_items: [{
+        price: process.env.STRIPE_PRODUCTION_PRICE_ID,
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${req.headers.origin}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
+      cancel_url: `${req.headers.origin}/?status=cancelled`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("❌ Checkout API Failure:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
