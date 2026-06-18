@@ -39,7 +39,7 @@ function evaluateAuthGatewayState() {
             state.isPremium = true;
             if (drawerUserTag) drawerUserTag.innerHTML = `${state.userEmail}<br><span style="color:#10b981;font-weight:bold;font-size:10px;letter-spacing:0.03em;">🌟 ADMIN MASTER PREMIUM</span>`;
             if (adminBtn) adminBtn.classList.remove("hidden");
-            hydrateAdminSuggestionsInbox(); // Load secure suggestions exclusively for you
+            hydrateAdminSuggestionsInbox();
         } else {
             state.isPremium = false;
             if (drawerUserTag) drawerUserTag.innerText = state.userEmail;
@@ -62,10 +62,81 @@ window.switchMainInteriorPanel = function(targetViewName) {
     if (targetPanel) targetPanel.classList.remove("hidden");
     const targetNavBtn = document.getElementById(`nav-link-${targetViewName}`);
     if (targetNavBtn) targetNavBtn.classList.add("active");
+
+    // REACTIVE TRIGGERS: Force profile dashboard re-calculation when clicking the tab
+    if (targetViewName === 'profile') {
+        renderProfileDashboardMetrics();
+    }
 };
 
 // =========================================================================
-// 💡 HIGH-SIGNAL SUGGESTIONS & REVIEWS NETWORK ENGINE
+// 📈 TACTICAL PROFILE PERFORMANCE DASHBOARD GENERATOR (OPTION 2)
+// =========================================================================
+function renderProfileDashboardMetrics() {
+    if (!state.performance) state.performance = { totalAnswered: 0, totalCorrect: 0, specialtyBreakdown: {} };
+    if (!state.performance.specialtyBreakdown) state.performance.specialtyBreakdown = {};
+
+    const totalInBank = 1000; // Baseline library target row count
+    const totalAnswered = state.performance.totalAnswered || 0;
+    const totalCorrect = state.performance.totalCorrect || 0;
+
+    const coveragePercentage = Math.min(100, Math.round((totalAnswered / totalInBank) * 100));
+    const itemsRemaining = Math.max(0, totalInBank - totalAnswered);
+    const globalAccuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+
+    // Inject metrics text payloads cleanly into view containers
+    if (document.getElementById("profile-bank-progress")) document.getElementById("profile-bank-progress").innerText = `${coveragePercentage}%`;
+    if (document.getElementById("profile-items-remaining")) document.getElementById("profile-items-remaining").innerText = itemsRemaining;
+    if (document.getElementById("profile-global-accuracy")) document.getElementById("profile-global-accuracy").innerText = `${globalAccuracy}%`;
+
+    const statusListContainer = document.getElementById("profile-specialty-status-list");
+    if (!statusListContainer) return;
+    statusListContainer.innerHTML = "";
+
+    const coreSpecialties = [
+        "Cardiovascular Anesthesia", "Advanced Pharmacology Kinetics", "Neuroanesthesia", "Regional Anesthesia & Pain",
+        "Pediatric Anesthesia", "Obstetric Anesthesia", "Thoracic Anesthesia", "General Principles & Safety"
+    ];
+
+    coreSpecialties.forEach(spec => {
+        const data = state.performance.specialtyBreakdown[spec] || { attempts: 0, corrects: 0 };
+        const specAttempts = data.attempts || 0;
+        const specCorrects = data.corrects || 0;
+        const specAccuracy = specAttempts > 0 ? Math.round((specCorrects / specAttempts) * 100) : 0;
+
+        let badgeColor = "#dc2626"; // Red default fallback for un-attempted categories
+        let badgeText = "CRITICAL LIMIT (0/0 items)";
+
+        if (specAttempts > 0) {
+            if (specAccuracy >= 75) {
+                badgeColor = "#10b981"; // Emerald Green for high performance pass clearance
+                badgeText = `COMPETITIVE BLOCKS PASSED (${specCorrects}/${specAttempts})`;
+            } else if (specAccuracy >= 50) {
+                badgeColor = "#f59e0b"; // Warning Orange for near miss profiles
+                badgeText = `MARGINAL AREA DEV CRITIQUE (${specCorrects}/${specAttempts})`;
+            } else {
+                badgeText = `CRITICAL FAILURE THRESHOLD (${specCorrects}/${specAttempts})`;
+            }
+        }
+
+        const rowItem = document.createElement("div");
+        rowItem.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:10px 15px; border-radius:4px; border:1px solid #1e293b;";
+        rowItem.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                <span style="font-size:13px; font-weight:bold; color:var(--text-primary);">${spec}</span>
+                <span style="font-size:11px; color:var(--text-muted);">Long-term categorical competency status profile</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <span style="font-size:16px; font-weight:bold; color:#f8fafc;">${specAccuracy}%</span>
+                <span style="background:${badgeColor}; color:#ffffff; font-size:9px; font-weight:bold; padding:4px 8px; border-radius:3px; letter-spacing:0.03em;">${badgeText}</span>
+            </div>
+        `;
+        statusListContainer.appendChild(rowItem);
+    });
+}
+
+// =========================================================================
+// 💡 SUGGESTIONS & REVIEWS NETWORK ENGINE
 // =========================================================================
 window.submitPrivateUserSuggestion = async function() {
     const textNode = document.getElementById("feedback-suggestion-input");
@@ -77,8 +148,6 @@ window.submitPrivateUserSuggestion = async function() {
     }
 
     const ticketId = `MP-SUGG-${Math.floor(Math.random() * 9000 + 1000)}`;
-    
-    // Optimistic Update: Append variables straight to your secure admin inbox log list container in real-time
     const adminInbox = document.getElementById("admin-suggestions-logs");
     if (adminInbox) {
         if (adminInbox.innerText.includes("No private system optimization")) adminInbox.innerHTML = "";
@@ -119,8 +188,6 @@ window.submitPublicUserReview = async function() {
 function hydratePublicReviewsFeed() {
     const feedRoot = document.getElementById("public-reviews-feed-root");
     if (!feedRoot) return;
-    
-    // Seed default baseline entries to give the community timeline validation context instantly
     feedRoot.innerHTML = `
         <div style='background:#1e293b; border:1px solid #334155; padding:12px; border-radius:4px;'>
             <div style='display:flex; justify-content:space-between; margin-bottom:4px;'><strong style='color:#f8fafc;'>🎓 caa_field_director</strong><span style='color:#f59e0b;'>⭐⭐⭐⭐⭐</span></div>
@@ -202,6 +269,7 @@ async function synchronizeCloudUserData() {
                 regenerateProfileAvatarBadge();
             }
         }
+        renderProfileDashboardMetrics(); // Instantly update variables upon initial login sync load pass
     }
 }
 
@@ -231,6 +299,7 @@ window.savePractitionerProfileData = async function() {
         });
     } catch (err) { }
     regenerateProfileAvatarBadge();
+    renderProfileDashboardMetrics();
 };
 
 window.handleAvatarImageUpload = function(inputNode) {
@@ -595,9 +664,9 @@ function initializeWaveformEngine() {
             if (hValue > 0) {
                 if (isObstructive) y = 100 - (Math.sin(((cycle - 0.2) / 1.1) * (Math.PI / 2.2)) * hValue);
                 else {
-                    if (cycle >= 0.2 && cycle < 0.3) y = 100 - (((cycle - 0.2) / 0.1) * hValue);
+                    if (cycle >= 0.2 && cycle < 0.3) y = 100 - ( ( (cycle - 0.2) / 0.1 ) * hValue );
                     else if (cycle >= 0.3 && cycle < 1.3) y = 100 - hValue;
-                    else if (cycle >= 1.3 && cycle < 1.4) y = (100 - hValue) + (((cycle - 1.3) / 0.1) * hValue);
+                    else if (cycle >= 1.3 && cycle < 1.4) y = (100 - hValue) + ( ( (cycle - 1.3) / 0.1 ) * hValue );
                 }
             }
             if (x === 0) pathString += `M ${x} ${y}`; else pathString += ` L ${x} ${y}`;

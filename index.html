@@ -85,15 +85,43 @@
 
             <div id="view-panel-profile" class="sub-view-panel hidden">
                 <div class="aux-editorial-page">
-                    <h2>👤 Practitioner Profile</h2>
-                    <div class="premium-profile-grid">
+                    <h2>👤 Practitioner Profile & Evaluation Deck</h2>
+                    <p class="section-lead">Manage your national administrative identification values and monitor long-term curriculum mastery benchmarks metrics.</p>
+                    
+                    <div class="premium-profile-grid" style="margin-top: 20px;">
                         <div class="profile-avatar-sidebar"><div class="avatar-frame-wrapper" id="profile-avatar-badge">AA</div><label class="avatar-upload-trigger">📷 Upload Image<input type="file" onchange="handleAvatarImageUpload(this)" style="display:none;"></label></div>
                         <div class="profile-fields-container">
                             <div class="premium-form-row"><div class="input-group-premium"><label>Full Name</label><input type="text" id="prof-name" value="Anesthesia Care Team Professional" oninput="regenerateProfileAvatarBadge()"></div></div>
                             <div class="premium-form-row"><div class="input-group-premium"><label>Title</label><select id="prof-title"><option value="caa">CAA</option><option value="saa">SAA</option></select></div></div>
                             <div class="premium-form-row"><div class="input-group-premium"><label>NCCAA ID</label><input type="text" id="prof-id" placeholder="e.g. CAA-9482-A"></div></div>
                             <div class="premium-form-row"><div class="input-group-premium"><label>Institution</label><input type="text" id="prof-inst" placeholder="Department"></div></div>
-                            <button class="btn" onclick="savePractitionerProfileData()">Update Profile</button>
+                            <button class="btn" onclick="savePractitionerProfileData()">Update Core Profile</button>
+                        </div>
+                    </div>
+
+                    <div class="dock-card" style="margin-top: 30px; padding: 25px;">
+                        <h3>📈 Continuous Blueprint Readiness Dashboard</h3>
+                        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:15px;">Calculated asynchronously based on complete production database tables row counters.</p>
+                        
+                        <div class="analytics-grid" style="grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                            <div class="vector-stat" style="background:#0f172a; padding:15px; border-radius:4px; border:1px solid #1e293b;">
+                                <span class="stat-label" style="font-size:11px; font-weight:bold;">Total Bank Progress</span>
+                                <span id="profile-bank-progress" class="stat-value" style="color:var(--accent-color); font-size:28px;">0%</span>
+                            </div>
+                            <div class="vector-stat" style="background:#0f172a; padding:15px; border-radius:4px; border:1px solid #1e293b;">
+                                <span class="stat-label" style="font-size:11px; font-weight:bold;">Curriculum Items Remaining</span>
+                                <span id="profile-items-remaining" class="stat-value" style="color:#f59e0b; font-size:28px;">1000</span>
+                            </div>
+                            <div class="vector-stat" style="background:#0f172a; padding:15px; border-radius:4px; border:1px solid #1e293b;">
+                                <span class="stat-label" style="font-size:11px; font-weight:bold;">Global Board Score</span>
+                                <span id="profile-global-accuracy" class="stat-value" style="color:#38bdf8; font-size:28px;">0%</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:25px;">
+                            <h4 style="color:var(--text-primary); margin-bottom:12px; font-size:14px; text-transform:uppercase; letter-spacing:0.05em;">📍 Specialty Alert Logs & Weak-Area Spotlights</h4>
+                            <div id="profile-specialty-status-list" style="display:flex; flex-direction:column; gap:10px;">
+                                </div>
                         </div>
                     </div>
                 </div>
