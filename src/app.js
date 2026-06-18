@@ -701,9 +701,7 @@ async function initiatePremiumCheckout() {
   }
 
   
-  const backendBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? ''
-    : 'https://macprep-workstation.onrender.com';
+  const backendBaseUrl = 'https://macprep-workstation.onrender.com';
 
   try {
     const response = await fetch(`${backendBaseUrl}/api/create-checkout-session`, {
