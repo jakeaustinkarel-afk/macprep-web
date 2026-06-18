@@ -213,7 +213,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
 // ==========================================
 // SECURE STRIPE WEBHOOK COMPLETION CONTROLLER
 // ==========================================
-app.post('/api/webhook/stripe', Express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
