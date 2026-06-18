@@ -700,8 +700,13 @@ async function initiatePremiumCheckout() {
     payButton.disabled = true;
   }
 
+  
+  const backendBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''
+    : 'https://macprep-workstation.onrender.com';
+
   try {
-    const response = await fetch('/api/create-checkout-session', {
+    const response = await fetch(`${backendBaseUrl}/api/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
