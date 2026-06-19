@@ -3,156 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MACPrep Workstation</title>
-    <link rel="icon" type="image/png" href="/favicon.png?v=999">
-    <link rel="shortcut icon" href="/favicon.png?v=999">
+    <title>MACPrep — Anesthesia Board Review Workstation</title>
+    <meta name="description" content="MACPrep is an in-depth board review question bank for Certified Anesthesiologist Assistants (CAAs) and student anesthesiologist assistants, mapped to the NCCAA content outline.">
+    <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
+    <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
+    <link rel="apple-touch-icon" href="/macprep_icon.png">
+    <link rel="shortcut icon" href="/favicon.png?v=2">
     <style>
-        body {
-            background-color: #0D0E10;
-            color: #F9FAFB;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
+        :root {
+            --bg: #0D0E10; --panel: #111214; --line: #1F2937; --text: #F9FAFB;
+            --muted: #6B7280; --accent: #00A86B; --accent-dim: #0c2a1d; --danger: #B91C1C;
         }
-        .header-bar {
-            padding: 20px 40px;
-            border-bottom: 1px solid #1F2937;
-            display: flex;
-            align-items: center;
-        }
-        .brand-logo {
-            font-family: monospace;
-            font-size: 24px;
-            font-weight: 800;
-            color: #F9FAFB;
-            letter-spacing: -1px;
-        }
-        .accent { color: #00A86B; }
-        
-        .center-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 80px);
-        }
-        
-        #login-form-container {
-            width: 100%;
-            max-width: 440px;
-            padding: 40px;
-            background-color: #111214;
-            border: 1px solid #1F2937;
-            border-radius: 4px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        }
-        
-        .terminal-tag {
-            font-family: monospace;
-            font-size: 11px;
-            color: #00A86B;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            display: block;
-        }
-        h2 { margin: 0 0 20px 0; font-size: 24px; }
-        
-        .form-group { margin-bottom: 20px; }
-        label {
-            display: block;
-            font-family: monospace;
-            font-size: 11px;
-            color: #6B7280;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            background-color: #0D0E10;
-            border: 1px solid #1F2937;
-            border-radius: 4px;
-            color: #F9FAFB;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        input:focus { outline: none; border-color: #00A86B; }
-        
-        button[type="submit"] {
-            width: 100%;
-            padding: 14px;
-            background-color: #00A86B;
-            color: #F9FAFB;
-            border: none;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 13px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        
-        .register-link {
-            margin-top: 25px;
-            border-top: 1px solid #1F2937;
-            padding-top: 20px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-        .register-link span { color: #6B7280; }
-        .register-link a {
-            color: #00A86B;
-            font-weight: bold;
-            text-decoration: none;
-            border-bottom: 1px dashed #00A86B;
-        }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        a { color: var(--accent); text-decoration: none; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .tag { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent);
+            letter-spacing: 2px; text-transform: uppercase; }
+
+        /* Header */
+        .header-bar { padding: 16px 32px; border-bottom: 1px solid var(--line);
+            display: flex; align-items: center; justify-content: space-between; }
+        .brand-logo { font-family: ui-monospace, monospace; font-size: 22px; font-weight: 800;
+            letter-spacing: -1px; cursor: pointer; }
+        .accent { color: var(--accent); }
+        .nav { display: flex; gap: 22px; align-items: center; font-family: ui-monospace, monospace; font-size: 12px; }
+        .nav a, .nav button { color: var(--muted); background: none; border: none; cursor: pointer;
+            font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .nav a:hover, .nav button:hover { color: var(--text); }
+        .badge { font-family: ui-monospace, monospace; font-size: 10px; padding: 3px 8px; border-radius: 3px;
+            text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--line); }
+        .badge.premium { color: #FBBF24; border-color: #92700e; }
+        .badge.admin { color: #60A5FA; border-color: #1e3a5f; }
+        .badge.free { color: var(--muted); }
+
+        .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 24px 80px; }
+        .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 28px; margin-bottom: 24px; }
+        h1 { font-size: 26px; margin: 0 0 6px; }
+        h2 { font-size: 19px; margin: 0 0 14px; }
+        h3 { font-size: 14px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: ui-monospace, monospace; }
+        p.sub { color: var(--muted); margin: 0 0 18px; line-height: 1.6; }
+        label { display: block; font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted);
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        input, select { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--line);
+            border-radius: 4px; color: var(--text); font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        .form-group { margin-bottom: 18px; }
+        .btn { background: var(--accent); color: var(--text); border: none; padding: 13px 22px;
+            font-family: ui-monospace, monospace; font-size: 13px; font-weight: bold; cursor: pointer;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn:disabled { opacity: .5; cursor: default; }
+        .btn.secondary { background: var(--line); }
+        .btn.ghost { background: none; border: 1px solid var(--line); color: var(--text); }
+        .grid { display: grid; gap: 16px; }
+        .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 16px; text-align: center; }
+        .stat .n { font-size: 28px; font-weight: 800; }
+        .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: ui-monospace, monospace; }
+        .chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .chip { padding: 10px 16px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
+            cursor: pointer; font-family: ui-monospace, monospace; font-size: 13px; }
+        .chip.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+        .progress-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 8px 0 0; }
+        .progress-bar > span { display: block; height: 100%; background: var(--accent); }
+        .hidden { display: none !important; }
+        .center-wrapper { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); padding: 24px; }
+        #login-form-container { width: 100%; max-width: 440px; }
+        .footer-links { text-align: center; color: var(--muted); font-family: ui-monospace, monospace; font-size: 11px; margin-top: 24px; }
+        .footer-links a { margin: 0 8px; }
+        @media (max-width: 640px) { .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; } .nav { gap: 12px; } .header-bar { padding: 14px 16px; } }
     </style>
 </head>
 <body>
+    <!-- Header (shown when authenticated) -->
     <div class="header-bar">
-        <div class="brand-logo">MAC<span class="accent">Prep</span></div>
+        <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')">MAC<span class="accent">Prep</span></div>
+        <nav class="nav" id="main-nav">
+            <span id="tier-badge" class="badge free hidden">FREE</span>
+            <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
+            <a id="nav-profile" class="hidden" onclick="MACPrep.go('profile')">Profile</a>
+            <a href="/faq.html">FAQ</a>
+            <a href="/privacy.html">Privacy</a>
+            <button id="nav-signout" class="hidden" onclick="MACPrep.signOut()">Sign out</button>
+        </nav>
     </div>
 
-    <div class="center-wrapper">
-        <div id="login-form-container">
-            <span class="terminal-tag">[SYS-INIT] CLINICAL GATEWAY</span>
-            <h2>Advanced Board Review Workstation</h2>
-            
-            <form onsubmit="event.preventDefault(); if(window.executeLoginSubmission) window.executeLoginSubmission();">
+    <!-- LOGIN -->
+    <div class="center-wrapper" id="login-view">
+        <div id="login-form-container" class="card">
+            <span class="tag">[SYS-INIT] CLINICAL GATEWAY</span>
+            <h1 style="margin-top:8px;">Board Review Workstation</h1>
+            <p class="sub">Sign in to your MACPrep account to continue your board preparation.</p>
+            <form onsubmit="event.preventDefault(); MACPrep.login();">
                 <div class="form-group">
-                    <label>Institutional Email</label>
-                    <input type="email" id="login-email" required>
+                    <label>Email</label>
+                    <input type="email" id="login-email" autocomplete="username email" required>
                 </div>
                 <div class="form-group">
-                    <label>Secure Password Keys</label>
-                    <input type="password" id="login-password" required>
+                    <label>Password</label>
+                    <input type="password" id="login-password" autocomplete="current-password" required>
                 </div>
-                <button type="submit" id="login-submit-trigger">INITIALIZE WORKSTATION SECURE CONNECTION</button>
+                <button type="submit" id="login-submit-trigger" class="btn" style="width:100%;">Sign In</button>
             </form>
-
-            <div class="register-link">
-                <span>NEW PRACTITIONER? </span>
-                <a href="register.html">CREATE ACCOUNT / ACCESS REGISTRATION</a>
+            <div class="footer-links">
+                New here? <a href="/register.html">Create an account</a>
+                <div style="margin-top:10px;"><a href="/faq.html">FAQ</a> · <a href="/privacy.html">Privacy Policy</a></div>
             </div>
         </div>
-        
-        <div id="exam-workstation-pane" style="width: 100%; max-width: 1000px; padding: 20px; display: none;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #1F2937; padding-bottom: 10px;">
-                <div id="session-progress-counter" style="font-family: monospace; color: #6B7280;">PROGRESS: 0 / 100</div>
-                <div style="font-family: monospace; color: #00A86B;">[LIVE TRACKING]</div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="wrap hidden" id="dashboard-view">
+        <h1 id="dash-greeting">Welcome back</h1>
+        <p class="sub" id="dash-subtitle">Configure a practice session below.</p>
+
+        <div class="grid cols-3" style="margin-bottom:24px;">
+            <div class="stat"><div class="n" id="stat-answered">0</div><div class="l">Questions Answered</div></div>
+            <div class="stat"><div class="n" id="stat-accuracy">—</div><div class="l">Accuracy</div></div>
+            <div class="stat"><div class="n" id="stat-bank">0</div><div class="l">Questions In Bank</div></div>
+        </div>
+
+        <div class="card" id="free-allowance-card">
+            <h3>Free Tier Usage</h3>
+            <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
+            <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
+            <button class="btn" style="margin-top:16px;" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $50</button>
+        </div>
+
+        <div class="card">
+            <h2>Start a Practice Session</h2>
+            <p class="sub">Choose a content domain and how many questions you want to practice.</p>
+
+            <div class="form-group">
+                <label>Content Domain</label>
+                <select id="domain-select"><option value="all">All domains</option></select>
             </div>
-            
-            <div id="question-stem" style="font-size: 18px; line-height: 1.6; margin-bottom: 30px;">Loading clinical stem...</div>
+
+            <label>Number of Questions</label>
+            <div class="chip-row" id="count-chips" style="margin-bottom:18px;"></div>
+
+            <div id="custom-count-wrap" class="form-group" style="max-width:240px;">
+                <label>Or enter a custom amount</label>
+                <input type="number" id="custom-count" min="1" placeholder="e.g. 40">
+            </div>
+
+            <button class="btn" id="start-session-btn" onclick="MACPrep.startSession()">Start Session</button>
+            <div id="session-hint" class="mono" style="font-size:12px;color:var(--muted);margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <!-- QUIZ -->
+    <div class="wrap hidden" id="quiz-view">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
+            <div class="mono" style="color:var(--accent);font-size:12px;">[LIVE TRACKING]</div>
+        </div>
+        <div class="mono" id="session-progress-counter" style="color:var(--muted);margin-bottom:6px;">QUESTION 0 / 0 · SCORE 0%</div>
+        <div class="progress-bar" style="margin-bottom:24px;"><span id="quiz-progress-bar" style="width:0%"></span></div>
+
+        <div class="card">
+            <div class="mono" id="question-meta" style="font-size:11px;color:var(--accent);margin-bottom:14px;"></div>
+            <div id="question-stem" style="font-size:18px;line-height:1.6;margin-bottom:24px;">Loading…</div>
             <div id="choices-container"></div>
-
-            <div id="explanation-pane" style="display:none; margin-top: 24px; padding: 18px; background-color:#0c1410; border:1px solid #1F2937; border-radius:4px; font-size:14px;"></div>
-
-            <div style="margin-top: 30px;">
-                <button id="advance-vignette-trigger" style="background-color: #1F2937; color: #F9FAFB; padding: 10px 20px; border: none; font-family: monospace; border-radius: 4px; cursor: pointer;">ADVANCE VIGNETTE >></button>
+            <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:4px;font-size:14px;line-height:1.6;"></div>
+            <div style="margin-top:24px;">
+                <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
             </div>
+        </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="wrap hidden" id="profile-view">
+        <h1>Your Profile</h1>
+        <p class="sub">Manage your account details and subscription.</p>
+
+        <div class="card">
+            <h2>Account</h2>
+            <div class="grid cols-2">
+                <div><label>Email</label><div class="mono" id="prof-email" style="padding:12px 0;">—</div></div>
+                <div><label>Membership</label><div id="prof-tier" style="padding:8px 0;"></div></div>
+            </div>
+            <div id="prof-upgrade-wrap" style="margin-top:8px;">
+                <button class="btn" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $50</button>
+                <span class="mono" style="font-size:11px;color:var(--muted);margin-left:10px;">One-time payment · lifetime access to the full bank</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Personal Information</h2>
+            <div class="grid cols-2">
+                <div class="form-group"><label>Full name</label><input id="prof-fullname" type="text" placeholder="Jane Doe, CAA"></div>
+                <div class="form-group"><label>Credential</label>
+                    <select id="prof-credential">
+                        <option value="">Select…</option>
+                        <option>Student (CAA program)</option>
+                        <option>CAA</option>
+                        <option>Anesthesiologist</option>
+                        <option>SRNA / CRNA</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Training program / institution</label><input id="prof-program" type="text"></div>
+                <div class="form-group"><label>Target exam date</label><input id="prof-examdate" type="date"></div>
+                <div class="form-group"><label>Phone (optional)</label><input id="prof-phone" type="tel"></div>
+            </div>
+            <button class="btn" id="prof-save-btn" onclick="MACPrep.saveProfile()">Save Changes</button>
+            <span id="prof-save-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
     </div>
 

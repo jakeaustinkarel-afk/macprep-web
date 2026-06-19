@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — MACPrep</title>
+    <meta name="description" content="MACPrep privacy policy: what information we collect, how we use it, and your rights.">
+    <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
+    <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
+    <link rel="apple-touch-icon" href="/macprep_icon.png">
+    <link rel="shortcut icon" href="/favicon.png?v=2">
+    <style>
+        :root { --bg:#0D0E10; --panel:#111214; --line:#1F2937; --text:#F9FAFB; --muted:#6B7280; --accent:#00A86B; }
+        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.7;}
+        a{color:var(--accent);text-decoration:none;}
+        .header-bar{padding:16px 32px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+        .brand-logo{font-family:ui-monospace,monospace;font-size:22px;font-weight:800;letter-spacing:-1px;}
+        .accent{color:var(--accent);}
+        .nav{display:flex;gap:22px;font-family:ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
+        .nav a{color:var(--muted);} .nav a:hover{color:var(--text);}
+        .wrap{max-width:820px;margin:0 auto;padding:40px 24px 80px;}
+        h1{font-size:30px;margin:0 0 8px;}
+        h2{font-size:18px;margin:30px 0 8px;}
+        p,li{color:#cbd5e1;}
+        .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+        .muted{color:var(--muted);font-family:ui-monospace,monospace;font-size:12px;}
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span></a>
+        <nav class="nav"><a href="/index.html">Home</a><a href="/faq.html">FAQ</a><a href="/privacy.html">Privacy</a></nav>
+    </div>
+    <div class="wrap">
+        <span class="tag">Legal</span>
+        <h1>Privacy Policy</h1>
+        <p class="muted">Last updated: June 19, 2026</p>
+
+        <p>MACPrep ("we," "us") provides an anesthesia board review question bank. This policy explains what information we collect, how we use it, and the choices you have. We aim to collect as little as possible and to keep it secure.</p>
+
+        <h2>1. Information we collect</h2>
+        <ul>
+            <li><strong>Account information:</strong> your email address and password. Passwords are managed by our authentication provider (Supabase Auth) and are stored only as salted hashes — we never see your plaintext password.</li>
+            <li><strong>Profile information you choose to provide:</strong> name, professional credential, training program, target exam date, and phone number. All of these are optional.</li>
+            <li><strong>Study activity:</strong> the questions you answer and whether your answers were correct, used to show your progress and accuracy.</li>
+            <li><strong>Payment information:</strong> handled entirely by Stripe. We receive a confirmation that a payment succeeded and your billing email; we never receive or store your full card number.</li>
+        </ul>
+
+        <h2>2. How we use your information</h2>
+        <ul>
+            <li>To provide the service — authenticate you, serve questions, grade answers, and track progress.</li>
+            <li>To manage your subscription and unlock premium access after payment.</li>
+            <li>To respond to support requests.</li>
+        </ul>
+
+        <h2>3. How your information is shared</h2>
+        <p>We do not sell your personal information. We share data only with the service providers needed to run MACPrep:</p>
+        <ul>
+            <li><strong>Supabase</strong> — database and authentication.</li>
+            <li><strong>Stripe</strong> — payment processing. See Stripe's privacy policy for how they handle card data.</li>
+            <li><strong>Render</strong> — application hosting.</li>
+        </ul>
+
+        <h2>4. Data security</h2>
+        <p>Access to question answers and your profile is protected by server-side authentication and database row-level security. Correct answers are never sent to your browser before you respond. Traffic is encrypted in transit (HTTPS).</p>
+
+        <h2>5. Data retention and your rights</h2>
+        <p>You may view and edit your profile information at any time from your profile page. To delete your account and associated data, or to request a copy of your data, email us at <a href="mailto:support@macprep.org">support@macprep.org</a> and we will process the request.</p>
+
+        <h2>6. Cookies and local storage</h2>
+        <p>We use your browser's local storage to keep you signed in (a session token). We do not use third-party advertising or tracking cookies.</p>
+
+        <h2>7. Children's privacy</h2>
+        <p>MACPrep is intended for healthcare professionals and students and is not directed to children under 13.</p>
+
+        <h2>8. Changes to this policy</h2>
+        <p>We may update this policy from time to time. Material changes will be reflected by the "last updated" date above.</p>
+
+        <h2>9. Contact</h2>
+        <p>Questions about this policy? Email <a href="mailto:support@macprep.org">support@macprep.org</a>.</p>
+
+        <p style="margin-top:32px;" class="muted"><a href="/index.html">&larr; Back to MACPrep</a></p>
+    </div>
+</body>
+</html>

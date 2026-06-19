@@ -33,7 +33,26 @@ const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKe
 // is the row's own gen_random_uuid). There is no `is_premium` column.
 const PROFILE_TABLE = 'user_profiles';
 const PROGRESS_TABLE = 'user_progress';
-const FREE_TIER_CEILING = 100;
+
+// Free users may access 10% of the available question bank. Computed from the
+// live question count and cached briefly so we don't COUNT on every grade.
+const FREE_TIER_FRACTION = 0.10;
+let _freeCeilingCache = { value: 100, at: 0 };
+async function getFreeTierCeiling() {
+    const now = Date.now();
+    if (now - _freeCeilingCache.at < 5 * 60 * 1000) return _freeCeilingCache.value;
+    if (!supabase) return _freeCeilingCache.value;
+    try {
+        let q = supabase.from('questions').select('id', { count: 'exact', head: true });
+        if (SERVE_PUBLISHED_ONLY) q = q.eq('status', 'published');
+        const { count } = await q;
+        const ceiling = Math.max(1, Math.ceil((count || 0) * FREE_TIER_FRACTION));
+        _freeCeilingCache = { value: ceiling, at: now };
+        return ceiling;
+    } catch (e) {
+        return _freeCeilingCache.value;
+    }
+}
 
 // Feature flag: when true, /api/questions serves only SME-approved content
 // (status='published'). Default false keeps the demo working while the bank is
@@ -281,6 +300,7 @@ app.post('/api/grade', async (req, res) => {
         // a question the user has already seen is always allowed (doesn't add to the
         // distinct count), so this can't be gamed by replaying the same item.
         if (!isPremium) {
+            const ceiling = await getFreeTierCeiling();
             const { data: seen, error: seenErr } = await supabase
                 .from(PROGRESS_TABLE)
                 .select('question_id')
@@ -288,8 +308,8 @@ app.post('/api/grade', async (req, res) => {
             if (seenErr) throw seenErr;
 
             const distinct = new Set((seen || []).map((r) => r.question_id));
-            if (!distinct.has(String(questionId)) && distinct.size >= FREE_TIER_CEILING) {
-                return res.status(402).json({ error: 'paywall', paywall: true });
+            if (!distinct.has(String(questionId)) && distinct.size >= ceiling) {
+                return res.status(402).json({ error: 'paywall', paywall: true, limit: ceiling });
             }
         }
 
@@ -343,7 +363,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -356,18 +376,54 @@ app.get('/api/user/profile', async (req, res) => {
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
         const correct = (progress || []).filter((r) => r.is_correct).length;
+        const ceiling = await getFreeTierCeiling();
 
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
                 premium_unlocked: profile?.account_tier === 'premium',
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
+                is_admin: !!profile?.is_program_director,
+                full_name: profile?.full_name || '',
+                credential: profile?.credential || '',
+                training_program: profile?.training_program || '',
+                target_exam_date: profile?.target_exam_date || '',
+                phone: profile?.phone || '',
+                free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
             },
         });
     } catch (err) {
         console.error('Profile route failure:', err.message);
         return res.status(500).json({ profile: null });
+    }
+});
+
+// Update the authenticated user's personal profile fields. Premium status and
+// admin flags are NOT writable here — only the user's own descriptive info.
+app.post('/api/user/profile', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
+
+    const b = req.body || {};
+    const update = {};
+    for (const f of ['full_name', 'credential', 'training_program', 'phone']) {
+        if (typeof b[f] === 'string') update[f] = b[f].slice(0, 200);
+    }
+    if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
+    else if (typeof b.target_exam_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.target_exam_date)) {
+        update.target_exam_date = b.target_exam_date;
+    }
+    update.updated_at = new Date().toISOString();
+
+    try {
+        const { error } = await supabase.from(PROFILE_TABLE).update(update).eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Profile update failure:', err.message);
+        return res.status(500).json({ error: 'Could not save profile.' });
     }
 });
 
@@ -385,13 +441,20 @@ app.post('/api/create-checkout-session', async (req, res) => {
         const email = (user?.email || req.body?.email || '').trim();
         if (!email) return res.status(400).json({ error: 'Missing user email.' });
 
+        // Build an absolute base URL. Prefer the Origin header, then a configured
+        // PUBLIC_BASE_URL, then the Host header — so checkout works even when the
+        // request carries no Origin (Stripe requires absolute success/cancel URLs).
+        let base = req.headers.origin || process.env.PUBLIC_BASE_URL || '';
+        if (!base && req.headers.host) base = `https://${req.headers.host}`;
+        base = base.replace(/\/$/, '');
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
-            success_url: `${req.headers.origin}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
-            cancel_url: `${req.headers.origin}/?status=cancelled`,
+            success_url: `${base}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
+            cancel_url: `${base}/?status=cancelled`,
         });
 
         res.json({ url: session.url });
