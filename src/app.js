@@ -729,3 +729,11 @@ async function initiatePremiumCheckout() {
     }
   }
 }
+
+
+// Production Stripe Payment Gateway Configuration
+if (typeof window !== 'undefined') {
+  window.handlePremiumUpgrade = function() {
+    window.location.href = "https://buy.stripe.com/5kQ6oI6HHefh5btfK7dnW00";
+  };
+}
