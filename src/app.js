@@ -99,9 +99,12 @@ async function executeLoginSubmission() {
     const passwordInput = document.getElementById('login-password');
     const submitBtn = document.getElementById('login-submit-trigger');
     
-    if (!emailInput || !passwordInput) return;
+    if (!emailInput || !passwordInput) {
+        alert("❌ Error: Cannot find email/password fields on the screen.");
+        return;
+    }
     
-    if (submitBtn) submitBtn.textContent = "AUTHENTICATING...";
+    if (submitBtn) submitBtn.textContent = "📡 VERIFYING CREDENTIALS...";
     
     try {
         const response = await fetch('/api/auth/login', {
@@ -111,6 +114,7 @@ async function executeLoginSubmission() {
         });
         
         if (response.ok) {
+            if (submitBtn) submitBtn.textContent = "✅ ACCESS GRANTED. LOADING WORKSTATION...";
             const loginPane = document.getElementById('login-form-container');
             const mainWorkstation = document.getElementById('exam-workstation-pane');
             
@@ -119,11 +123,12 @@ async function executeLoginSubmission() {
             
             initializeWorkstation();
         } else {
-            alert("❌ Authentication Failure: Invalid Practitioner Credentials.");
+            const errorData = await response.text();
+            alert("❌ SERVER REJECTED LOGIN: " + errorData);
             if (submitBtn) submitBtn.textContent = "INITIALIZE WORKSTATION SECURE CONNECTION";
         }
     } catch (err) {
-        console.error("Network sync dropped:", err);
+        alert("❌ NETWORK ERROR: Could not communicate with the backend server.");
         if (submitBtn) submitBtn.textContent = "INITIALIZE WORKSTATION SECURE CONNECTION";
     }
 }

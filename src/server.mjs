@@ -173,6 +173,10 @@ app.post('/api/user/profile', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// 🛡️ Explicit Frontend Engine Delivery
+app.get('/src/app.js', (req, res) => res.sendFile(path.resolve(process.cwd(), 'src', 'app.js')));
+
 app.listen(PORT, () => {
     console.log(`🚀 Hardened MACPrep Cluster online running on port ${PORT}`);
     console.log(`Database Link Status: ${supabase ? 'CONNECTED' : 'OFFLINE'}`);
