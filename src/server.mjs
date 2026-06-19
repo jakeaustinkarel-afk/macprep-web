@@ -254,12 +254,22 @@ app.get('/api/questions', async (req, res) => {
         if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
         if (!supabase) return res.json({ questions: [] });
 
-        let query = supabase
-            .from('questions')
-            .select('id, specialty, domain, domain_name, subtopic, stem, choices, telemetry');
-        if (SERVE_PUBLISHED_ONLY) query = query.eq('status', 'published');
-        const { data, error } = await query;
-        if (error) throw error;
+        // PostgREST caps each request at ~1000 rows, so page through the full
+        // bank (3,500+ items) instead of silently truncating it.
+        const PAGE = 1000;
+        let data = [];
+        for (let from = 0; ; from += PAGE) {
+            let query = supabase
+                .from('questions')
+                .select('id, specialty, domain, domain_name, subtopic, stem, choices, telemetry')
+                .order('id', { ascending: true })
+                .range(from, from + PAGE - 1);
+            if (SERVE_PUBLISHED_ONLY) query = query.eq('status', 'published');
+            const { data: page, error } = await query;
+            if (error) throw error;
+            data = data.concat(page || []);
+            if (!page || page.length < PAGE) break;
+        }
 
         // choices may be a JSON string or native array. Normalize, then strip any
         // correctness flags so answers never reach the client.
