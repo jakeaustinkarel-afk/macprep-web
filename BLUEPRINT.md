@@ -161,6 +161,8 @@ Sources: NCCAA Certification Exam Handbook (nccaa.org); TrueLearn NCCAA CERT bre
 
 **Batch 02** (`seeds/authored_batch_02.json`, 15 items, `status='sme_review'`): focused on **Subspecialty Care (D4)** — the 31% blueprint weight, authored first per §6. Covers VAE / acute ICP (neuro), one-lung ventilation hypoxemia (thoracic), pericardial tamponade (cardiac), uterine atony / PDPH (OB), laryngospasm / emergence delirium (peds), CO poisoning / citrate hypocalcemia (trauma), geriatric MAC, Apfel PONV (ambulatory), airway fire (ENT), oculocardiac reflex (ophthalmic), and pheochromocytoma alpha-before-beta (endocrine).
 
-**Authored so far:** 30 items (`sme_review`). Serving gate is wired: set `SERVE_PUBLISHED_ONLY=true` on the server to show only `status='published'` content (default off while authoring).
+**Batch 03** (`seeds/authored_batch_03.json`, 15 items, `status='sme_review'`): **Pharmacology (D5)** — MAC modifiers, N2O diffusion hypoxia, PRIS, ketamine, etomidate, pseudocholinesterase deficiency, cisatracurium/Hofmann, morphine in renal failure, dexmedetomidine, LA allergy, glycopyrrolate vs atropine, esmolol, neostigmine ceiling, bupivacaine cardiotoxicity, ondansetron/QT.
+
+**Authored so far:** 45 items (`sme_review`). Serving gate is wired: set `SERVE_PUBLISHED_ONLY=true` on the server to show only `status='published'` content (default off while authoring).
 
 **Next steps:** SME review of Batches 01-02 → promote approved items to `published` + set `reviewed_by`; continue authoring blueprint-weighted batches (more Subspecialty Care, then Physiology and Pharmacology). Once a meaningful published set exists, flip `SERVE_PUBLISHED_ONLY=true` and retire the `unreviewed` filler.
