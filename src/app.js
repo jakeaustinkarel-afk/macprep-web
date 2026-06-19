@@ -264,16 +264,35 @@
                 if (data.correct) state.profile.stats.correct++;
             }
 
+            const rationales = data.rationales || [];
             buttons.forEach((b) => {
                 const idx = Number(b.dataset.index);
                 if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
                 else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = '#2a0c0c'; }
+                // Append the per-choice rationale beneath each option.
+                if (rationales[idx]) {
+                    const r = document.createElement('div');
+                    r.style.cssText = 'font-family:inherit;font-size:13px;color:#9ca3af;margin:8px 0 2px;padding-left:34px;line-height:1.5;';
+                    r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
+                    b.insertAdjacentElement('afterend', r);
+                }
             });
             const verdict = data.correct
                 ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
                 : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
             const ex = $('explanation-pane');
-            ex.innerHTML = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}</div><div>${data.explanation || 'No explanation provided.'}</div>`;
+            let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}</div><div>${data.explanation || 'No explanation provided.'}</div>`;
+            const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
+            if (refs.length) {
+                const items = refs.map((r) => {
+                    const label = r.title || r.source || r.url;
+                    return r.url
+                        ? `<a href="${r.url}" target="_blank" rel="noopener">${label}</a>`
+                        : `<span>${label}</span>`;
+                }).join('<br>');
+                html += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Source</div><div style="font-size:13px;">${items}</div></div>`;
+            }
+            ex.innerHTML = html;
             ex.classList.remove('hidden');
             updateQuizProgress();
         } catch (err) {

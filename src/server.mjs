@@ -325,7 +325,7 @@ app.post('/api/grade', async (req, res) => {
 
         const { data: q, error } = await supabase
             .from('questions')
-            .select('specialty, correct_answer, choices, explanation')
+            .select('specialty, correct_answer, choices, explanation, "references"')
             .eq('id', questionId)
             .maybeSingle();
         if (error) throw error;
@@ -350,10 +350,20 @@ app.post('/api/grade', async (req, res) => {
             is_correct: isCorrect,
         }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });
 
+        // Per-choice rationale (so the client can show why each option is right/wrong)
+        // and the source references (journal links). Never reveal the `correct`
+        // flag positions until after the answer — but at grade time it's fine.
+        const rationales = choices.map((c) => (c && typeof c === 'object' ? (c.rationale || '') : ''));
+        let references = q.references;
+        if (typeof references === 'string') { try { references = JSON.parse(references); } catch (e) { references = []; } }
+        if (!Array.isArray(references)) references = [];
+
         return res.json({
             correct: isCorrect,
             correctIndex,
             explanation: q.explanation || '',
+            rationales,
+            references,
         });
     } catch (err) {
         console.error('Grade route failure:', err.message);
