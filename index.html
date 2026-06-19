@@ -17,8 +17,9 @@
     <link rel="stylesheet" href="styles.css">
   
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/public/assets/favicon.png">
-    <link rel="shortcut icon" type="image/png" href="/favicon.png">
+    
+    
+    <link rel="icon" type="image/png" href="/favicon.png?v=1781894235916">
 </head>
 <body class="surgical-emerald-theme">
 
@@ -33,9 +34,9 @@
             <h2>National Certifying & Recertifying Examination Workstation</h2>
             <p class="hero-subtext">An advanced psychometric training module mapped entirely to national anesthesiologist assistant evaluation standards.</p>
             <div class="landing-auth-card" id="landing-login-box">
-                <form class="auth-card-inner" onsubmit="event.preventDefault(); authenticateStudentSession();">
-                    <div class="input-group"><label>Workstation Account Email</label><input type="email" id="auth-email-input" placeholder="Enter email" required></div>
-                    <div class="input-group"><label>Account Password</label><input type="password" id="auth-password-input" placeholder="Enter password" required></div>
+                <form onsubmit="event.preventDefault(); if(window.executeLoginSubmission) { window.executeLoginSubmission(); }" class="auth-card-inner" >
+                    <div class="input-group"><label>Workstation Account Email</label><input type="email" id="login-email" id="auth-email-input" placeholder="Enter email" required></div>
+                    <div class="input-group"><label>Account Password</label><input type="password" id="login-password" id="auth-password-input" placeholder="Enter password" required></div>
                     <button type="submit" class="btn btn-auth-trigger">Access Examination Workspace ➡️</button>
             <div style="margin-top: 15px; text-align: left;">
                 <span style="color: #6B7280; font-family: monospace; font-size: 12px;">NEW PRACTITIONER? </span>
