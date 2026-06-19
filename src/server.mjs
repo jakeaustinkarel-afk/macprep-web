@@ -251,3 +251,9 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async
 
   res.json({ received: true });
 });
+
+
+// Direct override route layer to force redirect actions on registration submissions
+app.post('/api/auth/register', (req, res) => {
+  res.redirect('/index.html?registered=true');
+});
