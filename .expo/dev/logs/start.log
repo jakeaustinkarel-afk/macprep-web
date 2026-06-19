@@ -1,7 +1,0 @@
-{"_e":"root:init","_t":1781477035741,"format":"v0-jsonl","version":"56.1.15"}
-{"_e":"env:mode","_t":1781477035742,"nodeEnv":"development","babelEnv":"development","mode":"development"}
-{"_e":"env:load","_t":1781477035743,"mode":"development","files":["../../../.env"],"env":{"SUPABASE_SERVICE_ROLE_KEY":"sb_secret__c--It6dq2KSwuOzOslUWg_cXNj9a8A","SUPABASE_URL":"https://dqxkdbtzeobxweyijogs.supabase.co"}}
-{"_e":"devserver:start","_t":1781477035813,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../../../app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
-{"_e":"metro:config","_t":1781477035911,"serverRoot":"../../..","projectRoot":"../../..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
-{"_e":"metro:instantiate","_t":1781477036057,"atlas":false,"workers":7,"host":"::","port":8081}
-{"_e":"env:mode","_t":1781477040508,"nodeEnv":"development","babelEnv":"development","mode":"development"}

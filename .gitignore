@@ -23,3 +23,11 @@ Thumbs.db
 # Project Progress Telemetry Backups
 macprep_backup_*
 *.log
+
+# Large seed/ingestion payloads — the Supabase DB is the source of truth.
+# Kept on disk for local seed scripts but not committed (regenerable artifacts).
+data/questions.json
+data_expansion_payload.json
+
+# Dead Expo/React Native scaffolding (the app is vanilla HTML/JS via Express)
+.expo/

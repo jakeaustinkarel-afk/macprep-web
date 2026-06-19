@@ -1,33 +1,59 @@
-// MACPrep Workstation Core State Management Engine
+// MACPrep — frontend study engine
 let currentQuestionIndex = 0;
 let questions = [];
 let questionsAnsweredCount = 0;
+let questionsCorrectCount = 0;
+let awaitingAdvance = false;
 const FREE_TIER_CEILING = 100;
 
-// Initialize the academic terminal interface parameters
+function authToken() {
+    try { return localStorage.getItem('macprep_token') || null; } catch (e) { return null; }
+}
+
+function logoutToLogin(message) {
+    try {
+        localStorage.removeItem('macprep_token');
+        localStorage.removeItem('macprep_premium_unlocked');
+    } catch (e) { /* ignore */ }
+    const loginPane = document.getElementById('login-form-container');
+    const mainWorkstation = document.getElementById('exam-workstation-pane');
+    if (mainWorkstation) mainWorkstation.style.display = 'none';
+    if (loginPane) loginPane.style.display = 'block';
+    if (message) {
+        const submitBtn = document.getElementById('login-submit-trigger');
+        if (submitBtn) submitBtn.textContent = 'SIGN IN';
+    }
+}
+
 async function initializeWorkstation() {
     try {
-        console.log("[SYS-INIT] Fetching clinical curriculum assets...");
-        const response = await fetch('/api/questions');
+        const headers = {};
+        const token = authToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch('/api/questions', { headers });
+        if (response.status === 401) { logoutToLogin('Session expired. Please sign in again.'); return; }
         const data = await response.json();
-        
         questions = Array.isArray(data) ? data : (data.questions || []);
-        
+
         if (questions.length === 0) {
-            console.error("❌ Question payload bank array parsing resulted in zero entries.");
+            const stemEl = document.getElementById('question-stem');
+            if (stemEl) stemEl.textContent = 'No questions are available right now. Please try again later.';
             return;
         }
 
         currentQuestionIndex = 0;
         questionsAnsweredCount = 0;
+        questionsCorrectCount = 0;
         loadNextCaseVignette();
     } catch (err) {
-        console.error("❌ Critical System Error mapping network data layers:", err);
+        console.error('Failed to load questions:', err);
     }
 }
 
 function loadNextCaseVignette() {
-    if (questionsAnsweredCount >= FREE_TIER_CEILING) {
+    awaitingAdvance = false;
+    if (questionsAnsweredCount >= FREE_TIER_CEILING && !localStorage.getItem('macprep_premium_unlocked')) {
         triggerPremiumPaywallGate();
         return;
     }
@@ -36,11 +62,11 @@ function loadNextCaseVignette() {
     if (!currentQuestion) return;
 
     const stemEl = document.getElementById('question-stem');
-    if (stemEl) stemEl.textContent = currentQuestion.stem || currentQuestion.text || "";
+    if (stemEl) stemEl.textContent = currentQuestion.stem || currentQuestion.text || '';
 
     let choicesArray = currentQuestion.choices || currentQuestion.options || [];
     if (typeof choicesArray === 'string') {
-        try { choicesArray = JSON.parse(choicesArray); } catch(e) { choicesArray = []; }
+        try { choicesArray = JSON.parse(choicesArray); } catch (e) { choicesArray = []; }
     }
 
     const container = document.getElementById('choices-container');
@@ -48,101 +74,166 @@ function loadNextCaseVignette() {
         container.innerHTML = '';
         if (Array.isArray(choicesArray)) {
             choicesArray.forEach((choice, index) => {
-                const displayChoiceText = (typeof choice === 'object' && choice !== null) ? (choice.text || choice.value || '') : choice;
+                const displayChoiceText = (typeof choice === 'object' && choice !== null)
+                    ? (choice.text || choice.value || '')
+                    : choice;
                 const letterLabel = String.fromCharCode(65 + index);
-                
+
                 const choiceBtn = document.createElement('button');
                 choiceBtn.className = 'choice-option-node';
-                choiceBtn.style.width = '100%';
-                choiceBtn.style.textAlign = 'left';
-                choiceBtn.style.margin = '10px 0';
-                choiceBtn.style.padding = '14px';
-                choiceBtn.style.backgroundColor = '#111214';
-                choiceBtn.style.border = '1px solid #1F2937';
-                choiceBtn.style.color = '#F9FAFB';
-                choiceBtn.style.fontFamily = 'monospace';
-                choiceBtn.style.cursor = 'pointer';
-
-                choiceBtn.innerHTML = `<span style="color: #00A86B; font-weight: bold; margin-right: 15px;">[${letterLabel}]</span> ${displayChoiceText}`;
-                choiceBtn.onclick = () => handleSelectionEvent(index, currentQuestion.correct_answer || currentQuestion.answer);
+                choiceBtn.dataset.index = String(index);
+                choiceBtn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background-color:#111214;border:1px solid #1F2937;color:#F9FAFB;font-family:monospace;cursor:pointer;border-radius:4px;';
+                choiceBtn.innerHTML = `<span style="color:#00A86B;font-weight:bold;margin-right:15px;">[${letterLabel}]</span> ${displayChoiceText}`;
+                choiceBtn.onclick = () => handleSelectionEvent(index, currentQuestion.id);
                 container.appendChild(choiceBtn);
             });
         }
     }
-    
-    const progressEl = document.getElementById('session-progress-counter');
-    if (progressEl) progressEl.textContent = `PROGRESS: ${questionsAnsweredCount} / ${FREE_TIER_CEILING}`;
+
+    const explEl = document.getElementById('explanation-pane');
+    if (explEl) { explEl.style.display = 'none'; explEl.innerHTML = ''; }
+
+    updateProgress();
 }
 
-function handleSelectionEvent(selectedIndex, correctIndex) {
-    questionsAnsweredCount++;
+async function handleSelectionEvent(selectedIndex, questionId) {
+    if (awaitingAdvance) return; // already answered this item
+    awaitingAdvance = true;
+
+    const container = document.getElementById('choices-container');
+    const buttons = container ? Array.from(container.querySelectorAll('.choice-option-node')) : [];
+    buttons.forEach((b) => { b.disabled = true; b.style.cursor = 'default'; });
+
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+        const token = authToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const resp = await fetch('/api/grade', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ questionId, choiceIndex: selectedIndex }),
+        });
+
+        if (resp.status === 402) { triggerPremiumPaywallGate(); return; }
+
+        const result = await resp.json();
+        questionsAnsweredCount++;
+        if (result.correct) questionsCorrectCount++;
+
+        // Highlight correct / incorrect
+        buttons.forEach((b) => {
+            const idx = Number(b.dataset.index);
+            if (idx === result.correctIndex) {
+                b.style.borderColor = '#00A86B';
+                b.style.backgroundColor = '#0c2a1d';
+            } else if (idx === selectedIndex) {
+                b.style.borderColor = '#B91C1C';
+                b.style.backgroundColor = '#2a0c0c';
+            }
+        });
+
+        // Show explanation
+        const explEl = document.getElementById('explanation-pane');
+        if (explEl) {
+            const verdict = result.correct
+                ? '<span style="color:#00A86B;font-weight:bold;">CORRECT</span>'
+                : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
+            explEl.innerHTML = `<div style="font-family:monospace;font-size:12px;margin-bottom:8px;">${verdict}</div>`
+                + `<div style="line-height:1.6;">${result.explanation || 'No explanation provided for this item.'}</div>`;
+            explEl.style.display = 'block';
+        }
+
+        updateProgress();
+    } catch (err) {
+        console.error('Grading failed:', err);
+        awaitingAdvance = false;
+        buttons.forEach((b) => { b.disabled = false; b.style.cursor = 'pointer'; });
+    }
+}
+
+function advanceToNext() {
+    if (!awaitingAdvance) return; // must answer first
     currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
-    setTimeout(loadNextCaseVignette, 800);
+    loadNextCaseVignette();
+}
+
+function updateProgress() {
+    const progressEl = document.getElementById('session-progress-counter');
+    if (progressEl) {
+        const pct = questionsAnsweredCount > 0
+            ? Math.round((questionsCorrectCount / questionsAnsweredCount) * 100)
+            : 0;
+        progressEl.textContent = `ANSWERED: ${questionsAnsweredCount} / ${FREE_TIER_CEILING}  ·  SCORE: ${pct}%`;
+    }
 }
 
 function triggerPremiumPaywallGate() {
     const workspaceEl = document.getElementById('exam-workstation-pane');
     if (workspaceEl) {
         workspaceEl.innerHTML = `
-            <div style="padding: 40px; text-align: left; background-color: #111214; border: 1px solid #1F2937; border-radius: 4px; max-width: 600px; margin: 40px auto;">
-                <span style="font-family: monospace; font-size: 11px; color: #00A86B; letter-spacing: 2px;">[CEILING ENGAGED] TRIAL LIMIT REACHED</span>
-                <h2 style="font-size: 24px; font-weight: 800; color: #F9FAFB; margin: 10px 0 20px 0;">Unlock 100% Core National Curriculum Blueprint Access</h2>
-                <button onclick="window.location.href='https://buy.stripe.com/5kQ6oI6HHefh5btfK7dnW00'" style="background-color: #00A86B; color: #F9FAFB; border: none; padding: 14px 24px; font-family: monospace; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px;">Upgrade to Full Premium Access — $50</button>
-            </div>
-        `;
+            <div style="padding:40px;text-align:left;background-color:#111214;border:1px solid #1F2937;border-radius:4px;max-width:600px;margin:40px auto;">
+                <span style="font-family:monospace;font-size:11px;color:#00A86B;letter-spacing:2px;">TRIAL LIMIT REACHED</span>
+                <h2 style="font-size:24px;font-weight:800;color:#F9FAFB;margin:10px 0 20px 0;">Unlock the full board curriculum</h2>
+                <button onclick="window.location.href='https://buy.stripe.com/5kQ6oI6HHefh5btfK7dnW00'" style="background-color:#00A86B;color:#F9FAFB;border:none;padding:14px 24px;font-family:monospace;font-size:13px;font-weight:bold;cursor:pointer;border-radius:4px;text-transform:uppercase;letter-spacing:1px;">Upgrade to Full Access — $50</button>
+            </div>`;
     }
 }
 
-// 🔐 Engine Authenticator
+// ----------------------------------------------------------------------------
+// Auth — single real endpoint (/api/authenticate)
+// ----------------------------------------------------------------------------
 async function executeLoginSubmission() {
     const emailInput = document.getElementById('login-email');
     const passwordInput = document.getElementById('login-password');
     const submitBtn = document.getElementById('login-submit-trigger');
-    
-    if (!emailInput || !passwordInput) {
-        alert("❌ Error: Cannot find email/password fields on the screen.");
-        return;
-    }
-    
-    if (submitBtn) submitBtn.textContent = "📡 VERIFYING CREDENTIALS...";
-    
+    if (!emailInput || !passwordInput) return;
+
+    if (submitBtn) submitBtn.textContent = 'VERIFYING…';
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch('/api/authenticate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: emailInput.value, password: passwordInput.value })
+            body: JSON.stringify({ action: 'login', email: emailInput.value, password: passwordInput.value }),
         });
-        
-        if (response.ok) {
-            if (submitBtn) submitBtn.textContent = "✅ ACCESS GRANTED. LOADING WORKSTATION...";
-            const loginPane = document.getElementById('login-form-container');
-            const mainWorkstation = document.getElementById('exam-workstation-pane');
-            
-            if (loginPane) loginPane.style.display = 'none';
-            if (mainWorkstation) mainWorkstation.style.display = 'block';
-            
-            initializeWorkstation();
-        } else {
-            const errorData = await response.text();
-            alert("❌ SERVER REJECTED LOGIN: " + errorData);
-            if (submitBtn) submitBtn.textContent = "INITIALIZE WORKSTATION SECURE CONNECTION";
-        }
+        const data = await response.json();
+
+        if (!response.ok || !data.success) throw new Error(data.error || 'Login rejected.');
+
+        if (data.token) localStorage.setItem('macprep_token', data.token);
+        if (data.profile?.email) localStorage.setItem('macprep_user_email', data.profile.email);
+        if (data.profile?.premium_unlocked) localStorage.setItem('macprep_premium_unlocked', '1');
+
+        revealWorkstation();
+        initializeWorkstation();
     } catch (err) {
-        alert("❌ NETWORK ERROR: Could not communicate with the backend server.");
-        if (submitBtn) submitBtn.textContent = "INITIALIZE WORKSTATION SECURE CONNECTION";
+        alert('Login failed: ' + err.message);
+        if (submitBtn) submitBtn.textContent = 'SIGN IN';
     }
 }
 
-// Escaping the module sandbox to ensure the HTML form can see the function
-window.executeLoginSubmission = executeLoginSubmission;
+function revealWorkstation() {
+    const loginPane = document.getElementById('login-form-container');
+    const mainWorkstation = document.getElementById('exam-workstation-pane');
+    if (loginPane) loginPane.style.display = 'none';
+    if (mainWorkstation) mainWorkstation.style.display = 'block';
+}
 
-// Aggressive DOM binding to catch Enter keys natively
+window.executeLoginSubmission = executeLoginSubmission;
+window.advanceToNext = advanceToNext;
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.querySelector('form');
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Stop the ghost loop
-            executeLoginSubmission();
-        });
+        loginForm.addEventListener('submit', (e) => { e.preventDefault(); executeLoginSubmission(); });
+    }
+    const advanceBtn = document.getElementById('advance-vignette-trigger');
+    if (advanceBtn) advanceBtn.addEventListener('click', advanceToNext);
+
+    // Resume an existing session (e.g. after registering/logging in on login.html,
+    // which stores the token then redirects here).
+    if (authToken()) {
+        revealWorkstation();
+        initializeWorkstation();
     }
 });
