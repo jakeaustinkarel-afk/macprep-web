@@ -32,12 +32,12 @@
         return { resp, data };
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view'];
     function go(view) {
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
-        ['nav-dashboard', 'nav-profile', 'nav-signout', 'tier-badge'].forEach((id) =>
+        ['nav-dashboard', 'nav-profile', 'nav-feedback', 'nav-signout', 'tier-badge'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
@@ -106,12 +106,14 @@
     }
 
     // ---- dashboard --------------------------------------------------------
-    function uniqueDomains() {
-        const map = new Map();
+    function uniqueCategories() {
+        const counts = {};
         state.questions.forEach((q) => {
-            if (q.domain != null && q.domain_name) map.set(q.domain, q.domain_name);
+            const c = q.category || q.domain_name || 'General';
+            counts[c] = (counts[c] || 0) + 1;
         });
-        return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+        // Sort by count desc, then alpha — big clinical buckets first.
+        return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     }
 
     function freeUsage() {
@@ -141,11 +143,11 @@
             $('free-allowance-bar').style.width = pct + '%';
         }
 
-        // Domains
+        // Content areas / specialties (with counts)
         const sel = $('domain-select');
         if (sel.options.length <= 1) {
-            uniqueDomains().forEach(([d, name]) => {
-                const o = document.createElement('option'); o.value = String(d); o.textContent = name; sel.appendChild(o);
+            uniqueCategories().forEach(([name, n]) => {
+                const o = document.createElement('option'); o.value = name; o.textContent = `${name} (${n})`; sel.appendChild(o);
             });
         }
 
@@ -178,9 +180,9 @@
     }
 
     function poolForDomain() {
-        const d = $('domain-select').value;
-        if (d === 'all') return state.questions.slice();
-        return state.questions.filter((q) => String(q.domain) === d);
+        const c = $('domain-select').value;
+        if (c === 'all') return state.questions.slice();
+        return state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
     }
 
     function updateSessionHint() {
@@ -386,8 +388,28 @@
         }
     }
 
+    // ---- feedback ---------------------------------------------------------
+    async function submitFeedback() {
+        const btn = $('fb-submit'); const msg = $('fb-msg');
+        const message = $('fb-message').value.trim();
+        if (!message) { msg.style.color = '#F87171'; msg.textContent = 'Please enter a message.'; return; }
+        btn.disabled = true; msg.style.color = 'var(--accent)'; msg.textContent = '';
+        try {
+            const { resp, data } = await apiJSON('/api/feedback', {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({ kind: $('fb-kind').value, message }),
+            });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Submit failed.');
+            $('fb-message').value = '';
+            msg.textContent = 'Thank you — received ✓';
+            setTimeout(() => { msg.textContent = ''; }, 3000);
+        } catch (err) {
+            msg.style.color = '#F87171'; msg.textContent = err.message;
+        } finally { btn.disabled = false; }
+    }
+
     // ---- bootstrap --------------------------------------------------------
-    window.MACPrep = { go, login, signOut, startSession, advance, saveProfile, startCheckout };
+    window.MACPrep = { go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback };
 
     document.addEventListener('DOMContentLoaded', async () => {
         state.token = getToken();

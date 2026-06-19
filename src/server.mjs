@@ -261,7 +261,7 @@ app.get('/api/questions', async (req, res) => {
         for (let from = 0; ; from += PAGE) {
             let query = supabase
                 .from('questions')
-                .select('id, specialty, domain, domain_name, subtopic, stem, choices, telemetry')
+                .select('id, specialty, domain, domain_name, subtopic, category, stem, choices, telemetry')
                 .order('id', { ascending: true })
                 .range(from, from + PAGE - 1);
             if (SERVE_PUBLISHED_ONLY) query = query.eq('status', 'published');
@@ -434,6 +434,30 @@ app.post('/api/user/profile', async (req, res) => {
     } catch (err) {
         console.error('Profile update failure:', err.message);
         return res.status(500).json({ error: 'Could not save profile.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Feedback — suggestions / bug reports. Stored in user_suggestions. Auth optional
+// (signed-in users have their email attached automatically).
+// ---------------------------------------------------------------------------
+app.post('/api/feedback', async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const user = await getUserFromToken(req);
+    const kind = (req.body?.kind || 'suggestion').toString().slice(0, 40);
+    const message = (req.body?.message || '').toString().trim();
+    if (!message) return res.status(400).json({ error: 'A message is required.' });
+    const email = (user?.email || req.body?.email || 'anonymous').toString().slice(0, 200);
+    try {
+        const { error } = await supabase.from('user_suggestions').insert({
+            user_email: email,
+            suggestion_text: `[${kind}] ${message}`.slice(0, 4000),
+        });
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Feedback insert failure:', err.message);
+        return res.status(500).json({ error: 'Could not submit feedback.' });
     }
 });
 

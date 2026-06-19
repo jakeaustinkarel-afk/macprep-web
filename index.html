@@ -84,6 +84,8 @@
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-profile" class="hidden" onclick="MACPrep.go('profile')">Profile</a>
+            <a id="nav-feedback" class="hidden" onclick="MACPrep.go('feedback')">Feedback</a>
+            <a href="/updates.html">Updates</a>
             <a href="/faq.html">FAQ</a>
             <a href="/privacy.html">Privacy</a>
             <button id="nav-signout" class="hidden" onclick="MACPrep.signOut()">Sign out</button>
@@ -109,7 +111,7 @@
             </form>
             <div class="footer-links">
                 New here? <a href="/register.html">Create an account</a>
-                <div style="margin-top:10px;"><a href="/faq.html">FAQ</a> · <a href="/privacy.html">Privacy Policy</a></div>
+                <div style="margin-top:10px;"><a href="/updates.html">Updates</a> · <a href="/faq.html">FAQ</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="/cookies.html">Cookies</a></div>
             </div>
         </div>
     </div>
@@ -137,8 +139,8 @@
             <p class="sub">Choose a content domain and how many questions you want to practice.</p>
 
             <div class="form-group">
-                <label>Content Domain</label>
-                <select id="domain-select"><option value="all">All domains</option></select>
+                <label>Content Area / Specialty</label>
+                <select id="domain-select"><option value="all">All areas</option></select>
             </div>
 
             <label>Number of Questions</label>
@@ -211,6 +213,29 @@
             </div>
             <button class="btn" id="prof-save-btn" onclick="MACPrep.saveProfile()">Save Changes</button>
             <span id="prof-save-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
+        </div>
+    </div>
+
+    <!-- FEEDBACK -->
+    <div class="wrap hidden" id="feedback-view">
+        <h1>Feedback</h1>
+        <p class="sub">Found a problem with a question, hit a bug, or have a suggestion? Tell us — we read everything.</p>
+        <div class="card">
+            <div class="form-group">
+                <label>Type</label>
+                <select id="fb-kind">
+                    <option value="suggestion">Suggestion</option>
+                    <option value="bug">Bug report</option>
+                    <option value="question-issue">Issue with a question</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="fb-message" rows="6" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:14px;font-family:inherit;" placeholder="Describe the issue or idea…"></textarea>
+            </div>
+            <button class="btn" id="fb-submit" onclick="MACPrep.submitFeedback()">Submit</button>
+            <span id="fb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
     </div>
 
