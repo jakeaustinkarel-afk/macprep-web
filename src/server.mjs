@@ -126,6 +126,21 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
 // ---------------------------------------------------------------------------
+// Health/version check — lets you confirm at a glance which build is live
+// (e.g. curl https://www.macprep.org/api/health). Bump `build` when deploying.
+// ---------------------------------------------------------------------------
+app.get('/api/health', (req, res) => {
+    res.json({
+        ok: true,
+        service: 'macprep',
+        build: 'auth-grading-security',
+        auth_endpoint: '/api/authenticate',
+        supabase: !!supabase,
+        time: new Date().toISOString(),
+    });
+});
+
+// ---------------------------------------------------------------------------
 // Helper: verify a Supabase access token and return the user (or null).
 // ---------------------------------------------------------------------------
 async function getUserFromToken(req) {

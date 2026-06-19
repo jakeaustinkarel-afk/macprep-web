@@ -183,12 +183,16 @@ function triggerPremiumPaywallGate() {
 // ----------------------------------------------------------------------------
 // Auth — single real endpoint (/api/authenticate)
 // ----------------------------------------------------------------------------
+let loginInFlight = false;
 async function executeLoginSubmission() {
+    if (loginInFlight) return; // guard against double-submit (Enter + click)
     const emailInput = document.getElementById('login-email');
     const passwordInput = document.getElementById('login-password');
     const submitBtn = document.getElementById('login-submit-trigger');
     if (!emailInput || !passwordInput) return;
+    if (!emailInput.value || !passwordInput.value) return;
 
+    loginInFlight = true;
     if (submitBtn) submitBtn.textContent = 'VERIFYING…';
     try {
         const response = await fetch('/api/authenticate', {
@@ -196,7 +200,18 @@ async function executeLoginSubmission() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'login', email: emailInput.value, password: passwordInput.value }),
         });
-        const data = await response.json();
+
+        // Read as text first so a non-JSON response (e.g. an HTML error page from
+        // a stale/misrouted server) produces a clear message instead of a raw
+        // "Unexpected token '<'" JSON parse error.
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch (e) {
+            throw new Error(response.status === 404
+                ? 'Auth endpoint not found (the server may be out of date).'
+                : `Unexpected server response (${response.status}).`);
+        }
 
         if (!response.ok || !data.success) throw new Error(data.error || 'Login rejected.');
 
@@ -209,6 +224,8 @@ async function executeLoginSubmission() {
     } catch (err) {
         alert('Login failed: ' + err.message);
         if (submitBtn) submitBtn.textContent = 'SIGN IN';
+    } finally {
+        loginInFlight = false;
     }
 }
 
