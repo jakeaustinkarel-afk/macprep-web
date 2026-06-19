@@ -737,3 +737,50 @@ if (typeof window !== 'undefined') {
     window.location.href = "https://buy.stripe.com/5kQ6oI6HHefh5btfK7dnW00";
   };
 }
+
+
+
+// Isolated high-yield question view compiler
+export function renderQuestion(question) {
+    if (!question) return;
+    
+    // Set clinical stem content safely
+    const stemEl = document.getElementById('question-stem');
+    if (stemEl) stemEl.textContent = question.stem || question.text || '';
+
+    // Extract options safely from incoming database schema parameters
+    const choices = question.choices || question.options || [];
+    const container = document.getElementById('choices-container');
+    
+    if (container) {
+        container.innerHTML = '';
+        choices.forEach((choice, index) => {
+            const letter = String.fromCharCode(65 + index); // Strictly computes labels: A, B, C, D, E
+            const choiceBtn = document.createElement('button');
+            choiceBtn.className = 'choice-option-node';
+            choiceBtn.style.width = '100%';
+            choiceBtn.style.textAlign = 'left';
+            choiceBtn.style.margin = '8px 0';
+            choiceBtn.style.padding = '12px';
+            choiceBtn.style.backgroundColor = '#111214';
+            choiceBtn.style.border = '1px solid #1F2937';
+            choiceBtn.style.color = '#F9FAFB';
+            choiceBtn.style.fontFamily = 'monospace';
+            choiceBtn.style.cursor = 'pointer';
+            
+            choiceBtn.innerHTML = `<span style="color: #00A86B; margin-right: 15px;">[${letter}]</span> ${choice}`;
+            choiceBtn.onclick = () => {
+                if (typeof handleAnswerSelection === 'function') {
+                    handleAnswerSelection(index, question.correct_answer);
+                }
+            };
+            container.appendChild(choiceBtn);
+        });
+    }
+}
+
+// Sidebar track element label converter
+export function getSidebarLabel(index) {
+    return String.fromCharCode(65 + index);
+}
+
