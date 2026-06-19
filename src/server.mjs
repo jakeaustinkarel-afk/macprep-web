@@ -20,6 +20,7 @@ if (supabaseUrl.endsWith('/rest/v1')) supabaseUrl = supabaseUrl.replace('/rest/v
 if (supabaseUrl.endsWith('/')) supabaseUrl = supabaseUrl.slice(0, -1);
 
 // Service-role client: trusted server-side operations (webhook upgrades, grading).
+// RLS is bypassed with this key, which is why all writes below run through it.
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, serviceKey) : null;
 
@@ -27,16 +28,20 @@ const supabase = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, service
 const anonKey = process.env.SUPABASE_ANON_KEY || '';
 const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKey) : null;
 
-// Canonical profile table. (Was previously the non-existent table "profiles".)
+// Canonical profile table. The live schema keys premium status on `account_tier`
+// ('free' | 'premium') and links to the auth user via `user_id` (NOT `id`, which
+// is the row's own gen_random_uuid). There is no `is_premium` column.
 const PROFILE_TABLE = 'user_profiles';
+const PROGRESS_TABLE = 'user_progress';
 const FREE_TIER_CEILING = 100;
 
-// choices may be stored as a JSON string (text column) or a native JSONB array.
+// choices may be stored as a JSON string (text/jsonb-as-string) or a native array.
 function parseChoices(raw) {
     if (Array.isArray(raw)) return raw;
     if (typeof raw === 'string') {
         try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch (e) { return []; }
     }
+    if (raw && typeof raw === 'object') return Array.isArray(raw) ? raw : [];
     return [];
 }
 
@@ -72,15 +77,14 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
         if (supabase && customerEmail) {
             try {
-                // Upgrade the existing profile row. We do NOT insert a new row here,
-                // because user_profiles.id is a UUID tied to the auth user; inserting
-                // a fabricated id would risk a foreign-key violation. If no row exists
-                // yet, we log it for manual reconciliation rather than guess.
+                // Match the profile by the email we recorded at registration, and
+                // flip it to premium. We never INSERT here: user_profiles.user_id is
+                // a FK to auth.users, so a fabricated row would violate the constraint.
                 const { data, error } = await supabase
                     .from(PROFILE_TABLE)
-                    .update({ is_premium: true })
+                    .update({ account_tier: 'premium', premium_unlocked_at: new Date().toISOString() })
                     .eq('email', customerEmail)
-                    .select('id');
+                    .select('user_id');
 
                 if (error) throw error;
 
@@ -100,14 +104,52 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 });
 
 // ---------------------------------------------------------------------------
+// Static-asset guard. express.static below is rooted at the project directory,
+// which would otherwise serve source (server.mjs, *.mjs scripts), the answer
+// bank (questions.json), and internal docs (AUDIT.md, BLUEPRINT.md) to anyone.
+// Block those file types up front; only HTML/CSS/JS/images/fonts fall through.
+// ---------------------------------------------------------------------------
+const BLOCKED_STATIC = /\.(mjs|ts|tsx|json|md|rtf|lock|sh|ya?ml|env)$/i;
+app.use((req, res, next) => {
+    const p = req.path.toLowerCase();
+    if (p.startsWith('/api/')) return next();
+    if (BLOCKED_STATIC.test(p) || p.startsWith('/data/') || p.startsWith('/.')) {
+        return res.status(404).end();
+    }
+    next();
+});
+
+// ---------------------------------------------------------------------------
 // JSON parsing + static assets for all normal routes
 // ---------------------------------------------------------------------------
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../')));
 
 // ---------------------------------------------------------------------------
+// Helper: verify a Supabase access token and return the user (or null).
+// ---------------------------------------------------------------------------
+async function getUserFromToken(req) {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token || !supabaseAuth) return null;
+    const { data, error } = await supabaseAuth.auth.getUser(token);
+    if (error) return null;
+    return data.user || null;
+}
+
+// Helper: is this authenticated user premium? Keyed on user_id + account_tier.
+async function isUserPremium(userId) {
+    if (!supabase || !userId) return false;
+    const { data } = await supabase
+        .from(PROFILE_TABLE)
+        .select('account_tier')
+        .eq('user_id', userId)
+        .maybeSingle();
+    return data?.account_tier === 'premium';
+}
+
+// ---------------------------------------------------------------------------
 // Auth — single real endpoint backed by Supabase Auth.
-// Replaces the three dead paths (/api/auth/login, /api/auth/register, /api/authenticate).
 // Requires the Email provider to be enabled in Supabase Auth settings.
 // ---------------------------------------------------------------------------
 app.post('/api/authenticate', async (req, res) => {
@@ -128,11 +170,12 @@ app.post('/api/authenticate', async (req, res) => {
             });
             if (error) return res.status(400).json({ success: false, error: error.message });
 
-            // Best-effort: create the profile row so future webhook upgrades have a target.
+            // Create the profile row so the payment webhook has a target to match
+            // by email, and so premium status has somewhere to live.
             if (supabase && data.user) {
                 await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ id: data.user.id, email, is_premium: false }, { onConflict: 'id' })
+                    .upsert({ user_id: data.user.id, email, account_tier: 'free' }, { onConflict: 'user_id' })
                     .then(({ error: pErr }) => { if (pErr) console.warn(`Profile create warning: ${pErr.message}`); });
             }
 
@@ -147,15 +190,7 @@ app.post('/api/authenticate', async (req, res) => {
         const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
         if (error) return res.status(401).json({ success: false, error: error.message });
 
-        let isPremium = false;
-        if (supabase) {
-            const { data: profile } = await supabase
-                .from(PROFILE_TABLE)
-                .select('is_premium')
-                .eq('email', email)
-                .maybeSingle();
-            isPremium = !!profile?.is_premium;
-        }
+        const isPremium = await isUserPremium(data.user?.id);
 
         return res.json({
             success: true,
@@ -169,32 +204,22 @@ app.post('/api/authenticate', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Helper: verify a Supabase access token and return the user (or null).
-// ---------------------------------------------------------------------------
-async function getUserFromToken(req) {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token || !supabaseAuth) return null;
-    const { data, error } = await supabaseAuth.auth.getUser(token);
-    if (error) return null;
-    return data.user || null;
-}
-
-// ---------------------------------------------------------------------------
-// Questions — answers and explanations are NEVER sent to the client here.
-// Grading happens server-side via /api/grade.
+// Questions — authenticated. Answers/explanations are NEVER sent here; grading
+// happens server-side via /api/grade.
 // ---------------------------------------------------------------------------
 app.get('/api/questions', async (req, res) => {
     try {
+        const user = await getUserFromToken(req);
+        if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
         if (!supabase) return res.json({ questions: [] });
 
         const { data, error } = await supabase
             .from('questions')
-            .select('id, specialty, stem, choices, telemetry');
+            .select('id, specialty, domain, domain_name, subtopic, stem, choices, telemetry');
         if (error) throw error;
 
-        // choices may be stored as a JSON string or a native array. Normalize,
-        // then strip any correctness flags so answers never reach the client.
+        // choices may be a JSON string or native array. Normalize, then strip any
+        // correctness flags so answers never reach the client.
         const safe = (data || []).map((q) => ({
             ...q,
             choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
@@ -209,50 +234,70 @@ app.get('/api/questions', async (req, res) => {
     }
 });
 
-// Grade a single answer server-side. Returns correctness + explanation.
-// Free users are limited to the first FREE_TIER_CEILING questions of a session
-// (enforced via the answeredCount the client reports until full auth gating lands).
+// ---------------------------------------------------------------------------
+// Grade a single answer server-side. Authenticated. The free-tier ceiling is
+// enforced from the server's own count of distinct questions the user has
+// answered (user_progress) — never from a client-reported number.
+// ---------------------------------------------------------------------------
 app.post('/api/grade', async (req, res) => {
-    const { questionId, choiceIndex, answeredCount } = req.body || {};
+    const { questionId, choiceIndex } = req.body || {};
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
+
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+
     if (!questionId || choiceIndex === undefined) {
         return res.status(400).json({ error: 'questionId and choiceIndex are required.' });
     }
 
-    // Determine premium status (if a valid token is supplied).
-    let isPremium = false;
-    const user = await getUserFromToken(req);
-    if (user && supabase) {
-        const { data: profile } = await supabase
-            .from(PROFILE_TABLE)
-            .select('is_premium')
-            .eq('id', user.id)
-            .maybeSingle();
-        isPremium = !!profile?.is_premium;
-    }
-
-    if (!isPremium && Number(answeredCount) >= FREE_TIER_CEILING) {
-        return res.status(402).json({ error: 'paywall', paywall: true });
-    }
-
     try {
+        const isPremium = await isUserPremium(user.id);
+
+        // Enforce the free ceiling on distinct questions already answered. Re-answering
+        // a question the user has already seen is always allowed (doesn't add to the
+        // distinct count), so this can't be gamed by replaying the same item.
+        if (!isPremium) {
+            const { data: seen, error: seenErr } = await supabase
+                .from(PROGRESS_TABLE)
+                .select('question_id')
+                .eq('user_id', user.id);
+            if (seenErr) throw seenErr;
+
+            const distinct = new Set((seen || []).map((r) => r.question_id));
+            if (!distinct.has(String(questionId)) && distinct.size >= FREE_TIER_CEILING) {
+                return res.status(402).json({ error: 'paywall', paywall: true });
+            }
+        }
+
         const { data: q, error } = await supabase
             .from('questions')
-            .select('correct_answer, choices, explanation')
+            .select('specialty, correct_answer, choices, explanation')
             .eq('id', questionId)
             .maybeSingle();
         if (error) throw error;
         if (!q) return res.status(404).json({ error: 'Question not found.' });
 
-        // Resolve the correct index from either choices[].correct or the letter column.
+        // Resolve the correct index from choices[].correct, falling back to the
+        // letter column ("A" -> 0).
         const choices = parseChoices(q.choices);
         let correctIndex = choices.findIndex((c) => c && typeof c === 'object' && c.correct === true);
-        if (correctIndex < 0 && typeof q.correct_answer === 'string') {
-            correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65; // "A" -> 0
+        if (correctIndex < 0 && typeof q.correct_answer === 'string' && q.correct_answer.trim()) {
+            correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
         }
 
+        const isCorrect = Number(choiceIndex) === correctIndex;
+
+        // Record the attempt for progress + free-tier accounting (best-effort).
+        await supabase.from(PROGRESS_TABLE).insert({
+            user_id: user.id,
+            question_id: String(questionId),
+            specialty: q.specialty || null,
+            selected_label: String.fromCharCode(65 + Number(choiceIndex)),
+            is_correct: isCorrect,
+        }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });
+
         return res.json({
-            correct: Number(choiceIndex) === correctIndex,
+            correct: isCorrect,
             correctIndex,
             explanation: q.explanation || '',
         });
@@ -263,62 +308,63 @@ app.post('/api/grade', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Profile — TODO(auth): these still trust a client-supplied email. They should
-// derive identity from the Supabase token (getUserFromToken) before going to
-// production. Left functional but flagged; see AUDIT.md §2.1.
+// Profile — identity is derived from the verified token, never from a
+// client-supplied email (AUDIT.md §2.1).
 // ---------------------------------------------------------------------------
 app.get('/api/user/profile', async (req, res) => {
-    const email = (req.query.email || '').toLowerCase().trim();
-    if (!email) return res.status(400).json({ error: 'Missing account email.' });
-    try {
-        if (!supabase) return res.json({ profile: null });
-        const { data, error } = await supabase
-            .from(PROFILE_TABLE)
-            .select('*')
-            .eq('email', email)
-            .maybeSingle();
-        if (error) throw error;
-        return res.json({ profile: data || null });
-    } catch (err) {
-        return res.json({ profile: null });
-    }
-});
-
-app.post('/api/user/profile', async (req, res) => {
-    // TODO(auth): authorize via token and ignore any client-supplied identity.
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.json({ profile: null });
 
-    const { name, performance } = req.body || {};
     try {
-        if (!supabase) return res.json({ success: true });
-        const { error } = await supabase
+        const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .update({
-                name,
-                progress_ledger: typeof performance === 'object' ? performance : undefined,
-            })
-            .eq('id', user.id);
+            .select('email, account_tier, premium_unlocked_at, created_at')
+            .eq('user_id', user.id)
+            .maybeSingle();
         if (error) throw error;
-        return res.json({ success: true });
+
+        // Derive simple study stats from recorded progress.
+        const { data: progress } = await supabase
+            .from(PROGRESS_TABLE)
+            .select('question_id, is_correct')
+            .eq('user_id', user.id);
+
+        const answeredIds = new Set((progress || []).map((r) => r.question_id));
+        const correct = (progress || []).filter((r) => r.is_correct).length;
+
+        return res.json({
+            profile: {
+                email: profile?.email || user.email || null,
+                premium_unlocked: profile?.account_tier === 'premium',
+                premium_unlocked_at: profile?.premium_unlocked_at || null,
+                stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
+            },
+        });
     } catch (err) {
-        return res.status(500).json({ error: err.message });
+        console.error('Profile route failure:', err.message);
+        return res.status(500).json({ profile: null });
     }
 });
 
 // ---------------------------------------------------------------------------
-// Stripe checkout session
+// Stripe checkout session. Prefers the authenticated user's email so the
+// webhook can match the resulting payment back to their profile.
 // ---------------------------------------------------------------------------
 app.post('/api/create-checkout-session', async (req, res) => {
     try {
         if (!stripe) return res.status(500).json({ error: 'Payments not configured.' });
-        const email = (req.body?.email || '').trim();
+        const priceId = process.env.STRIPE_PRODUCTION_PRICE_ID;
+        if (!priceId) return res.status(500).json({ error: 'Price not configured.' });
+
+        const user = await getUserFromToken(req);
+        const email = (user?.email || req.body?.email || '').trim();
         if (!email) return res.status(400).json({ error: 'Missing user email.' });
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
-            line_items: [{ price: process.env.STRIPE_PRODUCTION_PRICE_ID, quantity: 1 }],
+            line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
             success_url: `${req.headers.origin}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
             cancel_url: `${req.headers.origin}/?status=cancelled`,

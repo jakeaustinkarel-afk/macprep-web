@@ -10,9 +10,29 @@ function authToken() {
     try { return localStorage.getItem('macprep_token') || null; } catch (e) { return null; }
 }
 
+function logoutToLogin(message) {
+    try {
+        localStorage.removeItem('macprep_token');
+        localStorage.removeItem('macprep_premium_unlocked');
+    } catch (e) { /* ignore */ }
+    const loginPane = document.getElementById('login-form-container');
+    const mainWorkstation = document.getElementById('exam-workstation-pane');
+    if (mainWorkstation) mainWorkstation.style.display = 'none';
+    if (loginPane) loginPane.style.display = 'block';
+    if (message) {
+        const submitBtn = document.getElementById('login-submit-trigger');
+        if (submitBtn) submitBtn.textContent = 'SIGN IN';
+    }
+}
+
 async function initializeWorkstation() {
     try {
-        const response = await fetch('/api/questions');
+        const headers = {};
+        const token = authToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch('/api/questions', { headers });
+        if (response.status === 401) { logoutToLogin('Session expired. Please sign in again.'); return; }
         const data = await response.json();
         questions = Array.isArray(data) ? data : (data.questions || []);
 
@@ -92,7 +112,7 @@ async function handleSelectionEvent(selectedIndex, questionId) {
         const resp = await fetch('/api/grade', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ questionId, choiceIndex: selectedIndex, answeredCount: questionsAnsweredCount }),
+            body: JSON.stringify({ questionId, choiceIndex: selectedIndex }),
         });
 
         if (resp.status === 402) { triggerPremiumPaywallGate(); return; }
@@ -184,15 +204,19 @@ async function executeLoginSubmission() {
         if (data.profile?.email) localStorage.setItem('macprep_user_email', data.profile.email);
         if (data.profile?.premium_unlocked) localStorage.setItem('macprep_premium_unlocked', '1');
 
-        const loginPane = document.getElementById('login-form-container');
-        const mainWorkstation = document.getElementById('exam-workstation-pane');
-        if (loginPane) loginPane.style.display = 'none';
-        if (mainWorkstation) mainWorkstation.style.display = 'block';
+        revealWorkstation();
         initializeWorkstation();
     } catch (err) {
         alert('Login failed: ' + err.message);
         if (submitBtn) submitBtn.textContent = 'SIGN IN';
     }
+}
+
+function revealWorkstation() {
+    const loginPane = document.getElementById('login-form-container');
+    const mainWorkstation = document.getElementById('exam-workstation-pane');
+    if (loginPane) loginPane.style.display = 'none';
+    if (mainWorkstation) mainWorkstation.style.display = 'block';
 }
 
 window.executeLoginSubmission = executeLoginSubmission;
@@ -205,4 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const advanceBtn = document.getElementById('advance-vignette-trigger');
     if (advanceBtn) advanceBtn.addEventListener('click', advanceToNext);
+
+    // Resume an existing session (e.g. after registering/logging in on login.html,
+    // which stores the token then redirects here).
+    if (authToken()) {
+        revealWorkstation();
+        initializeWorkstation();
+    }
 });

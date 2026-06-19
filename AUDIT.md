@@ -18,6 +18,27 @@ On top of that, the question content itself is mass-generated boilerplate with n
 
 ---
 
+## Resolution log — June 19, 2026 (branch `fixes/auth-grading-security`)
+
+A second pass introspected the **live** schema and fixed the items below. Two problems were found that this audit's first pass got wrong or missed:
+
+- **The first "fix" used column names that don't exist.** The live `user_profiles` table has **no `email` and no `is_premium` column** — it keys premium on `account_tier` ('free'|'premium') and links to the auth user via `user_id` (not `id`). The earlier webhook/login/grade code wrote `is_premium`/`email` and would have thrown at runtime. All profile access is now keyed correctly, and an `email` column was added (plus the signup trigger now records it) so the webhook can match payments.
+- **The answer-leak was only half-closed.** Stripping answers in the server is moot while `public.questions` carries an RLS policy granting the anon role `ALL` access — anyone with the anon key could read `correct_answer`/`explanation` (or rewrite the bank) straight from PostgREST. That policy is dropped; the table is now reachable only by the service-role server.
+
+**Fixed:**
+- **§1.1 webhook** — now updates `user_profiles.account_tier='premium'` + `premium_unlocked_at`, matched by `email`; logs `PAID-BUT-NO-PROFILE` for manual reconciliation.
+- **§1.2 auth** — single `/api/authenticate` (Supabase Auth signUp/signInWithPassword); returns a session token used to authorize API calls.
+- **§1.3 answer-leak** — `/api/questions` requires auth and never sends correctness flags; **RLS on `questions` now blocks all direct anon/authenticated access**; `express.static` no longer serves source/`questions.json`/docs (denylist guard).
+- **§1.4 grading** — `/api/grade` grades server-side, returns correct/incorrect + explanation, records each attempt to `user_progress`.
+- **§2.1 profile auth** — `GET/POST /api/user/profile` derive identity from the verified token, not a client-supplied email.
+- **Free-tier enforcement** — now counts distinct answered questions server-side from `user_progress` (not a client number); `user_progress` is locked to SELECT-only for users so the counter can't be reset to bypass the paywall.
+- **§3.1 schema** — pointed all profile access at `user_profiles`; added blueprint columns + re-tagged all 3,514 questions to the six official domains (`status='unreviewed'`).
+- **§4 hygiene** — removed `App.tsx`, `.expo/`, `src/hooks/`, `tsconfig.json`, all `.rtf` junk and the illegal-colon file; untracked/ignored the large seed payloads.
+
+**Still open:** §1.5 / §5 content authoring (the bank is tagged but still filler — `status='unreviewed'` until SME-authored); §3.2 dual checkout paths; the second `macprep_questions`/`macprep_profiles` legacy tables; rebalancing domain weights (Subspecialty Care is 50% of the bank vs. a 31% target).
+
+---
+
 ## Severity 1 — Critical (product-breaking / revenue-losing / legal exposure)
 
 ### 1.1 Paying customers are never upgraded — webhook writes to a non-existent table **[VERIFIED]**
