@@ -117,7 +117,7 @@
             <span class="terminal-tag">[SYS-INIT] REGISTRATION GATEWAY</span>
             <h2>Create Practitioner Account</h2>
         </div>
-        <form action="/api/auth/register" method="POST">
+        <form id="registerForm" onsubmit="handleRegister(event)">
             <div class="form-group">
                 <label for="reg-name">Full Professional Name</label>
                 <input type="text" id="reg-name" name="name" placeholder="e.g. John Doe, CAA" required autocomplete="name">
@@ -137,5 +137,37 @@
             <a href="index.html">ACCESS LOGIN PORTAL</a>
         </div>
     </div>
+    <script>
+        async function handleRegister(event) {
+            event.preventDefault();
+            const btn = event.target.querySelector('button[type="submit"]');
+            const payload = {
+                action: 'register',
+                name: document.getElementById('reg-name').value.trim(),
+                email: document.getElementById('reg-email').value.trim(),
+                password: document.getElementById('reg-password').value,
+            };
+            try {
+                btn.textContent = 'Creating account…';
+                const resp = await fetch('/api/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) throw new Error(data.error || 'Registration failed.');
+
+                if (data.needsConfirmation) {
+                    alert('Account created. Check your email to confirm, then sign in.');
+                } else {
+                    alert('Account created. You can now sign in.');
+                }
+                window.location.href = 'index.html';
+            } catch (err) {
+                alert('Registration failed: ' + err.message);
+                btn.textContent = 'Initialize Workstation Credentials';
+            }
+        }
+    </script>
 </body>
 </html>
