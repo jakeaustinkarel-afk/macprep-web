@@ -1,0 +1,207 @@
+{
+  "_meta": {
+    "batch": "authored_batch_02",
+    "authored": "2026-06-19",
+    "focus": "Subspecialty Care (domain 4) — the 31% blueprint weight; authored first per BLUEPRINT §6",
+    "standard": "BLUEPRINT.md §3 schema / §4 quality bar",
+    "status": "sme_review",
+    "note": "AI-authored against high-confidence, board-standard anesthesia facts and cited to standard sources. Awaits credentialed CAA/anesthesiologist review before status='published'."
+  },
+  "questions": [
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Neuroanesthesia — venous air embolism", "difficulty": "hard",
+      "stem": "A patient undergoes a posterior fossa craniotomy in the sitting position. Which monitor is the most sensitive for detecting venous air embolism?",
+      "choices": [
+        { "label": "A", "text": "Precordial (or transesophageal) Doppler ultrasonography", "correct": true, "rationale": "Doppler/TEE detect very small intracardiac air bubbles before physiologic changes occur." },
+        { "label": "B", "text": "A sudden fall in end-tidal CO2", "correct": false, "rationale": "EtCO2 changes are sensitive but occur later and after a larger air load than Doppler/TEE detection." },
+        { "label": "C", "text": "Rising central venous pressure", "correct": false, "rationale": "CVP changes are nonspecific and late." },
+        { "label": "D", "text": "Pulse oximetry desaturation", "correct": false, "rationale": "Desaturation is a late, nonspecific sign of significant embolism." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Transesophageal echocardiography and precordial Doppler are the most sensitive monitors for venous air embolism, detecting tiny amounts of intracardiac air before hemodynamic or capnographic changes. A fall in EtCO2 is the most sensitive non-invasive physiologic sign but lags Doppler/TEE. Management: flood the field with saline, lower the head, give 100% O2, aspirate air via a right-atrial catheter, and provide hemodynamic support.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed., neuroanesthesia", "note": "VAE detection sensitivity" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Neuroanesthesia — acute intracranial hypertension", "difficulty": "medium",
+      "stem": "During a craniotomy the surgeon reports a tight, bulging brain. Which intervention most rapidly lowers intracranial pressure as a temporizing measure?",
+      "choices": [
+        { "label": "A", "text": "Acute hyperventilation to a mild hypocapnia (PaCO2 ~30-35 mmHg)", "correct": true, "rationale": "Hypocapnia causes cerebral vasoconstriction, rapidly reducing cerebral blood volume and ICP." },
+        { "label": "B", "text": "Permissive hypercapnia to improve cerebral perfusion", "correct": false, "rationale": "Hypercapnia causes cerebral vasodilation and RAISES ICP." },
+        { "label": "C", "text": "Administer a volatile agent at high concentration (>1.5 MAC)", "correct": false, "rationale": "High-dose volatiles are cerebral vasodilators that can increase ICP." },
+        { "label": "D", "text": "Place the patient in steep Trendelenburg", "correct": false, "rationale": "Head-down positioning impedes venous drainage and raises ICP." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Acute, moderate hyperventilation (PaCO2 ~30-35 mmHg) lowers ICP within minutes by reducing cerebral blood volume through vasoconstriction. It is a temporizing measure; aggressive or prolonged hypocapnia (<25-30 mmHg) risks ischemia. Other measures: head-up positioning, mannitol/hypertonic saline, CSF drainage, and avoiding cerebral vasodilators.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed., neuroanesthesia", "note": "CO2 reactivity and ICP" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Thoracic — one-lung ventilation hypoxemia", "difficulty": "hard",
+      "stem": "A patient desaturates during one-lung ventilation for a thoracotomy. Double-lumen tube position is confirmed correct. What is the most appropriate next step?",
+      "choices": [
+        { "label": "A", "text": "Apply CPAP to the nondependent (operative) lung", "correct": true, "rationale": "CPAP to the nonventilated lung oxygenates pulmonary blood without fully re-expanding it, improving saturation." },
+        { "label": "B", "text": "Immediately abandon one-lung ventilation and ventilate both lungs", "correct": false, "rationale": "Reasonable as a last resort, but CPAP to the nondependent lung is the standard next step and preserves surgical exposure." },
+        { "label": "C", "text": "Decrease FiO2 to reduce absorption atelectasis", "correct": false, "rationale": "During desaturation, FiO2 should be increased, not decreased." },
+        { "label": "D", "text": "Add high PEEP to the dependent lung as the first maneuver", "correct": false, "rationale": "PEEP to the dependent lung can help but may divert blood flow to the nondependent lung and worsen shunt; it is not the first step." }
+      ],
+      "correct_answer": "A",
+      "explanation": "After confirming tube position and FiO2 of 1.0, the classic next maneuver for hypoxemia during one-lung ventilation is CPAP (~5-10 cmH2O) to the nondependent lung, which oxygenates blood traversing that lung and reduces shunt. PEEP to the dependent lung and intermittent two-lung ventilation are additional options; ligation of the operative-side pulmonary artery during pneumonectomy also helps.",
+      "references": [{ "source": "Barash, Clinical Anesthesia — thoracic anesthesia", "note": "Management of OLV hypoxemia" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Cardiac — pericardial tamponade", "difficulty": "hard",
+      "stem": "A patient with pericardial tamponade requires anesthesia for emergent pericardial drainage. Which hemodynamic management strategy during induction is most appropriate?",
+      "choices": [
+        { "label": "A", "text": "Maintain heart rate, preload, and contractility; avoid drops in systemic vascular resistance", "correct": true, "rationale": "With a fixed low stroke volume, cardiac output is rate-dependent; preload and SVR must be preserved until the pericardium is drained." },
+        { "label": "B", "text": "Induce bradycardia to improve diastolic filling", "correct": false, "rationale": "Bradycardia is poorly tolerated because stroke volume is fixed and low; output depends on rate." },
+        { "label": "C", "text": "Aggressively vasodilate to reduce afterload", "correct": false, "rationale": "Vasodilation causes catastrophic hypotension in tamponade." },
+        { "label": "D", "text": "Deepen anesthesia with a high-dose volatile before drainage", "correct": false, "rationale": "Myocardial depression and vasodilation from deep volatile anesthesia can precipitate arrest; consider draining under local first." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Tamponade physiology fixes stroke volume, so cardiac output becomes heart-rate dependent. Goals: keep the patient 'full, fast, and tight' — maintain preload (volume), heart rate, contractility, and systemic vascular resistance. When feasible, drain the effusion under local anesthesia before induction; if general anesthesia is required, ketamine and judicious dosing help preserve hemodynamics.",
+      "references": [{ "source": "Barash, Clinical Anesthesia — cardiac/pericardial disease", "note": "Tamponade hemodynamic goals" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Obstetric — uterine atony", "difficulty": "medium",
+      "stem": "Immediately after delivery during a cesarean section, the obstetrician reports a boggy, atonic uterus with brisk bleeding. Which is the first-line uterotonic agent?",
+      "choices": [
+        { "label": "A", "text": "Oxytocin", "correct": true, "rationale": "Oxytocin is the first-line uterotonic for atony; give a controlled infusion (rapid undiluted boluses cause hypotension)." },
+        { "label": "B", "text": "Methylergonovine in a patient with hypertension", "correct": false, "rationale": "Ergot alkaloids are second-line and contraindicated in hypertension/preeclampsia (severe vasoconstriction)." },
+        { "label": "C", "text": "Carboprost (15-methyl PGF2-alpha) in a patient with asthma", "correct": false, "rationale": "Carboprost is second-line and relatively contraindicated in asthma (bronchospasm)." },
+        { "label": "D", "text": "Magnesium sulfate", "correct": false, "rationale": "Magnesium relaxes the uterus and would worsen atony." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Oxytocin is the first-line agent for uterine atony, the leading cause of postpartum hemorrhage. Second-line agents are chosen by comorbidity: methylergonovine (avoid in hypertension/preeclampsia), carboprost (avoid in asthma), and misoprostol. Avoid rapid undiluted oxytocin boluses, which cause vasodilation, hypotension, and tachycardia.",
+      "references": [{ "source": "Chestnut's Obstetric Anesthesia, 6th ed.", "note": "Uterotonics and their contraindications" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Obstetric — post-dural puncture headache", "difficulty": "medium",
+      "stem": "Two days after an epidural for labor complicated by a recognized dural puncture, a patient reports a severe frontal-occipital headache that worsens when she sits up and improves when she lies flat. After conservative measures fail, what is the definitive treatment?",
+      "choices": [
+        { "label": "A", "text": "Epidural blood patch", "correct": true, "rationale": "An autologous epidural blood patch seals the dural leak and is the definitive treatment for significant PDPH." },
+        { "label": "B", "text": "Increase oral opioids and continue bed rest indefinitely", "correct": false, "rationale": "Conservative measures may help mild cases but are not definitive for a severe, refractory PDPH." },
+        { "label": "C", "text": "Lumbar puncture to drain cerebrospinal fluid", "correct": false, "rationale": "Removing more CSF would worsen the low-pressure headache." },
+        { "label": "D", "text": "Empiric broad-spectrum antibiotics", "correct": false, "rationale": "PDPH is a CSF-leak phenomenon, not an infection." }
+      ],
+      "correct_answer": "A",
+      "explanation": "The positional (worse upright, better supine) headache after dural puncture is classic PDPH from CSF leak and intracranial hypotension. Conservative care (hydration, analgesics, caffeine) may suffice for mild cases, but the definitive treatment for severe or persistent PDPH is an epidural blood patch, which both tamponades the leak and raises CSF pressure.",
+      "references": [{ "source": "Chestnut's Obstetric Anesthesia, 6th ed.", "note": "PDPH diagnosis and blood patch" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Pediatric — laryngospasm", "difficulty": "medium",
+      "stem": "During inhalational induction in a child, the airway suddenly obstructs with no air movement and the SpO2 begins to fall; laryngospasm is suspected. After 100% oxygen and a jaw thrust with positive-pressure attempts fail, what is the most appropriate next step?",
+      "choices": [
+        { "label": "A", "text": "Administer succinylcholine (with atropine available for bradycardia)", "correct": true, "rationale": "Refractory laryngospasm is broken with succinylcholine; atropine guards against the bradycardia of hypoxia/succinylcholine in children." },
+        { "label": "B", "text": "Deepen anesthesia with additional volatile agent via mask", "correct": false, "rationale": "With complete obstruction, volatile agent cannot reach the alveoli; this wastes time during desaturation." },
+        { "label": "C", "text": "Perform immediate emergency cricothyrotomy", "correct": false, "rationale": "Laryngospasm almost always breaks with the above measures; surgical airway is a last resort." },
+        { "label": "D", "text": "Wait for the child to resume spontaneous ventilation", "correct": false, "rationale": "Waiting during active desaturation risks bradycardia, hypoxic arrest, and negative-pressure pulmonary edema." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Laryngospasm management escalates: remove the stimulus, 100% O2, jaw thrust with firm pressure at the laryngospasm notch (Larson's point), and CPAP/gentle positive pressure. If it persists with desaturation, give succinylcholine (IV ~0.5-1 mg/kg, or IM if no IV) to relax the cords, with atropine to prevent bradycardia. Children desaturate quickly, so act decisively.",
+      "references": [{ "source": "Cote, A Practice of Anesthesia for Infants and Children", "note": "Laryngospasm algorithm" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Pediatric — emergence delirium", "difficulty": "easy",
+      "stem": "A preschool-age child awakens from a brief sevoflurane anesthetic thrashing, inconsolable, and not making eye contact, then returns to baseline within 20 minutes. Which anesthetic factor is most associated with this phenomenon?",
+      "choices": [
+        { "label": "A", "text": "Use of a rapidly eliminated volatile agent such as sevoflurane", "correct": true, "rationale": "Emergence delirium is more common after sevoflurane/desflurane, especially in young children after ENT/ophthalmic procedures." },
+        { "label": "B", "text": "Use of total intravenous anesthesia with propofol", "correct": false, "rationale": "Propofol-based TIVA is associated with a LOWER incidence of emergence delirium." },
+        { "label": "C", "text": "Adequate multimodal analgesia", "correct": false, "rationale": "Good analgesia reduces, not increases, agitation." },
+        { "label": "D", "text": "Preoperative anxiolysis with midazolam", "correct": false, "rationale": "Premedication and a calm environment tend to reduce emergence delirium." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Emergence delirium is a self-limited agitated state most common in young children after rapidly eliminated volatile agents (sevoflurane, desflurane), particularly following ENT and ophthalmic surgery. It is distinct from pain. Strategies that reduce it include propofol TIVA or a propofol bolus near the end, dexmedetomidine, adequate analgesia, and a calm emergence.",
+      "references": [{ "source": "Cote, A Practice of Anesthesia for Infants and Children", "note": "Emergence delirium risk factors" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Trauma — carbon monoxide poisoning", "difficulty": "hard",
+      "stem": "A patient rescued from a house fire is somnolent. Standard pulse oximetry reads 99%, but carbon monoxide poisoning is suspected. Which statement is correct?",
+      "choices": [
+        { "label": "A", "text": "Standard pulse oximetry cannot detect carboxyhemoglobin and may read falsely normal; treat with 100% oxygen", "correct": true, "rationale": "Carboxyhemoglobin is misread as oxyhemoglobin, so SpO2 looks normal; co-oximetry is needed and 100% O2 shortens the CO half-life." },
+        { "label": "B", "text": "The 99% reading reliably excludes significant hypoxemia", "correct": false, "rationale": "Conventional oximetry is blind to carboxyhemoglobin, so a normal reading is falsely reassuring." },
+        { "label": "C", "text": "Carbon monoxide poisoning is best treated by restricting oxygen to avoid free radicals", "correct": false, "rationale": "The treatment is high-flow 100% oxygen (and hyperbaric oxygen in selected cases), not oxygen restriction." },
+        { "label": "D", "text": "Methylene blue is the treatment of choice", "correct": false, "rationale": "Methylene blue treats methemoglobinemia, not carbon monoxide poisoning." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Carboxyhemoglobin absorbs light similarly to oxyhemoglobin, so a standard two-wavelength pulse oximeter reads falsely normal in carbon monoxide poisoning. Diagnosis requires co-oximetry (measured carboxyhemoglobin level). Treatment is high-flow 100% oxygen, which reduces the carboxyhemoglobin half-life from hours to under an hour; hyperbaric oxygen is considered for severe poisoning.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed.; ABA/trauma references", "note": "CO poisoning, oximetry pitfalls" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Trauma — massive transfusion and citrate", "difficulty": "medium",
+      "stem": "A trauma patient receives a large-volume rapid transfusion of citrated blood products. Which electrolyte derangement should you anticipate and monitor for?",
+      "choices": [
+        { "label": "A", "text": "Hypocalcemia from citrate binding ionized calcium", "correct": true, "rationale": "Citrate chelates ionized calcium during massive transfusion, causing hypocalcemia and potential hypotension/coagulopathy." },
+        { "label": "B", "text": "Hypercalcemia from calcium in stored blood", "correct": false, "rationale": "Citrate binds calcium, lowering ionized calcium; hypercalcemia is not expected." },
+        { "label": "C", "text": "Hypernatremia from the preservative solution", "correct": false, "rationale": "Sodium disturbances are not the characteristic problem; citrate-induced hypocalcemia is." },
+        { "label": "D", "text": "Hypophosphatemia as the primary concern", "correct": false, "rationale": "The hallmark acute derangement is hypocalcemia (and hyperkalemia from older units), not hypophosphatemia." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Stored blood is anticoagulated with citrate, which chelates ionized calcium. During rapid massive transfusion (faster than the liver can metabolize citrate), ionized calcium falls, causing hypotension and impaired coagulation. Monitor ionized calcium and supplement with calcium. Hyperkalemia (from older units) and hypothermia are other massive-transfusion concerns; balanced 1:1:1 product ratios are used for hemorrhagic shock.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed., transfusion therapy", "note": "Citrate toxicity / hypocalcemia" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Geriatric — MAC and drug sensitivity", "difficulty": "easy",
+      "stem": "When anesthetizing an 85-year-old patient, how does advanced age affect the minimum alveolar concentration (MAC) of volatile anesthetics and dosing in general?",
+      "choices": [
+        { "label": "A", "text": "MAC decreases with age, and elderly patients are generally more sensitive to anesthetic agents", "correct": true, "rationale": "MAC falls roughly 6% per decade after age 40; reduced doses are required to avoid overdose and hemodynamic instability." },
+        { "label": "B", "text": "MAC increases with age, requiring higher volatile concentrations", "correct": false, "rationale": "MAC decreases, not increases, with age." },
+        { "label": "C", "text": "MAC is unchanged by age; standard adult dosing applies", "correct": false, "rationale": "Age meaningfully lowers MAC and anesthetic requirements." },
+        { "label": "D", "text": "Elderly patients are more resistant to induction agents and need larger doses", "correct": false, "rationale": "Older patients are typically more sensitive and need smaller, slower doses." }
+      ],
+      "correct_answer": "A",
+      "explanation": "MAC declines with age (approximately 6% per decade beyond 40), and older patients show increased pharmacodynamic sensitivity along with altered pharmacokinetics (reduced clearance, increased sensitivity of the CNS and cardiovascular system). Titrate to effect with reduced doses and allow for slower circulation times to avoid hypotension and delayed emergence.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed., geriatric anesthesia", "note": "Age-related MAC reduction" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Ambulatory — PONV risk", "difficulty": "easy",
+      "stem": "Using the simplified Apfel score to predict postoperative nausea and vomiting in an adult, which set lists the four independent risk factors?",
+      "choices": [
+        { "label": "A", "text": "Female sex, nonsmoker, history of PONV or motion sickness, and expected postoperative opioids", "correct": true, "rationale": "These are the four Apfel predictors; each adds roughly 20% to baseline PONV risk." },
+        { "label": "B", "text": "Male sex, current smoker, diabetes, and regional anesthesia", "correct": false, "rationale": "Male sex and smoking are associated with LOWER PONV risk; these are not Apfel factors." },
+        { "label": "C", "text": "Advanced age, hypertension, obesity, and short procedure duration", "correct": false, "rationale": "These are not the validated Apfel predictors." },
+        { "label": "D", "text": "ASA class, NPO status, surgical site, and anesthetic depth", "correct": false, "rationale": "Not the Apfel criteria." }
+      ],
+      "correct_answer": "A",
+      "explanation": "The Apfel simplified score counts four factors: female sex, nonsmoking status, history of PONV or motion sickness, and anticipated postoperative opioid use. Risk rises with each factor present (roughly 10%, 20%, 40%, 60%, 80% for 0-4 factors). High-risk patients warrant multimodal prophylaxis (e.g., a 5-HT3 antagonist, dexamethasone, propofol TIVA, and opioid-sparing techniques).",
+      "references": [{ "source": "Apfel et al.; Miller's Anesthesia, 9th ed., ambulatory anesthesia/PONV", "note": "Simplified PONV risk score" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "ENT — operating-room airway fire", "difficulty": "hard",
+      "stem": "During a tracheostomy using electrocautery, a fire ignites in the airway. What is the correct immediate sequence of actions?",
+      "choices": [
+        { "label": "A", "text": "Stop the gas flow and remove the endotracheal tube, then pour saline into the field", "correct": true, "rationale": "Removing the fuel (tube) and stopping the oxidizer (gases) extinguishes the fire; saline cools and douses." },
+        { "label": "B", "text": "Increase oxygen flow to flush the airway", "correct": false, "rationale": "Oxygen is the oxidizer and feeds the fire — flow must be stopped, not increased." },
+        { "label": "C", "text": "Continue ventilating to maintain oxygenation while the surgeon controls the fire", "correct": false, "rationale": "Continued oxygen-rich ventilation fuels the fire and worsens airway injury." },
+        { "label": "D", "text": "Leave the burning tube in place to protect the airway", "correct": false, "rationale": "The tube is the fuel; it must be removed immediately." }
+      ],
+      "correct_answer": "A",
+      "explanation": "For an airway fire: simultaneously stop the flow of airway gases and remove the endotracheal tube (the fuel and the oxidizer), then pour saline into the field. After the fire is out, ventilate with a mask, re-establish the airway, and assess for thermal injury via bronchoscopy. Prevention during laser/cautery airway surgery: minimize FiO2, avoid nitrous oxide, and use laser-resistant tubes.",
+      "references": [{ "source": "ASA Practice Advisory for the Prevention and Management of Operating Room Fires", "note": "Airway fire response" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Ophthalmic — oculocardiac reflex", "difficulty": "medium",
+      "stem": "During pediatric strabismus surgery, traction on an extraocular muscle produces sudden severe bradycardia. What is the most appropriate immediate management?",
+      "choices": [
+        { "label": "A", "text": "Ask the surgeon to release the traction; give atropine if bradycardia persists or recurs", "correct": true, "rationale": "Removing the trigeminal stimulus usually resolves the trigeminovagal reflex; atropine treats persistent bradycardia." },
+        { "label": "B", "text": "Immediately begin chest compressions", "correct": false, "rationale": "The reflex bradycardia typically resolves with stimulus removal; CPR is not the first step." },
+        { "label": "C", "text": "Deepen anesthesia with a volatile agent before doing anything else", "correct": false, "rationale": "Deepening may help prevent recurrence but the immediate action is to stop the stimulus." },
+        { "label": "D", "text": "Administer a beta-agonist infusion", "correct": false, "rationale": "Not indicated; the reflex is vagally mediated and resolves with stimulus removal or anticholinergic." }
+      ],
+      "correct_answer": "A",
+      "explanation": "The oculocardiac reflex (traction on extraocular muscles or pressure on the globe → bradycardia via the trigeminal afferent and vagal efferent arc) is common in strabismus surgery. First, have the surgeon stop the stimulus; the heart rate usually recovers. Ensure adequate ventilation/depth. For recurrent or severe bradycardia, give atropine (or glycopyrrolate). Pretreatment with an anticholinergic can be considered in children.",
+      "references": [{ "source": "Miller's Anesthesia, 9th ed., ophthalmic anesthesia", "note": "Oculocardiac reflex management" }]
+    },
+    {
+      "domain": 4, "domain_name": "Subspecialty Care", "subtopic": "Endocrine — pheochromocytoma", "difficulty": "hard",
+      "stem": "A patient with a catecholamine-secreting pheochromocytoma is being optimized for adrenalectomy. Regarding preoperative pharmacologic preparation, which principle is correct?",
+      "choices": [
+        { "label": "A", "text": "Establish alpha-adrenergic blockade before adding any beta-blockade", "correct": true, "rationale": "Beta-blockade first leaves alpha-mediated vasoconstriction unopposed, risking a hypertensive crisis and heart failure." },
+        { "label": "B", "text": "Start beta-blockade first to control tachycardia, then add alpha-blockade", "correct": false, "rationale": "Unopposed alpha stimulation from beta-first blockade can precipitate severe hypertension." },
+        { "label": "C", "text": "No preoperative blockade is needed if blood pressure is acutely normal", "correct": false, "rationale": "Preoperative alpha-blockade and volume expansion over days are standard to prevent intraoperative crises." },
+        { "label": "D", "text": "Use only intravenous fluids without adrenergic blockade", "correct": false, "rationale": "Volume expansion alone does not control catecholamine-driven hypertension; alpha-blockade is required." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Pheochromocytoma preparation requires alpha-adrenergic blockade (e.g., phenoxybenzamine or doxazosin) started days in advance, with volume expansion, to control hypertension and restore intravascular volume. Beta-blockade, if needed for reflex tachycardia or arrhythmia, is added only AFTER adequate alpha-blockade — beta-first risks unopposed alpha vasoconstriction, hypertensive crisis, and pulmonary edema. Intraoperatively, prepare for swings in blood pressure (manipulation) and post-resection hypotension.",
+      "references": [{ "source": "Stoelting's Anesthesia and Co-Existing Disease", "note": "Pheochromocytoma: alpha-before-beta blockade" }]
+    }
+  ]
+}

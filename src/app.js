@@ -175,8 +175,37 @@ function triggerPremiumPaywallGate() {
             <div style="padding:40px;text-align:left;background-color:#111214;border:1px solid #1F2937;border-radius:4px;max-width:600px;margin:40px auto;">
                 <span style="font-family:monospace;font-size:11px;color:#00A86B;letter-spacing:2px;">TRIAL LIMIT REACHED</span>
                 <h2 style="font-size:24px;font-weight:800;color:#F9FAFB;margin:10px 0 20px 0;">Unlock the full board curriculum</h2>
-                <button onclick="window.location.href='https://buy.stripe.com/5kQ6oI6HHefh5btfK7dnW00'" style="background-color:#00A86B;color:#F9FAFB;border:none;padding:14px 24px;font-family:monospace;font-size:13px;font-weight:bold;cursor:pointer;border-radius:4px;text-transform:uppercase;letter-spacing:1px;">Upgrade to Full Access — $50</button>
+                <button id="upgrade-trigger" style="background-color:#00A86B;color:#F9FAFB;border:none;padding:14px 24px;font-family:monospace;font-size:13px;font-weight:bold;cursor:pointer;border-radius:4px;text-transform:uppercase;letter-spacing:1px;">Upgrade to Full Access — $50</button>
             </div>`;
+        const btn = document.getElementById('upgrade-trigger');
+        if (btn) btn.addEventListener('click', startCheckout);
+    }
+}
+
+// Single checkout path: create a server-side Stripe Checkout session keyed to
+// the authenticated user's email so the webhook can match the payment back to
+// their profile. (Replaces the hardcoded buy.stripe.com payment link, which the
+// webhook could not reconcile — AUDIT.md §3.2.)
+async function startCheckout(e) {
+    const btn = e?.currentTarget;
+    if (btn) { btn.disabled = true; btn.textContent = 'REDIRECTING…'; }
+    try {
+        const headers = { 'Content-Type': 'application/json' };
+        const token = authToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const email = (() => { try { return localStorage.getItem('macprep_user_email') || ''; } catch (e2) { return ''; } })();
+
+        const resp = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ email }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.url) throw new Error(data.error || 'Could not start checkout.');
+        window.location.href = data.url;
+    } catch (err) {
+        alert('Checkout failed: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Upgrade to Full Access — $50'; }
     }
 }
 

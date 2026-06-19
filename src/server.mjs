@@ -35,6 +35,12 @@ const PROFILE_TABLE = 'user_profiles';
 const PROGRESS_TABLE = 'user_progress';
 const FREE_TIER_CEILING = 100;
 
+// Feature flag: when true, /api/questions serves only SME-approved content
+// (status='published'). Default false keeps the demo working while the bank is
+// still being authored/reviewed. Flip to 'true' on Render once a published set
+// exists to retire the legacy 'unreviewed' filler from what students see.
+const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY || '').toLowerCase() === 'true';
+
 // choices may be stored as a JSON string (text/jsonb-as-string) or a native array.
 function parseChoices(raw) {
     if (Array.isArray(raw)) return raw;
@@ -136,6 +142,7 @@ app.get('/api/health', (req, res) => {
         build: 'auth-grading-security',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
+        serve_published_only: SERVE_PUBLISHED_ONLY,
         time: new Date().toISOString(),
     });
 });
@@ -228,9 +235,11 @@ app.get('/api/questions', async (req, res) => {
         if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
         if (!supabase) return res.json({ questions: [] });
 
-        const { data, error } = await supabase
+        let query = supabase
             .from('questions')
             .select('id, specialty, domain, domain_name, subtopic, stem, choices, telemetry');
+        if (SERVE_PUBLISHED_ONLY) query = query.eq('status', 'published');
+        const { data, error } = await query;
         if (error) throw error;
 
         // choices may be a JSON string or native array. Normalize, then strip any

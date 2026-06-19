@@ -1,0 +1,282 @@
+{
+  "_meta": {
+    "batch": "authored_batch_01",
+    "authored": "2026-06-19",
+    "standard": "BLUEPRINT.md §3 schema / §4 quality bar",
+    "status": "sme_review",
+    "note": "AI-authored against high-confidence, board-standard anesthesia facts and cited to standard sources. NOT a substitute for credentialed CAA/anesthesiologist review. Nothing here should be promoted to status='published' until SME sign-off (sets reviewed_by)."
+  },
+  "questions": [
+    {
+      "domain": 1,
+      "domain_name": "Principles of Anesthesia",
+      "subtopic": "Preoperative fasting (NPO) guidelines",
+      "difficulty": "easy",
+      "stem": "A healthy 5-year-old is scheduled for elective adenoidectomy. The family asks how long before surgery the child must stop intake. According to current ASA preoperative fasting guidelines for elective procedures, what is the minimum fasting interval for clear liquids?",
+      "choices": [
+        { "label": "A", "text": "2 hours", "correct": true, "rationale": "Clear liquids require a minimum 2-hour fast; this reduces thirst, irritability, and hypoglycemia without increasing aspiration risk." },
+        { "label": "B", "text": "4 hours", "correct": false, "rationale": "4 hours is the guideline for breast milk, not clear liquids." },
+        { "label": "C", "text": "6 hours", "correct": false, "rationale": "6 hours applies to infant formula and a light meal, not clear liquids." },
+        { "label": "D", "text": "8 hours", "correct": false, "rationale": "8 hours applies to fatty/fried foods or a full meal." }
+      ],
+      "correct_answer": "A",
+      "explanation": "ASA fasting guidelines: clear liquids 2 h, breast milk 4 h, infant formula/non-human milk and a light meal 6 h, fried/fatty foods or a heavy meal 8 h. Encouraging clear liquids up to 2 hours preoperatively improves comfort and metabolic status while keeping gastric volume low.",
+      "references": [
+        { "source": "ASA Practice Guidelines for Preoperative Fasting (2017 update)", "note": "Clear-liquid 2-hour rule" }
+      ]
+    },
+    {
+      "domain": 1,
+      "domain_name": "Principles of Anesthesia",
+      "subtopic": "ASA physical status classification",
+      "difficulty": "easy",
+      "stem": "A 54-year-old presents for elective laparoscopic cholecystectomy. He has hypertension and type 2 diabetes, both well controlled on medication, and no functional limitation. Which ASA physical status classification best describes this patient?",
+      "choices": [
+        { "label": "A", "text": "ASA I", "correct": false, "rationale": "ASA I is a normal healthy patient with no systemic disease." },
+        { "label": "B", "text": "ASA II", "correct": true, "rationale": "Mild, well-controlled systemic disease without substantive functional limitation is ASA II." },
+        { "label": "C", "text": "ASA III", "correct": false, "rationale": "ASA III requires severe systemic disease with substantive functional limitation (e.g., poorly controlled diabetes/HTN, COPD)." },
+        { "label": "D", "text": "ASA IV", "correct": false, "rationale": "ASA IV is severe systemic disease that is a constant threat to life." }
+      ],
+      "correct_answer": "B",
+      "explanation": "Well-controlled chronic conditions without end-organ functional limitation define ASA II. The distinction from ASA III hinges on whether the disease is poorly controlled or causes substantive functional limitation. The ASA class is a clinical descriptor, not a standalone predictor of risk.",
+      "references": [
+        { "source": "ASA Physical Status Classification System (current definitions with examples)", "note": "ASA II vs III boundary" }
+      ]
+    },
+    {
+      "domain": 2,
+      "domain_name": "Physiology, Pathophysiology & Management",
+      "subtopic": "Oxyhemoglobin dissociation curve",
+      "difficulty": "medium",
+      "stem": "During a long case you note conditions that shift the oxyhemoglobin dissociation curve to the right. Which of the following is the physiologic consequence of a rightward shift?",
+      "choices": [
+        { "label": "A", "text": "Decreased P50 and increased hemoglobin affinity for oxygen", "correct": false, "rationale": "This describes a LEFT shift (e.g., alkalosis, hypothermia, low 2,3-DPG), which raises affinity and lowers P50." },
+        { "label": "B", "text": "Increased P50 and enhanced oxygen unloading at the tissues", "correct": true, "rationale": "A right shift (acidosis, hypercarbia, hyperthermia, increased 2,3-DPG) raises P50 and offloads O2 to tissues more readily." },
+        { "label": "C", "text": "No change in P50 but increased oxygen-carrying capacity", "correct": false, "rationale": "Carrying capacity depends on hemoglobin concentration, not curve position." },
+        { "label": "D", "text": "Improved oxygen loading in the lungs at the expense of tissue delivery", "correct": false, "rationale": "A right shift favors tissue unloading; loading in the lung is only marginally affected at normal alveolar PO2." }
+      ],
+      "correct_answer": "B",
+      "explanation": "A rightward shift raises P50 (the PO2 at which hemoglobin is 50% saturated), reflecting reduced affinity and improved tissue oxygen delivery. Drivers: increased CO2/H+ (Bohr effect), increased temperature, and increased 2,3-DPG. Left shift = opposite (alkalosis, hypothermia, low 2,3-DPG, fetal hemoglobin, carboxyhemoglobin).",
+      "references": [
+        { "source": "Miller's Anesthesia, 9th ed., respiratory physiology", "note": "P50 and the Bohr effect" }
+      ]
+    },
+    {
+      "domain": 2,
+      "domain_name": "Physiology, Pathophysiology & Management",
+      "subtopic": "Succinylcholine and hyperkalemia",
+      "difficulty": "hard",
+      "stem": "A patient with a 30% total body surface area burn sustained 12 days ago requires general anesthesia for debridement. Why should succinylcholine be avoided in this setting?",
+      "choices": [
+        { "label": "A", "text": "Upregulation of extrajunctional acetylcholine receptors causes exaggerated potassium efflux and risk of hyperkalemic cardiac arrest", "correct": true, "rationale": "Burn injury (after ~24-48 h and for up to a year) upregulates immature/extrajunctional nAChRs; succinylcholine triggers massive K+ release." },
+        { "label": "B", "text": "Burn patients have reduced plasma cholinesterase, prolonging paralysis dangerously", "correct": false, "rationale": "Altered cholinesterase prolongs block but is not the life-threatening concern; hyperkalemia is." },
+        { "label": "C", "text": "Succinylcholine triggers malignant hyperthermia more readily in burn patients", "correct": false, "rationale": "MH susceptibility is not increased by burns; it is a separate genetic predisposition." },
+        { "label": "D", "text": "Burn patients are resistant to depolarizing agents, requiring unsafe dose escalation", "correct": false, "rationale": "Burn patients are resistant to NONdepolarizers; the succinylcholine concern is hyperkalemia, not resistance." }
+      ],
+      "correct_answer": "A",
+      "explanation": "After major burns, denervation injury, prolonged immobilization, or spinal cord injury, extrajunctional acetylcholine receptors proliferate. Succinylcholine depolarizes these widely distributed receptors and can produce a rapid, dangerous rise in serum potassium leading to arrhythmia or arrest. Use a nondepolarizing agent (to which these patients are relatively resistant) instead.",
+      "references": [
+        { "source": "Stoelting's Pharmacology & Physiology in Anesthetic Practice", "note": "Succinylcholine-induced hyperkalemia and receptor upregulation" }
+      ]
+    },
+    {
+      "domain": 3,
+      "domain_name": "Instrumentation, Monitoring & Anesthetic Delivery Systems",
+      "subtopic": "Pulse oximetry — methemoglobinemia",
+      "difficulty": "hard",
+      "stem": "A patient given a large dose of topical benzocaine for an awake airway procedure becomes cyanotic. SpO2 reads 85% and does not improve with 100% oxygen; arterial blood is described as chocolate-brown. Which statement about the pulse oximeter reading is correct?",
+      "choices": [
+        { "label": "A", "text": "Methemoglobin drives the SpO2 toward approximately 85% regardless of the true oxygen saturation", "correct": true, "rationale": "Methemoglobin absorbs similarly at 660 and 940 nm, pushing the absorption ratio toward 1.0, which the oximeter maps to ~85%." },
+        { "label": "B", "text": "The pulse oximeter accurately reflects arterial oxygen content in this scenario", "correct": false, "rationale": "Conventional 2-wavelength oximetry is unreliable with dyshemoglobins; it neither reads true SaO2 nor true content." },
+        { "label": "C", "text": "SpO2 will read falsely high near 100% because methemoglobin is counted as oxyhemoglobin", "correct": false, "rationale": "That pattern is characteristic of carboxyhemoglobin, not methemoglobin." },
+        { "label": "D", "text": "The reading will trend to 0% as methemoglobin rises", "correct": false, "rationale": "It plateaus near 85%, not 0%." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Methemoglobinemia (classically after benzocaine, prilocaine, or dapsone) produces a saturation gap and an SpO2 that tends toward ~85% and is unresponsive to supplemental oxygen. Diagnosis requires co-oximetry; treatment is methylene blue. A standard two-wavelength pulse oximeter cannot distinguish dyshemoglobins.",
+      "references": [
+        { "source": "Miller's Anesthesia, 9th ed., monitoring/pulse oximetry", "note": "Methemoglobin and the 85% plateau" },
+        { "source": "Barash, Clinical Anesthesia", "note": "Dyshemoglobinemias and co-oximetry" }
+      ]
+    },
+    {
+      "domain": 3,
+      "domain_name": "Instrumentation, Monitoring & Anesthetic Delivery Systems",
+      "subtopic": "CO2 absorbent and rebreathing",
+      "difficulty": "medium",
+      "stem": "Midway through a low-flow general anesthetic, the inspired CO2 (FiCO2) rises above zero and the capnogram baseline no longer returns to the baseline. The unidirectional valves are functioning. What is the most likely cause?",
+      "choices": [
+        { "label": "A", "text": "Exhausted CO2 absorbent causing rebreathing of carbon dioxide", "correct": true, "rationale": "A rising baseline (FiCO2 > 0) with intact valves indicates the absorbent can no longer scrub CO2." },
+        { "label": "B", "text": "Incompetent inspiratory unidirectional valve", "correct": false, "rationale": "A stuck/incompetent valve also causes rebreathing, but the stem specifies the valves are functioning." },
+        { "label": "C", "text": "Esophageal intubation", "correct": false, "rationale": "Esophageal intubation produces loss of the capnogram, not an elevated inspiratory baseline." },
+        { "label": "D", "text": "Excessively high fresh gas flow", "correct": false, "rationale": "High fresh gas flow reduces rebreathing; the problem here is occurring at low flow." }
+      ],
+      "correct_answer": "A",
+      "explanation": "An inspired CO2 greater than zero (capnogram baseline that fails to reach zero) signals rebreathing. With competent unidirectional valves, the usual culprit at low fresh-gas flows is spent CO2 absorbent. Management: increase fresh gas flow as a temporizing measure and change the absorbent canister.",
+      "references": [
+        { "source": "Miller's Anesthesia, 9th ed., anesthesia delivery systems", "note": "Rebreathing, absorbent exhaustion, capnogram baseline" }
+      ]
+    },
+    {
+      "domain": 4,
+      "domain_name": "Subspecialty Care",
+      "subtopic": "Pediatric — pyloric stenosis",
+      "difficulty": "medium",
+      "stem": "A 4-week-old infant presents with several days of projectile non-bilious vomiting and is diagnosed with hypertrophic pyloric stenosis. Regarding anesthetic timing and preparation, which statement is correct?",
+      "choices": [
+        { "label": "A", "text": "Pyloric stenosis is a medical emergency, not a surgical one; fluid and electrolyte abnormalities must be corrected before surgery", "correct": true, "rationale": "The classic hypochloremic, hypokalemic metabolic alkalosis must be corrected first; surgery is never emergent." },
+        { "label": "B", "text": "The infant should proceed to surgery immediately to relieve the obstruction", "correct": false, "rationale": "Operating before correcting alkalosis and dehydration risks postoperative apnea and instability." },
+        { "label": "C", "text": "The expected derangement is a hyperchloremic metabolic acidosis", "correct": false, "rationale": "The losses are of gastric HCl, producing alkalosis with low chloride and potassium." },
+        { "label": "D", "text": "Rapid-sequence induction is contraindicated because the stomach is reliably empty", "correct": false, "rationale": "The stomach should be suctioned and aspiration precautions taken; the stomach is not reliably empty." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Persistent vomiting of gastric contents causes loss of H+ and Cl- (and K+), producing a hypochloremic hypokalemic metabolic alkalosis with dehydration. This must be corrected with fluid/electrolyte resuscitation before pyloromyotomy. Aspiration precautions (gastric suctioning, RSI) are used because residual gastric volume is unpredictable.",
+      "references": [
+        { "source": "Coté, A Practice of Anesthesia for Infants and Children", "note": "Pyloric stenosis — medical not surgical emergency; metabolic alkalosis" }
+      ]
+    },
+    {
+      "domain": 4,
+      "domain_name": "Subspecialty Care",
+      "subtopic": "Obstetric — preeclampsia and magnesium",
+      "difficulty": "medium",
+      "stem": "A parturient with severe preeclampsia is receiving an intravenous magnesium sulfate infusion for seizure prophylaxis. On reassessment she is drowsy and her patellar (deep tendon) reflexes are absent. What does this finding most likely indicate?",
+      "choices": [
+        { "label": "A", "text": "Magnesium toxicity — loss of deep tendon reflexes is an early warning sign", "correct": true, "rationale": "DTRs disappear around 10 mEq/L (~5 mmol/L), preceding respiratory and cardiac toxicity; the infusion should be stopped and a level checked." },
+        { "label": "B", "text": "Impending eclamptic seizure requiring a magnesium bolus", "correct": false, "rationale": "Loss of reflexes signals too much magnesium, not too little; giving more is dangerous." },
+        { "label": "C", "text": "Hypocalcemia from the magnesium infusion", "correct": false, "rationale": "While magnesium can affect calcium, areflexia in this context is the hallmark of magnesium toxicity itself." },
+        { "label": "D", "text": "A normal expected effect of therapeutic magnesium that requires no action", "correct": false, "rationale": "Areflexia is beyond the therapeutic range and warrants intervention." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Magnesium toxicity progresses with rising serum levels: loss of deep tendon reflexes (~10 mEq/L), respiratory depression (~15 mEq/L), and cardiac arrest (>25 mEq/L). Loss of patellar reflexes is the earliest clinical sentinel. Management: stop the infusion, support ventilation, and give intravenous calcium (calcium gluconate or chloride) as the antidote.",
+      "references": [
+        { "source": "Chestnut's Obstetric Anesthesia, 6th ed.", "note": "Magnesium toxicity sequence and calcium antidote" }
+      ]
+    },
+    {
+      "domain": 4,
+      "domain_name": "Subspecialty Care",
+      "subtopic": "Crisis — malignant hyperthermia",
+      "difficulty": "medium",
+      "stem": "Twenty minutes into a sevoflurane anesthetic, a patient develops an unexplained, rapidly rising end-tidal CO2 despite increased minute ventilation, along with tachycardia and masseter rigidity. After calling for help and discontinuing the triggering agent, what is the definitive pharmacologic treatment?",
+      "choices": [
+        { "label": "A", "text": "Dantrolene 2.5 mg/kg IV, repeated as needed", "correct": true, "rationale": "Dantrolene inhibits ryanodine-receptor calcium release and is the only definitive treatment for malignant hyperthermia." },
+        { "label": "B", "text": "Intravenous beta-blockade to control the tachycardia", "correct": false, "rationale": "Beta-blockade treats a symptom, not the underlying hypermetabolic crisis." },
+        { "label": "C", "text": "Bicarbonate infusion as the primary therapy", "correct": false, "rationale": "Bicarbonate is adjunctive for acidosis but does not halt the crisis." },
+        { "label": "D", "text": "Deepen anesthesia with additional volatile agent", "correct": false, "rationale": "Volatile agents are triggers and must be stopped, not increased." }
+      ],
+      "correct_answer": "A",
+      "explanation": "The earliest and most sensitive sign of malignant hyperthermia is an unexplained rise in end-tidal CO2. Definitive management: stop volatile agents and succinylcholine, hyperventilate with 100% oxygen, and give dantrolene 2.5 mg/kg IV repeated until the episode subsides. Adjuncts treat hyperkalemia, acidosis, arrhythmias, and hyperthermia. Activate the MH hotline.",
+      "references": [
+        { "source": "MHAUS guidelines (Malignant Hyperthermia Association of the United States)", "note": "Dantrolene dosing; EtCO2 as earliest sign" }
+      ]
+    },
+    {
+      "domain": 4,
+      "domain_name": "Subspecialty Care",
+      "subtopic": "Cardiac — aortic stenosis hemodynamics",
+      "difficulty": "hard",
+      "stem": "A patient with severe aortic stenosis presents for noncardiac surgery. Which set of hemodynamic goals is most appropriate?",
+      "choices": [
+        { "label": "A", "text": "Maintain sinus rhythm and adequate preload, avoid tachycardia, and maintain systemic vascular resistance", "correct": true, "rationale": "The fixed obstruction and hypertrophied ventricle depend on preload, sinus rhythm, a controlled rate, and maintained coronary perfusion pressure (SVR)." },
+        { "label": "B", "text": "Promote tachycardia and reduce afterload to improve forward flow", "correct": false, "rationale": "Tachycardia worsens diastolic filling and subendocardial ischemia; dropping SVR is poorly tolerated with a fixed obstruction." },
+        { "label": "C", "text": "Aggressively vasodilate to offload the left ventricle", "correct": false, "rationale": "Vasodilation drops coronary perfusion pressure and can precipitate a catastrophic downward spiral." },
+        { "label": "D", "text": "Allow permissive hypovolemia to reduce wall stress", "correct": false, "rationale": "The stiff, hypertrophied ventricle is preload-dependent; hypovolemia is dangerous." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Severe AS imposes a fixed outflow obstruction on a hypertrophied, noncompliant ventricle. Goals: keep sinus rhythm (the atrial kick supplies a large share of filling), maintain preload, avoid tachycardia (preserve diastolic filling and coronary perfusion), and maintain systemic vascular resistance to protect coronary perfusion pressure. Hypotension is treated promptly with an alpha agonist such as phenylephrine.",
+      "references": [
+        { "source": "Barash, Clinical Anesthesia — valvular heart disease", "note": "Aortic stenosis hemodynamic goals" }
+      ]
+    },
+    {
+      "domain": 5,
+      "domain_name": "Pharmacology",
+      "subtopic": "Neuromuscular reversal — sugammadex",
+      "difficulty": "medium",
+      "stem": "Sugammadex is selected to reverse deep rocuronium-induced neuromuscular blockade. Which statement about its mechanism and a relevant clinical caution is correct?",
+      "choices": [
+        { "label": "A", "text": "It encapsulates aminosteroid agents such as rocuronium, and may reduce the efficacy of hormonal contraceptives", "correct": true, "rationale": "Sugammadex is a modified gamma-cyclodextrin that encapsulates rocuronium/vecuronium; it can bind progesterone, so patients on hormonal contraception need backup contraception." },
+        { "label": "B", "text": "It inhibits acetylcholinesterase, so glycopyrrolate must be co-administered", "correct": false, "rationale": "That describes neostigmine; sugammadex does not act on acetylcholinesterase and needs no antimuscarinic." },
+        { "label": "C", "text": "It effectively reverses benzylisoquinolinium agents such as cisatracurium", "correct": false, "rationale": "Sugammadex does not bind benzylisoquinoliniums; it is specific for aminosteroids." },
+        { "label": "D", "text": "It works only at minimal blockade and cannot reverse deep block", "correct": false, "rationale": "A key advantage of sugammadex is rapid reversal of deep block at appropriate doses." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Sugammadex is a selective relaxant-binding agent (a modified gamma-cyclodextrin) that encapsulates aminosteroid neuromuscular blockers (rocuronium > vecuronium), terminating their action without cholinesterase inhibition. It does not reverse benzylisoquinoliniums (e.g., cisatracurium). Because it can bind progesterone, advise additional contraception after administration.",
+      "references": [
+        { "source": "Stoelting's Pharmacology & Physiology in Anesthetic Practice", "note": "Sugammadex mechanism, specificity, and contraceptive caution" }
+      ]
+    },
+    {
+      "domain": 5,
+      "domain_name": "Pharmacology",
+      "subtopic": "Context-sensitive half-time — remifentanil",
+      "difficulty": "medium",
+      "stem": "Compared with other opioids, remifentanil maintains a nearly constant context-sensitive half-time regardless of infusion duration. What property explains this?",
+      "choices": [
+        { "label": "A", "text": "Rapid hydrolysis by nonspecific plasma and tissue esterases, independent of hepatic or renal function", "correct": true, "rationale": "Ester metabolism gives organ-independent, duration-independent offset, keeping the context-sensitive half-time ~3-5 min." },
+        { "label": "B", "text": "High lipid solubility producing extensive peripheral accumulation", "correct": false, "rationale": "Accumulation would PROLONG the context-sensitive half-time with longer infusions, the opposite of remifentanil's behavior." },
+        { "label": "C", "text": "Slow hepatic metabolism by cytochrome P450 3A4", "correct": false, "rationale": "Remifentanil is not dependent on hepatic CYP metabolism." },
+        { "label": "D", "text": "Renal excretion of unchanged drug", "correct": false, "rationale": "Its offset does not depend on renal clearance of parent drug; esterase hydrolysis dominates." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Remifentanil contains an ester linkage hydrolyzed by nonspecific blood and tissue esterases, so its clearance is independent of hepatic and renal function and it does not accumulate. Its context-sensitive half-time stays roughly 3-5 minutes even after prolonged infusion, which is why analgesia must be transitioned to a longer-acting agent before emergence.",
+      "references": [
+        { "source": "Miller's Anesthesia, 9th ed., intravenous anesthetics/opioids", "note": "Context-sensitive half-time; ester metabolism" }
+      ]
+    },
+    {
+      "domain": 5,
+      "domain_name": "Pharmacology",
+      "subtopic": "Local anesthetics — maximum dosing",
+      "difficulty": "medium",
+      "stem": "A clinician plans local infiltration for a 70 kg adult and asks for the maximum recommended dose of lidocaine WITH epinephrine. Which value is most appropriate?",
+      "choices": [
+        { "label": "A", "text": "Approximately 7 mg/kg", "correct": true, "rationale": "Epinephrine slows systemic absorption, raising the commonly cited ceiling to about 7 mg/kg (up to ~500 mg)." },
+        { "label": "B", "text": "Approximately 3 mg/kg", "correct": false, "rationale": "~3 mg/kg understates the limit when epinephrine is added; it is closer to the figure for plain lidocaine's lower end." },
+        { "label": "C", "text": "Approximately 4.5 mg/kg", "correct": false, "rationale": "~4.5 mg/kg is the customary maximum for lidocaine WITHOUT epinephrine, not with it." },
+        { "label": "D", "text": "Approximately 12 mg/kg", "correct": false, "rationale": "12 mg/kg exceeds safe limits and risks local anesthetic systemic toxicity." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Customary maximum doses: lidocaine without epinephrine ~4.5 mg/kg (up to ~300 mg); with epinephrine ~7 mg/kg (up to ~500 mg) because vasoconstriction slows vascular uptake and lowers peak plasma levels. These are guidance figures; actual risk depends on site vascularity, technique, and patient factors. Vigilance for LAST is essential.",
+      "references": [
+        { "source": "Barash, Clinical Anesthesia — local anesthetics", "note": "Maximum recommended doses with/without epinephrine" }
+      ]
+    },
+    {
+      "domain": 6,
+      "domain_name": "Regional Anesthesia & Pain Management",
+      "subtopic": "Neuraxial sensory level for cesarean delivery",
+      "difficulty": "medium",
+      "stem": "Before incision for a cesarean delivery under spinal anesthesia, which sensory dermatomal level should be confirmed to ensure adequate surgical anesthesia?",
+      "choices": [
+        { "label": "A", "text": "T4 (nipple line)", "correct": true, "rationale": "Peritoneal traction and uterine exteriorization require a block to ~T4 to minimize visceral discomfort." },
+        { "label": "B", "text": "T10 (umbilicus)", "correct": false, "rationale": "T10 suffices for lower-limb or vaginal-delivery analgesia but is too low for cesarean visceral stimulation." },
+        { "label": "C", "text": "L1 (inguinal)", "correct": false, "rationale": "An L1 level is far too low and would leave the patient with substantial intraoperative pain." },
+        { "label": "D", "text": "C6 (thumb)", "correct": false, "rationale": "A block this high risks profound hypotension and respiratory/cardioaccelerator compromise and is unnecessary." }
+      ],
+      "correct_answer": "A",
+      "explanation": "Cesarean delivery involves peritoneal and uterine manipulation carried by sympathetic afferents up to roughly T4. A bilateral sensory block to T4 (nipple line) is the conventional target to prevent visceral pain from traction and exteriorization. A level much higher than T4 increases the risk of hypotension and high-spinal complications.",
+      "references": [
+        { "source": "Chestnut's Obstetric Anesthesia, 6th ed.", "note": "T4 target for cesarean spinal anesthesia" }
+      ]
+    },
+    {
+      "domain": 6,
+      "domain_name": "Regional Anesthesia & Pain Management",
+      "subtopic": "Neuraxial anesthesia and anticoagulation",
+      "difficulty": "hard",
+      "stem": "A patient on therapeutic enoxaparin (1 mg/kg twice daily) requests a spinal anesthetic. According to ASRA recommendations on regional anesthesia in the anticoagulated patient, what is the most appropriate management?",
+      "choices": [
+        { "label": "A", "text": "Delay neuraxial placement until at least 24 hours after the last therapeutic-dose enoxaparin", "correct": true, "rationale": "Therapeutic LMWH requires a 24-hour interval before neuraxial puncture to reduce the risk of spinal/epidural hematoma." },
+        { "label": "B", "text": "Proceed immediately because LMWH does not affect neuraxial bleeding risk", "correct": false, "rationale": "LMWH meaningfully increases the risk of epidural hematoma; timing precautions exist for that reason." },
+        { "label": "C", "text": "A 12-hour interval is sufficient for therapeutic-dose enoxaparin", "correct": false, "rationale": "12 hours applies to PROPHYLACTIC dosing; therapeutic dosing requires 24 hours." },
+        { "label": "D", "text": "Reverse the enoxaparin fully with protamine and proceed at once", "correct": false, "rationale": "Protamine only partially reverses LMWH and is not a substitute for the recommended time interval." }
+      ],
+      "correct_answer": "A",
+      "explanation": "ASRA guidance: prophylactic LMWH requires ~12 hours and therapeutic LMWH ~24 hours between the last dose and neuraxial placement; postprocedure dosing and catheter removal are also time-gated. The catastrophic complication being avoided is spinal/epidural hematoma. Protamine incompletely reverses LMWH and does not replace the interval.",
+      "references": [
+        { "source": "ASRA Evidence-Based Guidelines on Regional Anesthesia in the Patient Receiving Antithrombotic/Thrombolytic Therapy (4th ed.)", "note": "LMWH timing intervals" }
+      ]
+    }
+  ]
+}

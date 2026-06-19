@@ -147,3 +147,20 @@ A question may be published only if **all** are true:
 5. **Expose blueprint filters** in the app (study by domain/subtopic/difficulty) — this is the visible "more expansive" feature students compare on.
 
 Sources: NCCAA Certification Exam Handbook (nccaa.org); TrueLearn NCCAA CERT breakdown.
+
+---
+
+## 7. Authoring progress
+
+**Status vocabulary** (the `questions.status` column gates visibility):
+- `unreviewed` — the 3,514 legacy mass-generated items. Tagged to domains for filtering, but does **not** meet the §4 quality bar. Retire or rewrite.
+- `sme_review` — authored to the §4 bar and cited, but awaiting credentialed CAA/anesthesiologist sign-off. Not yet `published`.
+- `published` — SME-approved (sets `reviewed_by`). Only these should ultimately be shown to paying students.
+
+**Batch 01** (`seeds/authored_batch_01.json`, 15 items, `status='sme_review'`): a quality-bar reference set spanning all six domains, ingested via `seeds/ingest_authored.mjs`. Covers NPO/ASA class (D1), oxyhemoglobin curve / succinylcholine-hyperkalemia (D2), pulse-oximetry methemoglobinemia / CO2 absorbent (D3), pyloric stenosis / preeclampsia-magnesium / MH / aortic stenosis (D4), sugammadex / remifentanil CSHT / local-anesthetic dosing (D5), and cesarean spinal level / ASRA LMWH timing (D6).
+
+**Batch 02** (`seeds/authored_batch_02.json`, 15 items, `status='sme_review'`): focused on **Subspecialty Care (D4)** — the 31% blueprint weight, authored first per §6. Covers VAE / acute ICP (neuro), one-lung ventilation hypoxemia (thoracic), pericardial tamponade (cardiac), uterine atony / PDPH (OB), laryngospasm / emergence delirium (peds), CO poisoning / citrate hypocalcemia (trauma), geriatric MAC, Apfel PONV (ambulatory), airway fire (ENT), oculocardiac reflex (ophthalmic), and pheochromocytoma alpha-before-beta (endocrine).
+
+**Authored so far:** 30 items (`sme_review`). Serving gate is wired: set `SERVE_PUBLISHED_ONLY=true` on the server to show only `status='published'` content (default off while authoring).
+
+**Next steps:** SME review of Batches 01-02 → promote approved items to `published` + set `reviewed_by`; continue authoring blueprint-weighted batches (more Subspecialty Care, then Physiology and Pharmacology). Once a meaningful published set exists, flip `SERVE_PUBLISHED_ONLY=true` and retire the `unreviewed` filler.
