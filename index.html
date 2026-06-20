@@ -271,6 +271,7 @@
                 <button class="btn ghost" type="button" onclick="MACPrep.redoMissed()">Redo my missed questions</button>
                 <button class="btn ghost" type="button" onclick="MACPrep.startFlagged()">Review my flagged questions</button>
                 <button class="btn ghost" type="button" id="confident-miss-btn" onclick="MACPrep.reviewConfidentMisses()" style="display:none;">Review my confident misses</button>
+                <button class="btn ghost" type="button" id="due-review-btn" onclick="MACPrep.reviewDue()" style="display:none;">Review due</button>
             </div>
         </div>
 
@@ -367,6 +368,7 @@
             </details>
         </div>
 
+        <div class="card hidden" id="session-breakdown"></div>
         <div class="card hidden" id="session-review"></div>
     </div>
 

@@ -894,6 +894,19 @@ app.get('/api/user/profile', async (req, res) => {
             days_to_exam = Math.ceil((new Date(profile.target_exam_date) - today) / 86400000);
         }
 
+        // Questions answered today (for the daily-goal indicator).
+        const todayKey = dayKey(today);
+        const answered_today = (progress || []).filter((r) => dayKey(r.created_at) === todayKey).length;
+
+        // Spaced review (v1): missed questions whose most recent attempt was >= 1 day
+        // ago, so they resurface after a gap rather than only on demand.
+        const lastAttempt = {};
+        (progress || []).forEach((r) => {
+            const t = new Date(r.created_at).getTime();
+            if (!lastAttempt[r.question_id] || t > lastAttempt[r.question_id]) lastAttempt[r.question_id] = t;
+        });
+        const due_ids = missed_ids.filter((qid) => (today.getTime() - (lastAttempt[qid] || 0)) >= 86400000);
+
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
@@ -913,8 +926,10 @@ app.get('/api/user/profile', async (req, res) => {
                 trend,
                 readiness,
                 days_to_exam,
+                answered_today,
                 missed_ids,
                 confident_missed_ids,
+                due_ids,
                 flagged_ids,
                 answered_ids: Array.from(answeredIds),
             },

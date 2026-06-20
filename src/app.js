@@ -244,6 +244,19 @@
         const planLine = (exam != null && exam > 0 && bank > 0)
             ? `<div class="mono" style="font-size:12px;color:#cbd5e1;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
             : '';
+        const answeredToday = p.answered_today || 0;
+        let goalLine = '';
+        if (exam != null && exam > 0 && bank > 0) {
+            const target = Math.ceil((bank * 2) / exam);
+            const met = answeredToday >= target;
+            const pctDone = Math.min(100, Math.round((answeredToday / target) * 100));
+            goalLine = `<div style="margin-bottom:14px;">
+                <div class="mono" style="font-size:12px;color:#cbd5e1;margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '🔥 goal met!' : 'questions'}</div>
+                <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : '#FBBF24'};"></span></div>
+            </div>`;
+        } else if (answeredToday > 0) {
+            goalLine = `<div class="mono" style="font-size:12px;color:#cbd5e1;margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
+        }
         const examLine = exam != null
             ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
             : `<div class="stat"><div class="n">—</div><div class="l">Set exam date in profile</div></div>`;
@@ -254,6 +267,7 @@
                 ${examLine}
             </div>
             ${planLine}
+            ${goalLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
             <div style="height:46px;">${spark}</div>`;
     }
@@ -319,6 +333,8 @@
         renderSpecialtyPerformance();
         const cmBtn = $('confident-miss-btn');
         if (cmBtn) cmBtn.style.display = ((p.confident_missed_ids || []).length) ? '' : 'none';
+        const dueBtn = $('due-review-btn');
+        if (dueBtn) { const dueN = (p.due_ids || []).length; dueBtn.style.display = dueN ? '' : 'none'; dueBtn.textContent = `Review due (${dueN})`; }
 
         // Count chips (preserve the user's prior selection across re-renders)
         const chips = $('count-chips');
@@ -347,22 +363,28 @@
     function renderSpecialtyPerformance() {
         const el = $('specialty-perf');
         if (!el) return;
-        const rows = (state.profile && state.profile.by_specialty) || [];
-        if (!rows.length) {
-            el.innerHTML = '<h3>Performance by specialty</h3><div class="mono" style="font-size:13px;color:var(--muted);">Answer some questions to see your accuracy broken down by specialty.</div>';
+        const cov = (state.profile && state.profile.coverage) || [];
+        if (!cov.length) {
+            el.innerHTML = '<h3>By specialty</h3><div class="mono" style="font-size:13px;color:var(--muted);">Start practicing to see your coverage and accuracy by specialty.</div>';
             return;
         }
-        const bars = rows.map((r) => {
-            const color = r.accuracy >= 75 ? 'var(--accent)' : r.accuracy >= 50 ? '#FBBF24' : '#F87171';
+        const accMap = {};
+        ((state.profile && state.profile.by_specialty) || []).forEach((r) => { accMap[r.category] = r; });
+        const rows = cov.slice().sort((a, b) => (a.answered / (a.total || 1)) - (b.answered / (b.total || 1)) || b.total - a.total);
+        const bars = rows.map((c) => {
+            const fracPct = c.total ? Math.round((c.answered / c.total) * 100) : 0;
+            const acc = accMap[c.category];
+            const accColor = acc ? (acc.accuracy >= 75 ? 'var(--accent)' : acc.accuracy >= 50 ? '#FBBF24' : '#F87171') : 'var(--muted)';
+            const accStr = acc ? `${acc.accuracy}% acc` : 'not started';
             return `<div style="margin-bottom:12px;">
                 <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                    <span>${r.category}</span>
-                    <span class="mono" style="color:${color};">${r.accuracy}% <span style="color:var(--muted);">(${r.correct}/${r.attempts})</span></span>
+                    <span>${c.category}</span>
+                    <span class="mono" style="color:var(--muted);">seen ${c.answered}/${c.total} · <span style="color:${accColor};">${accStr}</span></span>
                 </div>
-                <div class="progress-bar"><span style="width:${r.accuracy}%;background:${color};"></span></div>
+                <div class="progress-bar"><span style="width:${fracPct}%;background:var(--accent);"></span></div>
             </div>`;
         }).join('');
-        el.innerHTML = `<h3>Performance by specialty</h3>${bars}`;
+        el.innerHTML = `<h3>By specialty — coverage &amp; accuracy</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">Least-covered first — the bar shows how much of each specialty you've seen.</p>${bars}`;
     }
 
     function selectedCount() {
@@ -437,7 +459,7 @@
         state.session = saved;
         go('quiz');
         renderQuestion();
-        if (saved.mode === 'exam') { if ((saved.timeLeft || 0) > 0) startExamTimer(); else submitExam(); }
+        if (saved.mode === 'exam') { if ((saved.timeLeft || 0) > 0) startExamTimer(); else submitExam(true); }
     }
 
     // ---- exam timer -------------------------------------------------------
@@ -463,7 +485,7 @@
             ss.timeLeft = (ss.timeLeft || 0) - 1;
             renderExamTimer();
             if (ss.timeLeft % 5 === 0) saveSession();
-            if (ss.timeLeft <= 0) { stopExamTimer(); toast("Time's up — submitting your exam.", 'ok'); submitExam(); }
+            if (ss.timeLeft <= 0) { stopExamTimer(); toast("Time's up — submitting your exam.", 'ok'); submitExam(true); }
         }, 1000);
     }
 
@@ -693,6 +715,7 @@
             $('confidence-row') && ($('confidence-row').style.display = 'none');
             (s.log = s.log || []).push({
                 meta: [currentQ.category || currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
+                category: currentQ.category || currentQ.domain_name || 'General',
                 stem: currentQ.stem || '',
                 correct: !!data.correct,
                 correctLetter: String.fromCharCode(65 + (data.correctIndex || 0)),
@@ -747,13 +770,14 @@
         }
     }
 
-    async function submitExam() {
+    async function submitExam(auto) {
         const s = state.session; if (!s || s.mode !== 'exam' || s.complete || s.submitting) return;
-        s.submitting = true;
-        stopExamTimer();
         const answeredIdx = s.pool.map((q, i) => i).filter((i) => s.answers[i] && s.answers[i].selectedIndex != null);
         const unanswered = s.pool.length - answeredIdx.length;
-        if (unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
+        // Only confirm on a manual submit; an auto-submit (time's up) just submits.
+        if (!auto && unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
+        s.submitting = true;
+        stopExamTimer();
         setLoading(true);
         let correct = 0, failed = 0;
         try {
@@ -770,7 +794,7 @@
         s.complete = true; ls('macprep_session', null);
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
-            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: q.category || q.domain_name || 'General', stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
         });
         track('session_complete', { mode: 'exam', size: s.pool.length });
         try { await loadProfile(); } catch (e) {}
@@ -788,6 +812,7 @@
         }
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
+        renderSessionBreakdown(s.log || []);
         renderSessionReview(s.log || []);
         const next = $('advance-vignette-trigger');
         next.textContent = 'Back to Dashboard'; next.className = 'btn'; next.style.visibility = 'visible';
@@ -816,6 +841,7 @@
         $('question-stem').innerHTML = `You answered <strong>${s.answered}</strong> question${s.answered === 1 ? '' : 's'} with <strong>${pct}%</strong> accuracy (${s.correct}/${s.answered} correct).`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
+        renderSessionBreakdown(s.log || []);
         renderSessionReview(s.log || []);
         const btn = $('advance-vignette-trigger');
         btn.textContent = 'Back to Dashboard';
@@ -834,7 +860,10 @@
         btn.onclick = advance;
     }
 
-    function clearSessionReview() { const el = $('session-review'); if (el) { el.innerHTML = ''; el.classList.add('hidden'); } }
+    function clearSessionReview() {
+        const el = $('session-review'); if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
+        const b = $('session-breakdown'); if (b) { b.innerHTML = ''; b.classList.add('hidden'); }
+    }
 
     function renderSessionReview(log) {
         const el = $('session-review');
@@ -853,6 +882,36 @@
         el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session, with the correct answer and explanation.</p>${rows}`;
         el.classList.remove('hidden');
     }
+
+    // Post-session action plan: per-specialty score + a one-tap drill of the weakest.
+    function renderSessionBreakdown(log) {
+        const el = $('session-breakdown'); if (!el) return;
+        if (!log || !log.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const by = {};
+        log.forEach((r) => { const c = r.category || 'General'; (by[c] = by[c] || { c: 0, t: 0 }); by[c].t++; if (r.correct) by[c].c++; });
+        const rows = Object.entries(by).map(([cat, v]) => ({ cat, correct: v.c, total: v.t, acc: Math.round((v.c / v.t) * 100) }))
+            .sort((a, b) => a.acc - b.acc || b.total - a.total);
+        const chips = rows.map((r) => {
+            const color = r.acc >= 75 ? 'var(--accent)' : r.acc >= 50 ? '#FBBF24' : '#F87171';
+            return `<span class="mono" style="display:inline-block;margin:0 12px 8px 0;font-size:13px;"><span style="color:${color};">${r.cat}</span> <span style="color:var(--muted);">${r.correct}/${r.total}</span></span>`;
+        }).join('');
+        const weakest = rows[0];
+        const cta = (weakest && weakest.acc < 100 && rows.length > 1)
+            ? `<button class="btn" type="button" onclick="MACPrep.drillSpecialty('${String(weakest.cat).replace(/'/g, "\\'")}')" style="margin-top:6px;">Drill ${weakest.cat} →</button>`
+            : '';
+        el.innerHTML = `<h2 style="margin:0 0 8px;">How you did by specialty</h2><div style="margin-bottom:6px;">${chips}</div>${cta}`;
+        el.classList.remove('hidden');
+    }
+
+    function drillSpecialty(cat) {
+        go('dashboard');
+        const sel = $('domain-select'); if (sel) sel.value = cat;
+        const diff = $('difficulty-select'); if (diff) diff.value = 'all';
+        updateSessionHint();
+        startSession();
+    }
+
+    function reviewDue() { startFromIds((state.profile && state.profile.due_ids) || [], 'due'); }
 
     function showPaywall(limit) {
         const s = state.session;
@@ -1201,6 +1260,7 @@
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
+        drillSpecialty, reviewDue,
     };
 
     document.addEventListener('keydown', handleQuizKey);
