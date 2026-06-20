@@ -626,17 +626,18 @@
         const unanswered = s.pool.length - answeredIdx.length;
         if (unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
         setLoading(true);
-        let correct = 0;
+        let correct = 0, failed = 0;
         try {
             for (const i of answeredIdx) {
                 const q = s.pool[i]; const sel = s.answers[i].selectedIndex;
                 try {
                     const { resp, data } = await apiJSON('/api/grade', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, choiceIndex: sel }) });
                     if (resp.ok) { s.answers[i].graded = data; if (data.correct) correct++; }
-                } catch (e) { /* skip */ }
+                    else { failed++; }
+                } catch (e) { failed++; }
             }
         } finally { setLoading(false); }
-        s.answered = answeredIdx.length; s.correct = correct;
+        s.answered = answeredIdx.length - failed; s.correct = correct;
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
             return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
@@ -648,7 +649,8 @@
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         $('question-meta').textContent = 'EXAM COMPLETE';
-        $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).`;
+        const failWarn = failed ? `<div style="margin-top:12px;color:#FBBF24;font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
+        $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         renderSessionReview(s.log || []);

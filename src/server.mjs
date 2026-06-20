@@ -48,7 +48,11 @@ function rateLimit({ windowMs, max }) {
     const hits = new Map();
     return (req, res, next) => {
         const now = Date.now();
-        const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+        // Cloudflare fronts Render and sets CF-Connecting-IP to the true client IP
+        // (overwriting any client-supplied value), so it can't be spoofed the way a
+        // raw X-Forwarded-For prepend can. Fall back to the proxy-resolved req.ip —
+        // never the raw header.
+        const ip = req.headers['cf-connecting-ip'] || req.ip || 'unknown';
         const arr = (hits.get(ip) || []).filter((t) => now - t < windowMs);
         if (arr.length >= max) {
             res.setHeader('Retry-After', Math.ceil(windowMs / 1000));
@@ -188,7 +192,18 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                     data = r.data;
                 }
                 if (!data || data.length === 0) {
-                    console.warn(`PAID-BUT-NO-PROFILE: user_id=${userId} email=${customerEmail} paid but no ${PROFILE_TABLE} row matched. Reconcile manually.`);
+                    // Auto-reconcile: nothing matched, but we have the verified buyer id
+                    // from checkout — upsert their profile so a paid user is never left
+                    // without access.
+                    if (userId) {
+                        const up = { user_id: userId, ...upgrade };
+                        if (customerEmail) up.email = customerEmail;
+                        const r = await supabase.from(PROFILE_TABLE).upsert(up, { onConflict: 'user_id' }).select('user_id');
+                        if (r.error) throw r.error;
+                        console.log(`Reconciled + upgraded ${userId} to premium (no prior profile row).`);
+                    } else {
+                        console.warn(`PAID-BUT-NO-PROFILE: email=${customerEmail} paid but no ${PROFILE_TABLE} row and no user_id to reconcile.`);
+                    }
                 } else {
                     console.log(`Upgraded ${data[0].user_id} to premium.`);
                 }
@@ -691,7 +706,7 @@ app.post('/api/grade', async (req, res) => {
         const confidence = ['low', 'medium', 'high'].includes(req.body?.confidence) ? req.body.confidence : null;
 
         // Record the attempt for progress + free-tier accounting (best-effort).
-        await supabase.from(PROGRESS_TABLE).insert({
+        const { error: pErr } = await supabase.from(PROGRESS_TABLE).insert({
             user_id: user.id,
             question_id: String(questionId),
             specialty: q.specialty || null,
@@ -699,7 +714,15 @@ app.post('/api/grade', async (req, res) => {
             selected_label: String.fromCharCode(65 + selIndex),
             is_correct: isCorrect,
             confidence,
-        }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });
+        });
+        if (pErr) {
+            // The DB trigger rejects free-tier users who slip past the app-level check
+            // under a concurrent-request race — treat that as the paywall.
+            if (/free_tier_limit/i.test(pErr.message || '')) {
+                return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
+            }
+            console.warn(`Progress insert warning: ${pErr.message}`);
+        }
 
         // Peer stats: % of all attempts on this question that were correct.
         let peerPct = null;
@@ -959,8 +982,8 @@ app.post('/api/create-checkout-session', async (req, res) => {
         if (!priceId) return res.status(500).json({ error: 'Price not configured.' });
 
         const user = await getUserFromToken(req);
-        const email = (user?.email || req.body?.email || '').trim();
-        if (!email) return res.status(400).json({ error: 'Missing user email.' });
+        if (!user) return res.status(401).json({ error: 'Please sign in before upgrading.' });
+        const email = (user.email || '').trim();
 
         // Build an absolute base URL. Prefer the Origin header, then a configured
         // PUBLIC_BASE_URL, then the Host header — so checkout works even when the
@@ -972,9 +995,10 @@ app.post('/api/create-checkout-session', async (req, res) => {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
-            // Attach the authenticated user so the webhook can match the payment by
-            // id, not just email (robust if the buyer's Stripe email differs).
-            ...(user ? { client_reference_id: user.id, metadata: { user_id: user.id } } : {}),
+            // Always attach the authenticated buyer so the webhook matches the payment
+            // by verified id — never by a client-supplied email.
+            client_reference_id: user.id,
+            metadata: { user_id: user.id },
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
             // Let buyers enter Stripe promotion codes (founding-member, student,
