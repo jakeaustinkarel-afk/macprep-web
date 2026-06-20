@@ -312,9 +312,15 @@
                 <input type="number" id="custom-count" min="1" placeholder="e.g. 40">
             </div>
 
-            <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;color:#cbd5e1;font-size:13px;margin-bottom:18px;cursor:pointer;font-family:inherit;">
-                <input type="checkbox" id="unseen-only" style="width:auto;"> Only show questions I haven't answered yet
-            </label>
+            <div class="form-group" style="max-width:340px;">
+                <label>Question pool</label>
+                <select id="pool-mode">
+                    <option value="all">All questions</option>
+                    <option value="unused">Unused — haven't answered yet</option>
+                    <option value="incorrect">Incorrect — questions I missed</option>
+                    <option value="flagged">Flagged — marked for review</option>
+                </select>
+            </div>
 
             <button class="btn" id="start-session-btn" onclick="MACPrep.startSession()">Start Session</button>
             <div id="session-hint" class="mono" style="font-size:12px;color:var(--muted);margin-top:12px;"></div>

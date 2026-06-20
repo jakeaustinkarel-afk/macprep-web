@@ -294,6 +294,7 @@
     function startSample() {
         const sel = $('domain-select'); if (sel) sel.value = 'all';
         const diff = $('difficulty-select'); if (diff) diff.value = 'all';
+        const pm = $('pool-mode'); if (pm) pm.value = 'all';
         const chips = $('count-chips'); if (chips) { chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); }
         $('custom-count').value = '5';
         startSession();
@@ -420,8 +421,10 @@
             ? state.questions.slice()
             : state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
         if (diff && diff !== 'all') pool = pool.filter((q) => (q.difficulty || '').toLowerCase() === diff);
-        const unseen = $('unseen-only') && $('unseen-only').checked;
-        if (unseen) { const seen = answeredIdSet(); pool = pool.filter((q) => !seen.has(q.id)); }
+        const mode = $('pool-mode') ? $('pool-mode').value : 'all';
+        if (mode === 'unused') { const seen = answeredIdSet(); pool = pool.filter((q) => !seen.has(q.id)); }
+        else if (mode === 'incorrect') { const m = new Set((state.profile && state.profile.missed_ids) || []); pool = pool.filter((q) => m.has(q.id)); }
+        else if (mode === 'flagged') { const f = new Set((state.profile && state.profile.flagged_ids) || []); pool = pool.filter((q) => f.has(q.id)); }
         return pool;
     }
 
@@ -708,7 +711,9 @@
         const graded = ans && ans.graded;
         s.locked = !!graded; // tutor: locked once graded
 
-        $('question-meta').textContent = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        const metaText = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        const reviewedBadge = q.reviewed ? ' <span style="text-transform:none;letter-spacing:0;color:var(--accent);">· ✓ Reviewed by a practicing CAA</span>' : '';
+        $('question-meta').innerHTML = escapeHtml(metaText) + reviewedBadge;
         const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
         $('question-stem').innerHTML = renderRich(q.stem) + img;
         const container = $('choices-container');
@@ -976,6 +981,7 @@
         go('dashboard');
         const sel = $('domain-select'); if (sel) sel.value = cat;
         const diff = $('difficulty-select'); if (diff) diff.value = 'all';
+        const pm = $('pool-mode'); if (pm) pm.value = 'all';
         updateSessionHint();
         startSession();
     }
@@ -1348,7 +1354,7 @@
         state.token = getToken();
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
         $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);
-        $('unseen-only') && $('unseen-only').addEventListener('change', updateSessionHint);
+        $('pool-mode') && $('pool-mode').addEventListener('change', updateSessionHint);
         $('custom-count') && $('custom-count').addEventListener('input', () => {
             if (parseInt($('custom-count').value, 10) > 0) $('count-chips').querySelectorAll('.chip.active').forEach((c) => c.classList.remove('active'));
             updateSessionHint();

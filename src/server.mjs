@@ -655,7 +655,7 @@ app.get('/api/questions', async (req, res) => {
         for (let from = 0; ; from += PAGE) {
             let query = supabase
                 .from('questions')
-                .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry')
+                .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
                 .order('id', { ascending: true })
                 .range(from, from + PAGE - 1);
             query = applyServedFilter(query);
@@ -667,12 +667,16 @@ app.get('/api/questions', async (req, res) => {
 
         // choices may be a JSON string or native array. Normalize, then strip any
         // correctness flags so answers never reach the client.
-        const safe = (data || []).map((q) => ({
-            ...q,
-            choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
-                ? { text: c.text ?? c.value ?? '' }
-                : { text: c })),
-        }));
+        const safe = (data || []).map((q) => {
+            const { status, ...rest } = q;
+            return {
+                ...rest,
+                reviewed: status === 'published', // CAA-signed-off; surfaced as a trust badge
+                choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
+                    ? { text: c.text ?? c.value ?? '' }
+                    : { text: c })),
+            };
+        });
 
         return res.json({ questions: safe });
     } catch (err) {
