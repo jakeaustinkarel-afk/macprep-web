@@ -160,6 +160,7 @@
     }
 
     function signOut() {
+        stopExamTimer();
         setToken(null); setRefresh(null);
         ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
         state.token = null; state.profile = null; state.questions = []; state.session = null;
@@ -239,6 +240,10 @@
         const spark = trend.length
             ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? '#FBBF24' : '#F87171'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
             : '<span class="mono" style="color:var(--muted);font-size:12px;">Answer questions to see your trend.</span>';
+        const bank = (state.questions || []).length;
+        const planLine = (exam != null && exam > 0 && bank > 0)
+            ? `<div class="mono" style="font-size:12px;color:#cbd5e1;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
+            : '';
         const examLine = exam != null
             ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
             : `<div class="stat"><div class="n">—</div><div class="l">Set exam date in profile</div></div>`;
@@ -248,6 +253,7 @@
                 <div class="stat"><div class="n">${streak}${streak ? ' 🔥' : ''}</div><div class="l">Day streak</div></div>
                 ${examLine}
             </div>
+            ${planLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
             <div style="height:46px;">${spark}</div>`;
     }
@@ -431,14 +437,44 @@
         state.session = saved;
         go('quiz');
         renderQuestion();
+        if (saved.mode === 'exam') { if ((saved.timeLeft || 0) > 0) startExamTimer(); else submitExam(); }
+    }
+
+    // ---- exam timer -------------------------------------------------------
+    const EXAM_SECONDS_PER_Q = 75; // exam-mode countdown budget per question
+    let examTimerId = null;
+    function stopExamTimer() { if (examTimerId) { clearInterval(examTimerId); examTimerId = null; } }
+    function fmtClock(sec) { sec = Math.max(0, sec | 0); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+    function renderExamTimer() {
+        const el = $('exam-timer'); if (!el) return;
+        const s = state.session;
+        if (!s || s.mode !== 'exam' || s.complete || s.timeLeft == null) { el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.textContent = '⏱ ' + fmtClock(s.timeLeft);
+        el.style.color = s.timeLeft <= 60 ? '#F87171' : 'var(--muted)';
+    }
+    function startExamTimer() {
+        stopExamTimer();
+        const s = state.session; if (!s || s.mode !== 'exam' || s.complete) return;
+        renderExamTimer();
+        examTimerId = setInterval(() => {
+            const ss = state.session;
+            if (!ss || ss.mode !== 'exam' || ss.complete) { stopExamTimer(); return; }
+            ss.timeLeft = (ss.timeLeft || 0) - 1;
+            renderExamTimer();
+            if (ss.timeLeft % 5 === 0) saveSession();
+            if (ss.timeLeft <= 0) { stopExamTimer(); toast("Time's up — submitting your exam.", 'ok'); submitExam(); }
+        }, 1000);
     }
 
     function beginSession(pool, mode) {
         mode = mode || ($('mode-select') ? $('mode-select').value : 'tutor');
         state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [], mode, answers: {} };
+        if (mode === 'exam') state.session.timeLeft = pool.length * EXAM_SECONDS_PER_Q;
         track('session_start', { size: pool.length, mode });
         go('quiz');
         renderQuestion();
+        if (mode === 'exam') startExamTimer();
     }
 
     function startFromIds(ids, label) {
@@ -619,6 +655,7 @@
         renderPalette();
         renderQuizNav();
         updateQuizProgress();
+        renderExamTimer();
         saveSession();
     }
 
@@ -711,7 +748,9 @@
     }
 
     async function submitExam() {
-        const s = state.session; if (!s || s.mode !== 'exam') return;
+        const s = state.session; if (!s || s.mode !== 'exam' || s.complete || s.submitting) return;
+        s.submitting = true;
+        stopExamTimer();
         const answeredIdx = s.pool.map((q, i) => i).filter((i) => s.answers[i] && s.answers[i].selectedIndex != null);
         const unanswered = s.pool.length - answeredIdx.length;
         if (unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
@@ -770,7 +809,7 @@
 
     function finishSession() {
         const s = state.session;
-        s.complete = true; ls('macprep_session', null);
+        s.complete = true; ls('macprep_session', null); stopExamTimer();
         track('session_complete', { mode: 'tutor', answered: s.answered });
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         $('question-meta').textContent = 'SESSION COMPLETE';

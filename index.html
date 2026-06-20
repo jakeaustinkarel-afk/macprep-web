@@ -323,7 +323,10 @@
     <div class="wrap hidden" id="quiz-view">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
-            <div class="mono" style="color:var(--accent);font-size:12px;">PROGRESS</div>
+            <div style="display:flex;align-items:center;gap:14px;">
+                <span id="exam-timer" class="mono" style="display:none;font-size:14px;font-weight:bold;color:var(--muted);"></span>
+                <div class="mono" style="color:var(--accent);font-size:12px;">PROGRESS</div>
+            </div>
         </div>
         <div class="mono" id="session-progress-counter" style="color:var(--muted);margin-bottom:6px;">QUESTION — / —</div>
         <div class="progress-bar" style="margin-bottom:14px;"><span id="quiz-progress-bar" style="width:0%"></span></div>
