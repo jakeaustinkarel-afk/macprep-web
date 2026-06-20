@@ -1,0 +1,1181 @@
+{
+  "_meta": {
+    "batch": "authored_batch_04",
+    "source": "multi-agent workflow wf_403445de-3aa",
+    "authored": "2026-06-19",
+    "status": "sme_review",
+    "note": "Journal-sourced; each correct answer verified against a publicly accessible source by an adversarial WebFetch verifier."
+  },
+  "questions": [
+    {
+      "subtopic": "pre-eclampsia/eclampsia",
+      "difficulty": "easy",
+      "stem": "A 29-year-old woman at 38 weeks gestation presents with a blood pressure of 168/112 mm Hg, 3+ proteinuria, headache, and visual scotomata. While being evaluated, she has a generalized tonic-clonic seizure lasting 90 seconds. The obstetric team requests that you initiate seizure prophylaxis and treatment. Which of the following is the most appropriate first-line agent to prevent recurrent seizures in this patient?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Magnesium sulfate",
+          "correct": true,
+          "rationale": "Correct. Magnesium sulfate is the preferred agent for preventing and controlling seizures in eclampsia and preeclampsia with severe features. A typical regimen is a loading dose (e.g., 4-6 g IV over 15-20 minutes) followed by a 2 g/hour maintenance infusion. It is superior to phenytoin and diazepam for reducing recurrent eclamptic seizures."
+        },
+        {
+          "label": "B",
+          "text": "Lorazepam",
+          "correct": false,
+          "rationale": "Incorrect. Benzodiazepines may abort an active seizure acutely but are not the first-line agent for eclampsia prophylaxis or recurrence prevention. Magnesium sulfate outperforms diazepam in reducing recurrent seizures, and benzodiazepines add maternal/neonatal respiratory and CNS depression."
+        },
+        {
+          "label": "C",
+          "text": "Phenytoin",
+          "correct": false,
+          "rationale": "Incorrect. Phenytoin is inferior to magnesium sulfate for preventing recurrent eclamptic seizures and is reserved for situations where magnesium is contraindicated (e.g., myasthenia gravis) or unavailable."
+        },
+        {
+          "label": "D",
+          "text": "Labetalol",
+          "correct": false,
+          "rationale": "Incorrect. Labetalol treats the severe-range hypertension associated with preeclampsia but has no anticonvulsant effect and does not prevent eclamptic seizures. It complements, but does not replace, magnesium sulfate."
+        },
+        {
+          "label": "E",
+          "text": "Levetiracetam",
+          "correct": false,
+          "rationale": "Incorrect. Levetiracetam is used for many seizure disorders but is not the evidence-based first-line agent for eclampsia. Magnesium sulfate has the strongest evidence for preventing eclamptic seizures and is the standard of care."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Eclampsia is the onset of seizures in a patient with preeclampsia and no other cause. Magnesium sulfate is the first-line agent for both prevention and treatment of eclamptic seizures and is superior to phenytoin and diazepam. The CAA managing such a patient must also monitor for magnesium toxicity: loss of deep tendon reflexes, respiratory depression, and decreased urine output are warning signs, and the antidote is IV calcium gluconate. Antihypertensives such as labetalol or hydralazine are given concurrently to control severe-range blood pressure but do not prevent seizures.",
+      "source": {
+        "title": "Eclampsia - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK554392/"
+      },
+      "category": "Obstetric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "All criteria met. (1) The cited URL https://www.ncbi.nlm.nih.gov/books/NBK554392/ (Eclampsia - StatPearls) loads and is publicly accessible. (2) The source explicitly supports the stated correct answer: \"Magnesium sulfate is preferred over other antiseizure treatments for eclamptic seizure prevention\" (loading dose ~6g IV over 15-20 min, then 2g/hr maintenance). (3) The medicine is correct and unambiguous: magnesium sulfate is the universally accepted first-line agent for prevention AND treatment of eclamptic seizures, established by the Collaborative Eclampsia Trial and reaffirmed by ACOG. The clinical vignette (severe-range BP 168/112, 3+ proteinuria, headache, scotomata, generalized tonic-clonic seizure at 38 weeks) is a classic, unambiguous eclampsia presentation. (4) The distractor rationales are accurate: B. Lorazepam is reserved for refractory/recurrent seizures only after magnesium fails (source notes lorazepam 4mg IV if seizures persist >20 min or >2 seizures despite magnesium), not first-line; C. Phenytoin is inferior to magnesium per the trial evidence and reserved for magnesium contraindications; D. Labetalol treats the severe hypertension but does NOT prevent or treat seizures, so it does not answer the seizure-prophylaxis question; E. Levetiracetam is not a standard agent in eclampsia management. Answer A is correct and the question is publishable."
+      }
+    },
+    {
+      "subtopic": "pre-eclampsia/eclampsia",
+      "difficulty": "medium",
+      "stem": "A 33-year-old woman with eclampsia is receiving a magnesium sulfate infusion at 2 g/hour after a loading dose. Two hours later she becomes drowsy and her speech is slurred. On examination her patellar reflexes are absent, respiratory rate is 9 breaths/min, and urine output has fallen to 15 mL over the past hour. After stopping the infusion and supporting ventilation, which of the following is the most appropriate next pharmacologic intervention?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Administer IV calcium gluconate",
+          "correct": true,
+          "rationale": "Correct. The clinical picture—loss of deep tendon reflexes, respiratory depression, and oliguria—is classic magnesium toxicity. After stopping the infusion, the antidote is IV calcium (e.g., 10 mL of 10% calcium gluconate over ~3 minutes), which antagonizes magnesium at the neuromuscular junction."
+        },
+        {
+          "label": "B",
+          "text": "Administer IV naloxone",
+          "correct": false,
+          "rationale": "Incorrect. Naloxone reverses opioid-induced respiratory depression. This patient's respiratory depression and areflexia are due to hypermagnesemia, not opioids, so naloxone would have no benefit."
+        },
+        {
+          "label": "C",
+          "text": "Administer IV flumazenil",
+          "correct": false,
+          "rationale": "Incorrect. Flumazenil reverses benzodiazepine effects. The areflexia, respiratory depression, and oliguria here are hallmarks of magnesium toxicity, not benzodiazepine overdose."
+        },
+        {
+          "label": "D",
+          "text": "Increase the magnesium infusion rate to control seizures",
+          "correct": false,
+          "rationale": "Incorrect and dangerous. The signs indicate magnesium toxicity from an already supratherapeutic level. Increasing the rate would worsen respiratory depression and risk cardiac arrest. The infusion must be stopped."
+        },
+        {
+          "label": "E",
+          "text": "Administer IV furosemide to increase magnesium excretion",
+          "correct": false,
+          "rationale": "Incorrect. While renal excretion clears magnesium, the immediate life-threatening problem is neuromuscular and respiratory depression, which requires the direct antagonist calcium. Diuresis is slow and does not address the acute toxicity; the patient is also oliguric."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Magnesium is renally cleared, so reduced urine output predisposes to accumulation. Toxicity progresses with rising serum levels: loss of deep tendon reflexes is an early warning sign, followed by respiratory depression and ultimately cardiac arrest. Management is to stop the infusion, support airway/breathing, and give IV calcium gluconate (or calcium chloride) as the antidote, which directly antagonizes magnesium at the neuromuscular junction. Monitoring reflexes, respiratory rate, and urine output during a magnesium infusion allows early detection before respiratory or cardiac compromise.",
+      "source": {
+        "title": "Eclampsia - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK554392/"
+      },
+      "category": "Obstetric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish OK.\n\n(1) URL loads and is publicly accessible: The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK554392/, \"Eclampsia - StatPearls - NCBI Bookshelf\") loads as a free, public NCBI Bookshelf page.\n\n(2) Content supports the stated correct answer (A): The source explicitly states that in patients with signs of magnesium toxicity (e.g., respiratory depression) or serum level >9.6 mg/dL, \"the magnesium sulfate infusion should be discontinued, and calcium gluconate 10% solution (10 mL IV) can be administered over 3 min as an antidote.\" It also lists the exact toxicity signs in the vignette: \"decreased urine output, absent deep tendon reflexes, and respiratory depression.\"\n\n(3) Medicine is correct and unambiguous: The vignette is a classic, unambiguous case of magnesium sulfate toxicity — CNS depression (drowsy/slurred speech), loss of patellar reflexes, respiratory depression (RR 9), and oliguria (15 mL/hr), which reduces renal magnesium clearance and drives accumulation. IV calcium gluconate is the established, immediate antidote after stopping the infusion and supporting ventilation. The stem correctly sequences the steps (stop infusion + ventilatory support already done; asks for next pharmacologic intervention).\n\n(4) Distractor rationales are accurate: B naloxone reverses opioids only — irrelevant to magnesium. C flumazenil reverses benzodiazepines only — irrelevant. D increasing the Mg rate would worsen toxicity and risk cardiorespiratory arrest — dangerously incorrect. E furosemide is not the standard antidote and is hazardous given falling urine output; calcium is the correct immediate intervention. Each distractor is clearly wrong for a discrete, defensible reason.\n\nAll four criteria are satisfied; the keyed answer matches the cited source."
+      }
+    },
+    {
+      "subtopic": "post-spinal hypotension",
+      "difficulty": "medium",
+      "stem": "A healthy 27-year-old woman undergoes elective cesarean delivery under spinal anesthesia with hyperbaric bupivacaine and fentanyl. Three minutes after the block, her blood pressure falls from 124/76 to 84/48 mm Hg and she reports nausea; the fetus is not yet delivered and the heart rate is 132 bpm. Left uterine displacement is in place and a fluid co-load is running. Which of the following vasopressors is the preferred first-line agent to treat her hypotension?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Phenylephrine",
+          "correct": true,
+          "rationale": "Correct. Phenylephrine, a pure alpha-1 agonist, has become the preferred vasopressor for preventing and treating spinal-induced hypotension during cesarean delivery. Compared with ephedrine, it is associated with better umbilical cord acid-base status (less fetal acidosis)."
+        },
+        {
+          "label": "B",
+          "text": "Ephedrine",
+          "correct": false,
+          "rationale": "Incorrect. Ephedrine was historically standard but has a higher transplacental transfer rate and is associated with more fetal acidosis; higher doses do not improve and may worsen neonatal acid-base status. It has been largely replaced by phenylephrine, though it retains a role when maternal bradycardia coexists with hypotension."
+        },
+        {
+          "label": "C",
+          "text": "Epinephrine",
+          "correct": false,
+          "rationale": "Incorrect. Epinephrine is reserved for severe hemodynamic collapse or cardiac arrest, not routine spinal-induced hypotension. Its potent beta effects and arrhythmogenicity make it inappropriate first-line for this otherwise stable patient."
+        },
+        {
+          "label": "D",
+          "text": "Dopamine",
+          "correct": false,
+          "rationale": "Incorrect. Dopamine is not used to treat routine spinal-induced hypotension during cesarean delivery; it is harder to titrate by bolus and has no advantage over phenylephrine for this rapid, transient sympathectomy-related hypotension."
+        },
+        {
+          "label": "E",
+          "text": "Vasopressin",
+          "correct": false,
+          "rationale": "Incorrect. Vasopressin has no established role in treating routine post-spinal hypotension in cesarean delivery. It is used in vasodilatory/refractory shock states, not for the predictable sympathectomy from neuraxial block."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Spinal anesthesia produces a sympathectomy that causes maternal hypotension in a large proportion of cesarean deliveries, which can reduce uteroplacental perfusion and cause nausea, vomiting, and fetal acidosis. Prevention and treatment combine left uterine displacement, IV fluid co-loading, and a vasopressor. Phenylephrine, a pure alpha-1 agonist, is the preferred first-line vasopressor because it restores blood pressure effectively and is associated with better fetal acid-base status than ephedrine, which crosses the placenta more readily and increases fetal metabolic acidosis. Norepinephrine is an increasingly studied alternative. Ephedrine remains useful when hypotension is accompanied by bradycardia.",
+      "source": {
+        "title": "Use of vasopressors to manage spinal anesthesia-induced hypotension during cesarean delivery - Anesthesia and Pain Medicine",
+        "url": "https://www.anesth-pain-med.org/journal/view.php?number=1252"
+      },
+      "category": "Obstetric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish OK. (1) Cited URL (https://www.anesth-pain-med.org/journal/view.php?number=1252) loads and is publicly accessible. (2) Title/topic match exactly: \"Use of vasopressors to manage spinal anesthesia-induced hypotension during cesarean delivery\" (Anesthesia and Pain Medicine, 2024). (3) Source explicitly supports keyed answer A: phenylephrine \"has become the preferred vasopressor for preventing and treating spinal hypotension, replacing ephedrine\" in the last decade — current standard of care. (4) Medicine is correct and clinically unambiguous within the given options: classic post-spinal hypotension scenario with LUD and fluid co-load already in place; maternal HR 132 (no bradycardia) makes phenylephrine's reflex-bradycardia effect acceptable/beneficial and favors it over ephedrine. (5) Distractors are accurate — ephedrine (B) is second-line with higher transplacental transfer and no improvement (sometimes worsening) of neonatal acidosis per the source; epinephrine (C, anaphylaxis/arrest), dopamine (D), and vasopressin (E, refractory vasoplegia) are not first-line for obstetric spinal hypotension. One caveat that does NOT change the answer: the article also highlights norepinephrine as an emerging preferred agent, but norepinephrine is not an answer option, so phenylephrine remains the correct best choice among the five listed."
+      }
+    },
+    {
+      "subtopic": "amniotic fluid embolism",
+      "difficulty": "hard",
+      "stem": "A 31-year-old woman in active labor suddenly develops dyspnea, agitation, and SpO2 of 78%, immediately followed by profound hypotension and loss of consciousness. Minutes later she begins bleeding heavily from her IV sites and surgical field, and laboratory studies show a falling fibrinogen, prolonged PT/PTT, and thrombocytopenia. She is afebrile. Which of the following best characterizes the diagnosis and initial management of this condition?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Amniotic fluid embolism; the diagnosis is clinical and management is supportive, including ABC resuscitation and aggressive correction of coagulopathy",
+          "correct": true,
+          "rationale": "Correct. The abrupt triad of hypoxia, cardiovascular collapse, and coagulopathy (DIC) during labor in an afebrile patient is classic amniotic fluid embolism. There is no confirmatory test; diagnosis is clinical and by exclusion. Management is supportive: high-quality CPR/airway-breathing-circulation support, vasopressors/inotropes, and aggressive blood-product resuscitation (e.g., 1:1:1 PRBC:platelets:FFP) plus tranexamic acid for the coagulopathy."
+        },
+        {
+          "label": "B",
+          "text": "Pulmonary thromboembolism; administer systemic thrombolysis immediately",
+          "correct": false,
+          "rationale": "Incorrect. While PE causes hypoxia and hypotension, it does not characteristically cause early, severe consumptive coagulopathy with bleeding. Giving thrombolytics to a patient already hemorrhaging from DIC would be catastrophic. The coagulopathy points strongly to AFE."
+        },
+        {
+          "label": "C",
+          "text": "Anaphylaxis; the absence of coagulopathy makes epinephrine the only required therapy",
+          "correct": false,
+          "rationale": "Incorrect. This patient clearly has coagulopathy (falling fibrinogen, prolonged PT/PTT, thrombocytopenia, bleeding), so the premise is false. Although epinephrine and supportive care are used, the DIC and clinical context define AFE, not isolated anaphylaxis."
+        },
+        {
+          "label": "D",
+          "text": "Eclampsia; the priority is an immediate magnesium sulfate bolus",
+          "correct": false,
+          "rationale": "Incorrect. There is no seizure or severe hypertension described, and eclampsia does not produce this sudden hypoxia-collapse-DIC pattern. Magnesium is not the treatment for this hemodynamic and coagulation catastrophe."
+        },
+        {
+          "label": "E",
+          "text": "Septic shock; a confirmatory blood culture must precede any resuscitation",
+          "correct": false,
+          "rationale": "Incorrect. The patient is afebrile and the onset is sudden and intrapartum, which is not typical of evolving sepsis. Furthermore, resuscitation must never wait for cultures. The hyperacute hypoxia-hypotension-coagulopathy sequence defines AFE."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Amniotic fluid embolism (AFE) is a rare, catastrophic obstetric emergency that classically presents intrapartum or immediately postpartum with the triad of sudden hypoxia, hypotension/cardiovascular collapse, and coagulopathy (DIC), in an afebrile patient. Society for Maternal-Fetal Medicine research criteria include sudden cardiorespiratory arrest or hypotension with hypoxia, DIC, onset during labor or within 30 minutes of delivery, and no fever or alternative explanation. No confirmatory laboratory test exists, so AFE is a clinical diagnosis of exclusion. Treatment is supportive and team-based: high-quality CPR and airway/breathing/circulation support, vasopressors and inotropes, aggressive transfusion to correct DIC (balanced 1:1:1 product ratio, tranexamic acid), management of right-ventricular failure, and resuscitative hysterotomy when indicated.",
+      "source": {
+        "title": "Amniotic Fluid Embolism - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK559107/"
+      },
+      "category": "Obstetric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — all four criteria met.\n\n(1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK559107/ resolves to the StatPearls \"Amniotic Fluid Embolism\" chapter on NCBI Bookshelf (free, public).\n\n(2) Content supports answer A: The source describes AFE as \"sudden cardiorespiratory collapse and disseminated intravascular coagulation\" with dyspnea, hypoxia, hypotension, altered mental status, and severe bleeding — matching the vignette exactly. It states \"AFE is fundamentally a clinical diagnosis, as no reliable, definitive test for AFE exists,\" and cites SMFM diagnostic criteria (sudden cardiorespiratory collapse, DIC/severe hemorrhage, onset during labor or placental delivery, AND absence of fever — the vignette specifies she is afebrile). Management is supportive ABC resuscitation plus aggressive coagulopathy correction (1:1:1 PRBC/platelets/FFP, tranexamic acid). This is exactly what option A states.\n\n(3) Medicine is correct and unambiguous: The vignette is a textbook AFE presentation in active labor — abrupt dyspnea/hypoxia (SpO2 78%), cardiovascular collapse, then consumptive coagulopathy (falling fibrinogen, prolonged PT/PTT, thrombocytopenia) with diffuse bleeding, afebrile. AFE is the single best answer.\n\n(4) Distractor rationales are accurate:\n- B (PE + thrombolysis): PE does not classically produce DIC/falling fibrinogen/diffuse bleeding; giving systemic thrombolytics to an actively hemorrhaging patient is contraindicated and dangerous — correctly wrong.\n- C (anaphylaxis): claims \"absence of coagulopathy,\" which directly contradicts the vignette's overt DIC — correctly wrong.\n- D (eclampsia): no seizure, hypertension, or proteinuria; presentation is collapse + DIC, not eclampsia — correctly wrong.\n- E (septic shock): patient is afebrile, and delaying resuscitation for a blood culture is never appropriate — correctly wrong.\n\nThe question is sound and publishable."
+      }
+    },
+    {
+      "subtopic": "Pyloric stenosis",
+      "difficulty": "medium",
+      "stem": "A 5-week-old, previously healthy boy is admitted with a 4-day history of progressive non-bilious projectile vomiting after feeds. He appears lethargic with a sunken anterior fontanelle and dry mucous membranes. An ultrasound confirms hypertrophic pyloric stenosis. Initial labs show: Na+ 132 mEq/L, K+ 3.0 mEq/L, Cl- 88 mEq/L, HCO3- 34 mEq/L, pH 7.52. The pediatric surgeon asks you to prepare the patient for the operating room. What is the most appropriate next step in management?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Proceed immediately to the operating room for emergent pyloromyotomy",
+          "correct": false,
+          "rationale": "Incorrect. Pyloric stenosis is a medical emergency but NOT a surgical emergency. Operating on a hypovolemic, hypokalemic, alkalotic infant increases the risk of arrhythmias, postoperative apnea (the alkalosis blunts central respiratory drive), and hemodynamic instability on induction. Surgery must wait until the patient is resuscitated."
+        },
+        {
+          "label": "B",
+          "text": "Administer intravenous isotonic crystalloid and correct the electrolyte and acid-base abnormalities before surgery",
+          "correct": true,
+          "rationale": "Correct. The infant has the classic hypochloremic, hypokalemic metabolic alkalosis of pyloric stenosis from loss of gastric HCl. StatPearls states medical treatment with rehydration and correction of electrolyte imbalances is necessary first, and only once the infant is rehydrated is surgery the next step. Correcting the deficit (volume, chloride, and potassium) reduces anesthetic risk and postoperative apnea."
+        },
+        {
+          "label": "C",
+          "text": "Begin a rapid potassium bolus over 15 minutes to correct the hypokalemia before induction",
+          "correct": false,
+          "rationale": "Incorrect. Although the patient is hypokalemic, rapid IV potassium boluses risk fatal arrhythmias. Potassium is replaced gradually within maintenance/resuscitation fluids only after adequate urine output is established, not as a rapid bolus, and this does not address the broader resuscitation need."
+        },
+        {
+          "label": "D",
+          "text": "Place a nasogastric tube to suction and proceed with a rapid sequence induction without further fluid resuscitation",
+          "correct": false,
+          "rationale": "Incorrect. While gastric decompression and RSI are appropriate aspiration precautions at the time of an eventual induction, they do not substitute for correcting the dangerous fluid and electrolyte deficit. Inducing anesthesia in an unresuscitated, alkalotic infant is the core error this question tests."
+        },
+        {
+          "label": "E",
+          "text": "Administer intravenous sodium bicarbonate to treat the dehydration",
+          "correct": false,
+          "rationale": "Incorrect. The patient already has a metabolic alkalosis (HCO3- 34, pH 7.52); giving bicarbonate would worsen the alkalemia. The alkalosis resolves with chloride-containing volume resuscitation, not by adding base."
+        }
+      ],
+      "correct_answer": "B",
+      "explanation": "Hypertrophic pyloric stenosis classically presents around 3-6 weeks of age with non-bilious projectile vomiting. Repeated loss of gastric hydrochloric acid produces a hypochloremic, hypokalemic metabolic alkalosis with paradoxical aciduria. The key board concept is that this is a MEDICAL emergency, not a surgical one: the infant must be volume-resuscitated with isotonic fluid and have chloride, potassium, and acid-base status normalized BEFORE induction of anesthesia. Operating on an unresuscitated infant risks intraoperative instability and postoperative apnea, because metabolic alkalosis depresses the central respiratory drive and may persist as a compensatory respiratory acidosis.",
+      "source": {
+        "title": "Pyloric Stenosis - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK555931/"
+      },
+      "category": "Pediatric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — ok=true. The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK555931/, \"Pyloric Stenosis - StatPearls - NCBI Bookshelf\") loads, is publicly accessible, and is directly relevant.\n\n(1) Source support: The page states classic HPS labs are \"hypochloremic, hypokalemic metabolic alkalosis,\" matching the vignette (Cl 88, K 3.0, HCO3 34, pH 7.52, plus clinical dehydration: sunken fontanelle, dry mucous membranes, lethargy). It explicitly states: \"First, medical treatment is necessary and usually consists of rehydration and correcting electrolyte imbalances... Once the infant is rehydrated, surgery is the next step.\" This directly supports keyed answer B (IV isotonic crystalloid + correct electrolyte/acid-base abnormalities before surgery).\n\n(2) Medicine is correct and unambiguous: Pyloromyotomy is a medical emergency only in the sense of being urgent, NOT a surgical emergency — it must be deferred until fluid/electrolyte/acid-base correction. Operating on an alkalotic, hypokalemic, hypochloremic, dehydrated infant risks anesthetic complications (post-op apnea from metabolic alkalosis, arrhythmia from hypokalemia). B is the single best answer.\n\n(3) Distractor rationales are accurate:\n- A (emergent OR) — wrong; surgery is not emergent; correction must come first.\n- C (rapid K bolus over 15 min) — wrong and dangerous; potassium is repleted via maintenance fluids (source: \"2 meq KCl per 100 mL\"), never given as a rapid bolus, especially in an infant (arrhythmia/cardiac arrest risk).\n- D (NG + RSI without fluid resuscitation) — wrong; omits the mandatory resuscitation/correction step.\n- E (sodium bicarbonate for dehydration) — wrong; bicarbonate does not treat dehydration, and the patient already has a metabolic ALKALOSIS (HCO3 34, pH 7.52); giving bicarbonate would worsen it. Alkalosis self-corrects with chloride/volume repletion.\n\nAll four criteria (URL loads/public, content supports answer, medicine correct/unambiguous, distractors accurate) are satisfied."
+      }
+    },
+    {
+      "subtopic": "Congenital heart disease / dosing",
+      "difficulty": "medium",
+      "stem": "A full-term neonate, 2 days old, presents with progressive cyanosis, tachypnea, and a SpO2 of 70% that does not improve with supplemental oxygen. Echocardiography reveals transposition of the great arteries with a restrictive patent ductus arteriosus. While arranging transfer to a cardiac surgical center, which medication is most appropriate to maintain systemic and pulmonary mixing until definitive repair?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Intravenous alprostadil (prostaglandin E1) by continuous infusion",
+          "correct": true,
+          "rationale": "Correct. Transposition of the great arteries is a ductal-dependent lesion in which survival depends on mixing across the ductus arteriosus. Alprostadil (PGE1) directly relaxes ductal smooth muscle to maintain or reopen ductal patency. StatPearls notes a typical infusion range of about 0.01 to 0.05 mcg/kg/min (commonly started near 0.025 mcg/kg/min), administered as a continuous infusion because most of the drug is metabolized on first pass through the lungs."
+        },
+        {
+          "label": "B",
+          "text": "Indomethacin intravenously",
+          "correct": false,
+          "rationale": "Incorrect. Indomethacin is a prostaglandin synthesis inhibitor used to CLOSE a patent ductus arteriosus (e.g., in premature infants with a hemodynamically significant PDA). In a ductal-dependent lesion it would be lethal, eliminating the only source of mixing."
+        },
+        {
+          "label": "C",
+          "text": "100% inspired oxygen by hood to drive up the arterial saturation",
+          "correct": false,
+          "rationale": "Incorrect. Oxygen is a pulmonary vasodilator and promotes ductal closure, which is exactly the opposite of what a ductal-dependent neonate needs. High FiO2 can worsen the lesion and is not a substitute for prostaglandin therapy."
+        },
+        {
+          "label": "D",
+          "text": "Intravenous adenosine bolus",
+          "correct": false,
+          "rationale": "Incorrect. Adenosine is used to terminate supraventricular tachycardia; it has no role in maintaining ductal patency and will not address the structural mixing problem in transposition of the great arteries."
+        },
+        {
+          "label": "E",
+          "text": "A dopamine infusion titrated to blood pressure",
+          "correct": false,
+          "rationale": "Incorrect. While inotropic support may be adjunctive in a sick neonate, dopamine does not maintain ductal patency. Without prostaglandin to keep the duct open, the underlying cause of the hypoxemia in this ductal-dependent lesion is untreated."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Ductal-dependent congenital heart lesions (e.g., transposition of the great arteries, hypoplastic left heart, critical coarctation, pulmonary atresia, tricuspid atresia) rely on a patent ductus arteriosus for systemic-to-pulmonary mixing or systemic perfusion. Alprostadil (prostaglandin E1) is the cornerstone of stabilization: it relaxes ductal smooth muscle to keep the duct open until surgical or catheter intervention. It is given as a continuous IV infusion (about 0.01-0.05 mcg/kg/min) because 60-80% is metabolized in the lungs on first pass. The most important early adverse effect is apnea, which can require respiratory support, so airway readiness is essential. Agents that close the duct (indomethacin) or that promote ductal constriction (supplemental oxygen) are contraindicated.",
+      "source": {
+        "title": "Alprostadil - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK542217/"
+      },
+      "category": "Pediatric",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — ok=true. All four criteria hold.\n\n(1) URL LOADS & IS PUBLIC: https://www.ncbi.nlm.nih.gov/books/NBK542217/ resolves to \"Alprostadil - StatPearls\" on the publicly accessible NCBI Bookshelf (no paywall, no 404).\n\n(2) CONTENT SUPPORTS ANSWER A: The page explicitly states \"Alprostadil (administered by the intravenous [IV] route) is FDA-approved for temporarily maintaining ductus arteriosus patency in neonates with ductal-dependent congenital heart disease until surgical intervention\" and names transposition of the great arteries (TGA) as a qualifying cyanotic defect. This matches the clinical scenario (TGA with restrictive PDA, cyanosis unresponsive to O2) and supports option A (IV alprostadil/PGE1 continuous infusion).\n\n(3) MEDICINE CORRECT & UNAMBIGUOUS: PGE1/alprostadil is the standard, unambiguous answer for maintaining ductal patency to preserve mixing in TGA pre-repair. The IV continuous-infusion route in the option is correct.\n\n(4) DISTRACTOR RATIONALES ACCURATE:\n- B. Indomethacin — a prostaglandin synthesis inhibitor that CLOSES the PDA; the opposite of what is needed. Correctly wrong.\n- C. 100% O2 by hood — hyperoxia does not improve mixing in TGA and promotes ductal constriction, worsening the lesion. Correctly wrong (also consistent with the stem's \"does not improve with supplemental oxygen\").\n- D. Adenosine — used to terminate SVT; no role in maintaining ductal patency. Correctly wrong.\n- E. Dopamine — an inotrope/pressor; does not maintain ductal patency or mixing. Correctly wrong.\n\nThe question is medically sound, the keyed answer is correct, the source is accessible and on-point, and all distractors are appropriately incorrect. Safe to publish."
+      }
+    },
+    {
+      "subtopic": "valvular lesions",
+      "difficulty": "medium",
+      "stem": "A 74-year-old man with severe symptomatic aortic stenosis (valve area 0.7 cm2, mean gradient 52 mmHg) presents for an emergent open reduction and internal fixation of a hip fracture under general anesthesia. Shortly after induction with propofol, his blood pressure falls from 138/82 to 74/45 mmHg and his heart rate rises to 118 bpm. Which of the following is the most appropriate immediate intervention to restore hemodynamic stability?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Administer an IV bolus of phenylephrine",
+          "correct": true,
+          "rationale": "Correct. In aortic stenosis the most important goal is maintaining afterload (systemic vascular resistance) to preserve coronary perfusion of the hypertrophied left ventricle. Phenylephrine, a pure alpha-1 agonist, raises SVR without increasing heart rate and is the vasopressor of choice. Its reflex slowing of heart rate is also beneficial because it lengthens diastolic filling time."
+        },
+        {
+          "label": "B",
+          "text": "Administer an IV bolus of ephedrine",
+          "correct": false,
+          "rationale": "Incorrect. Ephedrine has beta-agonist activity that increases heart rate and contractility. The tachycardia it produces shortens diastolic filling and coronary perfusion time, which is poorly tolerated in aortic stenosis where the patient already has tachycardia."
+        },
+        {
+          "label": "C",
+          "text": "Start a dobutamine infusion to augment contractility",
+          "correct": false,
+          "rationale": "Incorrect. Dobutamine is an inotrope/chronotrope that causes peripheral vasodilation and tachycardia. The fixed obstruction in aortic stenosis limits the benefit of increased contractility, and the further drop in SVR and rise in heart rate would worsen coronary perfusion."
+        },
+        {
+          "label": "D",
+          "text": "Administer nitroglycerin to reduce afterload and myocardial work",
+          "correct": false,
+          "rationale": "Incorrect. Reducing afterload is dangerous in fixed aortic stenosis; the obstructed valve prevents a compensatory rise in cardiac output, so vasodilation precipitates a fall in coronary perfusion pressure and can cause cardiac arrest."
+        },
+        {
+          "label": "E",
+          "text": "Administer atropine to increase heart rate and cardiac output",
+          "correct": false,
+          "rationale": "Incorrect. The patient is already tachycardic at 118 bpm. Increasing heart rate further shortens diastole, reduces left ventricular filling time and coronary perfusion, and does not address the underlying loss of afterload."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Patients with severe aortic stenosis depend on adequate afterload to perfuse a hypertrophied, pressure-overloaded left ventricle and on a controlled heart rate (roughly 60-80 bpm, sinus rhythm) to maximize diastolic filling across the fixed orifice. The hemodynamic mantra is: maintain SVR, avoid tachycardia, avoid hypotension, preserve sinus rhythm and preload. When induction agents drop SVR, the treatment is a pure alpha-agonist such as phenylephrine, which restores coronary perfusion pressure and reflexively slows the heart. Agents that cause tachycardia (ephedrine, dobutamine, atropine) or vasodilation (nitroglycerin) are harmful.",
+      "source": {
+        "title": "Anesthesia for Labor, Delivery, and Cesarean Section in High-Risk Heart Disease - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK574578/"
+      },
+      "category": "Cardiac",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready. (1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK574578/ returns full content on the free NCBI Bookshelf (StatPearls, \"Anesthesia for Labor, Delivery, and Cesarean Section in High-Risk Heart Disease\"), no paywall, no 404. (2) Source supports the keyed answer: it explicitly states \"Phenylephrine is the vasopressor of choice as it is a pure alpha agonist\" for aortic stenosis and emphasizes that the most important goal is maintaining afterload/SVR — directly supporting option A. (3) Medicine is correct and unambiguous: severe symptomatic AS is a fixed-outflow lesion; post-propofol vasodilation drops SVR and coronary perfusion to a hypertrophied LV. The correct immediate move is to restore afterload with a pure alpha-1 agonist (phenylephrine), whose reflex bradycardia is also beneficial given the patient's harmful tachycardia (HR 118 shortens diastolic filling/coronary perfusion). (4) Distractor rationales are all accurate: B ephedrine has beta-1 effects that worsen tachycardia/MVO2; C dobutamine raises HR and lowers SVR via beta-2 (the problem is vasodilation, not pump failure); D nitroglycerin drops preload/afterload — catastrophic in fixed-output AS; E atropine worsens an already-tachycardic patient and does not address the SVR problem.\\n\\nMinor non-blocking note for editors: the cited source is an obstetric-anesthesia article, so its clinical setting does not match the vignette (geriatric hip ORIF). The load-bearing teaching point (phenylephrine = vasopressor of choice in AS; maintain afterload) is nonetheless explicitly present, so the citation adequately supports the answer. Consider swapping in a general/cardiac-anesthesia AS reference for a tighter contextual match, but this is not a correctness defect."
+      }
+    },
+    {
+      "subtopic": "protamine reaction",
+      "difficulty": "medium",
+      "stem": "A 68-year-old man is being weaned from cardiopulmonary bypass after coronary artery bypass grafting. As protamine is administered to reverse heparin, he develops abrupt systemic hypotension, a rising pulmonary artery pressure, bronchospasm, and a fall in left atrial filling pressures. His past history is notable for insulin-dependent diabetes managed with NPH insulin. Which of the following best explains why this patient was at increased risk for this reaction?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Prior sensitization to protamine through NPH (protamine-containing) insulin",
+          "correct": true,
+          "rationale": "Correct. NPH insulin is formulated with protamine, so chronic low-dose exposure can sensitize patients. StatPearls lists prior protamine exposure, NPH-insulin-treated diabetes, fish allergy, and vasectomy as risk factors for protamine adverse reactions, which include hypotension, pulmonary vasoconstriction/pulmonary hypertension, bronchoconstriction, and bradycardia."
+        },
+        {
+          "label": "B",
+          "text": "His diabetes caused autonomic neuropathy that amplified the vagal response",
+          "correct": false,
+          "rationale": "Incorrect. While diabetic autonomic neuropathy can blunt compensatory responses, it is not the recognized mechanism that places NPH-treated diabetics at higher risk for protamine reactions. The risk derives specifically from protamine in the insulin preparation, not from neuropathy."
+        },
+        {
+          "label": "C",
+          "text": "Heparin rebound from incomplete reversal triggered the pulmonary hypertension",
+          "correct": false,
+          "rationale": "Incorrect. Heparin rebound causes recurrence of anticoagulation and bleeding hours after reversal; it does not cause acute pulmonary vasoconstriction, hypotension, and bronchospasm at the moment of protamine administration. This describes a protamine reaction, not heparin rebound."
+        },
+        {
+          "label": "D",
+          "text": "Residual hypothermia from bypass sensitized the pulmonary vasculature",
+          "correct": false,
+          "rationale": "Incorrect. Hypothermia is not an established risk factor for protamine reactions. The clinical picture and the NPH insulin history point directly to protamine sensitization."
+        },
+        {
+          "label": "E",
+          "text": "The patient developed heparin-induced thrombocytopenia (HIT)",
+          "correct": false,
+          "rationale": "Incorrect. HIT is an immune thrombotic disorder presenting with thrombocytopenia and thrombosis over days; it does not produce an immediate hemodynamic collapse with pulmonary hypertension upon protamine administration."
+        }
+      ],
+      "explanation": "Protamine is a polycationic protein derived from salmon sperm used to reverse heparin. It can cause a spectrum of adverse reactions ranging from histamine-mediated hypotension (rate-related) to true anaphylaxis and to catastrophic pulmonary vasoconstriction with acute pulmonary hypertension and right heart failure. Patients sensitized by prior protamine exposure are at higher risk; classic examples include diabetics on NPH (protamine-containing) insulin, men who have had a vasectomy, those with fish/seafood allergy, and patients who received protamine before. Recognizing the NPH-insulin link is a high-yield perioperative fact. Management includes slowing/stopping the infusion, supportive vasopressors, and treating the anaphylactoid component.",
+      "correct_answer": "A",
+      "source": {
+        "title": "Protamine - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK547753/"
+      },
+      "category": "Cardiac",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish.\n\n(1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK547753/ (Protamine - StatPearls, NCBI Bookshelf) opened successfully.\n\n(2) Source supports the correct answer (A): The article explicitly states that prior NPH insulin exposure is a major risk factor for protamine reactions. Direct quotes: \"The patients most common patients at risk for a protamine reaction were on NPH insulin in the past... There are approximately... 0.5 milligrams of protamine per 100 units of isophane (NPH) insulin... chronic exposure to low doses of protamine in a patient on these insulin preparations can cause the formation of antibodies to protamine.\" It also lists \"insulin-controlled diabetes\" among risk factors. NPH (isophane) insulin is in fact protamine-containing, so option A is factually correct.\n\n(3) Medicine is correct and unambiguous: The vignette is a textbook catastrophic protamine anaphylactoid reaction during heparin reversal post-CABG — abrupt systemic hypotension, rising pulmonary artery pressure, bronchospasm, and falling left atrial filling pressures (pulmonary vasoconstriction reduces LV preload). The source corroborates the reaction profile: \"systemic hypotension, pulmonary vasoconstriction... pulmonary hypertension, bronchoconstriction.\" Only one option (A) supplies a valid increased-risk mechanism, and the stem's question (why increased risk) maps cleanly to the patient's NPH insulin history.\n\n(4) Distractor rationales are accurate (all clearly wrong):\n- B (autonomic neuropathy amplifying vagal response): incorrect — the reaction is an immunologic/anaphylactoid protamine reaction, not a vagally mediated one; the hemodynamics (pulmonary HTN, bronchospasm) are not a vagal pattern.\n- C (heparin rebound from incomplete reversal): incorrect mechanism and timing — heparin rebound causes bleeding/anticoagulation, not an acute hypotension/bronchospasm/pulmonary-HTN triad triggered by protamine administration.\n- D (residual hypothermia sensitizing pulmonary vasculature): fabricated; not an established mechanism for this reaction.\n- E (HIT): incorrect — HIT is a prothrombotic thrombocytopenic immune disorder, not an acute anaphylactoid cardiopulmonary reaction to protamine; it does not explain this presentation or the NPH-insulin link.\n\nSource: https://www.ncbi.nlm.nih.gov/books/NBK547753/ (StatPearls, Protamine)."
+      }
+    },
+    {
+      "subtopic": "tamponade",
+      "difficulty": "easy",
+      "stem": "A 60-year-old woman who underwent cardiac surgery two days ago becomes acutely hypotensive (BP 78/60 mmHg, pulse pressure narrowed) with distended neck veins and muffled heart sounds. A pulsus paradoxus of 18 mmHg is measured. Bedside echocardiography shows a circumferential pericardial effusion with diastolic collapse of the right atrium and right ventricle. After starting supplemental oxygen and an IV fluid bolus, which intervention is most likely to be definitively therapeutic?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Drainage of the pericardial fluid (pericardiocentesis or surgical drainage)",
+          "correct": true,
+          "rationale": "Correct. The findings are classic cardiac tamponade (Beck's triad, pulsus paradoxus, echocardiographic chamber collapse). StatPearls states that definitive therapy is immediate pericardiocentesis/drainage; supportive measures such as oxygen and fluids are temporizing and must occur concurrently with preparation for drainage. In a post-cardiac-surgery patient, surgical re-exploration is often required."
+        },
+        {
+          "label": "B",
+          "text": "Aggressive diuresis with furosemide to reduce intracardiac volume",
+          "correct": false,
+          "rationale": "Incorrect. Diuresis reduces preload, which the tamponaded heart depends on to overcome the elevated intrapericardial pressure. Lowering preload can precipitate cardiovascular collapse. Tamponade is treated by removing fluid from the pericardium, not from the intravascular space."
+        },
+        {
+          "label": "C",
+          "text": "Initiation of a beta-blocker to control heart rate",
+          "correct": false,
+          "rationale": "Incorrect. Tachycardia in tamponade is a compensatory mechanism maintaining cardiac output in the face of a fixed, reduced stroke volume. Blunting it with a beta-blocker removes compensation and can be fatal."
+        },
+        {
+          "label": "D",
+          "text": "Emergent systemic thrombolysis",
+          "correct": false,
+          "rationale": "Incorrect. Thrombolysis is for thrombotic emergencies such as massive pulmonary embolism and would be catastrophic in a post-surgical patient with a hemorrhagic pericardial effusion, worsening bleeding into the pericardium."
+        },
+        {
+          "label": "E",
+          "text": "Vasodilator therapy with nitroprusside to reduce afterload",
+          "correct": false,
+          "rationale": "Incorrect. Vasodilation drops systemic vascular resistance and blood pressure in a patient who is already obstructively shocked and dependent on vasoconstriction to maintain perfusion. It does not relieve the pericardial compression."
+        }
+      ],
+      "explanation": "Cardiac tamponade is an obstructive shock state in which pericardial fluid raises intrapericardial pressure and impairs diastolic filling. Hallmarks are Beck's triad (hypotension, jugular venous distension, muffled heart sounds), pulsus paradoxus greater than 10 mmHg, and echocardiographic diastolic collapse of the right-sided chambers. The physiologic compensations are tachycardia, increased SVR, and preserved preload, so treatments that reduce heart rate, SVR, or preload are harmful as temporizing measures. The only definitive therapy is removal of the pericardial fluid; in post-cardiac-surgery tamponade this frequently means surgical re-exploration rather than needle pericardiocentesis because of clot.",
+      "correct_answer": "A",
+      "source": {
+        "title": "Cardiac Tamponade - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK431090/"
+      },
+      "category": "Cardiac",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish as-is.\n\n(1) URL LOADS & PUBLIC: https://www.ncbi.nlm.nih.gov/books/NBK431090/ loads, is the publicly accessible StatPearls \"Cardiac Tamponade\" page on NCBI Bookshelf — no paywall, no 404.\n\n(2) SOURCE SUPPORTS ANSWER A: The page explicitly states \"Definitive therapy includes immediate pericardiocentesis\" and that surgical intervention (pericardial window) may be needed for recurrent/malignant cases. This directly supports option A (drainage via pericardiocentesis or surgical drainage) as the definitively therapeutic intervention. The source also corroborates every clinical cue in the stem: Beck's triad (hypotension, JVD/distended neck veins, muffled heart sounds), pulsus paradoxus >10 mmHg (stem gives 18 mmHg), and echocardiographic diastolic right atrial/right ventricular collapse with circumferential effusion. The post-cardiac-surgery setting (2 days post-op) is a classic cause of tamponade.\n\n(3) MEDICINE CORRECT & UNAMBIGUOUS: This is textbook. Tamponade is an obstructive shock from a pericardial fluid/clot collection mechanically impairing diastolic filling. Removing the fluid (pericardiocentesis or, in post-surgical patients, surgical evacuation) relieves the obstruction and is the only definitive treatment. Oxygen and IV fluids are appropriate temporizing measures (correctly framed in the stem as already started), but they are NOT definitive — fluid removal is. The answer is unambiguous.\n\n(4) DISTRACTOR RATIONALES ACCURATE:\n- B (diuresis/furosemide): WRONG and dangerous. Tamponade is preload-dependent; reducing intracardiac volume worsens filling and can precipitate cardiovascular collapse. Correctly a distractor.\n- C (beta-blocker): WRONG and harmful. Compensatory tachycardia maintains cardiac output in tamponade; blunting it reduces output. Correctly a distractor.\n- D (systemic thrombolysis): WRONG. This treats massive PE, not tamponade; in a 2-day post-cardiac-surgery patient it would also be contraindicated and could worsen hemorrhagic effusion. Correctly a distractor.\n- E (nitroprusside/vasodilator): WRONG. Afterload reduction does not relieve the mechanical obstruction and would drop preload/BP. Correctly a distractor.\n\nOne minor nuance worth noting (does not affect correctness): in an early post-cardiac-surgery patient, tamponade is frequently due to a localized clot/loculated collection, and surgical re-exploration/drainage is often preferred over needle pericardiocentesis. Option A already bundles \"pericardiocentesis OR surgical drainage,\" so it correctly captures the definitive treatment for this specific scenario. Answer A is correct, single-best, and well-keyed."
+      }
+    },
+    {
+      "subtopic": "pacemakers/AICD",
+      "difficulty": "hard",
+      "stem": "A 71-year-old man with an implantable cardioverter-defibrillator (ICD) is scheduled for an urgent abdominal surgery requiring monopolar electrocautery above the umbilicus. The cardiology team is unavailable to reprogram the device beforehand, so the anesthesia team plans to place a doughnut magnet over the device intraoperatively to prevent inappropriate shocks from electromagnetic interference. What effect should the team expect the magnet to have on this patient's device?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "It suspends antitachycardia (shock) therapy but does not change the device's pacing mode",
+          "correct": true,
+          "rationale": "Correct. For most ICDs, magnet application disables tachyarrhythmia detection and therapy (preventing inappropriate shocks from electrocautery noise) but has no effect on the pacing mode; the ICD continues to pace in its programmed mode. The device will NOT pace asynchronously while the magnet is applied."
+        },
+        {
+          "label": "B",
+          "text": "It converts the device to asynchronous pacing (VOO/DOO) and leaves shock therapy active",
+          "correct": false,
+          "rationale": "Incorrect. This describes the magnet response of a stand-alone pacemaker, not an ICD. Applying a magnet to a pacemaker produces asynchronous pacing, but on an ICD a magnet suspends shock therapy and does not alter pacing. This is a classic point of confusion the question targets."
+        },
+        {
+          "label": "C",
+          "text": "It both converts the device to asynchronous pacing and suspends shock therapy",
+          "correct": false,
+          "rationale": "Incorrect. A magnet does not produce asynchronous pacing in an ICD. If this patient were pacemaker-dependent and electrocautery caused oversensing/inhibition, the magnet would not protect against pacing inhibition, so separate measures (such as reprogramming to an asynchronous mode) would be needed."
+        },
+        {
+          "label": "D",
+          "text": "It permanently reprograms the device to its factory settings",
+          "correct": false,
+          "rationale": "Incorrect. A magnet produces a temporary, reversible response only while it is in place; it does not reprogram or alter stored device settings. Removing the magnet restores the previously programmed behavior."
+        },
+        {
+          "label": "E",
+          "text": "It increases the defibrillation energy delivered on the next detected arrhythmia",
+          "correct": false,
+          "rationale": "Incorrect. A magnet does not increase shock energy. In an ICD it suspends detection and therapy entirely while applied, meaning no shock would be delivered for an arrhythmia until the magnet is removed."
+        }
+      ],
+      "explanation": "Understanding the divergent magnet responses of pacemakers versus ICDs is essential perioperatively. A magnet over a PACEMAKER triggers asynchronous pacing (e.g., VOO/DOO) at a manufacturer-specific magnet rate, useful to prevent electrocautery-induced oversensing and pacing inhibition in a pacemaker-dependent patient. A magnet over an ICD suspends antitachycardia detection and therapy to prevent inappropriate shocks from electromagnetic interference, but does NOT change the pacing mode of the ICD. Therefore, a magnet protects an ICD patient from inappropriate shocks but does not protect a pacemaker-dependent ICD patient from electrocautery-induced pacing inhibition; for that, the device must be reprogrammed to an asynchronous mode. Responses can vary by manufacturer, so device interrogation/programming is preferred when feasible.",
+      "correct_answer": "A",
+      "source": {
+        "title": "Clinical applications of magnets on cardiac rhythm management devices - EP Europace (Oxford Academic)",
+        "url": "https://academic.oup.com/europace/article/13/9/1222/551468"
+      },
+      "category": "Cardiac",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready.\n\n(1) URL LOADS: https://academic.oup.com/europace/article/13/9/1222/551468 is publicly accessible and fetched successfully (Jolife/Europace 2011 review on clinical applications of magnets on CRM devices).\n\n(2) SOURCE SUPPORTS ANSWER A: The article explicitly states that for an ICD, \"magnet application suspends anti-tachycardia therapy without any effect on the pacing mode.\" This is exactly answer A — magnet suspends shock/antitachycardia therapy but does NOT change the pacing mode.\n\n(3) MEDICINE CORRECT AND UNAMBIGUOUS: This is the standard, well-established teaching. A magnet over an ICD inhibits tachyarrhythmia detection/shock therapy only; it does NOT convert the device to asynchronous pacing. Importantly, ICDs do not pace asynchronously in response to a magnet — that asynchronous-pacing behavior applies to PACEMAKERS (DDD->DOO, VVI->VOO). The stem is clinically appropriate: placing a magnet to prevent inappropriate shocks from monopolar electrocautery EMI when reprogramming is unavailable is an accepted intraoperative practice.\n\n(4) DISTRACTORS ACCURATE:\n- B (asynchronous pacing + shocks still active): FALSE. Magnet does not cause asynchronous pacing in an ICD, and it DOES suspend shocks. This exploits the common pacemaker/ICD confusion. Correctly wrong.\n- C (both asynchronous pacing AND shock suspension): FALSE for an ICD — no pacing-mode change occurs. This is the most tempting distractor (conflates pacemaker magnet behavior with ICD), and the source directly refutes it (\"without any effect on the pacing mode\"). Correctly wrong.\n- D (permanent factory reset): FALSE. Magnet effect is generally transient/reversible on removal (the article notes only certain Boston Scientific models can be programmed so therapy stays disabled — not a factory reset). Correctly wrong.\n- E (increased defibrillation energy): FALSE. No basis. Correctly wrong.\n\nAll four criteria met. Answer A is correct, the source is public and on-point, and the distractor rationales are sound."
+      }
+    },
+    {
+      "subtopic": "Spinal cord injury / autonomic dysreflexia",
+      "difficulty": "medium",
+      "stem": "A 34-year-old man with a complete spinal cord injury at the T4 level 8 months ago presents to the preoperative area for cystoscopy. While awaiting the procedure he develops a pounding headache, facial flushing, and profuse sweating above the shoulders. Monitors show a blood pressure of 198/112 mm Hg (baseline 108/64 mm Hg) and a heart rate of 52/min. His indwelling Foley catheter bag is empty and the tubing appears kinked beneath his leg. Which of the following is the most appropriate FIRST step in management?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Sit the patient upright, loosen any constrictive clothing, and relieve the obstructed urinary catheter",
+          "correct": true,
+          "rationale": "Correct. Autonomic dysreflexia occurs in patients with SCI at or above T6 when a noxious stimulus below the lesion (most commonly a distended/obstructed bladder) triggers unopposed sympathetic outflow. First-line management is immediate non-pharmacologic intervention: sit the patient upright with legs dependent to induce orthostatic pooling and lower BP, loosen constrictive clothing, and remove the trigger by unkinking/irrigating or replacing the catheter. These steps frequently abort the episode before drugs are needed."
+        },
+        {
+          "label": "B",
+          "text": "Place the patient supine in Trendelenburg and administer a 500 mL crystalloid bolus",
+          "correct": false,
+          "rationale": "Incorrect. This is the opposite of the correct maneuver. Lying the patient flat (and head-down) raises BP further in a hypertensive crisis. The problem is sympathetic-mediated hypertension from a noxious stimulus, not hypovolemia, so a fluid bolus is both unnecessary and potentially harmful."
+        },
+        {
+          "label": "C",
+          "text": "Administer IV atropine to treat the bradycardia before addressing blood pressure",
+          "correct": false,
+          "rationale": "Incorrect. The bradycardia is a reflex (baroreceptor-mediated) response to the severe hypertension and resolves once the BP is controlled and the trigger removed. Treating the heart rate while ignoring the malignant hypertension and its source addresses the wrong problem."
+        },
+        {
+          "label": "D",
+          "text": "Give sublingual nifedipine immediately as the definitive first intervention",
+          "correct": false,
+          "rationale": "Incorrect. Rapid-acting antihypertensives (e.g., nitroglycerin paste, nifedipine, clonidine, captopril) are reserved for when BP remains dangerously elevated (e.g., systolic >150 mm Hg) AFTER upright positioning and removal of the trigger. Jumping to pharmacology first risks precipitous hypotension once the stimulus is also relieved, and it skips the maneuver that most often resolves the crisis."
+        },
+        {
+          "label": "E",
+          "text": "Proceed with cystoscopy under general anesthesia to bypass the noxious stimulus",
+          "correct": false,
+          "rationale": "Incorrect. Although adequate anesthesia/blockade of the afferent stimulus is part of preventing intraoperative dysreflexia, you must first treat the active hypertensive crisis. Proceeding without controlling the current episode and identifying the trigger (the obstructed catheter) is unsafe."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Autonomic dysreflexia is a potentially life-threatening hypertensive emergency in patients with spinal cord injury at or above T6. A noxious stimulus below the level of injury (bladder distention/catheter obstruction in ~85% of cases, or bowel distention) generates unopposed sympathetic vasoconstriction below the lesion, producing severe hypertension; intact vagal/parasympathetic outflow above the lesion causes reflex bradycardia, flushing, sweating, and headache. The first-line response is non-pharmacologic and ordered: (1) sit the patient upright with legs dependent, (2) loosen constrictive clothing/devices, and (3) immediately identify and remove the trigger—check and relieve the Foley. Only if systolic BP remains elevated (commonly >150 mm Hg) after these steps are short-acting antihypertensives added. Definition cues: SCI at/above T6, BP >40 mm Hg above baseline.",
+      "source": {
+        "title": "Autonomic Dysreflexia - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK482434/"
+      },
+      "category": "Neuro",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready.\n\nURL CHECK: https://www.ncbi.nlm.nih.gov/books/NBK482434/ loads, is publicly accessible (StatPearls/NCBI Bookshelf, free), and is the correct article \"Autonomic Dysreflexia.\"\n\nCONTENT SUPPORTS ANSWER A: The source explicitly states the first steps are to \"Sit the patient upright with their legs dangling and remove or release any tight clothing, shoes, belts, binders, or constrictive devices,\" and to identify/relieve the precipitating noxious stimulus — most commonly bladder distension from a blocked/kinked catheter, for which irrigation or catheter change is \"often immediately curative.\" Option A bundles exactly these three first-line, non-pharmacologic maneuvers (upright positioning, loosen constrictive clothing, relieve the obstructed catheter). This matches the standard ASIA/consortium algorithm.\n\nMEDICINE IS CORRECT AND UNAMBIGUOUS: The vignette is a textbook presentation of autonomic dysreflexia — chronic SCI at T4 (at or above T6, the threshold for AD), pounding headache, flushing/sweating above the lesion, severe hypertension (198/112 vs baseline 108/64; a >40 mmHg rise), reflex bradycardia (52/min), with an obvious trigger (kinked/obstructed Foley). The single best FIRST step is to sit the patient up and remove the noxious stimulus before pharmacology. Only one clearly correct option.\n\nDISTRACTORS ARE ACCURATE:\n- B (supine Trendelenburg + fluid bolus): wrong and harmful — supine positioning worsens the hypertension; the patient should be sat UPRIGHT to use orthostatic pooling to lower BP. Fluids are not indicated (this is not hypovolemia).\n- C (IV atropine first for bradycardia): wrong — the bradycardia is a reflex (baroreceptor) response to severe hypertension and resolves once the stimulus/BP is addressed; treating it first is misdirected and the source does not recommend atropine here.\n- D (sublingual nifedipine as the definitive FIRST intervention): wrong as the FIRST step. Although the source lists immediate-release nifedipine (bite-and-swallow) as a recommended pharmacologic agent if BP stays elevated, pharmacology is second-line AFTER upright positioning and removing the trigger; the question correctly distinguishes \"first step.\" Sublingual nifedipine specifically is also a discredited route. So D is a defensible distractor.\n- E (proceed with cystoscopy under GA): wrong — you must treat the life-threatening hypertensive emergency and remove the trigger first; proceeding adds noxious stimulus and risks stroke/seizure.\n\nOne minor note (not disqualifying): a careful test-taker might argue D is tempting because the source does endorse nifedipine, but the stem's wording (\"most appropriate FIRST step\" plus \"definitive\" in D) cleanly separates the non-pharmacologic first step (A) from drug therapy, so the item is not genuinely ambiguous. Question is accurate and ready to publish."
+      }
+    },
+    {
+      "subtopic": "Venous air embolism",
+      "difficulty": "medium",
+      "stem": "A 58-year-old woman is undergoing a posterior fossa craniotomy in the sitting position. During tumor resection near a venous sinus, the capnograph shows an abrupt fall in end-tidal CO2 from 34 to 19 mm Hg, the blood pressure drops, and a mill-wheel murmur is auscultated. A venous air embolism is suspected. Which of the following statements about detecting and managing intraoperative venous air embolism is correct?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Transesophageal echocardiography is the most sensitive monitor for detecting intracardiac air",
+          "correct": true,
+          "rationale": "Correct. Echocardiographic visualization of air within the right heart is the most sensitive method for detecting venous air embolism and is essentially pathognomonic. It can detect very small volumes of intracardiac air, more sensitively than precordial Doppler, end-tidal CO2, or hemodynamic changes—though it is invasive and operator-dependent."
+        },
+        {
+          "label": "B",
+          "text": "A rising end-tidal CO2 is the earliest and most specific sign of venous air embolism",
+          "correct": false,
+          "rationale": "Incorrect on two counts. First, venous air embolism causes a sudden DECREASE in end-tidal CO2 (from increased dead space as air obstructs pulmonary outflow), not a rise. Second, end-tidal CO2 change is nonspecific and correlates poorly with embolism severity; it is a useful but not the most sensitive or specific monitor."
+        },
+        {
+          "label": "C",
+          "text": "The patient should be placed head-up in reverse Trendelenburg to keep air away from the heart",
+          "correct": false,
+          "rationale": "Incorrect. Head-up positioning is what promotes air entrainment in the sitting position in the first place. When VAE occurs, the patient should be placed in left lateral decubitus (Durant position) with Trendelenburg (head-down) to trap air in the right atrium/apex of the ventricle and relieve right ventricular outflow 'air lock.'"
+        },
+        {
+          "label": "D",
+          "text": "Nitrous oxide should be continued because it has no effect on the size of an air embolus",
+          "correct": false,
+          "rationale": "Incorrect. Nitrous oxide diffuses into air-filled spaces faster than nitrogen leaves, expanding the air embolus and worsening the obstruction. It must be discontinued immediately and 100% oxygen administered when VAE is suspected."
+        },
+        {
+          "label": "E",
+          "text": "Flooding the surgical field with saline is contraindicated because it increases air entry",
+          "correct": false,
+          "rationale": "Incorrect. Flooding the field with saline is a recommended immediate step—it limits further air entrainment by covering open vessels and helps the surgeon identify the source, while the anesthetist applies jugular compression, repositions the patient, and aspirates air via an existing central catheter."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Venous air embolism is a major risk of procedures performed with the surgical site above the heart (e.g., sitting-position posterior fossa/cervical surgery), where subatmospheric venous pressure entrains air through open, non-collapsible veins (such as venous sinuses). Monitors differ in sensitivity: transesophageal echocardiography is the most sensitive and can visualize even small intracardiac air (pathognomonic), followed by precordial Doppler; end-tidal CO2 falls abruptly but is nonspecific; the classic 'mill-wheel' murmur and hemodynamic collapse are late. Management: notify the surgeon and flood/pack the field with saline, discontinue nitrous oxide and give 100% O2, compress the jugular veins, aspirate air from a right-atrial catheter if present, and position the patient left lateral decubitus (Durant) with Trendelenburg to relieve right ventricular air lock while providing hemodynamic support.",
+      "source": {
+        "title": "Venous Gas Embolism - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK482249/"
+      },
+      "category": "Neuro",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — PUBLISH. The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK482249/, \"Venous Gas Embolism,\" StatPearls/NCBI Bookshelf) loads, is publicly accessible and free, and is directly relevant.\n\nStated correct answer A (\"Transesophageal echocardiography is the most sensitive monitor for detecting intracardiac air\") is correct and unambiguous. Echocardiography is the most sensitive method for detecting intracardiac air per the source, and TEE being the single most sensitive monitor for venous air embolism is standard anesthesiology teaching (more sensitive than precordial Doppler/end-tidal nitrogen). It is clearly the best option.\n\nAll four distractors are accurately false and supported by the source:\n- B: VAE causes a FALL in EtCO2 (the stem itself shows 34→19), not a rise; EtCO2 is also not the most specific/earliest sign. Correctly wrong.\n- C: Management is head-DOWN (Trendelenburg) plus left lateral decubitus (Durant maneuver), not head-up reverse Trendelenburg. Correctly wrong.\n- D: Nitrous oxide diffuses into the air bubble and ENLARGES the embolus and must be discontinued. Correctly wrong.\n- E: Flooding the field with saline is RECOMMENDED to limit air entry, not contraindicated. Correctly wrong.\n\nThe clinical stem (sitting-position posterior fossa craniotomy, abrupt EtCO2 drop, hypotension, mill-wheel murmur) is coherent and classic. Minor note: StatPearls literally names \"transthoracic echocardiography\" as most sensitive, but the TEE claim in option A is consistent with established standard references and is not contradicted. Medicine is correct; safe to publish."
+      }
+    },
+    {
+      "subtopic": "Cerebral perfusion pressure / autoregulation",
+      "difficulty": "easy",
+      "stem": "A 41-year-old man with severe traumatic brain injury is intubated in the neurocritical care unit with an intracranial pressure (ICP) monitor in place. His current mean arterial pressure (MAP) is 70 mm Hg and his ICP is 25 mm Hg. Which of the following best describes his cerebral perfusion pressure (CPP) and the implication for cerebral blood flow?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "CPP is 45 mm Hg, which is below the normal range and threatens cerebral ischemia",
+          "correct": true,
+          "rationale": "Correct. CPP = MAP − ICP = 70 − 25 = 45 mm Hg. Normal CPP is roughly 60–80 mm Hg. A CPP of 45 mm Hg is below this range and, particularly in an injured brain with impaired autoregulation, risks inadequate cerebral blood flow and ischemia. Management targets raising MAP and/or lowering ICP to restore an adequate CPP."
+        },
+        {
+          "label": "B",
+          "text": "CPP is 95 mm Hg, calculated as MAP plus ICP, and is dangerously high",
+          "correct": false,
+          "rationale": "Incorrect. CPP is the driving pressure across the brain and equals MAP MINUS ICP, not MAP plus ICP. ICP opposes arterial inflow, so it is subtracted. The correct value is 45 mm Hg, not 95."
+        },
+        {
+          "label": "C",
+          "text": "CPP is 45 mm Hg, which is well within the autoregulatory plateau, so cerebral blood flow is guaranteed to be normal",
+          "correct": false,
+          "rationale": "Incorrect. While the arithmetic (45 mm Hg) is right, the interpretation is wrong. Cerebral autoregulation maintains relatively constant flow over a MAP range of roughly 50–150 mm Hg only in a healthy brain; 45 mm Hg sits at/below the lower limit, and after TBI autoregulation is often impaired, so flow is not guaranteed and ischemia is a real threat."
+        },
+        {
+          "label": "D",
+          "text": "CPP cannot be determined without also knowing the central venous pressure",
+          "correct": false,
+          "rationale": "Incorrect. In standard neurocritical care, CPP is calculated as MAP − ICP. Central venous (or jugular) pressure is not required for the bedside CPP calculation when ICP exceeds CVP, which is the relevant outflow pressure here."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Cerebral perfusion pressure is the net pressure gradient driving cerebral blood flow and is defined as CPP = MAP − ICP. With MAP 70 and ICP 25, CPP = 45 mm Hg. Normal CPP is about 60–80 mm Hg. Cerebral autoregulation keeps cerebral blood flow relatively constant across a MAP range of approximately 50–150 mm Hg (CPP ~50–150) in healthy brains—below the lower limit, flow becomes pressure-passive and falls. After traumatic brain injury this autoregulatory curve is frequently impaired or shifted, so a low CPP of 45 mm Hg places the patient at significant risk of cerebral ischemia, prompting interventions to raise MAP (vasopressors/fluids) and/or lower ICP.",
+      "source": {
+        "title": "Cerebral Perfusion Pressure - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK537271/"
+      },
+      "category": "Neuro",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK537271/, \"Cerebral Perfusion Pressure\" - StatPearls/NCBI Bookshelf) loads and is publicly accessible. It supports the stated correct answer A on all points.\n\n(1) Medicine is correct and unambiguous: CPP = MAP - ICP = 70 - 25 = 45 mm Hg. The source explicitly states \"CPP = MAP - ICP\" and that normal CPP is 60-80 mm Hg, with ~55-60 mm Hg being the minimum needed to prevent cerebral ischemic injury. A CPP of 45 is below normal and below that ischemic threshold, so option A (\"below the normal range and threatens cerebral ischemia\") is correct.\n\n(2) Distractor rationales are accurate:\n- B: Uses the wrong formula (MAP + ICP = 95). The source confirms CPP = MAP - ICP, so B is correctly wrong.\n- C: Claims 45 mm Hg is within the autoregulatory plateau and CBF is \"guaranteed\" normal. Wrong on two counts — 45 is below the autoregulatory/CPP normal range, and the source explicitly notes CBF is not automatically guaranteed (autoregulation can fail). Correctly a distractor.\n- D: Claims CPP needs central venous pressure. The source states CPP depends solely on MAP and ICP; CVP is not part of the standard formula used here. Correctly a distractor.\n\nThe source content, the calculation, and all distractor rationales are consistent and unambiguous. Safe to publish."
+      }
+    },
+    {
+      "subtopic": "Seizures / status epilepticus",
+      "difficulty": "medium",
+      "stem": "A 27-year-old woman in the post-anesthesia care unit after laparoscopic surgery develops generalized tonic-clonic convulsions that have now continued for 6 minutes without pause. She has IV access and her oxygen saturation is maintained with a jaw thrust and 100% oxygen by mask. After ensuring airway, oxygenation, and a checked glucose, which of the following is the most appropriate first-line pharmacologic therapy?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "IV lorazepam 0.1 mg/kg",
+          "correct": true,
+          "rationale": "Correct. Convulsive status epilepticus is defined as 5 minutes or more of continuous seizure activity. Benzodiazepines are the established first-line ('emergent') therapy, and IV lorazepam 0.1 mg/kg is the preferred agent because of its rapid onset and relatively durable anticonvulsant effect. (IM midazolam is the first-line choice when there is no IV access.)"
+        },
+        {
+          "label": "B",
+          "text": "IV fosphenytoin 20 mg PE/kg as the sole initial agent",
+          "correct": false,
+          "rationale": "Incorrect as the FIRST agent. Fosphenytoin is a second-line ('urgent control') therapy given to prevent recurrence, typically concurrently with or immediately after a benzodiazepine. Used alone first, it has a slower onset than a benzodiazepine and delays seizure termination."
+        },
+        {
+          "label": "C",
+          "text": "IV levetiracetam 60 mg/kg as the sole initial agent",
+          "correct": false,
+          "rationale": "Incorrect as the FIRST agent. Levetiracetam is a second-line agent (an alternative to fosphenytoin/valproate). Trials show it is not superior to benzodiazepines for emergent first-line control; the benzodiazepine should be given first, with levetiracetam added for ongoing control."
+        },
+        {
+          "label": "D",
+          "text": "IV propofol infusion to induce burst suppression",
+          "correct": false,
+          "rationale": "Incorrect at this stage. Continuous anesthetic infusions (propofol, midazolam, pentobarbital) are reserved for REFRACTORY status epilepticus—seizures persisting after adequate first-line benzodiazepine plus a second-line agent. Starting here skips the proven first-line therapy and commits the patient to deep sedation prematurely."
+        },
+        {
+          "label": "E",
+          "text": "IV phenobarbital 20 mg/kg as the initial drug",
+          "correct": false,
+          "rationale": "Incorrect as the FIRST agent. Phenobarbital is an alternative second-line option, not first-line, and carries greater risk of respiratory depression and hypotension than a benzodiazepine. It is not the preferred emergent therapy."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Status epilepticus is defined as 5 or more minutes of continuous (or recurrent without recovery) seizure activity—this patient at 6 minutes qualifies. The treatment algorithm is sequential: (1) stabilization (airway, breathing, circulation, glucose); (2) emergent/first-line therapy with a benzodiazepine—IV lorazepam 0.1 mg/kg is preferred for rapid onset, or IM midazolam if no IV access; (3) urgent/second-line therapy to prevent recurrence (fosphenytoin, levetiracetam, or valproate), often given concurrently; and (4) anesthetic infusions (propofol, midazolam, pentobarbital) for refractory status epilepticus. The key board point is that a benzodiazepine—not a second-line antiseizure drug or an anesthetic—is the correct first pharmacologic step once the patient is stabilized.",
+      "source": {
+        "title": "Status Epilepticus - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK430686/"
+      },
+      "category": "Neuro",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish. The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK430686/, StatPearls \"Status Epilepticus,\" updated 2023-05-08) loads, is publicly accessible, and directly supports answer A. The source states verbatim: \"Benzodiazepines are the antiepileptic drug of choice for emergent control. Lorazepam is preferred because of its rapid onset of action and is dosed at 0.1 mg/kg IV.\" This matches option A exactly (drug, dose, route). The vignette is textbook convulsive status epilepticus (GTC seizure >5 min) with airway/oxygenation/glucose already addressed, so an IV benzodiazepine is the unambiguous first-line agent; only one option is a benzodiazepine. Distractors are correctly wrong per the same source: fosphenytoin (B, 20 mg PE/kg) and levetiracetam (C, 40-60 mg/kg) are second-line agents given ALONGSIDE — not instead of — a benzodiazepine, so labeling either as the \"sole initial agent\" is incorrect; phenobarbital (E) is a barbiturate, not the emergent first-line drug; propofol (D) is explicitly listed only as a third-line/refractory continuous-infusion option after benzodiazepine failure. Medicine is correct and unambiguous, doses are accurate, and distractor rationales hold. No issues found."
+      }
+    },
+    {
+      "subtopic": "bone cement implantation syndrome",
+      "difficulty": "medium",
+      "stem": "A 79-year-old woman with osteoporosis and ASA physical status III is undergoing a cemented hemiarthroplasty for a displaced femoral neck fracture under general anesthesia. Approximately 60 seconds after the surgeon pressurizes the cement and impacts the femoral prosthesis into the medullary canal, the SpO2 falls from 98% to 86%, the noninvasive blood pressure drops from 128/72 to 70/40 mmHg, and the end-tidal CO2 declines abruptly. The heart rate rises to 120/min. The patient remains in normal sinus rhythm. Which of the following best describes the leading pathophysiologic mechanism responsible for this clinical picture?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Embolization of marrow fat, air, and cement debris driven into the venous circulation by raised intramedullary pressure, producing acute pulmonary hypertension and right ventricular strain",
+          "correct": true,
+          "rationale": "Correct. Bone cement implantation syndrome (BCIS) classically presents with hypoxia, hypotension, arrhythmias, and possible cardiac arrest around the time of cementation, prosthesis insertion, or joint reduction. The dominant proposed mechanism is embolization of medullary contents (fat, marrow, air, and cement particles) forced into the venous system by the high intramedullary pressures generated during cement pressurization and prosthesis impaction, causing an acute rise in pulmonary vascular resistance and right ventricular dysfunction."
+        },
+        {
+          "label": "B",
+          "text": "An IgE-mediated anaphylactic reaction to methylmethacrylate monomer causing systemic vasodilation",
+          "correct": false,
+          "rationale": "Incorrect. True IgE-mediated anaphylaxis to methylmethacrylate is exceedingly rare and is not the accepted principal mechanism of BCIS. Although monomer toxicity and inflammatory mediator release are among the proposed contributors, the leading mechanism cited for the acute hemodynamic collapse is embolic, with raised intramedullary pressure driving emboli into the pulmonary circulation."
+        },
+        {
+          "label": "C",
+          "text": "Acute left ventricular failure from the exothermic heat of cement polymerization injuring the myocardium",
+          "correct": false,
+          "rationale": "Incorrect. While cement polymerization is exothermic, the heat is generated locally within the bone and does not directly injure the myocardium. The hemodynamic instability of BCIS is driven by pulmonary embolic load and right heart dysfunction, not by thermal left ventricular injury."
+        },
+        {
+          "label": "D",
+          "text": "Reperfusion of an ischemic limb after tourniquet deflation releasing potassium and lactate",
+          "correct": false,
+          "rationale": "Incorrect. Tourniquet deflation can cause transient hypotension, hypercarbia, and metabolic acidosis from washout of ischemic metabolites, but tourniquets are not used in cemented hip hemiarthroplasty, and the temporal link here is to cement pressurization and prosthesis insertion, the hallmark trigger of BCIS."
+        },
+        {
+          "label": "E",
+          "text": "Vasovagal bradycardic response to surgical stimulation of the femoral periosteum",
+          "correct": false,
+          "rationale": "Incorrect. A vasovagal response would produce bradycardia, whereas this patient is tachycardic with a falling end-tidal CO2 and hypoxia, a pattern consistent with an embolic pulmonary insult rather than a neurally mediated reflex."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Bone cement implantation syndrome is defined by hypoxemia, hypotension, loss of consciousness, or cardiac arrest occurring around cementation, prosthesis insertion, or joint reduction. The leading mechanism is embolization of marrow fat, air, and cement particles into the pulmonary vasculature, driven by the high intramedullary pressures of cement pressurization and prosthesis impaction; this raises pulmonary vascular resistance and impairs the right ventricle, producing the falling end-tidal CO2, hypoxia, and hypotension. Risk factors include advanced age, ASA III-IV status, pulmonary hypertension, and pathologic or metastatic disease. Management is supportive: 100% oxygen, fluids, vasopressors, and early surgeon communication; prevention includes medullary lavage and venting to lower intramedullary pressure.",
+      "source": {
+        "title": "Bone cement implantation syndrome: a scoping review (PMC open access)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12674061/"
+      },
+      "category": "Orthopedic",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publishable. (1) The cited URL (https://pmc.ncbi.nlm.nih.gov/articles/PMC12674061/) loads and is publicly accessible (PMC open access); it is a scoping review of bone cement implantation syndrome (BCIS). (2) Content supports answer A: the review identifies the embolic theory as the most extensively studied/leading mechanism — embolization of marrow fat, air, thrombus, and debris driven into the venous circulation, with greater embolic burden in cemented procedures, producing haemodynamic and pulmonary deterioration (acute pulmonary hypertension / RV strain). (3) The medicine is correct and unambiguous: this is a textbook BCIS presentation — hip hemiarthroplasty, cement pressurization + prosthesis impaction, ~60s onset, hypotension + hypoxia + ABRUPT drop in EtCO2 (increased dead space from reduced pulmonary blood flow) + sinus tachycardia. A is the single best answer. (4) Distractors are accurate: B (IgE anaphylaxis to MMA monomer) is wrong — the article explicitly states plasma MMA concentrations are too low to cause systemic effects and evidence for a cement/complement-mediated mechanism is weak; C (exothermic myocardial injury) is wrong — heat is local and not a recognized cause of systemic collapse (article does not support it); D (tourniquet reperfusion) is wrong — no tourniquet is used in hip hemiarthroplasty; E (vasovagal) is wrong — the patient is TACHYcardic in sinus rhythm, the opposite of a vagal bradycardic response. Minor non-blocking note: option A lists 'cement debris' as part of the emboli, whereas this particular review notes cement particles were NOT recovered from cardiac chambers (emboli were marrow/fat/air/thrombus). This is a slight imprecision aligned with common BCIS phrasing but does not make A incorrect or create ambiguity, since the load-bearing components (fat, air) and the mechanism (raised intramedullary pressure -> embolization -> pulmonary hypertension -> RV strain) are exactly right and no other option is competitive. Optional polish: editors could drop 'cement debris' to read 'marrow fat and air' for strict fidelity to this source."
+      }
+    },
+    {
+      "subtopic": "fat embolism",
+      "difficulty": "medium",
+      "stem": "A 24-year-old man sustains an isolated closed midshaft femur fracture in a motorcycle crash. He is hemodynamically stable on admission and definitive intramedullary nailing is delayed for 48 hours. Roughly 36 hours after injury he becomes confused and dyspneic, with an SpO2 of 88% on room air, a respiratory rate of 30/min, and a temperature of 38.4 C. On exam there is a petechial rash over the conjunctivae, neck, and anterior axillary folds. Which feature of this presentation is a MAJOR criterion for fat embolism syndrome under the Gurd criteria?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "The petechial rash",
+          "correct": true,
+          "rationale": "Correct. Under Gurd's criteria (as modified by Wilson), the major criteria are a petechial rash, respiratory insufficiency, and cerebral involvement (in a patient without head injury). The petechial rash is a classic major criterion and, when present with respiratory and neurologic findings, completes the classic clinical triad of fat embolism syndrome."
+        },
+        {
+          "label": "B",
+          "text": "The temperature of 38.4 C (pyrexia)",
+          "correct": false,
+          "rationale": "Incorrect. Pyrexia is a minor criterion under Gurd's classification, not a major one. Diagnosis requires either two major criteria, or one major plus four minor criteria."
+        },
+        {
+          "label": "C",
+          "text": "The tachycardia (heart rate elevation)",
+          "correct": false,
+          "rationale": "Incorrect. Tachycardia is a minor criterion. While supportive of the diagnosis, it carries less diagnostic weight than the major criteria of petechial rash, respiratory insufficiency, and cerebral signs."
+        },
+        {
+          "label": "D",
+          "text": "Thrombocytopenia on the complete blood count",
+          "correct": false,
+          "rationale": "Incorrect. Thrombocytopenia, like anemia and an elevated erythrocyte sedimentation rate, is a minor criterion under Gurd's classification rather than a major one."
+        },
+        {
+          "label": "E",
+          "text": "The 36-hour delay between injury and symptom onset",
+          "correct": false,
+          "rationale": "Incorrect. The 24-to-72-hour latency is characteristic of the natural history of fat embolism syndrome but is not itself a Gurd criterion. Only specific clinical and laboratory findings are designated as major or minor criteria."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Fat embolism syndrome typically manifests 24 to 72 hours after long bone or pelvic fracture and is diagnosed clinically using Gurd's criteria (modified by Wilson), which require two major criteria or one major plus four minor criteria. The major criteria are petechial rash, respiratory insufficiency, and cerebral involvement in a non-head-injured patient; minor criteria include tachycardia, pyrexia, retinal changes, jaundice, renal signs, anemia, thrombocytopenia, elevated ESR, and fat macroglobulinemia. The classic triad of respiratory distress, neurologic changes, and petechial rash is illustrated by this case. Early operative fixation of long bone fractures reduces the incidence of fat embolism syndrome.",
+      "source": {
+        "title": "Fat Embolism - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK499885/"
+      },
+      "category": "Orthopedic",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "The cited URL (StatPearls \"Fat Embolism,\" NBK499885) loads, is publicly accessible, and directly supports the answer. Per Gurd criteria, the MAJOR criteria are: petechial rash, respiratory insufficiency, and cerebral involvement. Thus option A (petechial rash) is correctly the major criterion. All distractors are accurate: pyrexia/fever (B), tachycardia (C), and thrombocytopenia (D) are MINOR criteria, and the 36-hour latency (E) is a clinical feature of FES but not a Gurd diagnostic criterion at all. The medicine is correct and unambiguous — exactly one option is a major criterion, and the vignette (closed midshaft femur fracture, 24-72h symptom latency, hypoxia, confusion, and petechiae over conjunctivae/neck/axillary folds) is a textbook FES presentation. Note (does not affect correctness): the stem's temp of 38.4 C is below the source's minor-criterion threshold of >38.5 C, but B was never the intended answer regardless."
+      }
+    },
+    {
+      "subtopic": "TURP syndrome",
+      "difficulty": "medium",
+      "stem": "A 72-year-old man undergoes monopolar transurethral resection of the prostate (TURP) under spinal anesthesia. The resection has lasted 75 minutes with a large gland and several opened venous sinuses; 1.5% glycine is used as the irrigating fluid. The patient, who was comfortable and conversant, becomes restless and nauseated and reports blurred vision. Blood pressure is 168/96 mmHg, heart rate 52/min, and SpO2 96%. A stat basic metabolic panel returns a serum sodium of 118 mEq/L. Which of the following best explains this patient's clinical deterioration?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Intravascular absorption of hypotonic irrigation fluid producing acute hypervolemia and dilutional hyponatremia",
+          "correct": true,
+          "rationale": "Correct. TURP syndrome results from systemic absorption of electrolyte-free, hypotonic irrigating fluid (here 1.5% glycine) through opened prostatic venous sinuses, producing acute volume expansion and dilutional hyponatremia. The combination of hypertension, reflex bradycardia, nausea, neurologic changes, and visual disturbance (accentuated by glycine) with a measured sodium of 118 mEq/L is classic."
+        },
+        {
+          "label": "B",
+          "text": "Loss of sympathetic tone from a high spinal block causing cerebral hypoperfusion",
+          "correct": false,
+          "rationale": "Incorrect. A high spinal causes hypotension and bradycardia from sympathectomy, not the hypertension seen here, and would not lower the serum sodium to 118 mEq/L. The hyponatremia is the defining abnormality."
+        },
+        {
+          "label": "C",
+          "text": "Bacteremia and early septic shock from manipulation of an infected prostate",
+          "correct": false,
+          "rationale": "Incorrect. Urosepsis typically produces fever, tachycardia, and hypotension with a wide pulse pressure rather than hypertension with bradycardia, and it does not cause acute dilutional hyponatremia from fluid absorption."
+        },
+        {
+          "label": "D",
+          "text": "Acute hemorrhage with hypovolemia from an unligated arterial bleed",
+          "correct": false,
+          "rationale": "Incorrect. Significant hemorrhage produces hypotension and tachycardia, the opposite of this patient's hypertension and bradycardia, and would not by itself drop the serum sodium to 118 mEq/L."
+        },
+        {
+          "label": "E",
+          "text": "Carbon dioxide embolism from the resectoscope insufflation circuit",
+          "correct": false,
+          "rationale": "Incorrect. TURP irrigation uses liquid distension media, not gas insufflation. CO2 embolism is a concern in laparoscopy/hysteroscopy with gas, and it would cause sudden hypoxemia and hemodynamic collapse, not isolated hyponatremia."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "TURP syndrome is caused by intravascular and interstitial absorption of large volumes of hypotonic, electrolyte-free irrigation fluid through venous sinuses opened during resection. Roughly 20 mL/min can be absorbed during TURP, and absorption of about 2 L or more can precipitate the syndrome. The result is acute hypervolemia and dilutional hyponatremia; symptoms typically appear once serum sodium falls to around 125 mEq/L and become serious near 120 mEq/L. Findings include hypertension with reflex bradycardia, nausea, confusion, and (with glycine specifically) transient visual disturbance and seizures. Management of mild-to-moderate cases is IV furosemide and normal saline; severe symptomatic hyponatremia is treated with cautious 3% hypertonic saline, correcting no faster than ~20 mEq/L in 24 hours to avoid osmotic demyelination.",
+      "source": {
+        "title": "Transurethral Resection of the Prostate - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK560884/"
+      },
+      "category": "Urology & GYN",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish OK.\n\n(1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK560884/ is the StatPearls \"Transurethral Resection of the Prostate\" chapter on NCBI Bookshelf, open-access, no paywall.\n\n(2) Source supports answer A: The page explicitly states TURP syndrome results from absorption of hypotonic non-conducting irrigation fluid (glycine is named for monopolar systems) causing dilutional hyponatremia and neurologic complications; symptoms include nausea, nervousness/restlessness, and visual disturbances, typically emerging at serum Na ~125 mEq/L or lower. The vignette's Na is 118.\n\n(3) Medicine correct and unambiguous: Classic TURP syndrome vignette — monopolar TURP, 1.5% glycine, prolonged 75-min resection with opened venous sinuses (absorption route), awake spinal patient who becomes restless/nauseated with blurred vision, hypertension with reflex bradycardia (the hypervolemic phase of volume overload), and Na 118. Answer A correctly captures both components: acute hypervolemia + dilutional hyponatremia.\n\n(4) Distractor rationales accurate: B (high spinal) would cause hypotension/bradycardia and would not explain Na 118; C (sepsis) would cause hypotension/tachycardia/fever, not hypertension/bradycardia or isolated acute hyponatremia; D (hemorrhage/hypovolemia) would cause hypotension/tachycardia, not this picture or the lab; E (CO2 embolism) is technically false — TURP uses liquid irrigation, not CO2 insufflation (that's laparoscopy). The hypertension+bradycardia+acute hyponatremia triad fits only A, so the answer is unambiguous."
+      }
+    },
+    {
+      "subtopic": "Lithotripsy",
+      "difficulty": "medium",
+      "stem": "A 30-year-old woman with a symptomatic 9-mm proximal ureteral stone is scheduled for extracorporeal shock wave lithotripsy (ESWL). On preoperative review, which of the following findings is an absolute contraindication to the procedure?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Pregnancy at 16 weeks' gestation",
+          "correct": true,
+          "rationale": "Correct. Pregnancy is an absolute contraindication to ESWL because of the risks of shock-wave and radiologic injury to the fetus, including miscarriage, low birth weight, and other fetal harm. An alternative such as ureteroscopy or stent placement should be used."
+        },
+        {
+          "label": "B",
+          "text": "A well-controlled cardiac pacemaker in the left pectoral position",
+          "correct": false,
+          "rationale": "Incorrect. A pacemaker is not an absolute contraindication. Pectoral pacemakers are remote from the shock-wave focal point; the procedure can proceed, ideally with cardiology input and the option of synchronized (gated) lithotripsy."
+        },
+        {
+          "label": "C",
+          "text": "Body mass index of 31 kg/m2",
+          "correct": false,
+          "rationale": "Incorrect. Obesity can reduce stone-targeting accuracy and treatment efficacy, but it is a relative factor affecting success, not an absolute contraindication."
+        },
+        {
+          "label": "D",
+          "text": "Prior contralateral ESWL six months ago",
+          "correct": false,
+          "rationale": "Incorrect. A history of prior ESWL on the other side is not a contraindication; staged or repeat lithotripsy is common practice."
+        },
+        {
+          "label": "E",
+          "text": "Mild, well-controlled essential hypertension",
+          "correct": false,
+          "rationale": "Incorrect. It is severe or poorly controlled hypertension that is an absolute contraindication because of the bleeding and perinephric hematoma risk. Mild, well-controlled hypertension does not preclude ESWL."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Absolute contraindications to ESWL include pregnancy, untreated bleeding diatheses or active anticoagulation that cannot be safely held, an aortic aneurysm or other lesion in the shock-wave path, untreated urinary tract infection or obstruction distal to the stone, and severe/poorly controlled hypertension. Pregnancy is contraindicated because of fetal radiation exposure and the unknown and potentially harmful effects of shock waves on the fetus. Importantly, cardiac pacemakers are not an absolute contraindication: pectorally placed devices sit away from the blast focus, and the case can be managed with cardiology consultation and ECG-synchronized lithotripsy. ICDs warrant special attention because abdominally placed devices may lie closer to the focal point.",
+      "source": {
+        "title": "Extracorporeal Shockwave Lithotripsy - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK560887/"
+      },
+      "category": "Urology & GYN",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready. (1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK560887/ (StatPearls, NCBI Bookshelf, NBK560887). (2) Source supports the keyed answer: the article explicitly states ESWL \"is contraindicated in pregnancy\" (absolute), citing risks of miscarriage, low birth weight, and ionizing radiation exposure. (3) Medicine is correct and unambiguous: pregnancy is the universally accepted ABSOLUTE contraindication to ESWL, and it is the single best answer among the five options. (4) Distractor rationales are accurate: B — a well-controlled cardiac pacemaker is a relative contraindication/precaution (manageable with cardiology coordination), not absolute (article does not list it as a contraindication); C — BMI 31 (obesity) is a negative predictor of stone-clearance success and a positioning/imaging challenge, NOT a contraindication; D — prior contralateral ESWL is not a contraindication; E — only SEVERE or poorly controlled hypertension is an absolute contraindication (bleeding/perinephric hematoma risk), whereas \"mild, well-controlled\" HTN as written is not contraindicated. The qualifiers on B and E are carefully worded to keep them clearly non-absolute. Minor note (non-blocking): the other classic absolute contraindication, uncorrected bleeding diathesis/coagulopathy, is not among the options, so it introduces no ambiguity. Answer A stands as the unambiguous correct response."
+      }
+    },
+    {
+      "subtopic": "Trendelenburg / laparoscopy positioning",
+      "difficulty": "hard",
+      "stem": "A 58-year-old woman is undergoing robotic-assisted laparoscopic hysterectomy. She has been in steep Trendelenburg (head-down) position with CO2 pneumoperitoneum for two hours. Aside from managing arterial CO2, which of the following physiologic consequences of the steep head-down position should most concern the anesthesia provider as the case continues?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Rising intracranial and intraocular pressure with decreased functional residual capacity and respiratory compliance",
+          "correct": true,
+          "rationale": "Correct. Prolonged steep Trendelenburg increases intracranial and intraocular pressure and shifts abdominal contents cephalad against the diaphragm, decreasing functional residual capacity and pulmonary compliance and raising required airway pressures. Facial, laryngeal, and tongue edema can also develop, threatening the airway after extubation."
+        },
+        {
+          "label": "B",
+          "text": "A sustained large increase in cardiac output that persists for the duration of the case",
+          "correct": false,
+          "rationale": "Incorrect. Head-down tilt does transiently increase venous return and cardiac output, but these hemodynamic changes are temporary; most variables return toward baseline within about ten minutes and are not a sustained increase throughout the case."
+        },
+        {
+          "label": "C",
+          "text": "Decreased intraocular pressure due to gravitational drainage of aqueous humor",
+          "correct": false,
+          "rationale": "Incorrect. This reverses the actual physiology. The head-down position increases, not decreases, intraocular pressure because of elevated central venous and episcleral venous pressure."
+        },
+        {
+          "label": "D",
+          "text": "Increased functional residual capacity improving oxygenation reserve",
+          "correct": false,
+          "rationale": "Incorrect. FRC falls, not rises, in Trendelenburg because the diaphragm is displaced cephalad by abdominal contents (worsened by pneumoperitoneum), reducing oxygenation reserve."
+        },
+        {
+          "label": "E",
+          "text": "A reduction in intracranial pressure from improved cerebral venous outflow",
+          "correct": false,
+          "rationale": "Incorrect. Head-down positioning impedes cerebral venous drainage and raises ICP; it does not lower it. This is the opposite of the correct physiologic effect."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Steep Trendelenburg positioning produces well-defined physiologic effects relevant to laparoscopic and robotic pelvic surgery. Gravitational changes increase intracranial and intraocular pressure and cause dependent swelling of the face, larynx, and tongue, which increases the risk of postoperative airway obstruction. Cephalad displacement of the abdominal contents against the diaphragm (compounded by CO2 pneumoperitoneum) decreases functional residual capacity and respiratory compliance, requiring higher airway pressures to maintain ventilation. The initial increase in venous return and cardiac output is transient, with most hemodynamic variables returning toward baseline within about ten minutes. Practical implications include limiting Trendelenburg duration/steepness when possible, protecting the eyes, and verifying resolution of airway edema (e.g., a cuff-leak check) before extubation.",
+      "source": {
+        "title": "Anatomy, Patient Positioning - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK513320/"
+      },
+      "category": "Urology & GYN",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready. The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK513320/, StatPearls \"Anatomy, Patient Positioning\") loads and is publicly accessible, and is directly on-topic.\n\nSource support for correct answer A: The page states that prolonged head-down (Trendelenburg) positioning \"can increase intracranial pressure, intraocular pressure, and swelling of the face, larynx, and tongue,\" and that respiratory changes from upward diaphragmatic displacement \"decrease functional residual capacity and respiratory compliance, requiring higher airway pressures.\" This exactly matches option A (rising ICP and IOP with decreased FRC and respiratory compliance). The medicine is correct, standard, and unambiguous.\n\nAll four distractors are accurately false per the same source and established physiology:\n- B (sustained large CO increase persisting all case): WRONG — source says hemodynamic changes (increased venous return/CO) are \"temporary, with most hemodynamic variables returning to baseline within ten minutes.\"\n- C (decreased IOP from aqueous drainage): WRONG — IOP increases in head-down position.\n- D (increased FRC improving oxygenation reserve): WRONG — FRC decreases.\n- E (reduced ICP from improved venous outflow): WRONG — ICP increases; head-down impairs cerebral venous outflow.\n\nNo paywall, no 404, no ambiguity, single best answer. All four verification criteria satisfied."
+      }
+    },
+    {
+      "subtopic": "Hysteroscopy fluid",
+      "difficulty": "medium",
+      "stem": "A healthy 41-year-old woman is undergoing operative hysteroscopic resection of a submucosal fibroid using 1.5% glycine (a hypotonic, electrolyte-free distending medium) with a monopolar resectoscope. The procedure is ongoing and the automated fluid-management system now displays a fluid deficit of 1000 mL. According to recommended thresholds, what is the most appropriate next step?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Move to terminate the procedure promptly and check serum electrolytes, as the recommended hypotonic-fluid deficit limit has been reached",
+          "correct": true,
+          "rationale": "Correct. For a hypotonic, electrolyte-free distending medium in a healthy patient, the recommended maximum fluid deficit is 1000 mL. Reaching this threshold mandates expeditious completion/termination of the case and assessment of serum electrolytes and volume status because of the risk of dilutional hyponatremia and cerebral edema."
+        },
+        {
+          "label": "B",
+          "text": "Continue resecting until the deficit reaches 2500 mL, the standard cutoff for this case",
+          "correct": false,
+          "rationale": "Incorrect. The 2500 mL threshold applies to isotonic media (e.g., normal saline with bipolar systems), not to hypotonic electrolyte-free fluids like 1.5% glycine. Using the isotonic limit here would dangerously underestimate the hyponatremia risk."
+        },
+        {
+          "label": "C",
+          "text": "Continue but switch the distending medium to additional 1.5% glycine to dilute absorbed solute",
+          "correct": false,
+          "rationale": "Incorrect. Adding more hypotonic glycine increases, not decreases, the absorbed free-water and hyponatremia/hypo-osmolality burden. The deficit threshold has been reached and the procedure should be ended."
+        },
+        {
+          "label": "D",
+          "text": "Disregard the deficit because the patient is young and healthy and has no comorbidities",
+          "correct": false,
+          "rationale": "Incorrect. The 1000 mL limit is the threshold for healthy patients; comorbid or older patients have an even lower limit (750 mL for hypotonic media). Being healthy does not allow exceeding 1000 mL with a hypotonic medium."
+        },
+        {
+          "label": "E",
+          "text": "Administer a bolus of intravenous 0.9% saline and continue the resection without further monitoring",
+          "correct": false,
+          "rationale": "Incorrect. Empiric saline does not address the core problem of ongoing absorption of hypotonic fluid, and continuing without electrolyte assessment ignores the reached deficit threshold and the risk of acute hyponatremia."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "In operative hysteroscopy, the distending medium can be absorbed intravascularly through opened venous channels, and hypotonic electrolyte-free fluids (1.5% glycine, 3% sorbitol) carry a risk of dilutional hyponatremia, hypo-osmolality, and cerebral edema (operative hysteroscopy intravascular absorption syndrome). Recommended maximum fluid-deficit thresholds are 1000 mL for hypotonic media and 2500 mL for isotonic media in healthy patients, with lower limits (750 mL hypotonic, 1500 mL isotonic) for older adults or those with cardiovascular/renal comorbidities. Reaching the threshold should prompt expeditious conclusion of the procedure and evaluation of serum electrolytes and volume status. Use of isotonic saline with bipolar instrumentation reduces the risk of these fluid-overload syndromes.",
+      "source": {
+        "title": "Hysteroscopy - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK564345/"
+      },
+      "category": "Urology & GYN",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish.\n\nSource check: The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK564345/, \"Hysteroscopy - StatPearls - NCBI Bookshelf\") loads, is publicly accessible, and is on-topic. It explicitly states: for healthy patients, hypotonic solutions have \"a fluid deficit with an upper limit of 1000 mL,\" while isotonic solutions have \"an upper limit of 2500 mL.\" For older/comorbid patients the cutoffs are 750 mL (hypotonic) and 1500 mL (isotonic). The text ties the lower hypotonic limit to fluid-overload complications (e.g., hyponatremia, cerebral edema) with electrolyte-free media.\n\nAnswer correctness: The vignette uses 1.5% glycine (hypotonic, electrolyte-free) in a healthy 41-year-old, with deficit now 1000 mL. The recommended hypotonic limit for a healthy patient is exactly 1000 mL, so the limit has been reached. Option A (terminate promptly and check serum electrolytes) is the correct, source-supported action. Unambiguous.\n\nDistractor rationales all accurate:\n- B (2500 mL cutoff): that is the ISOTONIC limit; wrong for hypotonic glycine.\n- C (add more 1.5% glycine): adding more electrolyte-free hypotonic fluid worsens hyponatremia, not dilutes the problem; wrong.\n- D (disregard because young/healthy): the 1000 mL limit is specifically the healthy-patient threshold; it cannot be ignored; wrong.\n- E (saline bolus and continue without monitoring): continuing past the deficit limit and abandoning monitoring is unsafe; wrong.\n\nAll four verification criteria met: URL loads/public, content supports answer A, medicine correct and unambiguous, distractor rationales accurate."
+      }
+    },
+    {
+      "subtopic": "Massive transfusion protocol (MTP) ratios / damage control resuscitation",
+      "difficulty": "medium",
+      "stem": "A 27-year-old man is brought to the trauma bay after a high-speed motorcycle collision. He is hypotensive (BP 78/44 mm Hg), tachycardic (HR 138/min), and has an unstable pelvis with obvious external hemorrhage. The massive transfusion protocol is activated. While the surgical team prepares for damage control laparotomy, the CAA is asked to guide initial resuscitation. According to damage control resuscitation principles, which of the following best describes the optimal early transfusion strategy?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Administer 2-3 L of crystalloid first, then reassess the need for blood products",
+          "correct": false,
+          "rationale": "Incorrect. Large-volume crystalloid resuscitation is specifically discouraged in damage control resuscitation because it causes dilutional coagulopathy, tissue edema, delayed healing, and prolonged ventilation. Crystalloid-heavy strategies produce worse outcomes than balanced blood products."
+        },
+        {
+          "label": "B",
+          "text": "Transfuse packed red blood cells (PRBCs), plasma, and platelets in an approximately 1:1:1 ratio",
+          "correct": true,
+          "rationale": "Correct. Damage control resuscitation emphasizes early, balanced administration of blood products. Resuscitation with a 1:1:1 ratio of PRBCs, plasma, and platelets (or whole blood) improves outcomes versus crystalloid-heavy strategies and reduces dilutional coagulopathy and downstream complications."
+        },
+        {
+          "label": "C",
+          "text": "Transfuse PRBCs alone and defer plasma and platelets until laboratory coagulation results return",
+          "correct": false,
+          "rationale": "Incorrect. Withholding plasma and platelets until labs return delays correction of trauma-induced coagulopathy. Balanced protocols prioritize PRBCs given together with plasma and platelets early, rather than PRBC-only resuscitation guided by lagging laboratory values."
+        },
+        {
+          "label": "D",
+          "text": "Transfuse plasma and platelets but avoid PRBCs to prevent increasing oxygen demand",
+          "correct": false,
+          "rationale": "Incorrect. PRBCs are central to massive transfusion to restore oxygen-carrying capacity in hemorrhagic shock. Balanced protocols prioritize PRBCs combined with plasma and platelets; omitting red cells worsens tissue oxygen delivery."
+        },
+        {
+          "label": "E",
+          "text": "Administer recombinant factor VIIa as the first-line agent before any blood products",
+          "correct": false,
+          "rationale": "Incorrect. Recombinant factor VIIa is not a first-line resuscitation agent and does not replace balanced blood product transfusion; the foundation of damage control resuscitation is early balanced PRBC/plasma/platelet transfusion with hemorrhage control."
+        }
+      ],
+      "correct_answer": "B",
+      "explanation": "Damage control resuscitation (DCR) evolved from military trauma experience and emphasizes rapid hemorrhage control, permissive hypotension, minimization of crystalloid, and early use of blood products in balanced ratios. The cornerstone is balanced transfusion using either fresh whole blood or an approximately 1:1:1 ratio of PRBCs, plasma, and platelets, which improves outcomes compared with crystalloid-heavy strategies and reduces dilutional coagulopathy, tissue edema, prolonged ventilation, and extended hospital stays. While the precise optimal ratio remains debated, balanced product delivery (not crystalloid, not PRBC-only) is the evidence-based standard.",
+      "source": {
+        "title": "Massive Transfusion - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK499929/"
+      },
+      "category": "Trauma & Burns",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — ok=true. All four criteria hold.\n\n(1) URL loads / public access: https://www.ncbi.nlm.nih.gov/books/NBK499929/ (\"Massive Transfusion\" — StatPearls, NCBI Bookshelf) is open-access and returned full substantive content via WebFetch. No 404, no paywall.\n\n(2) Content supports the stated correct answer (B): The article explicitly states that \"resuscitation with balanced blood products, whether as fresh whole blood or a 1:1:1 ratio of PRBCs, plasma, and platelets, improves outcomes,\" and that massive transfusion protocols should prioritize PRBCs given in combination with platelets and plasma. This directly supports option B (1:1:1 ratio).\n\n(3) Medicine is correct and unambiguous: Option B is the established standard of damage control resuscitation (DCR), supported by landmark trauma evidence (e.g., PROPPR trial) and the clinical vignette (hemorrhagic shock, unstable pelvis, active bleeding, MTP activated). The distractors are all clearly inferior, making B unambiguous.\n\n(4) Distractor rationales are accurate:\n- A (crystalloid first): Wrong. DCR specifically minimizes crystalloid; the source notes \"large volume resuscitation with crystalloid solution risks dilutional coagulopathy.\" Permissive hypotension and early balanced products are favored over crystalloid-heavy resuscitation.\n- C (PRBCs alone, defer plasma/platelets pending labs): Wrong. Core DCR principle is empiric balanced transfusion without waiting for coagulation results; the source emphasizes giving plasma/platelets in combination with PRBCs.\n- D (plasma/platelets, avoid PRBCs): Wrong/nonsensical. PRBCs are essential for oxygen carrying capacity in hemorrhagic shock; the \"avoid PRBCs to prevent oxygen demand\" rationale is fabricated physiology.\n- E (recombinant factor VIIa first-line): Wrong. rFVIIa is not first-line and is not given before blood products; it is at most an adjunct/last-resort agent with off-label, controversial use. (Note: the source does not mention rFVIIa specifically, but the option is clearly incorrect on established practice.)\n\nMinor non-blocking note: \"CAA\" (Certified Anesthesiologist Assistant) is an unusual actor for trauma-bay resuscitation guidance, but it does not affect the correctness of the answer. The question and keyed answer B are valid for publication."
+      }
+    },
+    {
+      "subtopic": "Succinylcholine in burns",
+      "difficulty": "hard",
+      "stem": "A 34-year-old man sustained 40% total body surface area flame burns 6 days ago and now requires urgent operative debridement under general anesthesia. He has no IV access difficulties and a reassuring airway exam. The anesthesia team is selecting a neuromuscular blocking agent for rapid-sequence induction. Why is succinylcholine contraindicated in this patient at this point in his course?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Upregulation of acetylcholine receptors causes an exaggerated potassium efflux that can precipitate life-threatening hyperkalemia",
+          "correct": true,
+          "rationale": "Correct. After significant burns, disease pathophysiology induces upregulation of acetylcholine receptors. When succinylcholine depolarizes these proliferated receptors, an exaggerated efflux of potassium occurs, which can cause marked hyperkalemia, dysrhythmias, and cardiac arrest. This risk is established beyond the first 24-72 hours and persists well into the recovery period."
+        },
+        {
+          "label": "B",
+          "text": "Burn injury depletes plasma pseudocholinesterase, causing a prolonged but otherwise benign block",
+          "correct": false,
+          "rationale": "Incorrect. Although reduced pseudocholinesterase activity can prolong succinylcholine's effect, the dangerous and contraindicating concern in burns is hyperkalemia from receptor upregulation, not simply a prolonged block. A prolonged block alone would not make the drug contraindicated."
+        },
+        {
+          "label": "C",
+          "text": "Succinylcholine is contraindicated only within the first 6 hours after a burn and is safe by day 6",
+          "correct": false,
+          "rationale": "Incorrect. The hyperkalemic risk is not present immediately; receptor upregulation takes roughly 24-48 hours to develop. By day 6 the patient is squarely within the dangerous window, so the drug should be avoided now, not considered safe."
+        },
+        {
+          "label": "D",
+          "text": "Succinylcholine triggers malignant hyperthermia specifically in burn-injured muscle",
+          "correct": false,
+          "rationale": "Incorrect. Malignant hyperthermia is a pharmacogenetic disorder of skeletal muscle (RYR1/CACNA1S), unrelated to burn injury. The burn-specific hazard with succinylcholine is hyperkalemia from extrajunctional receptor upregulation, not MH."
+        },
+        {
+          "label": "E",
+          "text": "Burn injury markedly increases sensitivity to succinylcholine, so standard doses cause prolonged apnea from overdose",
+          "correct": false,
+          "rationale": "Incorrect. Burn patients are typically resistant (not sensitized) to nondepolarizers, and the contraindication for succinylcholine relates to hyperkalemia, not dose-related apnea from increased sensitivity."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Succinylcholine should be avoided in patients with significant burns (and similar denervating/immobilizing injuries) because the pathophysiology induces upregulation of acetylcholine receptors. Depolarization of these proliferated, partly altered receptors produces an exaggerated potassium efflux that can cause acute, life-threatening hyperkalemia, dysrhythmias, and death. The risk does not appear immediately after the burn (receptor upregulation requires roughly 24-48 hours) but is present and dangerous during the period that includes 24-72 hours post-injury and extends for weeks to a few months thereafter. A patient at day 6 is well within the contraindicated window, so a nondepolarizing agent should be used instead.",
+      "source": {
+        "title": "Succinylcholine Chloride - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK499984/"
+      },
+      "category": "Trauma & Burns",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready. (1) URL loads and is publicly accessible: https://www.ncbi.nlm.nih.gov/books/NBK499984/ (Succinylcholine Chloride, StatPearls/NCBI Bookshelf), no paywall. (2) Source supports the keyed answer A almost verbatim: it attributes burn-related hyperkalemia to \"upregulation of postjunctional acetylcholine receptors\" and lists burns/trauma as a contraindication \"due to the high probability of acute hyperkalemia.\" (3) Medicine is correct and unambiguous: at day 6 after a 40% TBSA flame burn, succinylcholine is contraindicated because ACh-receptor upregulation causes exaggerated K+ efflux and life-threatening hyperkalemia — the well-established anesthesiology teaching. (4) Distractors are all accurately wrong: B is false (burns do not deplete pseudocholinesterase, and such a block would not be \"benign\"); C is false (the danger window does NOT close at 6 hours or by day 6 — risk begins ~24-72h post-burn and persists for weeks-to-months until wound healing, so day 6 is firmly contraindicated); D is false (succinylcholine-related MH is not specific to burned muscle); E is false (the problem is hyperkalemia from receptor upregulation, not increased drug sensitivity/overdose apnea).\n\nCAVEAT (not blocking, but worth flagging to the editor): The StatPearls source wording \"patients with significant burns or traumatic injuries that are 24 to 72 hours post-injury\" is poorly phrased — it describes the ONSET of the risk window, not its closure. Taken too literally it could be misread as implying succinylcholine is safe again after 72 hours, which is clinically false. The question itself is correct and the day-6 scenario is appropriately keyed, but if a grader checks only the literal source sentence they may wrongly think distractor C (\"safe by day 6\") is supported. The standard, broadly-accepted medicine — not the source's loose wording — confirms A is correct and C is a distractor."
+      }
+    },
+    {
+      "subtopic": "Carbon monoxide / cyanide toxicity in smoke inhalation",
+      "difficulty": "medium",
+      "stem": "A 45-year-old woman is pulled from a house fire in an enclosed basement. She is obtunded with soot around the nares. Vital signs show BP 88/52 mm Hg and HR 122/min. An arterial blood gas reveals a profound metabolic acidosis with a serum lactate of 12 mmol/L despite adequate oxygenation and ventilation. Cyanide toxicity from smoke inhalation is strongly suspected. Which of the following is the most appropriate antidote?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Hydroxocobalamin 5 g IV",
+          "correct": true,
+          "rationale": "Correct. Hydroxocobalamin is the first-line antidote for cyanide toxicity in the United States (Cyanokit), dosed 5 g IV over about 15 minutes with an optional additional 5 g. It binds cyanide directly to form cyanocobalamin with minimal hemodynamic side effects, making it preferred in a hypotensive smoke-inhalation victim."
+        },
+        {
+          "label": "B",
+          "text": "Sodium nitrite IV",
+          "correct": false,
+          "rationale": "Incorrect. Sodium nitrite induces methemoglobinemia to scavenge cyanide, but it also causes vasodilatory hypotension and reduces oxygen-carrying capacity. In a hypotensive smoke-inhalation patient who may have concurrent carbon monoxide poisoning, induced methemoglobinemia further compromises oxygen delivery, so it is not the preferred agent."
+        },
+        {
+          "label": "C",
+          "text": "High-dose insulin with dextrose",
+          "correct": false,
+          "rationale": "Incorrect. High-dose insulin/euglycemia therapy is an antidote for calcium-channel-blocker and beta-blocker toxicity, not cyanide poisoning. It has no role in reversing cyanide-induced inhibition of aerobic metabolism."
+        },
+        {
+          "label": "D",
+          "text": "Intravenous lipid emulsion (20%)",
+          "correct": false,
+          "rationale": "Incorrect. Lipid emulsion is used for local anesthetic systemic toxicity and certain lipophilic drug overdoses. It is not an antidote for cyanide, which requires direct binding (hydroxocobalamin) or methemoglobin induction (nitrites)."
+        },
+        {
+          "label": "E",
+          "text": "N-acetylcysteine IV",
+          "correct": false,
+          "rationale": "Incorrect. N-acetylcysteine treats acetaminophen toxicity by replenishing glutathione; it does not chelate or detoxify cyanide and has no role as a cyanide antidote in this setting."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "Smoke from enclosed-space fires commonly produces cyanide via incomplete combustion of nitrogen-containing materials. Cyanide arrests aerobic respiration, producing a pathognomonic lactic acidosis; a serum lactate of 8 mmol/L or greater is both sensitive and specific for toxic cyanide concentrations in suspected exposure. The first-line antidote is hydroxocobalamin (Cyanokit), 5 g IV over about 15 minutes (repeatable), which binds cyanide to form cyanocobalamin and has minimal hemodynamic side effects. This makes it especially suitable when the patient is hypotensive and may have concomitant carbon monoxide poisoning, because, unlike sodium nitrite, it does not cause vasodilatory hypotension or induce methemoglobinemia that would further impair oxygen delivery.",
+      "source": {
+        "title": "Cyanide Toxicity - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK507796/"
+      },
+      "category": "Trauma & Burns",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — publish-ready.\n\n(1) URL loads: The cited StatPearls page (https://www.ncbi.nlm.nih.gov/books/NBK507796/, \"Cyanide Toxicity\") is publicly accessible on NCBI Bookshelf, not paywalled, and directly relevant.\n\n(2) Source supports the stated answer (A): It states \"The first-line antidote in the United States is hydroxycobalamin, usually in the form of the Cyanokit,\" and confirms the 5 g IV dosing (5 g IV over 15 min, with a possible repeat 5 g dose). This matches option A exactly, including the dose.\n\n(3) Medicine is correct and unambiguous: Hydroxocobalamin is the unambiguous first-line antidote for cyanide toxicity from smoke inhalation. It is specifically preferred in fire/smoke-inhalation victims because it does not cause methemoglobinemia, which is dangerous when concurrent carbon monoxide poisoning is likely (as in an enclosed-basement house fire). The vignette is classic and clean: enclosed-space fire, soot around nares, obtundation, hypotension, and a markedly elevated lactate (12 mmol/L) despite adequate oxygenation/ventilation — a textbook lactate threshold (>8-10 mmol/L) used to support empiric cyanide treatment.\n\n(4) Distractor rationales are accurate:\n- B. Sodium nitrite — a real cyanide antidote but correctly NOT first-line here; it induces methemoglobinemia (dangerous with co-existing CO poisoning in smoke inhalation) and causes vasodilatory hypotension in an already-hypotensive patient. The source explicitly notes these concerns. Good distractor, clearly inferior.\n- C. High-dose insulin/dextrose — antidote for calcium-channel-blocker/beta-blocker toxicity, irrelevant to cyanide. Clearly wrong.\n- D. IV lipid emulsion (20%) — antidote for local anesthetic systemic toxicity / lipophilic drug overdose, not cyanide. Clearly wrong.\n- E. N-acetylcysteine — antidote for acetaminophen toxicity, not cyanide. Clearly wrong.\n\nNo second defensible answer; the keyed answer A is correct and the dose is right. Question is well-constructed and accurate."
+      }
+    },
+    {
+      "subtopic": "Burn airway management",
+      "difficulty": "medium",
+      "stem": "A 52-year-old man is admitted after being trapped in a structure fire. He has facial burns, singed nasal hair, carbonaceous sputum, and is now developing audible inspiratory stridor and a hoarse voice. He is currently maintaining oxygen saturation of 95% on a non-rebreather mask. Which of the following is the most appropriate next step in airway management?",
+      "choices": [
+        {
+          "label": "A",
+          "text": "Proceed with early endotracheal intubation",
+          "correct": true,
+          "rationale": "Correct. Stridor and hoarseness signal impending upper-airway compromise from progressive edema in inhalation injury. Because airway edema can worsen abruptly and obstruct the upper airway, a low threshold for early, preemptive intubation is critical for survival, even when oxygen saturation is currently adequate."
+        },
+        {
+          "label": "B",
+          "text": "Defer intubation and observe with serial exams as long as oxygen saturation remains above 92%",
+          "correct": false,
+          "rationale": "Incorrect. A normal current saturation is falsely reassuring. Upper-airway edema in inhalation injury can progress suddenly to complete obstruction; waiting for desaturation can convert a manageable intubation into a failed emergency airway. Stridor and hoarseness mandate acting now."
+        },
+        {
+          "label": "C",
+          "text": "Administer nebulized racemic epinephrine and reassess in one hour before deciding on an airway",
+          "correct": false,
+          "rationale": "Incorrect. Nebulized epinephrine may transiently reduce edema but does not address the underlying progressive injury, and a one-hour delay risks the airway closing. With stridor and hoarseness present, definitive airway control should not be postponed."
+        },
+        {
+          "label": "D",
+          "text": "Place a nasopharyngeal airway and continue high-flow oxygen",
+          "correct": false,
+          "rationale": "Incorrect. A nasopharyngeal airway does not secure or protect the airway against worsening mucosal edema and obstruction below the nasopharynx, and supplemental oxygen does not prevent progressive upper-airway swelling. Definitive intubation is required."
+        },
+        {
+          "label": "E",
+          "text": "Schedule an elective awake tracheostomy for the following morning",
+          "correct": false,
+          "rationale": "Incorrect. Deferring airway control overnight in a patient with active stridor risks acute complete obstruction. Tracheostomy is not the first-line emergency response when orotracheal intubation can be performed promptly; the priority is securing the airway now."
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "In inhalation injury, the upper airway is typically injured and obstructs earliest, before parenchymal injury manifests, and edema can worsen suddenly. Findings such as stridor and upper-airway turbulence are signs of impending airway compromise, and prompt intubation should be strongly considered. Airway protection should include early and preemptive intubation for patients with inhalation injury, and a low threshold for intubation is important for survival. A currently acceptable oxygen saturation is misleading because it does not predict the rapid mechanical obstruction that edema can cause; waiting risks a much more difficult or failed airway. Therefore, in a patient with facial burns, carbonaceous sputum, hoarseness, and developing stridor, early endotracheal intubation is the correct next step.",
+      "source": {
+        "title": "Inhalation Injury - StatPearls - NCBI Bookshelf",
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK513261/"
+      },
+      "category": "Trauma & Burns",
+      "domain": 4,
+      "verdict": {
+        "ok": true,
+        "reason": "VERIFIED — keep answer A.\n\nSource check: The cited URL (https://www.ncbi.nlm.nih.gov/books/NBK513261/, \"Inhalation Injury - StatPearls - NCBI Bookshelf\") loads, is publicly accessible (no paywall/404), and is directly on-topic.\n\nContent support: The source explicitly supports the keyed answer. It states \"Findings of stridor or upper airway turbulence/noise are often a sign of impending airway compromise, and prompt intubation should be strongly considered,\" and \"Airway protection should include considering early and preemptive intubation for patients with inhalation injury.\" It also notes upper airway edema/obstruction develops earliest and can worsen suddenly. The vignette's findings (facial burns, singed nasal hair, carbonaceous sputum) plus active stridor and hoarseness are precisely the impending-obstruction signs the source describes.\n\nMedicine is correct and unambiguous: A 52-year-old with inhalation injury now developing inspiratory stridor and hoarse voice has impending upper airway obstruction. Early endotracheal intubation (A) is the standard of care before edema makes the airway unobtainable.\n\nDistractor rationales are accurate:\n- B: Wrong. SpO2 95% is falsely reassuring; oxygenation does not predict airway edema, which progresses rapidly. Observing risks loss of a difficult airway.\n- C: Wrong/dangerous. Racemic epinephrine with a 1-hour delay defers definitive airway control during active stridor; the airway may close.\n- D: Wrong. A nasopharyngeal airway neither protects nor bypasses evolving glottic/laryngeal edema and is not a definitive airway.\n- E: Wrong. Elective next-morning tracheostomy is far too slow for an emergent, evolving obstruction.\n\nAll four verification criteria are met."
+      }
+    }
+  ]
+}
