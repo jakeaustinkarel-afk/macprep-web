@@ -9,6 +9,61 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Behind Render + Cloudflare; trust the proxy so req.ip reflects the real client
+// (needed for rate limiting).
+app.set('trust proxy', true);
+
+// ---------------------------------------------------------------------------
+// Security headers (helmet-equivalent, no extra dependency). frame-ancestors
+// 'none' blocks clickjacking; nosniff blocks MIME sniffing; HSTS forces HTTPS.
+// The CSP is intentionally permissive for inline styles/handlers the app uses,
+// while still restricting object/base and locking the framing.
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Content-Security-Policy', [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "connect-src 'self'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "object-src 'none'",
+    ].join('; '));
+    next();
+});
+
+// ---------------------------------------------------------------------------
+// Lightweight in-memory rate limiter (per-IP sliding window). Single Render
+// instance, so a Map is sufficient; protects against password brute-forcing
+// and feedback spam without a new dependency.
+// ---------------------------------------------------------------------------
+function rateLimit({ windowMs, max }) {
+    const hits = new Map();
+    return (req, res, next) => {
+        const now = Date.now();
+        const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+        const arr = (hits.get(ip) || []).filter((t) => now - t < windowMs);
+        if (arr.length >= max) {
+            res.setHeader('Retry-After', Math.ceil(windowMs / 1000));
+            return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.' });
+        }
+        arr.push(now);
+        hits.set(ip, arr);
+        if (hits.size > 5000) { // crude memory bound
+            for (const [k, v] of hits) { if (!v.some((t) => now - t < windowMs)) hits.delete(k); }
+        }
+        next();
+    };
+}
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
+
 // ---------------------------------------------------------------------------
 // Clients
 // ---------------------------------------------------------------------------
@@ -196,7 +251,7 @@ async function isUserPremium(userId) {
 // Auth — single real endpoint backed by Supabase Auth.
 // Requires the Email provider to be enabled in Supabase Auth settings.
 // ---------------------------------------------------------------------------
-app.post('/api/authenticate', async (req, res) => {
+app.post('/api/authenticate', authLimiter, async (req, res) => {
     const { action } = req.body || {};
     const email = (req.body?.email || '').toLowerCase().trim();
     const password = req.body?.password || '';
@@ -239,11 +294,92 @@ app.post('/api/authenticate', async (req, res) => {
         return res.json({
             success: true,
             token: data.session?.access_token || null,
+            refresh_token: data.session?.refresh_token || null,
             profile: { email, premium_unlocked: isPremium },
         });
     } catch (err) {
         console.error('Auth error:', err.message);
         return res.status(500).json({ success: false, error: 'Authentication failure.' });
+    }
+});
+
+// Exchange a refresh token for a fresh access token so a study session survives
+// the 1-hour access-token TTL instead of abruptly logging the user out.
+app.post('/api/auth/refresh', async (req, res) => {
+    const refresh_token = req.body?.refresh_token;
+    if (!supabaseAuth || !refresh_token) return res.status(400).json({ error: 'Missing refresh token.' });
+    try {
+        const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
+        if (error || !data.session) return res.status(401).json({ error: 'Could not refresh session.' });
+        return res.json({ token: data.session.access_token, refresh_token: data.session.refresh_token });
+    } catch (err) {
+        return res.status(401).json({ error: 'Could not refresh session.' });
+    }
+});
+
+// Send a password-reset email (Supabase recovery link → /reset.html).
+app.post('/api/auth/reset-request', authLimiter, async (req, res) => {
+    const email = (req.body?.email || '').toLowerCase().trim();
+    if (!supabaseAuth || !email) return res.status(400).json({ error: 'Email is required.' });
+    const base = req.headers.origin || process.env.PUBLIC_BASE_URL || `https://${req.headers.host}`;
+    try {
+        await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo: `${base.replace(/\/$/, '')}/reset.html` });
+    } catch (err) { /* do not reveal whether the email exists */ }
+    // Always return success to avoid email enumeration.
+    return res.json({ success: true });
+});
+
+// Set a new password. Accepts the recovery access token from the reset email
+// (sent to /reset.html as a URL hash) and updates the resolved user's password
+// via the service-role admin API.
+app.post('/api/auth/update-password', authLimiter, async (req, res) => {
+    const access_token = req.body?.access_token;
+    const new_password = req.body?.new_password || '';
+    if (!supabase || !supabaseAuth) return res.status(500).json({ error: 'Not configured.' });
+    if (!access_token || new_password.length < 8) {
+        return res.status(400).json({ error: 'A valid reset link and an 8+ character password are required.' });
+    }
+    try {
+        const { data, error } = await supabaseAuth.auth.getUser(access_token);
+        if (error || !data.user) return res.status(401).json({ error: 'Reset link is invalid or expired.' });
+        const { error: upErr } = await supabase.auth.admin.updateUserById(data.user.id, { password: new_password });
+        if (upErr) throw upErr;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Password update failure:', err.message);
+        return res.status(500).json({ error: 'Could not update password.' });
+    }
+});
+
+// Change password for a signed-in user (requires their current session token).
+app.post('/api/user/change-password', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const new_password = req.body?.new_password || '';
+    if (new_password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    try {
+        const { error } = await supabase.auth.admin.updateUserById(user.id, { password: new_password });
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not change password.' });
+    }
+});
+
+// Delete the signed-in user's account and all associated data (GDPR/privacy).
+app.post('/api/user/delete', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    try {
+        await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
+        await supabase.from(PROFILE_TABLE).delete().eq('user_id', user.id);
+        await supabase.from('user_flags').delete().eq('user_id', user.id).then(() => {}, () => {});
+        const { error } = await supabase.auth.admin.deleteUser(user.id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Account deletion failure:', err.message);
+        return res.status(500).json({ error: 'Could not delete account.' });
     }
 });
 
@@ -402,6 +538,15 @@ app.get('/api/user/profile', async (req, res) => {
         const correct = (progress || []).filter((r) => r.is_correct).length;
         const ceiling = await getFreeTierCeiling();
 
+        // Missed question ids = answered incorrectly and never since gotten right.
+        const everCorrect = new Set((progress || []).filter((r) => r.is_correct).map((r) => r.question_id));
+        const missed_ids = Array.from(new Set((progress || [])
+            .filter((r) => !r.is_correct && !everCorrect.has(r.question_id))
+            .map((r) => r.question_id)));
+
+        const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
+        const flagged_ids = (flags || []).map((f) => f.question_id);
+
         // Per-specialty (category) accuracy from attempts.
         const byCat = {};
         (progress || []).forEach((r) => {
@@ -428,6 +573,8 @@ app.get('/api/user/profile', async (req, res) => {
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
                 by_specialty,
+                missed_ids,
+                flagged_ids,
             },
         });
     } catch (err) {
@@ -468,7 +615,26 @@ app.post('/api/user/profile', async (req, res) => {
 // Feedback — suggestions / bug reports. Stored in user_suggestions. Auth optional
 // (signed-in users have their email attached automatically).
 // ---------------------------------------------------------------------------
-app.post('/api/feedback', async (req, res) => {
+// Flag / unflag a question for later review.
+app.post('/api/user/flag', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const questionId = String(req.body?.questionId || '');
+    const flagged = req.body?.flagged !== false;
+    if (!questionId) return res.status(400).json({ error: 'questionId required.' });
+    try {
+        if (flagged) {
+            await supabase.from('user_flags').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+        } else {
+            await supabase.from('user_flags').delete().eq('user_id', user.id).eq('question_id', questionId);
+        }
+        return res.json({ success: true, flagged });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not update flag.' });
+    }
+});
+
+app.post('/api/feedback', feedbackLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const user = await getUserFromToken(req);
     const kind = (req.body?.kind || 'suggestion').toString().slice(0, 40);
@@ -523,6 +689,17 @@ app.post('/api/create-checkout-session', async (req, res) => {
         console.error('Checkout API failure:', err.message);
         res.status(500).json({ error: err.message });
     }
+});
+
+// ---------------------------------------------------------------------------
+// Friendly 404 for anything not matched above (API or unknown page). API gets
+// JSON; everything else gets the branded 404 page.
+// ---------------------------------------------------------------------------
+app.use((req, res) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found.' });
+    res.status(404).sendFile(path.join(__dirname, '../404.html'), (err) => {
+        if (err) res.status(404).send('Not found.');
+    });
 });
 
 // ---------------------------------------------------------------------------

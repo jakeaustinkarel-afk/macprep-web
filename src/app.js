@@ -12,15 +12,46 @@
 
     // ---- helpers ----------------------------------------------------------
     const $ = (id) => document.getElementById(id);
-    function getToken() { try { return localStorage.getItem('macprep_token'); } catch (e) { return null; } }
-    function setToken(t) { try { t ? localStorage.setItem('macprep_token', t) : localStorage.removeItem('macprep_token'); } catch (e) {} }
+    function ls(k, v) { try { return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v)); } catch (e) { return null; } }
+    function getToken() { return ls('macprep_token'); }
+    function setToken(t) { t ? ls('macprep_token', t) : ls('macprep_token', null); }
+    function setRefresh(t) { t ? ls('macprep_refresh', t) : ls('macprep_refresh', null); }
     function authHeaders(extra) {
         const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
         if (state.token) h['Authorization'] = `Bearer ${state.token}`;
         return h;
     }
+    // Only allow http(s) links to be rendered as anchors (defends against
+    // javascript:/data: hrefs in stored question sources).
+    function safeUrl(u) { return (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null; }
+    function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+    async function refreshToken() {
+        const rt = ls('macprep_refresh');
+        if (!rt) return false;
+        try {
+            const r = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) });
+            if (!r.ok) return false;
+            const d = await r.json();
+            if (!d.token) return false;
+            state.token = d.token; setToken(d.token);
+            if (d.refresh_token) setRefresh(d.refresh_token);
+            return true;
+        } catch (e) { return false; }
+    }
+
     async function apiJSON(url, opts) {
-        const resp = await fetch(url, opts);
+        opts = opts || {};
+        let resp = await fetch(url, opts);
+        // If an authenticated call 401s, try a one-time silent token refresh so a
+        // study session survives the access token's 1-hour TTL.
+        if (resp.status === 401 && opts.headers && opts.headers['Authorization'] && !opts._retried) {
+            if (await refreshToken()) {
+                opts._retried = true;
+                opts.headers = Object.assign({}, opts.headers, { 'Authorization': `Bearer ${state.token}` });
+                resp = await fetch(url, opts);
+            }
+        }
         const raw = await resp.text();
         let data = null;
         try { data = raw ? JSON.parse(raw) : {}; }
@@ -30,6 +61,14 @@
                 : `Unexpected server response (${resp.status}).`), { status: resp.status });
         }
         return { resp, data };
+    }
+
+    // Global loading overlay.
+    let _loadingCount = 0;
+    function setLoading(on) {
+        _loadingCount = Math.max(0, _loadingCount + (on ? 1 : -1));
+        const el = $('global-loading');
+        if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
     const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view'];
@@ -61,6 +100,7 @@
             if (!resp.ok || !data.success) throw new Error(data.error || 'Login rejected.');
             state.token = data.token || null;
             setToken(state.token);
+            setRefresh(data.refresh_token || null);
             await bootAuthedSession();
         } catch (err) {
             alert('Login failed: ' + err.message);
@@ -71,10 +111,20 @@
     }
 
     function signOut() {
-        setToken(null);
-        try { localStorage.removeItem('macprep_premium_unlocked'); localStorage.removeItem('macprep_user_email'); } catch (e) {}
+        setToken(null); setRefresh(null);
+        ls('macprep_premium_unlocked', null); ls('macprep_user_email', null);
         state.token = null; state.profile = null; state.questions = []; state.session = null;
         go('login');
+    }
+
+    // Forgot-password: request a reset email.
+    async function requestPasswordReset() {
+        const email = ($('login-email').value || '').trim() || prompt('Enter your account email to reset your password:');
+        if (!email) return;
+        try {
+            await fetch('/api/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        } catch (e) { /* ignore */ }
+        alert('If an account exists for ' + email + ', a password-reset link is on its way. Check your email.');
     }
 
     async function loadProfile() {
@@ -92,7 +142,9 @@
     }
 
     async function bootAuthedSession() {
-        await Promise.all([loadProfile(), loadQuestions()]);
+        setLoading(true);
+        try { await Promise.all([loadProfile(), loadQuestions()]); }
+        finally { setLoading(false); }
         // Reflect tier badge
         const badge = $('tier-badge');
         if (badge) {
@@ -215,13 +267,17 @@
     function updateSessionHint() {
         const usage = freeUsage();
         const pool = poolForDomain();
+        const startBtn = $('start-session-btn');
         let n = selectedCount();
         let capNote = '';
+        const disable = (msg) => { if (startBtn) startBtn.disabled = true; $('session-hint').textContent = msg; };
+        if (!pool.length) { return disable('No questions match this filter yet — try another specialty or difficulty.'); }
         if (!usage.unlimited) {
-            if (usage.remaining <= 0) { $('session-hint').textContent = 'You have used all free questions. Upgrade for full access.'; return; }
+            if (usage.remaining <= 0) { return disable('You have used all your free questions. Upgrade for full access.'); }
             if (n > usage.remaining) { n = usage.remaining; capNote = ` (capped at your ${usage.remaining} remaining free questions)`; }
         }
         n = Math.min(n === Infinity ? pool.length : n, pool.length);
+        if (startBtn) startBtn.disabled = false;
         $('session-hint').textContent = `This session: ${n} question${n === 1 ? '' : 's'} from ${pool.length} available${capNote}.`;
     }
 
@@ -237,9 +293,48 @@
 
         const shuffled = pool.slice();
         for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
-        state.session = { pool: shuffled.slice(0, n), index: 0, answered: 0, correct: 0, size: n, locked: false, log: [] };
+        beginSession(shuffled.slice(0, n));
+    }
+
+    function beginSession(pool) {
+        state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [] };
         go('quiz');
         renderQuestion();
+    }
+
+    function startFromIds(ids, label) {
+        const set = new Set(ids || []);
+        const pool = state.questions.filter((q) => set.has(q.id));
+        if (!pool.length) { alert(`No ${label} questions available right now.`); return; }
+        const usage = freeUsage();
+        let chosen = pool.slice();
+        if (!usage.unlimited) chosen = chosen.slice(0, Math.max(1, usage.remaining));
+        for (let i = chosen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
+        beginSession(chosen);
+    }
+
+    function redoMissed() { startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
+    function startFlagged() { startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
+
+    async function toggleFlag() {
+        const s = state.session; if (!s) return;
+        const q = s.pool[s.index]; if (!q) return;
+        const flags = new Set((state.profile && state.profile.flagged_ids) || []);
+        const willFlag = !flags.has(q.id);
+        try {
+            await apiJSON('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, flagged: willFlag }) });
+            if (willFlag) flags.add(q.id); else flags.delete(q.id);
+            if (state.profile) state.profile.flagged_ids = Array.from(flags);
+            updateFlagButton();
+        } catch (e) { /* ignore */ }
+    }
+
+    function updateFlagButton() {
+        const btn = $('flag-btn'); const s = state.session; if (!btn || !s) return;
+        const q = s.pool[s.index];
+        const flagged = q && ((state.profile && state.profile.flagged_ids) || []).includes(q.id);
+        btn.textContent = flagged ? '★ Flagged' : '☆ Flag for review';
+        btn.style.color = flagged ? '#FBBF24' : 'var(--muted)';
     }
 
     // ---- quiz -------------------------------------------------------------
@@ -272,6 +367,7 @@
         });
         $('explanation-pane').classList.add('hidden');
         $('explanation-pane').innerHTML = '';
+        updateFlagButton();
         updateQuizProgress();
     }
 
@@ -318,9 +414,10 @@
             const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
             if (refs.length) {
                 const items = refs.map((r) => {
-                    const label = r.title || r.source || r.url;
-                    return r.url
-                        ? `<a href="${r.url}" target="_blank" rel="noopener">${label}</a>`
+                    const label = escapeHtml(r.title || r.source || r.url);
+                    const url = safeUrl(r.url);
+                    return url
+                        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
                         : `<span>${label}</span>`;
                 }).join('<br>');
                 html += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Source</div><div style="font-size:13px;">${items}</div></div>`;
@@ -452,6 +549,29 @@
         } finally { btn.disabled = false; }
     }
 
+    // ---- account management ----------------------------------------------
+    async function changePassword() {
+        const pw = prompt('Enter a new password (at least 8 characters):');
+        if (pw == null) return;
+        if (pw.length < 8) { alert('Password must be at least 8 characters.'); return; }
+        try {
+            const { resp, data } = await apiJSON('/api/user/change-password', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ new_password: pw }) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not change password.');
+            alert('Password changed.');
+        } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    async function deleteAccount() {
+        if (!confirm('Delete your account and all study data permanently? This cannot be undone.')) return;
+        if (!confirm('Are you absolutely sure? This will erase your progress and cancel access.')) return;
+        try {
+            const { resp, data } = await apiJSON('/api/user/delete', { method: 'POST', headers: authHeaders() });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not delete account.');
+            alert('Your account has been deleted.');
+            signOut();
+        } catch (e) { alert('Failed: ' + e.message); }
+    }
+
     // ---- checkout ---------------------------------------------------------
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
@@ -502,10 +622,22 @@
         } finally { btn.disabled = false; }
     }
 
+    function toggleMobileNav() { const n = $('main-nav'); if (n) n.classList.toggle('nav-open'); }
+
     // ---- bootstrap --------------------------------------------------------
-    window.MACPrep = { go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback };
+    window.MACPrep = {
+        go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
+        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
+        // Email-confirmation links land here with the new session in the URL hash.
+        const hash = new URLSearchParams((location.hash || '').slice(1));
+        if (hash.get('access_token')) {
+            setToken(hash.get('access_token'));
+            if (hash.get('refresh_token')) setRefresh(hash.get('refresh_token'));
+            history.replaceState({}, '', '/');
+        }
         state.token = getToken();
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
         $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);

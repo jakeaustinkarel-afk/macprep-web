@@ -131,8 +131,12 @@
             </div>
             <div class="form-group">
                 <label for="reg-password">Secure Password Keys</label>
-                <input type="password" id="reg-password" name="password" placeholder="••••••••" required autocomplete="new-password">
+                <input type="password" id="reg-password" name="password" placeholder="•••••••• (8+ characters)" required minlength="8" autocomplete="new-password">
             </div>
+            <label style="display:flex;align-items:flex-start;gap:10px;font-family:inherit;text-transform:none;letter-spacing:0;color:#cbd5e1;font-size:13px;margin-bottom:18px;cursor:pointer;">
+                <input type="checkbox" id="reg-terms" required style="width:auto;margin-top:3px;">
+                <span>I agree to the <a href="/terms.html" target="_blank" style="color:#00A86B;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:#00A86B;">Privacy Policy</a>, and understand MACPrep is for exam preparation and is not medical advice.</span>
+            </label>
             <button type="submit">Initialize Workstation Credentials</button>
         </form>
         <div class="footer-routing">
