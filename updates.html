@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}function s(){var b=document.getElementById('theme-toggle');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️';}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}s();};document.addEventListener('DOMContentLoaded',s);})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Update Log — MACPrep</title>
@@ -10,6 +11,8 @@
     <link rel="apple-touch-icon" href="/macprep_icon.png">
     <link rel="shortcut icon" href="/favicon.png?v=2">
     <style>
+        :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;}
         :root { --bg:#0D0E10; --panel:#111214; --line:#1F2937; --text:#F9FAFB; --muted:#6B7280; --accent:#00A86B; }
         *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;}
         a{color:var(--accent);text-decoration:none;}
@@ -26,7 +29,7 @@
         .entry::before{content:'';position:absolute;left:-7px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--accent);}
         .entry .date{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:1px;}
         .entry h3{margin:6px 0 8px;font-size:16px;}
-        .entry ul{margin:0;padding-left:18px;color:#cbd5e1;}
+        .entry ul{margin:0;padding-left:18px;color:var(--text2);}
         .entry li{margin:3px 0;}
         .fixes{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 36px;}
         .fixes-head{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
@@ -34,9 +37,9 @@
         .fixes-badge{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 9px;display:inline-flex;align-items:center;gap:6px;}
         .fixes-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(0,168,107,.5);animation:pulse 2s infinite;}
         @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,168,107,.5);}70%{box-shadow:0 0 0 6px rgba(0,168,107,0);}100%{box-shadow:0 0 0 0 rgba(0,168,107,0);}}
-        .fixes-note{color:#9aa5b1;font-size:13px;margin:0 0 14px;}
+        .fixes-note{color:var(--muted);font-size:13px;margin:0 0 14px;}
         .fixes-list{list-style:none;margin:0;padding:0;}
-        .fixes-list li{display:flex;gap:14px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);color:#cbd5e1;font-size:14px;}
+        .fixes-list li{display:flex;gap:14px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);color:var(--text2);font-size:14px;}
         .fixes-list li:first-child{border-top:none;}
         .fx-date{font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;white-space:nowrap;min-width:58px;text-transform:uppercase;}
     </style>
@@ -44,7 +47,8 @@
 <body>
     <div class="header-bar">
         <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span></a>
-        <nav class="nav"><a href="/index.html">Home</a><a href="/updates.html">Updates</a><a href="/faq.html">FAQ</a><a href="/privacy.html">Privacy</a></nav>
+        <nav class="nav"><a href="/index.html">Home</a><a href="/updates.html">Updates</a><a href="/faq.html">FAQ</a><a href="/privacy.html">Privacy</a>            <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark mode" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;">☀️</button>
+        </nav>
     </div>
     <div class="wrap">
         <span class="tag">Changelog</span>

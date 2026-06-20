@@ -253,7 +253,7 @@
             : '<span class="mono" style="color:var(--muted);font-size:12px;">Answer questions to see your trend.</span>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
-            ? `<div class="mono" style="font-size:12px;color:#cbd5e1;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
+            ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
             : '';
         const answeredToday = p.answered_today || 0;
         let goalLine = '';
@@ -262,11 +262,11 @@
             const met = answeredToday >= target;
             const pctDone = Math.min(100, Math.round((answeredToday / target) * 100));
             goalLine = `<div style="margin-bottom:14px;">
-                <div class="mono" style="font-size:12px;color:#cbd5e1;margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '🔥 goal met!' : 'questions'}</div>
+                <div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '🔥 goal met!' : 'questions'}</div>
                 <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : '#FBBF24'};"></span></div>
             </div>`;
         } else if (answeredToday > 0) {
-            goalLine = `<div class="mono" style="font-size:12px;color:#cbd5e1;margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
+            goalLine = `<div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
         }
         const examLine = exam != null
             ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
@@ -678,13 +678,13 @@
         const card = (inner) => `<div style="border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:10px;">${inner}</div>`;
         const noteHtml = notes.length ? notes.map((n) => card(
             `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(n.category || '')}</div>`
-            + `<div style="font-size:13px;color:#cbd5e1;margin-bottom:6px;">${snip(n.stem)}</div>`
+            + `<div style="font-size:13px;color:var(--text2);margin-bottom:6px;">${snip(n.stem)}</div>`
             + `<div style="font-size:14px;border-left:2px solid var(--accent);padding-left:10px;">${escapeHtml(n.note)}</div>`
             + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(n.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
         )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No notes match.</div>';
         const flagHtml = flagged.length ? flagged.map((f) => card(
             `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(f.category || '')}</div>`
-            + `<div style="font-size:13px;color:#cbd5e1;">${snip(f.stem)}</div>`
+            + `<div style="font-size:13px;color:var(--text2);">${snip(f.stem)}</div>`
             + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(f.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
         )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No flagged questions match.</div>';
         body.innerHTML = `<h3>Notes (${notes.length})</h3>${noteHtml}<h3 style="margin-top:24px;">Flagged (${flagged.length})</h3>${flagHtml}`;
@@ -732,10 +732,10 @@
             b.disabled = true; b.style.cursor = 'default';
             const idx = Number(b.dataset.index);
             if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
-            else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = '#2a0c0c'; }
+            else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = 'var(--danger-dim)'; }
             if (rationales[idx]) {
                 const r = document.createElement('div');
-                r.style.cssText = 'font-family:inherit;font-size:13px;color:#9ca3af;margin:8px 0 2px;padding-left:34px;line-height:1.5;';
+                r.style.cssText = 'font-family:inherit;font-size:13px;color:var(--muted);margin:8px 0 2px;padding-left:34px;line-height:1.5;';
                 r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
                 b.insertAdjacentElement('afterend', r);
             }
@@ -879,7 +879,7 @@
             const graded = a && a.graded;
             const answered = a && a.selectedIndex != null;
             let bg = 'var(--bg)', bc = 'var(--line)', col = 'var(--muted)';
-            if (graded) { if (graded.correct) { bg = 'var(--accent-dim)'; bc = 'var(--accent)'; col = 'var(--accent)'; } else { bg = '#2a0c0c'; bc = 'var(--danger)'; col = '#F87171'; } }
+            if (graded) { if (graded.correct) { bg = 'var(--accent-dim)'; bc = 'var(--accent)'; col = 'var(--accent)'; } else { bg = 'var(--danger-dim)'; bc = 'var(--danger)'; col = '#F87171'; } }
             else if (answered) { bg = 'var(--line)'; col = 'var(--text)'; }
             const border = (i === s.index) ? 'var(--accent)' : bc;
             const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:#FBBF24;font-size:10px;">★</span>' : '';
@@ -1007,7 +1007,7 @@
                     <span style="color:${r.correct ? 'var(--accent)' : '#F87171'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                     &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
                 </div>
-                ${r.explanation ? `<div style="font-size:13px;color:#cbd5e1;margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
+                ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
             </div>`).join('');
         el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session, with the correct answer and explanation.</p>${rows}`;
         el.classList.remove('hidden');
@@ -1205,7 +1205,7 @@
             return `<div style="border:1px solid ${correct ? 'var(--accent)' : 'var(--line)'};border-radius:4px;padding:10px;margin:8px 0;background:${correct ? 'var(--accent-dim)' : 'var(--bg)'};">
                 <label style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">[${letter}]${correct ? ' ✓ correct' : ''}</label>
                 <input data-edit="choice-text-${i}" value="${escapeHtml(ch.text || '')}" style="width:100%;margin:4px 0;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;">
-                <textarea data-edit="choice-rat-${i}" rows="2" style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:#9ca3af;font-size:12px;">${escapeHtml(ch.rationale || '')}</textarea>
+                <textarea data-edit="choice-rat-${i}" rows="2" style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:12px;">${escapeHtml(ch.rationale || '')}</textarea>
             </div>`;
         }).join('');
         const refs = (q.references || []).map((rf) => rf.url ? `<a href="${escapeHtml(rf.url)}" target="_blank" rel="noopener">${escapeHtml(rf.title || rf.source || rf.url)}</a>` : escapeHtml(rf.source || '')).join('<br>');
