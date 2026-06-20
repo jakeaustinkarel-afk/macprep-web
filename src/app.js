@@ -296,13 +296,17 @@
 
         renderSpecialtyPerformance();
 
-        // Count chips
+        // Count chips (preserve the user's prior selection across re-renders)
         const chips = $('count-chips');
+        const prevActive = chips.querySelector('.chip.active');
+        const prevCount = prevActive ? prevActive.dataset.count : null;
+        const hasCustom = !!($('custom-count') && parseInt($('custom-count').value, 10) > 0);
         chips.innerHTML = '';
         const opts = usage.unlimited ? [10, 25, 50, 100, 'All'] : [10, 25, 50, 100];
         opts.forEach((n, i) => {
             const c = document.createElement('div');
-            c.className = 'chip' + (i === 0 ? ' active' : '');
+            const makeActive = !hasCustom && (prevCount ? String(n) === prevCount : i === 0);
+            c.className = 'chip' + (makeActive ? ' active' : '');
             c.textContent = n === 'All' ? 'All' : `${n} questions`;
             c.dataset.count = String(n);
             c.onclick = () => {
@@ -402,8 +406,9 @@
         const pool = state.questions.filter((q) => set.has(q.id));
         if (!pool.length) { alert(`No ${label} questions available right now.`); return; }
         const usage = freeUsage();
+        if (!usage.unlimited && usage.remaining <= 0) { startCheckout(); return; }
         let chosen = pool.slice();
-        if (!usage.unlimited) chosen = chosen.slice(0, Math.max(1, usage.remaining));
+        if (!usage.unlimited) chosen = chosen.slice(0, usage.remaining);
         for (let i = chosen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
         beginSession(chosen);
     }
@@ -523,10 +528,15 @@
             if (ans && ans.selectedIndex === idx && !graded) { btn.style.borderColor = 'var(--accent)'; btn.style.background = 'var(--accent-dim)'; }
             container.appendChild(btn);
         });
+        if (!choices.length) {
+            container.innerHTML = '<div class="mono" style="color:#FBBF24;font-size:13px;padding:8px 0;">This question is temporarily unavailable. Use "Next" to skip it.</div>';
+            s.locked = true; // let the user advance past an unrenderable question in tutor mode
+        }
         $('explanation-pane').classList.add('hidden');
         $('explanation-pane').innerHTML = '';
         if (graded) applyGradedView(ans.graded, ans.selectedIndex);
         updateFlagButton();
+        saveNote();   // flush any pending note from the previous question before loading this one
         loadNote();
         renderPalette();
         renderQuizNav();
@@ -648,9 +658,14 @@
         $('prev-btn') && ($('prev-btn').style.display = 'none');
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
-        $('question-meta').textContent = 'EXAM COMPLETE';
-        const failWarn = failed ? `<div style="margin-top:12px;color:#FBBF24;font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
-        $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+        const allFailed = answeredIdx.length > 0 && s.answered === 0;
+        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : 'EXAM COMPLETE';
+        if (allFailed) {
+            $('question-stem').innerHTML = `<span style="color:#FBBF24;">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
+        } else {
+            const failWarn = failed ? `<div style="margin-top:12px;color:#FBBF24;font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
+            $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+        }
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         renderSessionReview(s.log || []);
@@ -669,7 +684,7 @@
             const scoreLabel = s.answered ? `${Math.round((s.correct / s.answered) * 100)}%` : '—';
             $('session-progress-counter').textContent = `QUESTION ${Math.min(s.index + 1, s.size)} / ${s.size} · SCORE ${scoreLabel}`;
         }
-        $('quiz-progress-bar').style.width = Math.round((s.index / s.size) * 100) + '%';
+        $('quiz-progress-bar').style.width = Math.round(((s.index + 1) / s.size) * 100) + '%';
     }
 
     function finishSession() {
@@ -817,6 +832,7 @@
     }
 
     async function reviewQueue() {
+        if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
         go('admin');
         loadAnalytics();
         loadVouchers();

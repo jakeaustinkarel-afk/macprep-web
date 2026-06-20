@@ -69,6 +69,7 @@ function rateLimit({ windowMs, max }) {
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
 const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -402,7 +403,7 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
 });
 
 // Change password for a signed-in user (requires their current session token).
-app.post('/api/user/change-password', async (req, res) => {
+app.post('/api/user/change-password', authLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     const new_password = req.body?.new_password || '';
@@ -424,6 +425,7 @@ app.post('/api/user/delete', async (req, res) => {
         await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
         await supabase.from(PROFILE_TABLE).delete().eq('user_id', user.id);
         await supabase.from('user_flags').delete().eq('user_id', user.id).then(() => {}, () => {});
+        await supabase.from('user_notes').delete().eq('user_id', user.id).then(() => {}, () => {});
         const { error } = await supabase.auth.admin.deleteUser(user.id);
         if (error) throw error;
         return res.json({ success: true });
@@ -452,11 +454,11 @@ app.get('/api/admin/questions', async (req, res) => {
         if (error) throw error;
         const out = (data || []).map((q) => ({ ...q, choices: parseChoices(q.choices) }));
         // counts by status for the queue header
+        const STATUSES = ['sme_review', 'published', 'rejected', 'draft', 'unreviewed'];
+        const countResults = await Promise.all(STATUSES.map((st) =>
+            supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', st)));
         const counts = {};
-        for (const st of ['sme_review', 'published', 'rejected', 'draft', 'unreviewed']) {
-            const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', st);
-            counts[st] = count || 0;
-        }
+        STATUSES.forEach((st, i) => { counts[st] = countResults[i].count || 0; });
         return res.json({ questions: out, counts });
     } catch (err) {
         console.error('Admin list failure:', err.message);
@@ -472,12 +474,14 @@ const ANALYTICS_EVENTS = new Set([
     'page_view', 'signup', 'login', 'session_start', 'session_complete',
     'paywall_hit', 'checkout_started', 'upgrade_success', 'feedback_submitted',
 ]);
-app.post('/api/event', async (req, res) => {
+app.post('/api/event', eventLimiter, async (req, res) => {
     if (!supabase) return res.json({ ok: true });
     const name = String(req.body?.name || '');
     if (!ANALYTICS_EVENTS.has(name)) return res.json({ ok: true }); // silently ignore unknown
     const user = await getUserFromToken(req);
-    const meta = (req.body && typeof req.body.meta === 'object' && req.body.meta) ? req.body.meta : {};
+    let meta = (req.body && typeof req.body.meta === 'object' && req.body.meta && !Array.isArray(req.body.meta)) ? req.body.meta : {};
+    // Bound the stored payload so the events table can't be flooded with large blobs.
+    try { if (JSON.stringify(meta).length > 2000) meta = {}; } catch (e) { meta = {}; }
     try {
         await supabase.from('analytics_events').insert({ name, user_id: user?.id || null, meta });
     } catch (e) { /* analytics is best-effort */ }
@@ -586,7 +590,14 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
             .eq('id', v.id).eq('is_claimed', false).select('id');
         if (cErr) throw cErr;
         if (!claimed || claimed.length === 0) return res.status(409).json({ error: 'That code has already been used.' });
-        await supabase.from(PROFILE_TABLE).update({ account_tier: 'premium', premium_unlocked_at: new Date().toISOString() }).eq('user_id', user.id);
+        const upg = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
+        const { data: updated, error: uErr } = await supabase.from(PROFILE_TABLE).update(upg).eq('user_id', user.id).select('user_id');
+        if (uErr) throw uErr;
+        if (!updated || updated.length === 0) {
+            // No profile row yet — create one so the redeemed code actually grants access.
+            const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert({ user_id: user.id, email: user.email, ...upg }, { onConflict: 'user_id' });
+            if (insErr) throw insErr;
+        }
         return res.json({ success: true });
     } catch (err) {
         console.error('Voucher redeem failure:', err.message);
@@ -718,7 +729,7 @@ app.post('/api/grade', async (req, res) => {
         if (pErr) {
             // The DB trigger rejects free-tier users who slip past the app-level check
             // under a concurrent-request race — treat that as the paywall.
-            if (/free_tier_limit/i.test(pErr.message || '')) {
+            if (/free_tier/i.test(pErr.message || '') || pErr.code === '23514') {
                 return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
             }
             console.warn(`Progress insert warning: ${pErr.message}`);
