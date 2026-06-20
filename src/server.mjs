@@ -152,29 +152,34 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
+        // Prefer the authenticated user_id we attached at checkout (robust even if
+        // the buyer pays with a different email than their account); fall back to
+        // email matching for any legacy/Payment-Link purchases.
+        const userId = session.client_reference_id || session.metadata?.user_id || null;
         const customerEmail = (session.customer_details?.email || session.customer_email || '')
             .toLowerCase()
             .trim();
 
-        console.log(`Checkout completed for: ${customerEmail}`);
+        console.log(`Checkout completed: user_id=${userId || 'n/a'} email=${customerEmail || 'n/a'}`);
 
-        if (supabase && customerEmail) {
+        if (supabase && (userId || customerEmail)) {
             try {
-                // Match the profile by the email we recorded at registration, and
-                // flip it to premium. We never INSERT here: user_profiles.user_id is
-                // a FK to auth.users, so a fabricated row would violate the constraint.
-                const { data, error } = await supabase
-                    .from(PROFILE_TABLE)
-                    .update({ account_tier: 'premium', premium_unlocked_at: new Date().toISOString() })
-                    .eq('email', customerEmail)
-                    .select('user_id');
-
-                if (error) throw error;
-
+                const upgrade = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
+                let data = null;
+                if (userId) {
+                    const r = await supabase.from(PROFILE_TABLE).update(upgrade).eq('user_id', userId).select('user_id');
+                    if (r.error) throw r.error;
+                    data = r.data;
+                }
+                if ((!data || data.length === 0) && customerEmail) {
+                    const r = await supabase.from(PROFILE_TABLE).update(upgrade).eq('email', customerEmail).select('user_id');
+                    if (r.error) throw r.error;
+                    data = r.data;
+                }
                 if (!data || data.length === 0) {
-                    console.warn(`PAID-BUT-NO-PROFILE: ${customerEmail} paid but has no ${PROFILE_TABLE} row. Reconcile manually.`);
+                    console.warn(`PAID-BUT-NO-PROFILE: user_id=${userId} email=${customerEmail} paid but no ${PROFILE_TABLE} row matched. Reconcile manually.`);
                 } else {
-                    console.log(`Upgraded ${customerEmail} to premium.`);
+                    console.log(`Upgraded ${data[0].user_id} to premium.`);
                 }
             } catch (dbErr) {
                 console.error(`Webhook DB sync error: ${dbErr.message}`);
@@ -490,6 +495,7 @@ app.post('/api/grade', async (req, res) => {
         }
 
         const isCorrect = Number(choiceIndex) === correctIndex;
+        const confidence = ['low', 'medium', 'high'].includes(req.body?.confidence) ? req.body.confidence : null;
 
         // Record the attempt for progress + free-tier accounting (best-effort).
         await supabase.from(PROGRESS_TABLE).insert({
@@ -499,7 +505,15 @@ app.post('/api/grade', async (req, res) => {
             category: q.category || null,
             selected_label: String.fromCharCode(65 + Number(choiceIndex)),
             is_correct: isCorrect,
+            confidence,
         }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });
+
+        // Peer stats: % of all attempts on this question that were correct.
+        let peerPct = null;
+        try {
+            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct').eq('question_id', String(questionId));
+            if (rows && rows.length >= 3) peerPct = Math.round((rows.filter((r) => r.is_correct).length / rows.length) * 100);
+        } catch (e) { /* peer stats best-effort */ }
 
         // Per-choice rationale (so the client can show why each option is right/wrong)
         // and the source references (journal links). Never reveal the `correct`
@@ -515,6 +529,7 @@ app.post('/api/grade', async (req, res) => {
             explanation: q.explanation || '',
             rationales,
             references,
+            peer_correct_pct: peerPct,
         });
     } catch (err) {
         console.error('Grade route failure:', err.message);
@@ -542,7 +557,7 @@ app.get('/api/user/profile', async (req, res) => {
         // Derive study stats from recorded progress, including accuracy by specialty.
         const { data: progress } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id, is_correct, category')
+            .select('question_id, is_correct, category, created_at')
             .eq('user_id', user.id);
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
@@ -570,6 +585,47 @@ app.get('/api/user/profile', async (req, res) => {
             .map(([category, v]) => ({ category, attempts: v.attempts, correct: v.correct, accuracy: Math.round((v.correct / v.attempts) * 100) }))
             .sort((a, b) => b.attempts - a.attempts);
 
+        // Coverage: distinct answered vs total served per category.
+        const { data: bankRows } = await applyServedFilter(supabase.from('questions').select('category'));
+        const bankTotal = {};
+        (bankRows || []).forEach((r) => { const c = r.category || 'Uncategorized'; bankTotal[c] = (bankTotal[c] || 0) + 1; });
+        const answeredByCat = {};
+        (progress || []).forEach((r) => {
+            const c = r.category || 'Uncategorized';
+            (answeredByCat[c] = answeredByCat[c] || new Set()).add(r.question_id);
+        });
+        const coverage = Object.keys(bankTotal).map((c) => ({
+            category: c, total: bankTotal[c], answered: (answeredByCat[c] ? answeredByCat[c].size : 0),
+        })).sort((a, b) => b.total - a.total);
+
+        // Study streak: consecutive days (ending today or yesterday) with activity.
+        const dayKey = (d) => new Date(d).toISOString().slice(0, 10);
+        const activeDays = new Set((progress || []).map((r) => dayKey(r.created_at)));
+        let streak = 0;
+        const today = new Date();
+        for (let i = 0; i < 365; i++) {
+            const d = new Date(today.getTime() - i * 86400000);
+            if (activeDays.has(dayKey(d))) streak++;
+            else if (i === 0) continue; // today not yet studied — keep counting from yesterday
+            else break;
+        }
+
+        // Accuracy trend: last 7 active days.
+        const byDay = {};
+        (progress || []).forEach((r) => { const k = dayKey(r.created_at); (byDay[k] = byDay[k] || { a: 0, c: 0 }); byDay[k].a++; if (r.is_correct) byDay[k].c++; });
+        const trend = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).slice(-7)
+            .map(([day, v]) => ({ day, accuracy: Math.round((v.c / v.a) * 100), attempts: v.a }));
+
+        // Readiness estimate: overall accuracy scaled by how much of the bank seen.
+        const totalServed = (bankRows || []).length || 1;
+        const seenFrac = Math.min(1, answeredIds.size / totalServed);
+        const overallAcc = (progress || []).length ? correct / (progress || []).length : 0;
+        const readiness = Math.round(overallAcc * 100 * (0.5 + 0.5 * seenFrac));
+        let days_to_exam = null;
+        if (profile?.target_exam_date) {
+            days_to_exam = Math.ceil((new Date(profile.target_exam_date) - today) / 86400000);
+        }
+
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
@@ -584,6 +640,11 @@ app.get('/api/user/profile', async (req, res) => {
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
                 by_specialty,
+                coverage,
+                streak,
+                trend,
+                readiness,
+                days_to_exam,
                 missed_ids,
                 flagged_ids,
             },
@@ -645,6 +706,34 @@ app.post('/api/user/flag', async (req, res) => {
     }
 });
 
+// Per-question personal notes.
+app.get('/api/user/note', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const questionId = String(req.query.questionId || '');
+    if (!questionId) return res.status(400).json({ error: 'questionId required.' });
+    const { data } = await supabase.from('user_notes').select('note').eq('user_id', user.id).eq('question_id', questionId).maybeSingle();
+    return res.json({ note: data?.note || '' });
+});
+
+app.post('/api/user/note', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const questionId = String(req.body?.questionId || '');
+    const note = (req.body?.note || '').toString().slice(0, 5000);
+    if (!questionId) return res.status(400).json({ error: 'questionId required.' });
+    try {
+        if (note.trim() === '') {
+            await supabase.from('user_notes').delete().eq('user_id', user.id).eq('question_id', questionId);
+        } else {
+            await supabase.from('user_notes').upsert({ user_id: user.id, question_id: questionId, note, updated_at: new Date().toISOString() }, { onConflict: 'user_id,question_id' });
+        }
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not save note.' });
+    }
+});
+
 app.post('/api/feedback', feedbackLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const user = await getUserFromToken(req);
@@ -689,6 +778,9 @@ app.post('/api/create-checkout-session', async (req, res) => {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
+            // Attach the authenticated user so the webhook can match the payment by
+            // id, not just email (robust if the buyer's Stripe email differs).
+            ...(user ? { client_reference_id: user.id, metadata: { user_id: user.id } } : {}),
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
             success_url: `${base}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
