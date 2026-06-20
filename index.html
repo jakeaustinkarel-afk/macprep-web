@@ -433,6 +433,12 @@
         <div id="admin-body"></div>
     </div>
 
+    <div id="toast" role="status" aria-live="polite"></div>
+    <style>
+      #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);max-width:90%;padding:12px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;background:var(--danger);box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:9999;}
+      #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+      #toast.ok{background:var(--accent);}
+    </style>
     <script src="/src/app.js"></script>
 </body>
 </html>

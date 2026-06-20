@@ -71,6 +71,32 @@ const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
 const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 
+// Allowlist of hosts we will build absolute URLs for (password-reset links,
+// Stripe success/cancel). Prevents host-header injection from pointing those
+// URLs at an attacker-controlled domain. Override via ALLOWED_HOSTS env.
+const ALLOWED_HOSTS = new Set(
+    (process.env.ALLOWED_HOSTS || 'macprep.org,www.macprep.org,localhost:3000')
+        .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+);
+function hostOf(u) { try { return new URL(u).host.toLowerCase(); } catch (e) { return ''; } }
+function safeBaseUrl(req) {
+    const canonical = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_HOSTS.has(hostOf(origin))) return origin.replace(/\/$/, '');
+    if (canonical) return canonical;
+    const host = (req.headers.host || '').toLowerCase();
+    if (ALLOWED_HOSTS.has(host)) return `https://${host}`;
+    return 'https://www.macprep.org';
+}
+// Decode a Supabase JWT's auth-method references (amr) WITHOUT verifying the
+// signature — used only to distinguish a recovery session from a normal login.
+function tokenAuthMethods(jwt) {
+    try {
+        const payload = JSON.parse(Buffer.from(String(jwt).split('.')[1], 'base64url').toString('utf8'));
+        return Array.isArray(payload.amr) ? payload.amr.map((a) => (a && a.method) || '').filter(Boolean) : [];
+    } catch (e) { return []; }
+}
+
 // ---------------------------------------------------------------------------
 // Clients
 // ---------------------------------------------------------------------------
@@ -372,9 +398,9 @@ app.post('/api/auth/refresh', async (req, res) => {
 app.post('/api/auth/reset-request', authLimiter, async (req, res) => {
     const email = (req.body?.email || '').toLowerCase().trim();
     if (!supabaseAuth || !email) return res.status(400).json({ error: 'Email is required.' });
-    const base = req.headers.origin || process.env.PUBLIC_BASE_URL || `https://${req.headers.host}`;
+    const base = safeBaseUrl(req);
     try {
-        await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo: `${base.replace(/\/$/, '')}/reset.html` });
+        await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo: `${base}/reset.html` });
     } catch (err) { /* do not reveal whether the email exists */ }
     // Always return success to avoid email enumeration.
     return res.json({ success: true });
@@ -393,6 +419,13 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
     try {
         const { data, error } = await supabaseAuth.auth.getUser(access_token);
         if (error || !data.user) return res.status(401).json({ error: 'Reset link is invalid or expired.' });
+        // Only honor tokens minted by the email-recovery flow — a normal login/OAuth
+        // session token (amr=password/oauth) must not be usable to reset the password.
+        const methods = tokenAuthMethods(access_token).map((m) => String(m).toLowerCase());
+        const RECOVERY_OK = ['recovery', 'otp', 'magiclink', 'email', 'email_otp', 'emailotp'];
+        if (methods.length && !methods.some((m) => RECOVERY_OK.includes(m))) {
+            return res.status(403).json({ error: 'This action requires a password-reset link. Use the "Forgot password" option to get one.' });
+        }
         const { error: upErr } = await supabase.auth.admin.updateUserById(data.user.id, { password: new_password });
         if (upErr) throw upErr;
         return res.json({ success: true });
@@ -672,15 +705,18 @@ app.post('/api/grade', async (req, res) => {
         // distinct count), so this can't be gamed by replaying the same item.
         if (!isPremium) {
             const ceiling = await getFreeTierCeiling();
-            const { data: seen, error: seenErr } = await supabase
+            // Cheap first: re-answering a question already seen is always free.
+            const { count: seenThis } = await supabase
                 .from(PROGRESS_TABLE)
-                .select('question_id')
-                .eq('user_id', user.id);
-            if (seenErr) throw seenErr;
-
-            const distinct = new Set((seen || []).map((r) => r.question_id));
-            if (!distinct.has(String(questionId)) && distinct.size >= ceiling) {
-                return res.status(402).json({ error: 'paywall', paywall: true, limit: ceiling });
+                .select('question_id', { count: 'exact', head: true })
+                .eq('user_id', user.id).eq('question_id', String(questionId));
+            if (!seenThis) {
+                // Only then check the distinct count — server-side, not a full table pull.
+                const { data: distinctCount, error: dcErr } = await supabase.rpc('distinct_answered', { p_user: user.id });
+                if (dcErr) throw dcErr;
+                if ((distinctCount || 0) >= ceiling) {
+                    return res.status(402).json({ error: 'paywall', paywall: true, limit: ceiling });
+                }
             }
         }
 
@@ -999,9 +1035,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
         // Build an absolute base URL. Prefer the Origin header, then a configured
         // PUBLIC_BASE_URL, then the Host header — so checkout works even when the
         // request carries no Origin (Stripe requires absolute success/cancel URLs).
-        let base = req.headers.origin || process.env.PUBLIC_BASE_URL || '';
-        if (!base && req.headers.host) base = `https://${req.headers.host}`;
-        base = base.replace(/\/$/, '');
+        const base = safeBaseUrl(req);
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],

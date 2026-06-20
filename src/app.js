@@ -117,6 +117,15 @@
     }
 
     // ---- auth -------------------------------------------------------------
+    let toastTimer = null;
+    function toast(msg, kind) {
+        const t = $('toast'); if (!t) { alert(msg); return; }
+        t.textContent = msg;
+        t.className = (kind === 'ok' ? 'ok show' : 'show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4500);
+    }
+
     async function login() {
         if (state.loginInFlight) return;
         const email = $('login-email').value.trim();
@@ -137,7 +146,7 @@
             track('login');
             await bootAuthedSession();
         } catch (err) {
-            alert('Login failed: ' + err.message);
+            toast('Login failed: ' + err.message);
         } finally {
             state.loginInFlight = false;
             if (btn) btn.textContent = 'Sign In';
@@ -985,7 +994,7 @@
             if (!resp.ok || !data.url) throw new Error(data.error || 'Could not start checkout.');
             window.location.href = data.url;
         } catch (err) {
-            alert('Checkout could not start: ' + err.message);
+            toast('Checkout could not start: ' + err.message);
             if (btn) { btn.disabled = false; btn.textContent = btn.dataset.prev || 'Upgrade — $50'; }
         }
     }
