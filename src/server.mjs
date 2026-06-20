@@ -27,10 +27,10 @@ app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data:",
-        "connect-src 'self'",
+        "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "object-src 'none'",
@@ -220,7 +220,18 @@ app.get('/api/health', (req, res) => {
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
         serve_filler: SERVE_FILLER,
+        monitoring: !!process.env.SENTRY_BROWSER_DSN,
         time: new Date().toISOString(),
+    });
+});
+
+// Public client config — lets the frontend self-configure error monitoring
+// without hardcoding a DSN. Set SENTRY_BROWSER_DSN on Render to turn it on.
+// (Browser Sentry DSNs are public by design.)
+app.get('/api/config', (req, res) => {
+    res.json({
+        sentryDsn: process.env.SENTRY_BROWSER_DSN || null,
+        environment: process.env.NODE_ENV || 'production',
     });
 });
 
@@ -701,6 +712,18 @@ app.use((req, res) => {
         if (err) res.status(404).send('Not found.');
     });
 });
+
+// Express error handler — logs (visible in Render logs / observability) and
+// returns a clean JSON error instead of leaking a stack trace to the client.
+app.use((err, req, res, next) => {
+    console.error('Unhandled route error:', err && err.stack ? err.stack : err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Something went wrong.' });
+});
+
+// Surface crashes in logs rather than dying silently.
+process.on('unhandledRejection', (reason) => console.error('UnhandledRejection:', reason));
+process.on('uncaughtException', (err) => console.error('UncaughtException:', err && err.stack ? err.stack : err));
 
 // ---------------------------------------------------------------------------
 // Start server (all routes are declared above this line)

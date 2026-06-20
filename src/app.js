@@ -73,6 +73,7 @@
 
     const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view'];
     function go(view) {
+        closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
@@ -466,7 +467,11 @@
         renderSessionReview(s.log || []);
         const btn = $('advance-vignette-trigger');
         btn.textContent = 'Back to Dashboard';
-        btn.onclick = () => { resetAdvanceButton(); clearSessionReview(); MACPrep.go('dashboard'); };
+        btn.onclick = async () => {
+            resetAdvanceButton(); clearSessionReview();
+            try { await loadProfile(); } catch (e) { /* keep cached */ }  // refresh missed/flagged/stats
+            MACPrep.go('dashboard');
+        };
         $('quiz-progress-bar').style.width = '100%';
     }
 
@@ -623,6 +628,25 @@
     }
 
     function toggleMobileNav() { const n = $('main-nav'); if (n) n.classList.toggle('nav-open'); }
+    function closeMobileNav() { const n = $('main-nav'); if (n) n.classList.remove('nav-open'); }
+
+    // Error monitoring — self-configures from /api/config so no DSN is hardcoded.
+    // Activates only when SENTRY_BROWSER_DSN is set on the server.
+    async function initMonitoring() {
+        try {
+            const r = await fetch('/api/config');
+            const cfg = await r.json();
+            if (!cfg.sentryDsn) return;
+            const s = document.createElement('script');
+            s.src = 'https://browser.sentry-cdn.com/7.120.3/bundle.min.js';
+            s.crossOrigin = 'anonymous';
+            s.onload = () => {
+                try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0 }); }
+                catch (e) { /* ignore */ }
+            };
+            document.head.appendChild(s);
+        } catch (e) { /* monitoring is best-effort */ }
+    }
 
     // ---- bootstrap --------------------------------------------------------
     window.MACPrep = {
@@ -631,6 +655,7 @@
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
+        initMonitoring();
         // Email-confirmation links land here with the new session in the URL hash.
         const hash = new URLSearchParams((location.hash || '').slice(1));
         if (hash.get('access_token')) {
