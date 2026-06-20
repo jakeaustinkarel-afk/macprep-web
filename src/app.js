@@ -389,9 +389,10 @@
         beginSession(shuffled.slice(0, n));
     }
 
-    function beginSession(pool) {
-        state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [] };
-        track('session_start', { size: pool.length });
+    function beginSession(pool, mode) {
+        mode = mode || ($('mode-select') ? $('mode-select').value : 'tutor');
+        state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [], mode, answers: {} };
+        track('session_start', { size: pool.length, mode });
         go('quiz');
         renderQuestion();
     }
@@ -451,13 +452,63 @@
     }
 
     // ---- quiz -------------------------------------------------------------
+    function buildChoiceButton(choice, idx, qid) {
+        const text = (typeof choice === 'object' && choice) ? (choice.text || choice.value || '') : choice;
+        const letter = String.fromCharCode(65 + idx);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'choice-option-node';
+        btn.dataset.index = String(idx);
+        btn.setAttribute('aria-label', `Answer ${letter}: ${text}`);
+        btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:ui-monospace,monospace;cursor:pointer;border-radius:4px;';
+        btn.innerHTML = `<span style="color:var(--accent);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
+        btn.onclick = () => answer(idx, qid);
+        return btn;
+    }
+
+    // Apply the graded result (highlights, rationale, explanation) — used both when
+    // grading live and when re-rendering an already-answered question.
+    function applyGradedView(data, selectedIndex) {
+        const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
+        const rationales = data.rationales || [];
+        buttons.forEach((b) => {
+            b.disabled = true; b.style.cursor = 'default';
+            const idx = Number(b.dataset.index);
+            if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
+            else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = '#2a0c0c'; }
+            if (rationales[idx]) {
+                const r = document.createElement('div');
+                r.style.cssText = 'font-family:inherit;font-size:13px;color:#9ca3af;margin:8px 0 2px;padding-left:34px;line-height:1.5;';
+                r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
+                b.insertAdjacentElement('afterend', r);
+            }
+        });
+        const verdict = data.correct
+            ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
+            : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
+        const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
+        let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
+        const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
+        if (refs.length) {
+            const items = refs.map((r) => {
+                const label = escapeHtml(r.title || r.source || r.url);
+                const url = safeUrl(r.url);
+                return url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>` : `<span>${label}</span>`;
+            }).join('<br>');
+            html += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Source</div><div style="font-size:13px;">${items}</div></div>`;
+        }
+        const ex = $('explanation-pane'); ex.innerHTML = html; ex.classList.remove('hidden');
+    }
+
     function renderQuestion() {
         const s = state.session; if (!s) return go('dashboard');
-        if (s.index >= s.pool.length) return finishSession();
-        resetAdvanceButton();
+        if (s.index < 0) s.index = 0;
+        if (s.index >= s.pool.length) { if (s.mode === 'exam') s.index = s.pool.length - 1; else return finishSession(); }
         clearSessionReview();
-        s.locked = false;
         const q = s.pool[s.index];
+        const ans = s.answers[s.index] || null;
+        const graded = ans && ans.graded;
+        s.locked = !!graded; // tutor: locked once graded
 
         $('question-meta').textContent = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
         const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;">` : '';
@@ -467,27 +518,31 @@
         let choices = q.choices || [];
         if (typeof choices === 'string') { try { choices = JSON.parse(choices); } catch (e) { choices = []; } }
         choices.forEach((choice, idx) => {
-            const text = (typeof choice === 'object' && choice) ? (choice.text || choice.value || '') : choice;
-            const letter = String.fromCharCode(65 + idx);
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'choice-option-node';
-            btn.dataset.index = String(idx);
-            btn.setAttribute('aria-label', `Answer ${letter}: ${text}`);
-            btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:ui-monospace,monospace;cursor:pointer;border-radius:4px;';
-            btn.innerHTML = `<span style="color:var(--accent);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
-            btn.onclick = () => answer(idx, q.id);
+            const btn = buildChoiceButton(choice, idx, q.id);
+            // Exam mode: highlight the chosen (but unscored) answer.
+            if (ans && ans.selectedIndex === idx && !graded) { btn.style.borderColor = 'var(--accent)'; btn.style.background = 'var(--accent-dim)'; }
             container.appendChild(btn);
         });
         $('explanation-pane').classList.add('hidden');
         $('explanation-pane').innerHTML = '';
+        if (graded) applyGradedView(ans.graded, ans.selectedIndex);
         updateFlagButton();
         loadNote();
+        renderPalette();
+        renderQuizNav();
         updateQuizProgress();
     }
 
     async function answer(selectedIndex, questionId) {
-        const s = state.session; if (!s || s.locked) return;
+        const s = state.session; if (!s) return;
+        // EXAM mode: record the selection only; no feedback, changeable until submit.
+        if (s.mode === 'exam') {
+            s.answers[s.index] = { selectedIndex };
+            renderQuestion();
+            return;
+        }
+        // TUTOR mode: grade immediately.
+        if (s.locked) return;
         const currentQ = s.pool[s.index];
         s.locked = true;
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
@@ -507,42 +562,8 @@
                 state.profile.stats.answered++; state.profile.stats.attempts++;
                 if (data.correct) state.profile.stats.correct++;
             }
-
-            const rationales = data.rationales || [];
-            buttons.forEach((b) => {
-                const idx = Number(b.dataset.index);
-                if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
-                else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = '#2a0c0c'; }
-                // Append the per-choice rationale beneath each option.
-                if (rationales[idx]) {
-                    const r = document.createElement('div');
-                    r.style.cssText = 'font-family:inherit;font-size:13px;color:#9ca3af;margin:8px 0 2px;padding-left:34px;line-height:1.5;';
-                    r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
-                    b.insertAdjacentElement('afterend', r);
-                }
-            });
-            const verdict = data.correct
-                ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
-                : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
-            const peer = (data.peer_correct_pct != null)
-                ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
-            const ex = $('explanation-pane');
-            let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
-            const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
-            if (refs.length) {
-                const items = refs.map((r) => {
-                    const label = escapeHtml(r.title || r.source || r.url);
-                    const url = safeUrl(r.url);
-                    return url
-                        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
-                        : `<span>${label}</span>`;
-                }).join('<br>');
-                html += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Source</div><div style="font-size:13px;">${items}</div></div>`;
-            }
-            ex.innerHTML = html;
-            ex.classList.remove('hidden');
-
-            // Record for the end-of-session review.
+            s.answers[s.index] = { selectedIndex, graded: data };
+            applyGradedView(data, selectedIndex);
             (s.log = s.log || []).push({
                 meta: [currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
                 stem: currentQ.stem || '',
@@ -551,6 +572,7 @@
                 yourLetter: String.fromCharCode(65 + selectedIndex),
                 explanation: data.explanation || '',
             });
+            renderPalette();
             updateQuizProgress();
         } catch (err) {
             s.locked = false;
@@ -559,22 +581,98 @@
         }
     }
 
+    function gotoQuestion(idx) { const s = state.session; if (!s || idx < 0 || idx >= s.pool.length) return; s.index = idx; renderQuestion(); }
+    function prevQuestion() { const s = state.session; if (!s || s.index <= 0) return; s.index--; renderQuestion(); }
+
     function advance() {
         const s = state.session; if (!s) return;
-        if (!s.locked) return; // must answer first
-        s.index++;
-        renderQuestion();
+        if (s.mode === 'tutor' && !s.locked && s.index < s.pool.length) return; // must answer first
+        if (s.index < s.pool.length - 1) { s.index++; renderQuestion(); }
+        else if (s.mode !== 'exam') finishSession();
+    }
+
+    function renderPalette() {
+        const s = state.session; const el = $('quiz-palette'); if (!el || !s) return;
+        const flags = new Set((state.profile && state.profile.flagged_ids) || []);
+        el.innerHTML = s.pool.map((q, i) => {
+            const a = s.answers[i];
+            const graded = a && a.graded;
+            const answered = a && a.selectedIndex != null;
+            let bg = 'var(--bg)', bc = 'var(--line)', col = 'var(--muted)';
+            if (graded) { if (graded.correct) { bg = 'var(--accent-dim)'; bc = 'var(--accent)'; col = 'var(--accent)'; } else { bg = '#2a0c0c'; bc = 'var(--danger)'; col = '#F87171'; } }
+            else if (answered) { bg = 'var(--line)'; col = 'var(--text)'; }
+            const border = (i === s.index) ? 'var(--accent)' : bc;
+            const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:#FBBF24;font-size:10px;">★</span>' : '';
+            return `<button type="button" aria-label="Question ${i + 1}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:32px;height:32px;border:2px solid ${border};background:${bg};color:${col};border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}</button>`;
+        }).join('');
+    }
+
+    function renderQuizNav() {
+        const s = state.session; if (!s) return;
+        const prev = $('prev-btn'), next = $('advance-vignette-trigger'), submit = $('submit-exam-btn');
+        if (prev) prev.style.display = s.index > 0 ? '' : 'none';
+        if (submit) submit.style.display = s.mode === 'exam' ? '' : 'none';
+        if (next) {
+            next.className = 'btn secondary';
+            next.onclick = advance;
+            if (s.mode === 'exam') { next.textContent = 'Next »'; next.style.visibility = s.index >= s.pool.length - 1 ? 'hidden' : 'visible'; }
+            else { next.textContent = s.index >= s.pool.length - 1 ? 'Finish ▸' : 'Next Question »'; next.style.visibility = 'visible'; }
+        }
+    }
+
+    async function submitExam() {
+        const s = state.session; if (!s || s.mode !== 'exam') return;
+        const answeredIdx = s.pool.map((q, i) => i).filter((i) => s.answers[i] && s.answers[i].selectedIndex != null);
+        const unanswered = s.pool.length - answeredIdx.length;
+        if (unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
+        setLoading(true);
+        let correct = 0;
+        try {
+            for (const i of answeredIdx) {
+                const q = s.pool[i]; const sel = s.answers[i].selectedIndex;
+                try {
+                    const { resp, data } = await apiJSON('/api/grade', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, choiceIndex: sel }) });
+                    if (resp.ok) { s.answers[i].graded = data; if (data.correct) correct++; }
+                } catch (e) { /* skip */ }
+            }
+        } finally { setLoading(false); }
+        s.answered = answeredIdx.length; s.correct = correct;
+        s.log = answeredIdx.map((i) => {
+            const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
+            return { meta: [q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+        });
+        track('session_complete', { mode: 'exam', size: s.pool.length });
+        try { await loadProfile(); } catch (e) {}
+        $('quiz-palette') && ($('quiz-palette').innerHTML = '');
+        $('prev-btn') && ($('prev-btn').style.display = 'none');
+        $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
+        const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
+        $('question-meta').textContent = 'EXAM COMPLETE';
+        $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).`;
+        $('choices-container').innerHTML = '';
+        $('explanation-pane').classList.add('hidden');
+        renderSessionReview(s.log || []);
+        const next = $('advance-vignette-trigger');
+        next.textContent = 'Back to Dashboard'; next.className = 'btn'; next.style.visibility = 'visible';
+        next.onclick = () => { resetAdvanceButton(); clearSessionReview(); MACPrep.go('dashboard'); };
+        $('quiz-progress-bar').style.width = '100%';
     }
 
     function updateQuizProgress() {
         const s = state.session; if (!s) return;
-        const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
-        $('session-progress-counter').textContent = `QUESTION ${Math.min(s.index + 1, s.size)} / ${s.size} · SCORE ${pct}%`;
+        if (s.mode === 'exam') {
+            const answeredCount = s.pool.filter((q, i) => s.answers[i] && s.answers[i].selectedIndex != null).length;
+            $('session-progress-counter').textContent = `EXAM · QUESTION ${s.index + 1} / ${s.size} · ${answeredCount} answered`;
+        } else {
+            const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
+            $('session-progress-counter').textContent = `QUESTION ${Math.min(s.index + 1, s.size)} / ${s.size} · SCORE ${pct}%`;
+        }
         $('quiz-progress-bar').style.width = Math.round((s.index / s.size) * 100) + '%';
     }
 
     function finishSession() {
         const s = state.session;
+        track('session_complete', { mode: 'tutor', answered: s.answered });
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         $('question-meta').textContent = 'SESSION COMPLETE';
         $('question-stem').innerHTML = `You answered <strong>${s.answered}</strong> question${s.answered === 1 ? '' : 's'} with <strong>${pct}%</strong> accuracy (${s.correct}/${s.answered} correct).`;
@@ -867,18 +965,23 @@
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return; // don't hijack typing
         const k = e.key.toLowerCase();
         if (k === 'f') { e.preventDefault(); toggleFlag(); return; }
-        if (!s.locked) {
+        if (k === 'arrowleft' || k === 'p') { e.preventDefault(); prevQuestion(); return; }
+        // A–E / 1–5 select (allowed pre-grade in tutor, anytime in exam).
+        if (!s.locked || s.mode === 'exam') {
             let idx = -1;
             if (/^[a-e]$/.test(k)) idx = k.charCodeAt(0) - 97;
             else if (/^[1-5]$/.test(k)) idx = parseInt(k, 10) - 1;
             if (idx >= 0) {
                 const btn = $('choices-container').querySelector(`.choice-option-node[data-index="${idx}"]`);
-                if (btn) { e.preventDefault(); btn.click(); }
+                if (btn) { e.preventDefault(); btn.click(); return; }
             }
-        } else if (k === 'enter' || k === 'arrowright' || k === 'n') {
+        }
+        if (k === 'enter' || k === 'arrowright' || k === 'n') {
+            // In tutor mode, only advance after grading.
+            if (s.mode === 'tutor' && !s.locked) return;
             e.preventDefault();
             const adv = $('advance-vignette-trigger');
-            if (adv) adv.click();
+            if (adv && adv.style.visibility !== 'hidden') adv.click();
         }
     }
 
@@ -905,6 +1008,7 @@
         go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
+        gotoQuestion, prevQuestion, submitExam,
     };
 
     document.addEventListener('keydown', handleQuizKey);

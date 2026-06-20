@@ -285,6 +285,14 @@
                 </div>
             </div>
 
+            <div class="form-group" style="max-width:340px;">
+                <label>Mode</label>
+                <select id="mode-select">
+                    <option value="tutor">Tutor — feedback after each question</option>
+                    <option value="exam">Exam — answer all, score at the end</option>
+                </select>
+            </div>
+
             <label>Number of Questions</label>
             <div class="chip-row" id="count-chips" style="margin-bottom:18px;"></div>
 
@@ -309,17 +317,20 @@
             <div class="mono" style="color:var(--accent);font-size:12px;">[LIVE TRACKING]</div>
         </div>
         <div class="mono" id="session-progress-counter" style="color:var(--muted);margin-bottom:6px;">QUESTION 0 / 0 · SCORE 0%</div>
-        <div class="progress-bar" style="margin-bottom:24px;"><span id="quiz-progress-bar" style="width:0%"></span></div>
+        <div class="progress-bar" style="margin-bottom:14px;"><span id="quiz-progress-bar" style="width:0%"></span></div>
+        <div id="quiz-palette" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;"></div>
 
         <div class="card">
             <div class="mono" id="question-meta" style="font-size:11px;color:var(--accent);margin-bottom:14px;"></div>
             <div id="question-stem" style="font-size:18px;line-height:1.6;margin-bottom:24px;">Loading…</div>
             <div id="choices-container"></div>
             <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:4px;font-size:14px;line-height:1.6;"></div>
-            <div style="margin-top:24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+            <div style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <button class="btn ghost" id="prev-btn" type="button" onclick="MACPrep.prevQuestion()" style="display:none;">&laquo; Previous</button>
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
+                <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
                 <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">☆ Flag for review</button>
-                <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · → next · F flag</span>
+                <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag</span>
             </div>
 
             <details style="margin-top:16px;">
