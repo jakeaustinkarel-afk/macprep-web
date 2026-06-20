@@ -35,3 +35,6 @@ data_expansion_payload.json
 # Private legal documents (never serve/commit)
 MACPrep_LLC_Operating_Agreement.rtf
 *_Operating_Agreement.rtf
+
+# Local reference (email templates pasted into Supabase)
+MACPrep_email_templates.html
