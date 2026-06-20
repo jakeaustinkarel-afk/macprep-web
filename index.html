@@ -350,7 +350,8 @@
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
                 <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">☆ Flag for review</button>
-                <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag</span>
+                <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">🧪 Lab values</button>
+                <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</span>
             </div>
 
             <details style="margin-top:16px;">
@@ -455,6 +456,26 @@
         <div id="admin-body"></div>
     </div>
 
+    <div id="labs-modal" class="hidden" onclick="if(event.target===this)MACPrep.toggleLabs()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:580px;width:100%;max-height:85vh;overflow:auto;padding:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <h3 style="margin:0;">Normal lab values</h3>
+          <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 16px;">Reference adult ranges, units as commonly reported.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Arterial blood gas</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">pH 7.35–7.45 · PaCO₂ 35–45 mmHg · PaO₂ 80–100 mmHg · HCO₃⁻ 22–26 mEq/L · Base excess −2 to +2 · SaO₂ 95–100%</div></div>
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Electrolytes</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">Na⁺ 135–145 · K⁺ 3.5–5.0 · Cl⁻ 98–106 · CO₂ 22–28 · Ca²⁺ (total) 8.5–10.5 mg/dL · ionized Ca²⁺ 1.1–1.35 mmol/L · Mg²⁺ 1.7–2.2 · PO₄ 2.5–4.5 (mEq/L unless noted)</div></div>
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Renal &amp; glucose</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">BUN 7–20 mg/dL · Creatinine 0.6–1.2 mg/dL · Glucose 70–110 mg/dL · Lactate 0.5–2.2 mmol/L</div></div>
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Hematology</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">Hgb 12–17 g/dL · Hct 36–50% · Platelets 150–400 ×10⁹/L · WBC 4–11 ×10⁹/L</div></div>
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Coagulation</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">PT 11–13.5 s · INR 0.8–1.1 · aPTT 25–35 s · Fibrinogen 200–400 mg/dL</div></div>
+          <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Other</div><div style="font-size:13px;color:#cbd5e1;line-height:1.7;">Albumin 3.5–5.0 g/dL · Total protein 6–8 g/dL · Total Ca²⁺ correction +0.8 mg/dL per 1 g/dL albumin drop</div></div>
+        </div>
+      </div>
+    </div>
+    <div id="lightbox" class="hidden" onclick="this.classList.add('hidden')" style="position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;">
+      <img id="lightbox-img" alt="Enlarged figure" style="max-width:95%;max-height:95%;border-radius:6px;">
+    </div>
     <div id="toast" role="status" aria-live="polite"></div>
     <div id="sr-announce" aria-live="polite" class="sr-only"></div>
     <style>

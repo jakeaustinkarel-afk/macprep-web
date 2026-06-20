@@ -647,6 +647,23 @@
         return btn;
     }
 
+    function toggleEliminate(idx) {
+        const s = state.session; if (!s) return;
+        s.eliminated = s.eliminated || {};
+        const set = new Set(s.eliminated[s.index] || []);
+        const btn = $('choices-container').querySelector(`.choice-option-node[data-index="${idx}"]`);
+        if (set.has(idx)) { set.delete(idx); if (btn) { btn.style.textDecoration = 'none'; btn.style.opacity = '1'; } }
+        else { set.add(idx); if (btn) { btn.style.textDecoration = 'line-through'; btn.style.opacity = '0.45'; } }
+        s.eliminated[s.index] = Array.from(set);
+        saveSession();
+    }
+    function zoomImage(src) {
+        const lb = $('lightbox'); if (!lb || !src) return;
+        const img = $('lightbox-img'); if (img) img.src = src;
+        lb.classList.remove('hidden');
+    }
+    function toggleLabs() { const m = $('labs-modal'); if (m) m.classList.toggle('hidden'); }
+
     // Apply the graded result (highlights, rationale, explanation) — used both when
     // grading live and when re-rendering an already-answered question.
     function applyGradedView(data, selectedIndex) {
@@ -692,16 +709,20 @@
         s.locked = !!graded; // tutor: locked once graded
 
         $('question-meta').textContent = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
-        const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;">` : '';
+        const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
         $('question-stem').innerHTML = renderRich(q.stem) + img;
         const container = $('choices-container');
         container.innerHTML = '';
         let choices = q.choices || [];
         if (typeof choices === 'string') { try { choices = JSON.parse(choices); } catch (e) { choices = []; } }
+        const eliminated = (s.eliminated && s.eliminated[s.index]) || [];
         choices.forEach((choice, idx) => {
             const btn = buildChoiceButton(choice, idx, q.id);
             // Exam mode: highlight the chosen (but unscored) answer.
             if (ans && ans.selectedIndex === idx && !graded) { btn.style.borderColor = 'var(--accent)'; btn.style.background = 'var(--accent-dim)'; }
+            if (eliminated.includes(idx)) { btn.style.textDecoration = 'line-through'; btn.style.opacity = '0.45'; }
+            // Right-click (or long-press) crosses out a distractor you've eliminated.
+            if (!graded) btn.oncontextmenu = (e) => { e.preventDefault(); toggleEliminate(idx); };
             container.appendChild(btn);
         });
         if (!choices.length) {
@@ -1309,6 +1330,7 @@
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
+        zoomImage, toggleLabs,
     };
 
     document.addEventListener('keydown', handleQuizKey);
