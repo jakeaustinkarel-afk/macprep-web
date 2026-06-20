@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}};})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create your account — MACPrep</title>
@@ -9,9 +10,11 @@
     <link rel="apple-touch-icon" href="/macprep_icon.png">
     <link rel="shortcut icon" href="/favicon.png?v=2">
     <style>
+        :root{--bg:#0D0E10;--panel:#111214;--line:#1F2937;--text:#F9FAFB;--text2:#cbd5e1;--muted:#6B7280;--accent:#00A86B;--accent-dim:#0c2a1d;--danger:#B91C1C;--danger-dim:#2a0c0c;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;}
         body {
-            background-color: #0D0E10 !important;
-            color: #F9FAFB !important;
+            background-color: var(--bg) !important;
+            color: var(--text) !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -24,8 +27,8 @@
             width: 100%;
             max-width: 440px;
             padding: 40px;
-            background-color: #111214;
-            border: 1px solid #1F2937;
+            background-color: var(--panel);
+            border: 1px solid var(--line);
             border-radius: 4px;
             box-sizing: border-box;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
@@ -36,7 +39,7 @@
         .terminal-tag {
             font-family: monospace;
             font-size: 11px;
-            color: #00A86B;
+            color: var(--accent);
             letter-spacing: 2px;
             text-transform: uppercase;
             margin-bottom: 8px;
@@ -47,7 +50,7 @@
             font-weight: 800;
             margin: 0;
             letter-spacing: -0.5px;
-            color: #F9FAFB;
+            color: var(--text);
         }
         .form-group {
             margin-bottom: 20px;
@@ -56,7 +59,7 @@
             display: block;
             font-family: monospace;
             font-size: 11px;
-            color: #6B7280;
+            color: var(--muted);
             margin-bottom: 6px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -64,23 +67,23 @@
         input {
             width: 100%;
             padding: 12px;
-            background-color: #0D0E10;
-            border: 1px solid #1F2937;
+            background-color: var(--bg);
+            border: 1px solid var(--line);
             border-radius: 4px;
-            color: #F9FAFB;
+            color: var(--text);
             font-size: 14px;
             box-sizing: border-box;
             transition: border-color 0.2s ease;
         }
         input:focus {
             outline: none;
-            border-color: #00A86B;
+            border-color: var(--accent);
         }
         button[type="submit"] {
             width: 100%;
             padding: 14px;
-            background-color: #00A86B;
-            color: #F9FAFB;
+            background-color: var(--accent);
+            color: #fff;
             border: none;
             border-radius: 4px;
             font-family: monospace;
@@ -94,21 +97,21 @@
         .footer-routing {
             margin-top: 25px;
             text-align: left;
-            border-top: 1px solid #1F2937;
+            border-top: 1px solid var(--line);
             padding-top: 20px;
         }
         .footer-routing span {
-            color: #6B7280;
+            color: var(--muted);
             font-family: monospace;
             font-size: 12px;
         }
         .footer-routing a {
-            color: #00A86B;
+            color: var(--accent);
             font-family: monospace;
             font-size: 12px;
             font-weight: bold;
             text-decoration: none;
-            border-bottom: 1px dashed #00A86B;
+            border-bottom: 1px dashed var(--accent);
             padding-bottom: 2px;
             margin-left: 5px;
         }
@@ -133,9 +136,9 @@
                 <label for="reg-password">Password</label>
                 <input type="password" id="reg-password" name="password" placeholder="•••••••• (8+ characters)" required minlength="8" autocomplete="new-password">
             </div>
-            <label style="display:flex;align-items:flex-start;gap:10px;font-family:inherit;text-transform:none;letter-spacing:0;color:#cbd5e1;font-size:13px;margin-bottom:18px;cursor:pointer;">
+            <label style="display:flex;align-items:flex-start;gap:10px;font-family:inherit;text-transform:none;letter-spacing:0;color:var(--text2);font-size:13px;margin-bottom:18px;cursor:pointer;">
                 <input type="checkbox" id="reg-terms" required style="width:auto;margin-top:3px;">
-                <span>I agree to the <a href="/terms.html" target="_blank" style="color:#00A86B;">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:#00A86B;">Privacy Policy</a>, and understand MACPrep is for exam preparation and is not medical advice.</span>
+                <span>I agree to the <a href="/terms.html" target="_blank" style="color:var(--accent);">Terms of Service</a> and <a href="/privacy.html" target="_blank" style="color:var(--accent);">Privacy Policy</a>, and understand MACPrep is for exam preparation and is not medical advice.</span>
             </label>
             <button type="submit">Create account</button>
         </form>

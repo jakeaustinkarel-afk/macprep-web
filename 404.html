@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}};})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Page not found — MACPrep</title>
@@ -8,13 +9,15 @@
     <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
     <link rel="apple-touch-icon" href="/macprep_icon.png">
     <style>
-        :root { --bg:#0D0E10; --line:#1F2937; --text:#F9FAFB; --muted:#6B7280; --accent:#00A86B; }
+        :root{--bg:#0D0E10;--panel:#111214;--line:#1F2937;--text:#F9FAFB;--text2:#cbd5e1;--muted:#6B7280;--accent:#00A86B;--accent-dim:#0c2a1d;--danger:#B91C1C;--danger-dim:#2a0c0c;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;}
+        :root { --bg:var(--bg); --line:var(--line); --text:var(--text); --muted:var(--muted); --accent:var(--accent); }
         body{background:var(--bg);color:var(--text);margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
             font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;text-align:center;padding:24px;}
         .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
         h1{font-size:54px;margin:8px 0 4px;font-family:ui-monospace,monospace;}
         p{color:var(--muted);margin:0 0 24px;}
-        a.btn{display:inline-block;background:var(--accent);color:var(--text);padding:12px 22px;border-radius:4px;text-decoration:none;
+        a.btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 22px;border-radius:4px;text-decoration:none;
             font-family:ui-monospace,monospace;font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;}
         .brand{font-family:ui-monospace,monospace;font-weight:800;font-size:20px;margin-bottom:20px;}
         .accent{color:var(--accent);}
