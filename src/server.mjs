@@ -685,6 +685,49 @@ app.get('/api/questions', async (req, res) => {
     }
 });
 
+// Printable take-home exam (premium). Returns full questions WITH answers/explanations
+// so the client can render a print-to-PDF page — gated to premium since it reveals keys.
+app.get('/api/exam-export', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await isUserPremium(user.id))) {
+        return res.status(402).json({ error: 'Printable exams are a premium feature.', paywall: true });
+    }
+    const count = Math.min(Math.max(parseInt(req.query.count, 10) || 25, 1), 200);
+    const category = (req.query.category || 'all').toString();
+    try {
+        let query = supabase.from('questions').select('id, category, domain_name, stem, choices, correct_answer, explanation, "references"');
+        query = applyServedFilter(query);
+        if (category && category !== 'all') query = query.eq('category', category);
+        const { data, error } = await query.limit(1500);
+        if (error) throw error;
+        const pool = data || [];
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const picked = pool.slice(0, count).map((q) => {
+            const choices = parseChoices(q.choices);
+            let correctIndex = choices.findIndex((c) => c && typeof c === 'object' && c.correct === true);
+            if (correctIndex < 0 && typeof q.correct_answer === 'string' && q.correct_answer.trim()) {
+                correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
+            }
+            let references = q.references;
+            if (typeof references === 'string') { try { references = JSON.parse(references); } catch (e) { references = []; } }
+            return {
+                category: q.category || q.domain_name || 'General',
+                stem: q.stem || '',
+                choices: choices.map((c) => (typeof c === 'object' && c ? (c.text || '') : c)),
+                correctLetter: correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : '?',
+                explanation: q.explanation || '',
+                references: Array.isArray(references) ? references : [],
+            };
+        });
+        return res.json({ questions: picked });
+    } catch (err) {
+        console.error('Exam export failure:', err.message);
+        return res.status(500).json({ error: 'Could not build exam.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Grade a single answer server-side. Authenticated. The free-tier ceiling is
 // enforced from the server's own count of distinct questions the user has
