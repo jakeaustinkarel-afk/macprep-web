@@ -94,7 +94,10 @@ const PROGRESS_TABLE = 'user_progress';
 // (status 'sme_review' or 'published'). Set SERVE_FILLER=true to temporarily
 // include the legacy filler (not recommended; its answers are unreliable).
 const SERVE_FILLER = String(process.env.SERVE_FILLER || '').toLowerCase() === 'true';
-const SERVED_STATUSES = ['sme_review', 'published'];
+// Once enough questions are SME-approved, set SERVE_PUBLISHED_ONLY=true on Render
+// so students see ONLY clinician-reviewed (status='published') content.
+const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY || '').toLowerCase() === 'true';
+const SERVED_STATUSES = SERVE_PUBLISHED_ONLY ? ['published'] : ['sme_review', 'published'];
 function applyServedFilter(query) {
     return SERVE_FILLER ? query : query.in('status', SERVED_STATUSES);
 }
@@ -263,6 +266,14 @@ async function isUserPremium(userId) {
     return data?.account_tier === 'premium';
 }
 
+// Returns the authenticated user only if they are an admin (program director).
+async function getAdminUser(req) {
+    const user = await getUserFromToken(req);
+    if (!user || !supabase) return null;
+    const { data } = await supabase.from(PROFILE_TABLE).select('is_program_director').eq('user_id', user.id).maybeSingle();
+    return data?.is_program_director ? user : null;
+}
+
 // ---------------------------------------------------------------------------
 // Auth — single real endpoint backed by Supabase Auth.
 // Requires the Email provider to be enabled in Supabase Auth settings.
@@ -396,6 +407,63 @@ app.post('/api/user/delete', async (req, res) => {
     } catch (err) {
         console.error('Account deletion failure:', err.message);
         return res.status(500).json({ error: 'Could not delete account.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Admin content review queue (program directors / SMEs only). Returns full
+// questions INCLUDING correct flags so a clinician can vet and publish them.
+// ---------------------------------------------------------------------------
+app.get('/api/admin/questions', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const status = (req.query.status || 'sme_review').toString();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    try {
+        const { data, error } = await supabase
+            .from('questions')
+            .select('id, category, domain_name, subtopic, difficulty, stem, choices, correct_answer, explanation, "references", status')
+            .eq('status', status)
+            .order('id', { ascending: true })
+            .limit(limit);
+        if (error) throw error;
+        const out = (data || []).map((q) => ({ ...q, choices: parseChoices(q.choices) }));
+        // counts by status for the queue header
+        const counts = {};
+        for (const st of ['sme_review', 'published', 'rejected', 'draft', 'unreviewed']) {
+            const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', st);
+            counts[st] = count || 0;
+        }
+        return res.json({ questions: out, counts });
+    } catch (err) {
+        console.error('Admin list failure:', err.message);
+        return res.status(500).json({ error: 'Could not load questions.' });
+    }
+});
+
+// Update a question's status and/or edit its content (admin only).
+app.post('/api/admin/question', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const b = req.body || {};
+    const id = String(b.id || '');
+    if (!id) return res.status(400).json({ error: 'id required.' });
+    const update = {};
+    if (b.status && ['sme_review', 'published', 'rejected', 'draft'].includes(b.status)) update.status = b.status;
+    for (const f of ['stem', 'explanation', 'correct_answer']) {
+        if (typeof b[f] === 'string') update[f] = b[f];
+    }
+    if (Array.isArray(b.choices)) update.choices = b.choices;
+    if (Array.isArray(b.references)) update.references = b.references;
+    if (b.status === 'published') update.reviewed_by = admin.id;
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Nothing to update.' });
+    try {
+        const { error } = await supabase.from('questions').update(update).eq('id', id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Admin update failure:', err.message);
+        return res.status(500).json({ error: 'Could not update question.' });
     }
 });
 

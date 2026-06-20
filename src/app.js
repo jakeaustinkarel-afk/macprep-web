@@ -94,7 +94,7 @@
         if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         if (view !== 'login' && !state.token) view = 'login';
@@ -102,6 +102,8 @@
         const authed = !!state.token && view !== 'login';
         ['nav-dashboard', 'nav-profile', 'nav-feedback', 'nav-signout', 'tier-badge'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
+        const isAdmin = authed && state.profile && state.profile.is_admin;
+        $('nav-admin') && $('nav-admin').classList.toggle('hidden', !isAdmin);
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
         window.scrollTo(0, 0);
@@ -682,6 +684,95 @@
         } catch (e) { alert('Failed: ' + e.message); }
     }
 
+    // ---- admin review queue ----------------------------------------------
+    async function reviewQueue() {
+        go('admin');
+        const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
+        try {
+            const { resp, data } = await apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() });
+            if (!resp.ok) throw new Error(data.error || 'Could not load.');
+            state.review = { list: data.questions || [], index: 0, counts: data.counts || {} };
+            renderReview();
+        } catch (e) {
+            if (wrap) wrap.innerHTML = `<div class="mono" style="color:#F87171;">${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function renderReview() {
+        const r = state.review; const wrap = $('admin-body'); if (!r || !wrap) return;
+        const c = r.counts || {};
+        $('admin-counts').textContent = `${c.sme_review || 0} awaiting review · ${c.published || 0} published · ${c.rejected || 0} rejected`;
+        if (!r.list.length || r.index >= r.list.length) {
+            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">No more questions awaiting review.</div></div>';
+            return;
+        }
+        const q = r.list[r.index];
+        const choices = (q.choices || []).map((ch, i) => {
+            const letter = String.fromCharCode(65 + i);
+            const correct = (q.correct_answer || '').toUpperCase() === letter || ch.correct === true;
+            return `<div style="border:1px solid ${correct ? 'var(--accent)' : 'var(--line)'};border-radius:4px;padding:10px;margin:8px 0;background:${correct ? 'var(--accent-dim)' : 'var(--bg)'};">
+                <label style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">[${letter}]${correct ? ' ✓ correct' : ''}</label>
+                <input data-edit="choice-text-${i}" value="${escapeHtml(ch.text || '')}" style="width:100%;margin:4px 0;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;">
+                <textarea data-edit="choice-rat-${i}" rows="2" style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:#9ca3af;font-size:12px;">${escapeHtml(ch.rationale || '')}</textarea>
+            </div>`;
+        }).join('');
+        const refs = (q.references || []).map((rf) => rf.url ? `<a href="${escapeHtml(rf.url)}" target="_blank" rel="noopener">${escapeHtml(rf.title || rf.source || rf.url)}</a>` : escapeHtml(rf.source || '')).join('<br>');
+        wrap.innerHTML = `
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Reviewing ${r.index + 1} of ${r.list.length} · ${escapeHtml(q.id)} · ${escapeHtml((q.category || '') + ' · ' + (q.subtopic || '') + ' · ' + (q.difficulty || ''))}</div>
+            <div class="card">
+                <label>Stem</label>
+                <textarea data-edit="stem" rows="4" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:14px;margin-bottom:14px;">${escapeHtml(q.stem || '')}</textarea>
+                <label>Choices &amp; rationale (green = keyed correct)</label>
+                ${choices}
+                <label style="margin-top:10px;">Correct answer letter</label>
+                <input data-edit="correct_answer" value="${escapeHtml(q.correct_answer || '')}" maxlength="1" style="width:80px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);margin-bottom:14px;">
+                <label>Explanation</label>
+                <textarea data-edit="explanation" rows="5" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;margin-bottom:10px;">${escapeHtml(q.explanation || '')}</textarea>
+                <div class="mono" style="font-size:12px;color:var(--muted);margin-bottom:16px;">Source: ${refs || '—'}</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn" onclick="MACPrep.adminAction('publish')">✓ Publish</button>
+                    <button class="btn ghost" onclick="MACPrep.adminAction('save')">Save edits (keep reviewing)</button>
+                    <button class="btn ghost" onclick="MACPrep.adminAction('skip')">Skip →</button>
+                    <button class="btn" style="background:var(--danger);" onclick="MACPrep.adminAction('reject')">✗ Reject</button>
+                </div>
+                <span id="admin-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
+            </div>`;
+    }
+
+    function collectReviewEdits() {
+        const r = state.review; const q = r.list[r.index];
+        const get = (sel) => { const el = $('admin-body').querySelector(`[data-edit="${sel}"]`); return el ? el.value : undefined; };
+        const choices = (q.choices || []).map((ch, i) => ({
+            ...ch,
+            text: get(`choice-text-${i}`) ?? ch.text,
+            rationale: get(`choice-rat-${i}`) ?? ch.rationale,
+        }));
+        const correctLetter = (get('correct_answer') || q.correct_answer || '').toUpperCase();
+        // keep the choices[].correct flags aligned with the letter
+        choices.forEach((ch, i) => { ch.correct = (String.fromCharCode(65 + i) === correctLetter); });
+        return { id: q.id, stem: get('stem'), explanation: get('explanation'), correct_answer: correctLetter, choices };
+    }
+
+    async function adminAction(action) {
+        const r = state.review; if (!r) return;
+        const msg = $('admin-msg');
+        const body = collectReviewEdits();
+        if (action === 'publish') body.status = 'published';
+        if (action === 'reject') body.status = 'rejected';
+        if (action === 'skip') { r.index++; renderReview(); return; }
+        try {
+            const { resp, data } = await apiJSON('/api/admin/question', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
+            if (action === 'save') { if (msg) { msg.textContent = 'Saved ✓'; setTimeout(() => { msg.textContent = ''; }, 1500); } return; }
+            // publish/reject: update counts + advance
+            if (action === 'publish') r.counts.published = (r.counts.published || 0) + 1;
+            if (action === 'reject') r.counts.rejected = (r.counts.rejected || 0) + 1;
+            r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
+            r.index++;
+            renderReview();
+        } catch (e) { if (msg) { msg.style.color = '#F87171'; msg.textContent = e.message; } }
+    }
+
     // ---- checkout ---------------------------------------------------------
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
@@ -780,7 +871,7 @@
     window.MACPrep = {
         go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
-        smartReview, startSample, saveNote,
+        smartReview, startSample, saveNote, reviewQueue, adminAction,
     };
 
     document.addEventListener('keydown', handleQuizKey);

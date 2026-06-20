@@ -106,6 +106,7 @@
         <nav class="nav" id="main-nav">
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
+            <a id="nav-admin" class="hidden" onclick="MACPrep.reviewQueue()" style="color:#60A5FA;">Review</a>
             <a id="nav-profile" class="hidden" onclick="MACPrep.go('profile')">Profile</a>
             <a id="nav-feedback" class="hidden" onclick="MACPrep.go('feedback')">Feedback</a>
             <a href="/updates.html">Updates</a>
@@ -387,6 +388,13 @@
             <button class="btn" id="fb-submit" onclick="MACPrep.submitFeedback()">Submit</button>
             <span id="fb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
+    </div>
+
+    <!-- ADMIN REVIEW QUEUE (program directors / SMEs only) -->
+    <div class="wrap hidden" id="admin-view">
+        <h1>Content review</h1>
+        <p class="sub">Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span></p>
+        <div id="admin-body"></div>
     </div>
 
     <script src="/src/app.js"></script>
