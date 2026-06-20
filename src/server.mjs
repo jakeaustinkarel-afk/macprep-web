@@ -34,17 +34,26 @@ const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKe
 const PROFILE_TABLE = 'user_profiles';
 const PROGRESS_TABLE = 'user_progress';
 
-// Free users may access 10% of the available question bank. Computed from the
-// live question count and cached briefly so we don't COUNT on every grade.
+// The legacy mass-generated bank is tagged status='unreviewed'. By default we do
+// NOT serve it — students only ever see authored, journal-sourced content
+// (status 'sme_review' or 'published'). Set SERVE_FILLER=true to temporarily
+// include the legacy filler (not recommended; its answers are unreliable).
+const SERVE_FILLER = String(process.env.SERVE_FILLER || '').toLowerCase() === 'true';
+const SERVED_STATUSES = ['sme_review', 'published'];
+function applyServedFilter(query) {
+    return SERVE_FILLER ? query : query.in('status', SERVED_STATUSES);
+}
+
+// Free users may access 10% of the *served* question bank. Computed from the
+// live count and cached briefly so we don't COUNT on every grade.
 const FREE_TIER_FRACTION = 0.10;
-let _freeCeilingCache = { value: 100, at: 0 };
+let _freeCeilingCache = { value: 50, at: 0 };
 async function getFreeTierCeiling() {
     const now = Date.now();
     if (now - _freeCeilingCache.at < 5 * 60 * 1000) return _freeCeilingCache.value;
     if (!supabase) return _freeCeilingCache.value;
     try {
-        let q = supabase.from('questions').select('id', { count: 'exact', head: true });
-        if (SERVE_PUBLISHED_ONLY) q = q.eq('status', 'published');
+        const q = applyServedFilter(supabase.from('questions').select('id', { count: 'exact', head: true }));
         const { count } = await q;
         const ceiling = Math.max(1, Math.ceil((count || 0) * FREE_TIER_FRACTION));
         _freeCeilingCache = { value: ceiling, at: now };
@@ -53,12 +62,6 @@ async function getFreeTierCeiling() {
         return _freeCeilingCache.value;
     }
 }
-
-// Feature flag: when true, /api/questions serves only SME-approved content
-// (status='published'). Default false keeps the demo working while the bank is
-// still being authored/reviewed. Flip to 'true' on Render once a published set
-// exists to retire the legacy 'unreviewed' filler from what students see.
-const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY || '').toLowerCase() === 'true';
 
 // choices may be stored as a JSON string (text/jsonb-as-string) or a native array.
 function parseChoices(raw) {
@@ -161,7 +164,7 @@ app.get('/api/health', (req, res) => {
         build: 'auth-grading-security',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
-        serve_published_only: SERVE_PUBLISHED_ONLY,
+        serve_filler: SERVE_FILLER,
         time: new Date().toISOString(),
     });
 });
@@ -261,10 +264,10 @@ app.get('/api/questions', async (req, res) => {
         for (let from = 0; ; from += PAGE) {
             let query = supabase
                 .from('questions')
-                .select('id, specialty, domain, domain_name, subtopic, category, stem, choices, telemetry')
+                .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry')
                 .order('id', { ascending: true })
                 .range(from, from + PAGE - 1);
-            if (SERVE_PUBLISHED_ONLY) query = query.eq('status', 'published');
+            query = applyServedFilter(query);
             const { data: page, error } = await query;
             if (error) throw error;
             data = data.concat(page || []);
@@ -325,7 +328,7 @@ app.post('/api/grade', async (req, res) => {
 
         const { data: q, error } = await supabase
             .from('questions')
-            .select('specialty, correct_answer, choices, explanation, "references"')
+            .select('specialty, category, correct_answer, choices, explanation, "references"')
             .eq('id', questionId)
             .maybeSingle();
         if (error) throw error;
@@ -346,6 +349,7 @@ app.post('/api/grade', async (req, res) => {
             user_id: user.id,
             question_id: String(questionId),
             specialty: q.specialty || null,
+            category: q.category || null,
             selected_label: String.fromCharCode(65 + Number(choiceIndex)),
             is_correct: isCorrect,
         }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });
@@ -388,15 +392,27 @@ app.get('/api/user/profile', async (req, res) => {
             .maybeSingle();
         if (error) throw error;
 
-        // Derive simple study stats from recorded progress.
+        // Derive study stats from recorded progress, including accuracy by specialty.
         const { data: progress } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id, is_correct')
+            .select('question_id, is_correct, category')
             .eq('user_id', user.id);
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
         const correct = (progress || []).filter((r) => r.is_correct).length;
         const ceiling = await getFreeTierCeiling();
+
+        // Per-specialty (category) accuracy from attempts.
+        const byCat = {};
+        (progress || []).forEach((r) => {
+            const c = r.category || 'Uncategorized';
+            byCat[c] = byCat[c] || { attempts: 0, correct: 0 };
+            byCat[c].attempts++;
+            if (r.is_correct) byCat[c].correct++;
+        });
+        const by_specialty = Object.entries(byCat)
+            .map(([category, v]) => ({ category, attempts: v.attempts, correct: v.correct, accuracy: Math.round((v.correct / v.attempts) * 100) }))
+            .sort((a, b) => b.attempts - a.attempts);
 
         return res.json({
             profile: {
@@ -411,6 +427,7 @@ app.get('/api/user/profile', async (req, res) => {
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
+                by_specialty,
             },
         });
     } catch (err) {

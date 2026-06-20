@@ -151,6 +151,8 @@
             });
         }
 
+        renderSpecialtyPerformance();
+
         // Count chips
         const chips = $('count-chips');
         chips.innerHTML = '';
@@ -171,6 +173,27 @@
         updateSessionHint();
     }
 
+    function renderSpecialtyPerformance() {
+        const el = $('specialty-perf');
+        if (!el) return;
+        const rows = (state.profile && state.profile.by_specialty) || [];
+        if (!rows.length) {
+            el.innerHTML = '<h3>Performance by specialty</h3><div class="mono" style="font-size:13px;color:var(--muted);">Answer some questions to see your accuracy broken down by specialty.</div>';
+            return;
+        }
+        const bars = rows.map((r) => {
+            const color = r.accuracy >= 75 ? 'var(--accent)' : r.accuracy >= 50 ? '#FBBF24' : '#F87171';
+            return `<div style="margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                    <span>${r.category}</span>
+                    <span class="mono" style="color:${color};">${r.accuracy}% <span style="color:var(--muted);">(${r.correct}/${r.attempts})</span></span>
+                </div>
+                <div class="progress-bar"><span style="width:${r.accuracy}%;background:${color};"></span></div>
+            </div>`;
+        }).join('');
+        el.innerHTML = `<h3>Performance by specialty</h3>${bars}`;
+    }
+
     function selectedCount() {
         const custom = parseInt($('custom-count').value, 10);
         if (custom > 0) return custom;
@@ -181,8 +204,12 @@
 
     function poolForDomain() {
         const c = $('domain-select').value;
-        if (c === 'all') return state.questions.slice();
-        return state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
+        const diff = $('difficulty-select') ? $('difficulty-select').value : 'all';
+        let pool = c === 'all'
+            ? state.questions.slice()
+            : state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
+        if (diff && diff !== 'all') pool = pool.filter((q) => (q.difficulty || '').toLowerCase() === diff);
+        return pool;
     }
 
     function updateSessionHint() {
@@ -210,7 +237,7 @@
 
         const shuffled = pool.slice();
         for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
-        state.session = { pool: shuffled.slice(0, n), index: 0, answered: 0, correct: 0, size: n, locked: false };
+        state.session = { pool: shuffled.slice(0, n), index: 0, answered: 0, correct: 0, size: n, locked: false, log: [] };
         go('quiz');
         renderQuestion();
     }
@@ -219,6 +246,8 @@
     function renderQuestion() {
         const s = state.session; if (!s) return go('dashboard');
         if (s.index >= s.pool.length) return finishSession();
+        resetAdvanceButton();
+        clearSessionReview();
         s.locked = false;
         const q = s.pool[s.index];
 
@@ -230,11 +259,14 @@
         if (typeof choices === 'string') { try { choices = JSON.parse(choices); } catch (e) { choices = []; } }
         choices.forEach((choice, idx) => {
             const text = (typeof choice === 'object' && choice) ? (choice.text || choice.value || '') : choice;
+            const letter = String.fromCharCode(65 + idx);
             const btn = document.createElement('button');
+            btn.type = 'button';
             btn.className = 'choice-option-node';
             btn.dataset.index = String(idx);
+            btn.setAttribute('aria-label', `Answer ${letter}: ${text}`);
             btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:ui-monospace,monospace;cursor:pointer;border-radius:4px;';
-            btn.innerHTML = `<span style="color:var(--accent);font-weight:bold;margin-right:15px;">[${String.fromCharCode(65 + idx)}]</span> ${text}`;
+            btn.innerHTML = `<span style="color:var(--accent);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
             btn.onclick = () => answer(idx, q.id);
             container.appendChild(btn);
         });
@@ -245,6 +277,7 @@
 
     async function answer(selectedIndex, questionId) {
         const s = state.session; if (!s || s.locked) return;
+        const currentQ = s.pool[s.index];
         s.locked = true;
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
         buttons.forEach((b) => { b.disabled = true; b.style.cursor = 'default'; });
@@ -294,6 +327,16 @@
             }
             ex.innerHTML = html;
             ex.classList.remove('hidden');
+
+            // Record for the end-of-session review.
+            (s.log = s.log || []).push({
+                meta: [currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
+                stem: currentQ.stem || '',
+                correct: !!data.correct,
+                correctLetter: String.fromCharCode(65 + (data.correctIndex || 0)),
+                yourLetter: String.fromCharCode(65 + selectedIndex),
+                explanation: data.explanation || '',
+            });
             updateQuizProgress();
         } catch (err) {
             s.locked = false;
@@ -323,16 +366,48 @@
         $('question-stem').innerHTML = `You answered <strong>${s.answered}</strong> question${s.answered === 1 ? '' : 's'} with <strong>${pct}%</strong> accuracy (${s.correct}/${s.answered} correct).`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
-        $('advance-vignette-trigger').textContent = 'Back to Dashboard';
-        $('advance-vignette-trigger').onclick = () => { $('advance-vignette-trigger').textContent = 'Next Question »'; $('advance-vignette-trigger').onclick = advance; MACPrep.go('dashboard'); };
+        renderSessionReview(s.log || []);
+        const btn = $('advance-vignette-trigger');
+        btn.textContent = 'Back to Dashboard';
+        btn.onclick = () => { resetAdvanceButton(); clearSessionReview(); MACPrep.go('dashboard'); };
         $('quiz-progress-bar').style.width = '100%';
     }
 
+    function resetAdvanceButton() {
+        const btn = $('advance-vignette-trigger');
+        btn.className = 'btn secondary';
+        btn.textContent = 'Next Question »';
+        btn.onclick = advance;
+    }
+
+    function clearSessionReview() { const el = $('session-review'); if (el) { el.innerHTML = ''; el.classList.add('hidden'); } }
+
+    function renderSessionReview(log) {
+        const el = $('session-review');
+        if (!el) return;
+        if (!log.length) { el.classList.add('hidden'); return; }
+        const rows = log.map((r, i) => `
+            <div style="border-bottom:1px solid var(--line);padding:14px 0;">
+                <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:4px;">${i + 1}. ${r.meta || ''}</div>
+                <div style="font-size:14px;margin-bottom:6px;">${r.stem}</div>
+                <div class="mono" style="font-size:12px;">
+                    <span style="color:${r.correct ? 'var(--accent)' : '#F87171'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
+                    &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
+                </div>
+                ${r.explanation ? `<div style="font-size:13px;color:#cbd5e1;margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
+            </div>`).join('');
+        el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session, with the correct answer and explanation.</p>${rows}`;
+        el.classList.remove('hidden');
+    }
+
     function showPaywall(limit) {
-        $('question-meta').textContent = 'TRIAL LIMIT REACHED';
-        $('question-stem').innerHTML = `You have completed all <strong>${limit || state.profile?.free_tier_limit || ''}</strong> free questions (10% of the bank). Upgrade to unlock the full question bank with detailed explanations and references.`;
+        const s = state.session;
+        $('question-meta').textContent = 'FREE LIMIT REACHED';
+        const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session. ` : '';
+        $('question-stem').innerHTML = `You've reached the end of the free tier — <strong>${limit || state.profile?.free_tier_limit || ''}</strong> questions (10% of the bank). ${statLine}Upgrade for one-time $50 lifetime access to the full journal-sourced bank with every explanation and source.`;
         $('choices-container').innerHTML = '';
-        const ex = $('explanation-pane'); ex.classList.add('hidden');
+        $('explanation-pane').classList.add('hidden');
+        if (s && s.log && s.log.length) renderSessionReview(s.log);
         const btn = $('advance-vignette-trigger');
         btn.className = 'btn';
         btn.textContent = 'Upgrade to Full Access — $50';
@@ -433,6 +508,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
         state.token = getToken();
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
+        $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);
         $('custom-count') && $('custom-count').addEventListener('input', updateSessionHint);
         if (state.token) {
             try { await bootAuthedSession(); }
