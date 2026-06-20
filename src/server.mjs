@@ -771,6 +771,14 @@ app.post('/api/grade', async (req, res) => {
             console.warn(`Progress insert warning: ${pErr.message}`);
         }
 
+        // Update the spaced-repetition (SM-2) schedule for this question — best-effort.
+        // Map correctness + stated confidence to a 0-5 recall quality.
+        const sm2q = isCorrect
+            ? (confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3)
+            : (confidence === 'high' ? 0 : 2);
+        supabase.rpc('sm2_review', { p_user: user.id, p_question: String(questionId), p_quality: sm2q })
+            .then(({ error: sErr }) => { if (sErr) console.warn(`sm2_review warning: ${sErr.message}`); }, () => {});
+
         // Peer stats: % of all attempts on this question that were correct.
         let peerPct = null;
         try {
@@ -898,14 +906,13 @@ app.get('/api/user/profile', async (req, res) => {
         const todayKey = dayKey(today);
         const answered_today = (progress || []).filter((r) => dayKey(r.created_at) === todayKey).length;
 
-        // Spaced review (v1): missed questions whose most recent attempt was >= 1 day
-        // ago, so they resurface after a gap rather than only on demand.
-        const lastAttempt = {};
-        (progress || []).forEach((r) => {
-            const t = new Date(r.created_at).getTime();
-            if (!lastAttempt[r.question_id] || t > lastAttempt[r.question_id]) lastAttempt[r.question_id] = t;
-        });
-        const due_ids = missed_ids.filter((qid) => (today.getTime() - (lastAttempt[qid] || 0)) >= 86400000);
+        // Spaced repetition (SM-2): questions whose scheduled review is now due.
+        let due_ids = [];
+        try {
+            const { data: dueRows } = await supabase.from('review_state')
+                .select('question_id').eq('user_id', user.id).lte('due_at', new Date().toISOString());
+            due_ids = (dueRows || []).map((r) => r.question_id);
+        } catch (e) { /* review_state optional */ }
 
         return res.json({
             profile: {
