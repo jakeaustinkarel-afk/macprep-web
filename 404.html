@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>(function(){try{if(localStorage.getItem('macprep_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}};})();</script>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}function s(){var b=document.getElementById('theme-toggle');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️';}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}s();};document.addEventListener('DOMContentLoaded',s);})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Page not found — MACPrep</title>
@@ -24,6 +24,7 @@
     </style>
 </head>
 <body>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark mode" style="position:fixed;top:14px;right:14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px;color:var(--muted);padding:7px 10px;line-height:1;z-index:50;">☀️</button>
     <div>
         <div class="brand">MAC<span class="accent">Prep</span></div>
         <span class="tag">Error 404</span>

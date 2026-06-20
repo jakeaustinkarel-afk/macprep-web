@@ -32,7 +32,7 @@
         let h = escapeHtml(text || '');
         h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
              .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-             .replace(/`([^`]+)`/g, '<code style="background:#1f2937;padding:1px 5px;border-radius:3px;">$1</code>');
+             .replace(/`([^`]+)`/g, '<code style="background:var(--line);padding:1px 5px;border-radius:3px;">$1</code>');
         // bullet lists: lines starting with - or •
         const lines = h.split('\n');
         let out = '', inList = false;
@@ -249,7 +249,7 @@
         const exam = (p.days_to_exam != null) ? p.days_to_exam : null;
         const trend = p.trend || [];
         const spark = trend.length
-            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? '#FBBF24' : '#F87171'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
+            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
             : '<span class="mono" style="color:var(--muted);font-size:12px;">Answer questions to see your trend.</span>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
@@ -263,7 +263,7 @@
             const pctDone = Math.min(100, Math.round((answeredToday / target) * 100));
             goalLine = `<div style="margin-bottom:14px;">
                 <div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '🔥 goal met!' : 'questions'}</div>
-                <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : '#FBBF24'};"></span></div>
+                <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : 'var(--warn)'};"></span></div>
             </div>`;
         } else if (answeredToday > 0) {
             goalLine = `<div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
@@ -390,7 +390,7 @@
         const bars = shown.map((c) => {
             const fracPct = c.total ? Math.round((c.answered / c.total) * 100) : 0;
             const acc = accMap[c.category];
-            const accColor = acc ? (acc.accuracy >= 75 ? 'var(--accent)' : acc.accuracy >= 50 ? '#FBBF24' : '#F87171') : 'var(--muted)';
+            const accColor = acc ? (acc.accuracy >= 75 ? 'var(--accent)' : acc.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)') : 'var(--muted)';
             const accStr = acc ? `${acc.accuracy}% acc` : 'not started';
             return `<div style="margin-bottom:12px;">
                 <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
@@ -413,7 +413,7 @@
         const over = cal.filter((c) => c.accuracy < 80);
         const rows = cal.map((c) => {
             const ok = c.accuracy >= 80;
-            const color = ok ? 'var(--accent)' : '#F87171';
+            const color = ok ? 'var(--accent)' : 'var(--bad)';
             const verdict = c.accuracy >= 85 ? 'well-calibrated' : c.accuracy >= 70 ? 'a bit overconfident' : 'overconfident';
             return `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;gap:10px;">
                 <span>${c.category}</span>
@@ -540,7 +540,7 @@
         if (!s || s.mode !== 'exam' || s.complete || s.timeLeft == null) { el.style.display = 'none'; return; }
         el.style.display = '';
         el.textContent = '⏱ ' + fmtClock(s.timeLeft);
-        el.style.color = s.timeLeft <= 60 ? '#F87171' : 'var(--muted)';
+        el.style.color = s.timeLeft <= 60 ? 'var(--bad)' : 'var(--muted)';
     }
     function startExamTimer() {
         stopExamTimer();
@@ -602,7 +602,7 @@
         const q = s.pool[s.index];
         const flagged = q && ((state.profile && state.profile.flagged_ids) || []).includes(q.id);
         btn.textContent = flagged ? '★ Flagged' : '☆ Flag for review';
-        btn.style.color = flagged ? '#FBBF24' : 'var(--muted)';
+        btn.style.color = flagged ? 'var(--warn)' : 'var(--muted)';
     }
 
     async function loadNote() {
@@ -666,7 +666,7 @@
             if (!resp.ok) throw new Error(data.error || 'Could not load.');
             state.notebook = { notes: data.notes || [], flagged: data.flagged || [] };
             renderNotebook();
-        } catch (e) { if (body) body.innerHTML = `<div class="mono" style="color:#F87171;">${escapeHtml(e.message)}</div>`; }
+        } catch (e) { if (body) body.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`; }
     }
     function renderNotebook() {
         const body = $('notebook-body'); if (!body || !state.notebook) return;
@@ -742,7 +742,7 @@
         });
         const verdict = data.correct
             ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
-            : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
+            : '<span style="color:var(--bad);font-weight:bold;">INCORRECT</span>';
         const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
         let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
         const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
@@ -787,7 +787,7 @@
             container.appendChild(btn);
         });
         if (!choices.length) {
-            container.innerHTML = '<div class="mono" style="color:#FBBF24;font-size:13px;padding:8px 0;">This question is temporarily unavailable. Use "Next" to skip it.</div>';
+            container.innerHTML = '<div class="mono" style="color:var(--warn);font-size:13px;padding:8px 0;">This question is temporarily unavailable. Use "Next" to skip it.</div>';
             s.locked = true; // let the user advance past an unrenderable question in tutor mode
         }
         $('explanation-pane').classList.add('hidden');
@@ -879,10 +879,10 @@
             const graded = a && a.graded;
             const answered = a && a.selectedIndex != null;
             let bg = 'var(--bg)', bc = 'var(--line)', col = 'var(--muted)';
-            if (graded) { if (graded.correct) { bg = 'var(--accent-dim)'; bc = 'var(--accent)'; col = 'var(--accent)'; } else { bg = 'var(--danger-dim)'; bc = 'var(--danger)'; col = '#F87171'; } }
+            if (graded) { if (graded.correct) { bg = 'var(--accent-dim)'; bc = 'var(--accent)'; col = 'var(--accent)'; } else { bg = 'var(--danger-dim)'; bc = 'var(--danger)'; col = 'var(--bad)'; } }
             else if (answered) { bg = 'var(--line)'; col = 'var(--text)'; }
             const border = (i === s.index) ? 'var(--accent)' : bc;
-            const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:#FBBF24;font-size:10px;">★</span>' : '';
+            const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:var(--warn);font-size:10px;">★</span>' : '';
             return `<button type="button" aria-label="Question ${i + 1}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:32px;height:32px;border:2px solid ${border};background:${bg};color:${col};border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}</button>`;
         }).join('');
     }
@@ -935,9 +935,9 @@
         const allFailed = answeredIdx.length > 0 && s.answered === 0;
         $('question-meta').textContent = allFailed ? 'GRADING FAILED' : 'EXAM COMPLETE';
         if (allFailed) {
-            $('question-stem').innerHTML = `<span style="color:#FBBF24;">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
+            $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
         } else {
-            const failWarn = failed ? `<div style="margin-top:12px;color:#FBBF24;font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
+            const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
             $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
         }
         $('choices-container').innerHTML = '';
@@ -1004,7 +1004,7 @@
                 <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:4px;">${i + 1}. ${r.meta || ''}</div>
                 <div style="font-size:14px;margin-bottom:6px;">${r.stem}</div>
                 <div class="mono" style="font-size:12px;">
-                    <span style="color:${r.correct ? 'var(--accent)' : '#F87171'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
+                    <span style="color:${r.correct ? 'var(--accent)' : 'var(--bad)'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                     &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
                 </div>
                 ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
@@ -1022,7 +1022,7 @@
         const rows = Object.entries(by).map(([cat, v]) => ({ cat, correct: v.c, total: v.t, acc: Math.round((v.c / v.t) * 100) }))
             .sort((a, b) => a.acc - b.acc || b.total - a.total);
         const chips = rows.map((r) => {
-            const color = r.acc >= 75 ? 'var(--accent)' : r.acc >= 50 ? '#FBBF24' : '#F87171';
+            const color = r.acc >= 75 ? 'var(--accent)' : r.acc >= 50 ? 'var(--warn)' : 'var(--bad)';
             return `<span class="mono" style="display:inline-block;margin:0 12px 8px 0;font-size:13px;"><span style="color:${color};">${r.cat}</span> <span style="color:var(--muted);">${r.correct}/${r.total}</span></span>`;
         }).join('');
         const weakest = rows[0];
@@ -1125,17 +1125,19 @@
             msg.textContent = 'Saved ✓';
             setTimeout(() => { msg.textContent = ''; }, 2500);
         } catch (err) {
-            msg.style.color = '#F87171'; msg.textContent = err.message;
+            msg.style.color = 'var(--bad)'; msg.textContent = err.message;
         } finally { btn.disabled = false; }
     }
 
     // ---- account management ----------------------------------------------
     async function changePassword() {
+        const current = prompt('Confirm your CURRENT password:');
+        if (current == null) return;
         const pw = prompt('Enter a new password (at least 8 characters):');
         if (pw == null) return;
         if (pw.length < 8) { toast('Password must be at least 8 characters.'); return; }
         try {
-            const { resp, data } = await apiJSON('/api/user/change-password', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ new_password: pw }) });
+            const { resp, data } = await apiJSON('/api/user/change-password', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ current_password: current, new_password: pw }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not change password.');
             toast('Password changed.', 'ok');
         } catch (e) { toast('Failed: ' + e.message); }
@@ -1186,7 +1188,7 @@
             state.review = { list: data.questions || [], index: 0, counts: data.counts || {} };
             renderReview();
         } catch (e) {
-            if (wrap) wrap.innerHTML = `<div class="mono" style="color:#F87171;">${escapeHtml(e.message)}</div>`;
+            if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`;
         }
     }
 
@@ -1262,7 +1264,7 @@
             r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
             r.index++;
             renderReview();
-        } catch (e) { if (msg) { msg.style.color = '#F87171'; msg.textContent = e.message; } }
+        } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
     }
 
     // ---- vouchers / codes -------------------------------------------------
@@ -1280,7 +1282,7 @@
             inp.value = '';
             renderDashboard();
             const badge = $('tier-badge'); if (badge && state.profile && state.profile.premium_unlocked) { badge.textContent = 'PREMIUM'; badge.className = 'badge premium'; }
-        } catch (e) { msg.style.color = '#F87171'; msg.textContent = e.message; }
+        } catch (e) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; }
     }
 
     async function loadVouchers() {
@@ -1312,7 +1314,7 @@
             if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
             await loadVouchers();
             if (msg) { msg.textContent = `Generated ${data.codes.length}. Copy them from the list below.`; }
-        } catch (e) { if (msg) { msg.style.color = '#F87171'; msg.textContent = e.message; } }
+        } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
     }
 
     // ---- checkout ---------------------------------------------------------
@@ -1350,7 +1352,7 @@
     async function submitFeedback() {
         const btn = $('fb-submit'); const msg = $('fb-msg');
         const message = $('fb-message').value.trim();
-        if (!message) { msg.style.color = '#F87171'; msg.textContent = 'Please enter a message.'; return; }
+        if (!message) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please enter a message.'; return; }
         btn.disabled = true; msg.style.color = 'var(--accent)'; msg.textContent = '';
         try {
             const { resp, data } = await apiJSON('/api/feedback', {
@@ -1362,7 +1364,7 @@
             msg.textContent = 'Thank you — received ✓';
             setTimeout(() => { msg.textContent = ''; }, 3000);
         } catch (err) {
-            msg.style.color = '#F87171'; msg.textContent = err.message;
+            msg.style.color = 'var(--bad)'; msg.textContent = err.message;
         } finally { btn.disabled = false; }
     }
 

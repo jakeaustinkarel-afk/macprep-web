@@ -116,6 +116,27 @@ const supabase = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, service
 const anonKey = process.env.SUPABASE_ANON_KEY || '';
 const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKey) : null;
 
+// --- Fail fast on missing/incorrect critical config -----------------------
+// In production a missing key silently degrades (checkout 500s, grading returns
+// empty) or — worse — a Stripe TEST key lets real customers "pay" in test mode
+// with no charge. Refuse to boot instead of failing quietly.
+const IS_PROD = process.env.NODE_ENV === 'production';
+if (IS_PROD) {
+    const missing = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCTION_PRICE_ID',
+        'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
+        .filter((k) => !process.env[k]);
+    if (missing.length) {
+        console.error(`FATAL: missing required env in production: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+    if (process.env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
+        console.error('FATAL: STRIPE_SECRET_KEY is a Stripe TEST key (sk_test_) in production — refusing to start so real customers are not charged in test mode.');
+        process.exit(1);
+    }
+} else if ((process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_')) {
+    console.warn('[config] Using a Stripe TEST key — fine for dev; must be a live key in production.');
+}
+
 // Canonical profile table. The live schema keys premium status on `account_tier`
 // ('free' | 'premium') and links to the auth user via `user_id` (NOT `id`, which
 // is the row's own gen_random_uuid). There is no `is_premium` column.
@@ -252,11 +273,13 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 // bank (questions.json), and internal docs (AUDIT.md, BLUEPRINT.md) to anyone.
 // Block those file types up front; only HTML/CSS/JS/images/fonts fall through.
 // ---------------------------------------------------------------------------
-const BLOCKED_STATIC = /\.(mjs|ts|tsx|json|md|rtf|lock|sh|ya?ml|env)$/i;
+// Note: .txt is intentionally NOT blocked so /robots.txt is served. Answer-key
+// generators (.sql/.cjs/.cts/.mts) and the whole seeds/ dir are blocked outright.
+const BLOCKED_STATIC = /\.(mjs|cjs|cts|mts|ts|tsx|json|md|rtf|lock|sh|ya?ml|env|sql)$/i;
 app.use((req, res, next) => {
     const p = req.path.toLowerCase();
     if (p.startsWith('/api/')) return next();
-    if (BLOCKED_STATIC.test(p) || p.startsWith('/data/') || p.startsWith('/.')) {
+    if (BLOCKED_STATIC.test(p) || p.startsWith('/data/') || p.startsWith('/seeds/') || p.startsWith('/.')) {
         return res.status(404).end();
     }
     next();
@@ -441,9 +464,16 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
 app.post('/api/user/change-password', authLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const current_password = req.body?.current_password || '';
     const new_password = req.body?.new_password || '';
     if (new_password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    if (!current_password) return res.status(400).json({ error: 'Your current password is required.' });
+    if (!supabase || !supabaseAuth) return res.status(500).json({ error: 'Not configured.' });
     try {
+        // Re-authenticate with the current password before changing it, so a
+        // leftover or stolen session token alone cannot lock the owner out.
+        const { error: authErr } = await supabaseAuth.auth.signInWithPassword({ email: user.email, password: current_password });
+        if (authErr) return res.status(403).json({ error: 'Current password is incorrect.' });
         const { error } = await supabase.auth.admin.updateUserById(user.id, { password: new_password });
         if (error) throw error;
         return res.json({ success: true });
@@ -1205,7 +1235,12 @@ app.use((err, req, res, next) => {
 
 // Surface crashes in logs rather than dying silently.
 process.on('unhandledRejection', (reason) => console.error('UnhandledRejection:', reason));
-process.on('uncaughtException', (err) => console.error('UncaughtException:', err && err.stack ? err.stack : err));
+process.on('uncaughtException', (err) => {
+    console.error('UncaughtException:', err && err.stack ? err.stack : err);
+    // The process is in an undefined state after an uncaught exception — log and
+    // exit so the platform (Render) restarts a clean instance.
+    process.exit(1);
+});
 
 // ---------------------------------------------------------------------------
 // Start server (all routes are declared above this line)
