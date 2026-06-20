@@ -565,7 +565,7 @@
             s.answers[s.index] = { selectedIndex, graded: data };
             applyGradedView(data, selectedIndex);
             (s.log = s.log || []).push({
-                meta: [currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
+                meta: [currentQ.category || currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
                 stem: currentQ.stem || '',
                 correct: !!data.correct,
                 correctLetter: String.fromCharCode(65 + (data.correctIndex || 0)),
@@ -639,7 +639,7 @@
         s.answered = answeredIdx.length; s.correct = correct;
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
-            return { meta: [q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
         });
         track('session_complete', { mode: 'exam', size: s.pool.length });
         try { await loadProfile(); } catch (e) {}
@@ -664,8 +664,8 @@
             const answeredCount = s.pool.filter((q, i) => s.answers[i] && s.answers[i].selectedIndex != null).length;
             $('session-progress-counter').textContent = `EXAM · QUESTION ${s.index + 1} / ${s.size} · ${answeredCount} answered`;
         } else {
-            const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
-            $('session-progress-counter').textContent = `QUESTION ${Math.min(s.index + 1, s.size)} / ${s.size} · SCORE ${pct}%`;
+            const scoreLabel = s.answered ? `${Math.round((s.correct / s.answered) * 100)}%` : '—';
+            $('session-progress-counter').textContent = `QUESTION ${Math.min(s.index + 1, s.size)} / ${s.size} · SCORE ${scoreLabel}`;
         }
         $('quiz-progress-bar').style.width = Math.round((s.index / s.size) * 100) + '%';
     }
@@ -1078,7 +1078,10 @@
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
         $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);
         $('unseen-only') && $('unseen-only').addEventListener('change', updateSessionHint);
-        $('custom-count') && $('custom-count').addEventListener('input', updateSessionHint);
+        $('custom-count') && $('custom-count').addEventListener('input', () => {
+            if (parseInt($('custom-count').value, 10) > 0) $('count-chips').querySelectorAll('.chip.active').forEach((c) => c.classList.remove('active'));
+            updateSessionHint();
+        });
         $('note-text') && $('note-text').addEventListener('blur', saveNote);
         if (state.token) {
             try { await bootAuthedSession(); }

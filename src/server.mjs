@@ -64,6 +64,7 @@ function rateLimit({ windowMs, max }) {
 }
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
+const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 
 // ---------------------------------------------------------------------------
 // Clients
@@ -154,8 +155,14 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    if (event.type === 'checkout.session.completed') {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
         const session = event.data.object;
+        // Only unlock once the payment has actually settled. Async payment methods can
+        // fire 'completed' while still 'unpaid' — never grant premium in that state.
+        if (session.payment_status && session.payment_status !== 'paid') {
+            console.log(`Checkout completed but payment_status=${session.payment_status}; deferring unlock.`);
+            return res.json({ received: true });
+        }
         // Prefer the authenticated user_id we attached at checkout (robust even if
         // the buyer pays with a different email than their account); fall back to
         // email matching for any legacy/Payment-Link purchases.
@@ -548,7 +555,7 @@ app.get('/api/admin/vouchers', async (req, res) => {
 });
 
 // Redeem a voucher → grants premium to the signed-in user.
-app.post('/api/redeem-voucher', async (req, res) => {
+app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     const code = String(req.body?.code || '').trim().toUpperCase();
@@ -667,7 +674,20 @@ app.post('/api/grade', async (req, res) => {
             correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
         }
 
-        const isCorrect = Number(choiceIndex) === correctIndex;
+        // If we can't resolve exactly one in-range correct answer, refuse to grade
+        // rather than silently scoring the attempt wrong (and never record it).
+        if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= choices.length) {
+            console.error(`UNSCORABLE question id=${questionId}: no resolvable correct answer.`);
+            return res.status(422).json({ error: 'This question could not be scored and has been flagged for review.' });
+        }
+
+        // Validate the submitted choice is an in-range integer.
+        const selIndex = Number(choiceIndex);
+        if (!Number.isInteger(selIndex) || selIndex < 0 || selIndex >= choices.length) {
+            return res.status(400).json({ error: 'Invalid answer choice.' });
+        }
+
+        const isCorrect = selIndex === correctIndex;
         const confidence = ['low', 'medium', 'high'].includes(req.body?.confidence) ? req.body.confidence : null;
 
         // Record the attempt for progress + free-tier accounting (best-effort).
@@ -676,7 +696,7 @@ app.post('/api/grade', async (req, res) => {
             question_id: String(questionId),
             specialty: q.specialty || null,
             category: q.category || null,
-            selected_label: String.fromCharCode(65 + Number(choiceIndex)),
+            selected_label: String.fromCharCode(65 + selIndex),
             is_correct: isCorrect,
             confidence,
         }).then(({ error: pErr }) => { if (pErr) console.warn(`Progress insert warning: ${pErr.message}`); });

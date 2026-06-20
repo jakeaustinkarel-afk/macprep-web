@@ -322,9 +322,9 @@
     <div class="wrap hidden" id="quiz-view">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
-            <div class="mono" style="color:var(--accent);font-size:12px;">[LIVE TRACKING]</div>
+            <div class="mono" style="color:var(--accent);font-size:12px;">PROGRESS</div>
         </div>
-        <div class="mono" id="session-progress-counter" style="color:var(--muted);margin-bottom:6px;">QUESTION 0 / 0 · SCORE 0%</div>
+        <div class="mono" id="session-progress-counter" style="color:var(--muted);margin-bottom:6px;">QUESTION — / —</div>
         <div class="progress-bar" style="margin-bottom:14px;"><span id="quiz-progress-bar" style="width:0%"></span></div>
         <div id="quiz-palette" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;"></div>
 
@@ -377,7 +377,6 @@
                         <option value="">Select…</option>
                         <option>SAA (student — preparing for certification)</option>
                         <option>CAA (certified — preparing for recertification)</option>
-                        <option>CAA</option>
                         <option>Anesthesiologist</option>
                         <option>SRNA / CRNA</option>
                         <option>Other</option>

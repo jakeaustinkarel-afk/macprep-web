@@ -28,6 +28,17 @@
         .entry h3{margin:6px 0 8px;font-size:16px;}
         .entry ul{margin:0;padding-left:18px;color:#cbd5e1;}
         .entry li{margin:3px 0;}
+        .fixes{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin:0 0 36px;}
+        .fixes-head{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+        .fixes-title{font-size:16px;font-weight:700;}
+        .fixes-badge{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:3px 9px;display:inline-flex;align-items:center;gap:6px;}
+        .fixes-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(0,168,107,.5);animation:pulse 2s infinite;}
+        @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,168,107,.5);}70%{box-shadow:0 0 0 6px rgba(0,168,107,0);}100%{box-shadow:0 0 0 0 rgba(0,168,107,0);}}
+        .fixes-note{color:#9aa5b1;font-size:13px;margin:0 0 14px;}
+        .fixes-list{list-style:none;margin:0;padding:0;}
+        .fixes-list li{display:flex;gap:14px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);color:#cbd5e1;font-size:14px;}
+        .fixes-list li:first-child{border-top:none;}
+        .fx-date{font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:1px;white-space:nowrap;min-width:58px;text-transform:uppercase;}
     </style>
 </head>
 <body>
@@ -39,6 +50,21 @@
         <span class="tag">Changelog</span>
         <h1>Update Log</h1>
         <p class="sub">What's new in MACPrep. Newest first.</p>
+
+        <div class="fixes">
+            <div class="fixes-head">
+                <span class="fixes-title">🛠 Bug Fixes</span>
+                <span class="fixes-badge">Actively monitored</span>
+            </div>
+            <p class="fixes-note">We continuously scan MACPrep for issues — automated error monitoring runs around the clock, and every report from the in-app feedback form is reviewed. Spot something? Use the Feedback form and we'll jump on it. Recent fixes:</p>
+            <ul class="fixes-list">
+                <li><span class="fx-date">Jun 20</span><span>Pressing <strong>Enter</strong> on the sign-in screen now submits your login.</span></li>
+                <li><span class="fx-date">Jun 20</span><span>Account confirmation emails now link to the live site instead of a local address.</span></li>
+                <li><span class="fx-date">Jun 19</span><span>Balanced the position of correct answers evenly across A–E, so there's no pattern to guess.</span></li>
+                <li><span class="fx-date">Jun 19</span><span>Standardized specialty categories so content filters group questions consistently.</span></li>
+                <li><span class="fx-date">Jun 19</span><span>Sharpened the MACPrep logo and branding in the header on high-resolution displays.</span></li>
+            </ul>
+        </div>
 
         <div class="entry">
             <div class="date">JUNE 19, 2026</div>
