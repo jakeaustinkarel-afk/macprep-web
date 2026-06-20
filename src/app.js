@@ -540,10 +540,10 @@
         const set = new Set(ids || []);
         const pool = state.questions.filter((q) => set.has(q.id));
         if (!pool.length) { toast(`No ${label} questions available right now.`); return; }
-        const usage = freeUsage();
-        if (!usage.unlimited && usage.remaining <= 0) { startCheckout(); return; }
-        let chosen = pool.slice();
-        if (!usage.unlimited) chosen = chosen.slice(0, usage.remaining);
+        // Every pool here (missed / flagged / due / confident) is questions the user has
+        // already seen, and the server lets you re-answer seen questions for free — so do
+        // NOT gate these on the free-tier limit.
+        const chosen = pool.slice();
         for (let i = chosen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
         beginSession(chosen);
     }
