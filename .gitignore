@@ -31,3 +31,7 @@ data_expansion_payload.json
 
 # Dead Expo/React Native scaffolding (the app is vanilla HTML/JS via Express)
 .expo/
+
+# Private legal documents (never serve/commit)
+MACPrep_LLC_Operating_Agreement.rtf
+*_Operating_Agreement.rtf
