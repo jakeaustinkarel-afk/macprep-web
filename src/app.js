@@ -104,6 +104,12 @@
     const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
+        // Guard against leaving an in-progress session by accident (progress is saved,
+        // so this is a soft confirm rather than a hard block).
+        if (state.session && !state.session.complete && view !== 'quiz'
+            && $('quiz-view') && !$('quiz-view').classList.contains('hidden')) {
+            if (!confirm('Leave this session? Your progress is saved — you can resume it from the dashboard.')) return;
+        }
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
@@ -155,7 +161,7 @@
 
     function signOut() {
         setToken(null); setRefresh(null);
-        ls('macprep_premium_unlocked', null); ls('macprep_user_email', null);
+        ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
         state.token = null; state.profile = null; state.questions = []; state.session = null;
         go('login');
     }
@@ -167,7 +173,7 @@
         try {
             await fetch('/api/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
         } catch (e) { /* ignore */ }
-        alert('If an account exists for ' + email + ', a password-reset link is on its way. Check your email.');
+        toast('If an account exists for ' + email + ', a reset link is on its way — check your email.', 'ok');
     }
 
     async function loadProfile() {
@@ -198,6 +204,7 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
+        maybeResumeSession();
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -304,6 +311,8 @@
         }
 
         renderSpecialtyPerformance();
+        const cmBtn = $('confident-miss-btn');
+        if (cmBtn) cmBtn.style.display = ((p.confident_missed_ids || []).length) ? '' : 'none';
 
         // Count chips (preserve the user's prior selection across re-renders)
         const chips = $('count-chips');
@@ -391,7 +400,7 @@
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
         const pool = poolForDomain();
-        if (!pool.length) { alert('No questions available for that domain yet.'); return; }
+        if (!pool.length) { toast('No questions available for that domain yet.'); return; }
         let n = selectedCount();
         if (n === Infinity) n = pool.length;
         if (!usage.unlimited) n = Math.min(n, usage.remaining);
@@ -400,6 +409,28 @@
         const shuffled = pool.slice();
         for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
         beginSession(shuffled.slice(0, n));
+    }
+
+    // Persist the in-progress session so a refresh or accidental navigation can be
+    // recovered instead of silently wiping the user's work.
+    function saveSession() {
+        try {
+            if (state.session && !state.session.complete) ls('macprep_session', JSON.stringify(state.session));
+            else ls('macprep_session', null);
+        } catch (e) { try { ls('macprep_session', null); } catch (_) {} }
+    }
+
+    function maybeResumeSession() {
+        let saved = null;
+        try { saved = JSON.parse(ls('macprep_session') || 'null'); } catch (e) { saved = null; }
+        if (!saved || !saved.pool || !saved.pool.length || saved.complete) { ls('macprep_session', null); return; }
+        const answered = saved.pool.filter((q, i) => saved.answers && saved.answers[i] && saved.answers[i].selectedIndex != null).length;
+        if (!confirm(`Resume your in-progress ${saved.mode === 'exam' ? 'exam' : 'session'}? (${answered} of ${saved.size} answered)`)) {
+            ls('macprep_session', null); return;
+        }
+        state.session = saved;
+        go('quiz');
+        renderQuestion();
     }
 
     function beginSession(pool, mode) {
@@ -413,7 +444,7 @@
     function startFromIds(ids, label) {
         const set = new Set(ids || []);
         const pool = state.questions.filter((q) => set.has(q.id));
-        if (!pool.length) { alert(`No ${label} questions available right now.`); return; }
+        if (!pool.length) { toast(`No ${label} questions available right now.`); return; }
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { startCheckout(); return; }
         let chosen = pool.slice();
@@ -463,6 +494,37 @@
             await apiJSON('/api/user/note', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: ta.dataset.qid, note: ta.value }) });
             if (msg) { msg.textContent = 'Saved'; setTimeout(() => { msg.textContent = ''; }, 1500); }
         } catch (e) { /* ignore */ }
+    }
+
+    // Report a content problem with the current question → feedback queue.
+    async function reportQuestion() {
+        const s = state.session; if (!s) return;
+        const q = s.pool[s.index]; if (!q) return;
+        const ta = $('report-text'); const txt = ((ta && ta.value) || '').trim();
+        if (!txt) { ta && ta.focus(); return; }
+        const msg = $('report-msg');
+        try {
+            await apiJSON('/api/feedback', {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({ kind: 'question_report', message: `Question ${q.id} [${q.category || q.domain_name || '?'}]: ${txt}` }),
+            });
+            if (ta) ta.value = '';
+            if (msg) { msg.textContent = 'Thanks — reported.'; setTimeout(() => { msg.textContent = ''; }, 2500); }
+            toast("Thanks — we'll review this question.", 'ok');
+        } catch (e) { toast('Could not send report: ' + e.message); }
+    }
+
+    // Confidence capture (tutor mode) — feeds the "confident but wrong" review.
+    function setConfidence(v) {
+        state.pendingConfidence = (state.pendingConfidence === v) ? null : v;
+        renderConfidenceRow();
+    }
+    function renderConfidenceRow() {
+        document.querySelectorAll('#confidence-row .conf-chip').forEach((c) =>
+            c.classList.toggle('active', c.dataset.conf === state.pendingConfidence));
+    }
+    function reviewConfidentMisses() {
+        startFromIds((state.profile && state.profile.confident_missed_ids) || [], 'confident-miss');
     }
 
     // ---- quiz -------------------------------------------------------------
@@ -544,12 +606,20 @@
         $('explanation-pane').classList.add('hidden');
         $('explanation-pane').innerHTML = '';
         if (graded) applyGradedView(ans.graded, ans.selectedIndex);
+        // Confidence control (tutor, pre-grade) + reset the per-question report box.
+        if (!graded) state.pendingConfidence = null;
+        const confRow = $('confidence-row');
+        if (confRow) confRow.style.display = (s.mode === 'tutor' && !graded && choices.length) ? 'flex' : 'none';
+        renderConfidenceRow();
+        $('report-text') && ($('report-text').value = '');
+        $('report-msg') && ($('report-msg').textContent = '');
         updateFlagButton();
         saveNote();   // flush any pending note from the previous question before loading this one
         loadNote();
         renderPalette();
         renderQuizNav();
         updateQuizProgress();
+        saveSession();
     }
 
     async function answer(selectedIndex, questionId) {
@@ -569,7 +639,7 @@
         try {
             const { resp, data } = await apiJSON('/api/grade', {
                 method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ questionId, choiceIndex: selectedIndex }),
+                body: JSON.stringify({ questionId, choiceIndex: selectedIndex, confidence: state.pendingConfidence || undefined }),
             });
             if (resp.status === 401) { signOut(); return; }
             if (resp.status === 402) { showPaywall(data.limit); return; }
@@ -583,6 +653,7 @@
             }
             s.answers[s.index] = { selectedIndex, graded: data };
             applyGradedView(data, selectedIndex);
+            $('confidence-row') && ($('confidence-row').style.display = 'none');
             (s.log = s.log || []).push({
                 meta: [currentQ.category || currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
                 stem: currentQ.stem || '',
@@ -596,7 +667,7 @@
         } catch (err) {
             s.locked = false;
             buttons.forEach((b) => { b.disabled = false; b.style.cursor = 'pointer'; });
-            alert('Could not grade answer: ' + err.message);
+            toast('Could not grade answer: ' + err.message);
         }
     }
 
@@ -657,6 +728,7 @@
             }
         } finally { setLoading(false); }
         s.answered = answeredIdx.length - failed; s.correct = correct;
+        s.complete = true; ls('macprep_session', null);
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
             return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
@@ -698,6 +770,7 @@
 
     function finishSession() {
         const s = state.session;
+        s.complete = true; ls('macprep_session', null);
         track('session_complete', { mode: 'tutor', answered: s.answered });
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         $('question-meta').textContent = 'SESSION COMPLETE';
@@ -744,6 +817,7 @@
 
     function showPaywall(limit) {
         const s = state.session;
+        if (s) { s.complete = true; ls('macprep_session', null); }
         track('paywall_hit');
         $('question-meta').textContent = 'FREE LIMIT REACHED';
         const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session. ` : '';
@@ -799,12 +873,12 @@
     async function changePassword() {
         const pw = prompt('Enter a new password (at least 8 characters):');
         if (pw == null) return;
-        if (pw.length < 8) { alert('Password must be at least 8 characters.'); return; }
+        if (pw.length < 8) { toast('Password must be at least 8 characters.'); return; }
         try {
             const { resp, data } = await apiJSON('/api/user/change-password', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ new_password: pw }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not change password.');
-            alert('Password changed.');
-        } catch (e) { alert('Failed: ' + e.message); }
+            toast('Password changed.', 'ok');
+        } catch (e) { toast('Failed: ' + e.message); }
     }
 
     async function deleteAccount() {
@@ -813,9 +887,9 @@
         try {
             const { resp, data } = await apiJSON('/api/user/delete', { method: 'POST', headers: authHeaders() });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not delete account.');
-            alert('Your account has been deleted.');
+            toast('Your account has been deleted.', 'ok');
             signOut();
-        } catch (e) { alert('Failed: ' + e.message); }
+        } catch (e) { toast('Failed: ' + e.message); }
     }
 
     // ---- admin review queue ----------------------------------------------
@@ -1004,7 +1078,7 @@
         if (params.get('status') === 'success') {
             // Webhook may take a moment; refresh profile shortly.
             setTimeout(async () => { try { await loadProfile(); renderDashboard();
-                if (state.profile && state.profile.premium_unlocked) { track('upgrade_success'); alert('Payment received — full access unlocked. Thank you!'); }
+                if (state.profile && state.profile.premium_unlocked) { track('upgrade_success'); toast('Payment received — full access unlocked. Thank you!', 'ok'); }
             } catch (e) {} }, 1500);
             history.replaceState({}, '', '/');
         } else if (params.get('status') === 'cancelled') {
@@ -1087,6 +1161,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
+        reportQuestion, setConfidence, reviewConfidentMisses,
     };
 
     document.addEventListener('keydown', handleQuizKey);

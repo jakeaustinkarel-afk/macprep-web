@@ -270,6 +270,7 @@
                 <button class="btn ghost" type="button" onclick="MACPrep.smartReview()">Smart review (weak + missed)</button>
                 <button class="btn ghost" type="button" onclick="MACPrep.redoMissed()">Redo my missed questions</button>
                 <button class="btn ghost" type="button" onclick="MACPrep.startFlagged()">Review my flagged questions</button>
+                <button class="btn ghost" type="button" id="confident-miss-btn" onclick="MACPrep.reviewConfidentMisses()" style="display:none;">Review my confident misses</button>
             </div>
         </div>
 
@@ -331,6 +332,12 @@
         <div class="card">
             <div class="mono" id="question-meta" style="font-size:11px;color:var(--accent);margin-bottom:14px;"></div>
             <div id="question-stem" style="font-size:18px;line-height:1.6;margin-bottom:24px;">Loading…</div>
+            <div id="confidence-row" class="mono" style="display:none;align-items:center;gap:8px;margin-bottom:16px;font-size:11px;color:var(--muted);flex-wrap:wrap;">
+                <span>How sure are you?</span>
+                <button type="button" class="conf-chip" data-conf="low" onclick="MACPrep.setConfidence('low')">Guessing</button>
+                <button type="button" class="conf-chip" data-conf="medium" onclick="MACPrep.setConfidence('medium')">Unsure</button>
+                <button type="button" class="conf-chip" data-conf="high" onclick="MACPrep.setConfidence('high')">Confident</button>
+            </div>
             <div id="choices-container"></div>
             <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:4px;font-size:14px;line-height:1.6;"></div>
             <div style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -345,6 +352,15 @@
                 <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">My notes</summary>
                 <textarea id="note-text" rows="3" placeholder="Private notes on this question (saved automatically)…" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
                 <span id="note-msg" class="mono" style="font-size:11px;color:var(--accent);"></span>
+            </details>
+
+            <details style="margin-top:10px;">
+                <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">⚐ Report a problem with this question</summary>
+                <textarea id="report-text" rows="2" placeholder="What's wrong? (e.g. the answer key looks off, a typo, outdated guidance)" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
+                <div style="margin-top:6px;display:flex;align-items:center;gap:10px;">
+                    <button class="btn ghost" type="button" onclick="MACPrep.reportQuestion()" style="font-size:12px;padding:6px 12px;">Send report</button>
+                    <span id="report-msg" class="mono" style="font-size:11px;color:var(--accent);"></span>
+                </div>
             </details>
         </div>
 
@@ -438,6 +454,9 @@
       #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);max-width:90%;padding:12px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;background:var(--danger);box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:9999;}
       #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
       #toast.ok{background:var(--accent);}
+      .conf-chip{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
+      .conf-chip:hover{border-color:var(--accent);color:var(--text);}
+      .conf-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
     </style>
     <script src="/src/app.js"></script>
 </body>

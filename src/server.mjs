@@ -820,7 +820,7 @@ app.get('/api/user/profile', async (req, res) => {
         // Derive study stats from recorded progress, including accuracy by specialty.
         const { data: progress } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id, is_correct, category, created_at')
+            .select('question_id, is_correct, category, created_at, confidence')
             .eq('user_id', user.id);
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
@@ -831,6 +831,11 @@ app.get('/api/user/profile', async (req, res) => {
         const everCorrect = new Set((progress || []).filter((r) => r.is_correct).map((r) => r.question_id));
         const missed_ids = Array.from(new Set((progress || [])
             .filter((r) => !r.is_correct && !everCorrect.has(r.question_id))
+            .map((r) => r.question_id)));
+
+        // "Confident but wrong": answered with high confidence yet still not gotten right.
+        const confident_missed_ids = Array.from(new Set((progress || [])
+            .filter((r) => !r.is_correct && r.confidence === 'high' && !everCorrect.has(r.question_id))
             .map((r) => r.question_id)));
 
         const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
@@ -909,6 +914,7 @@ app.get('/api/user/profile', async (req, res) => {
                 readiness,
                 days_to_exam,
                 missed_ids,
+                confident_missed_ids,
                 flagged_ids,
                 answered_ids: Array.from(answeredIds),
             },
