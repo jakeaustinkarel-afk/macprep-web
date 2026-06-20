@@ -132,6 +132,17 @@
         toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4500);
     }
 
+    // Screen-reader live announcement (clear-then-set forces re-announcement).
+    function announce(msg) {
+        const el = $('sr-announce'); if (!el) return;
+        el.textContent = '';
+        setTimeout(() => { el.textContent = msg; }, 50);
+    }
+    function focusQuestion() {
+        const stem = $('question-stem');
+        if (stem) { stem.setAttribute('tabindex', '-1'); try { stem.focus(); } catch (e) {} }
+    }
+
     async function login() {
         if (state.loginInFlight) return;
         const email = $('login-email').value.trim();
@@ -205,7 +216,6 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
-        maybeResumeSession();
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -303,6 +313,7 @@
     function renderDashboard() {
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
+        renderResumeCard();
         const stats = p.stats || { answered: 0, correct: 0, attempts: 0 };
         $('stat-answered').textContent = stats.answered || 0;
         $('stat-accuracy').textContent = stats.attempts ? Math.round((stats.correct / stats.attempts) * 100) + '%' : '—';
@@ -448,18 +459,41 @@
         } catch (e) { try { ls('macprep_session', null); } catch (_) {} }
     }
 
-    function maybeResumeSession() {
-        let saved = null;
-        try { saved = JSON.parse(ls('macprep_session') || 'null'); } catch (e) { saved = null; }
-        if (!saved || !saved.pool || !saved.pool.length || saved.complete) { ls('macprep_session', null); return; }
+    function getSavedSession() {
+        try { const s = JSON.parse(ls('macprep_session') || 'null'); return (s && s.pool && s.pool.length && !s.complete) ? s : null; }
+        catch (e) { return null; }
+    }
+    function renderResumeCard() {
+        const el = $('resume-card'); if (!el) return;
+        const saved = getSavedSession();
+        if (!saved) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const answered = saved.pool.filter((q, i) => saved.answers && saved.answers[i] && saved.answers[i].selectedIndex != null).length;
-        if (!confirm(`Resume your in-progress ${saved.mode === 'exam' ? 'exam' : 'session'}? (${answered} of ${saved.size} answered)`)) {
-            ls('macprep_session', null); return;
-        }
+        const modeLabel = saved.mode === 'exam' ? 'exam' : 'practice session';
+        const timeNote = (saved.mode === 'exam' && saved.timeLeft != null) ? ` · ${Math.max(0, Math.round(saved.timeLeft / 60))} min left` : '';
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+            <div>
+                <div style="font-weight:700;margin-bottom:2px;">Resume your ${modeLabel}</div>
+                <div class="mono" style="font-size:12px;color:var(--muted);">${answered} of ${saved.size} answered${timeNote}</div>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button class="btn" type="button" onclick="MACPrep.resumeSession()">Resume</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.discardSession()">Discard</button>
+            </div>
+        </div>`;
+        el.classList.remove('hidden');
+    }
+    function resumeSession() {
+        const saved = getSavedSession(); if (!saved) { renderResumeCard(); return; }
         state.session = saved;
         go('quiz');
         renderQuestion();
+        focusQuestion();
         if (saved.mode === 'exam') { if ((saved.timeLeft || 0) > 0) startExamTimer(); else submitExam(true); }
+    }
+    function discardSession() {
+        ls('macprep_session', null);
+        renderResumeCard();
+        toast('Session discarded.', 'ok');
     }
 
     // ---- exam timer -------------------------------------------------------
@@ -484,8 +518,10 @@
             if (!ss || ss.mode !== 'exam' || ss.complete) { stopExamTimer(); return; }
             ss.timeLeft = (ss.timeLeft || 0) - 1;
             renderExamTimer();
+            if (ss.timeLeft === 300) announce('5 minutes remaining.');
+            else if (ss.timeLeft === 60) announce('1 minute remaining.');
             if (ss.timeLeft % 5 === 0) saveSession();
-            if (ss.timeLeft <= 0) { stopExamTimer(); toast("Time's up — submitting your exam.", 'ok'); submitExam(true); }
+            if (ss.timeLeft <= 0) { stopExamTimer(); announce('Time is up. Submitting your exam.'); toast("Time's up — submitting your exam.", 'ok'); submitExam(true); }
         }, 1000);
     }
 
@@ -496,6 +532,7 @@
         track('session_start', { size: pool.length, mode });
         go('quiz');
         renderQuestion();
+        focusQuestion();
         if (mode === 'exam') startExamTimer();
     }
 
@@ -578,8 +615,11 @@
         renderConfidenceRow();
     }
     function renderConfidenceRow() {
-        document.querySelectorAll('#confidence-row .conf-chip').forEach((c) =>
-            c.classList.toggle('active', c.dataset.conf === state.pendingConfidence));
+        document.querySelectorAll('#confidence-row .conf-chip').forEach((c) => {
+            const on = c.dataset.conf === state.pendingConfidence;
+            c.classList.toggle('active', on);
+            c.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
     }
     function reviewConfidentMisses() {
         startFromIds((state.profile && state.profile.confident_missed_ids) || [], 'confident-miss');
@@ -713,6 +753,7 @@
             s.answers[s.index] = { selectedIndex, graded: data };
             applyGradedView(data, selectedIndex);
             $('confidence-row') && ($('confidence-row').style.display = 'none');
+            announce(data.correct ? 'Correct.' : `Incorrect. The correct answer is ${String.fromCharCode(65 + (data.correctIndex || 0))}.`);
             (s.log = s.log || []).push({
                 meta: [currentQ.category || currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
                 category: currentQ.category || currentQ.domain_name || 'General',
@@ -1260,7 +1301,7 @@
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
-        drillSpecialty, reviewDue,
+        drillSpecialty, reviewDue, resumeSession, discardSession,
     };
 
     document.addEventListener('keydown', handleQuizKey);

@@ -237,6 +237,7 @@
         <h1 id="dash-greeting">Welcome back</h1>
         <p class="sub" id="dash-subtitle">Configure a practice session below.</p>
 
+        <div class="card hidden" id="resume-card" style="border-color:var(--accent);"></div>
         <div class="card hidden" id="onboarding" style="border-color:var(--accent);"></div>
 
         <div class="card" id="readiness"></div>
@@ -325,7 +326,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
             <div style="display:flex;align-items:center;gap:14px;">
-                <span id="exam-timer" class="mono" style="display:none;font-size:14px;font-weight:bold;color:var(--muted);"></span>
+                <span id="exam-timer" class="mono" role="timer" aria-live="off" aria-label="Time remaining" style="display:none;font-size:14px;font-weight:bold;color:var(--muted);"></span>
                 <div class="mono" style="color:var(--accent);font-size:12px;">PROGRESS</div>
             </div>
         </div>
@@ -455,7 +456,9 @@
     </div>
 
     <div id="toast" role="status" aria-live="polite"></div>
+    <div id="sr-announce" aria-live="polite" class="sr-only"></div>
     <style>
+      .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
       #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);max-width:90%;padding:12px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;background:var(--danger);box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:9999;}
       #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
       #toast.ok{background:var(--accent);}
