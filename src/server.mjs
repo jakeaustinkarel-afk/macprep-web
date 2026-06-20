@@ -865,6 +865,21 @@ app.get('/api/user/profile', async (req, res) => {
             .map(([category, v]) => ({ category, attempts: v.attempts, correct: v.correct, accuracy: Math.round((v.correct / v.attempts) * 100) }))
             .sort((a, b) => b.attempts - a.attempts);
 
+        // Confidence calibration: accuracy on questions the user marked "Confident".
+        // Low accuracy here = overconfidence (a genuinely actionable, novel insight).
+        const calByCat = {};
+        (progress || []).forEach((r) => {
+            if (r.confidence !== 'high') return;
+            const c = r.category || 'Uncategorized';
+            (calByCat[c] = calByCat[c] || { n: 0, correct: 0 });
+            calByCat[c].n++;
+            if (r.is_correct) calByCat[c].correct++;
+        });
+        const calibration = Object.entries(calByCat)
+            .filter(([, v]) => v.n >= 3)
+            .map(([category, v]) => ({ category, attempts: v.n, accuracy: Math.round((v.correct / v.n) * 100) }))
+            .sort((a, b) => a.accuracy - b.accuracy);
+
         // Coverage: distinct answered vs total served per category.
         const { data: bankRows } = await applyServedFilter(supabase.from('questions').select('category'));
         const bankTotal = {};
@@ -932,6 +947,7 @@ app.get('/api/user/profile', async (req, res) => {
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
                 by_specialty,
+                calibration,
                 coverage,
                 streak,
                 trend,

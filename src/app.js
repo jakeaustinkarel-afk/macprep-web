@@ -343,6 +343,7 @@
         }
 
         renderSpecialtyPerformance();
+        renderCalibration();
         const cmBtn = $('confident-miss-btn');
         if (cmBtn) cmBtn.style.display = ((p.confident_missed_ids || []).length) ? '' : 'none';
         const dueBtn = $('due-review-btn');
@@ -402,6 +403,27 @@
             ? `<button class="btn ghost" type="button" onclick="MACPrep.toggleCoverage()" style="margin-top:6px;font-size:12px;padding:6px 12px;">${expanded ? 'Show less' : `Show all ${rows.length} specialties`}</button>`
             : '';
         el.innerHTML = `<h3>By specialty — coverage &amp; accuracy</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">${expanded ? 'All specialties, least-covered first.' : 'Your biggest coverage gaps.'}</p>${bars}${moreBtn}`;
+    }
+
+    function renderCalibration() {
+        const el = $('calibration-card'); if (!el) return;
+        const cal = (state.profile && state.profile.calibration) || [];
+        if (!cal.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const over = cal.filter((c) => c.accuracy < 80);
+        const rows = cal.map((c) => {
+            const ok = c.accuracy >= 80;
+            const color = ok ? 'var(--accent)' : '#F87171';
+            const verdict = c.accuracy >= 85 ? 'well-calibrated' : c.accuracy >= 70 ? 'a bit overconfident' : 'overconfident';
+            return `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;gap:10px;">
+                <span>${c.category}</span>
+                <span class="mono" style="color:${color};text-align:right;">felt sure → ${c.accuracy}% right <span style="color:var(--muted);">(${verdict})</span></span>
+            </div>`;
+        }).join('');
+        const lead = over.length
+            ? 'You marked these "Confident" but missed some — likely blind spots:'
+            : 'Your confidence is tracking your accuracy well — nicely calibrated.';
+        el.innerHTML = `<h3>Confidence check</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">${lead}</p>${rows}`;
+        el.classList.remove('hidden');
     }
 
     function toggleCoverage() { state.coverageExpanded = !state.coverageExpanded; renderSpecialtyPerformance(); }
