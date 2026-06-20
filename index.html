@@ -113,8 +113,8 @@
     <!-- Header (shown when authenticated) -->
     <div id="global-loading" class="hidden" aria-hidden="true"><div class="spinner"></div></div>
     <div class="header-bar">
-        <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')" style="display:flex;align-items:center;gap:10px;">
-            <img src="/macprep_logo.png" alt="MACPrep" style="height:28px;width:auto;" onerror="this.style.display='none'">
+        <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')" style="display:flex;align-items:center;gap:9px;">
+            <img src="/macprep_icon.svg" alt="" style="height:26px;width:26px;display:block;" onerror="this.style.display='none'">
             <span>MAC<span class="accent">Prep</span></span>
         </div>
         <button class="nav-toggle" aria-label="Menu" aria-controls="main-nav" onclick="MACPrep.toggleMobileNav()">☰</button>
@@ -252,6 +252,14 @@
             <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
             <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
             <button class="btn" style="margin-top:16px;" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $50</button>
+            <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+                <label>Have a class or cohort code?</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <input id="redeem-code" type="text" placeholder="MACP-XXXXXXXX" style="flex:1;min-width:160px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);text-transform:uppercase;">
+                    <button class="btn ghost" type="button" onclick="MACPrep.redeemCode()">Redeem</button>
+                </div>
+                <span id="redeem-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
+            </div>
         </div>
 
         <div class="card"><div id="specialty-perf"></div></div>
@@ -420,6 +428,7 @@
     <div class="wrap hidden" id="admin-view">
         <h1>Admin</h1>
         <div class="card hidden" id="admin-analytics"></div>
+        <div class="card hidden" id="admin-vouchers"></div>
         <h2 style="margin-top:8px;">Content review</h2>
         <p class="sub">Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span></p>
         <div id="admin-body"></div>

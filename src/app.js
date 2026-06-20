@@ -817,6 +817,7 @@
     async function reviewQueue() {
         go('admin');
         loadAnalytics();
+        loadVouchers();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
         try {
             const { resp, data } = await apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() });
@@ -900,6 +901,56 @@
             r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
             r.index++;
             renderReview();
+        } catch (e) { if (msg) { msg.style.color = '#F87171'; msg.textContent = e.message; } }
+    }
+
+    // ---- vouchers / codes -------------------------------------------------
+    async function redeemCode() {
+        const inp = $('redeem-code'); const msg = $('redeem-msg'); if (!inp) return;
+        const code = (inp.value || '').trim();
+        if (!code) return;
+        msg.style.color = 'var(--accent)'; msg.textContent = 'Checking…';
+        try {
+            const { resp, data } = await apiJSON('/api/redeem-voucher', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ code }) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not redeem.');
+            track('upgrade_success', { via: 'voucher' });
+            msg.textContent = 'Unlocked! Loading your full access…';
+            await loadProfile();
+            inp.value = '';
+            renderDashboard();
+            const badge = $('tier-badge'); if (badge && state.profile && state.profile.premium_unlocked) { badge.textContent = 'PREMIUM'; badge.className = 'badge premium'; }
+        } catch (e) { msg.style.color = '#F87171'; msg.textContent = e.message; }
+    }
+
+    async function loadVouchers() {
+        const el = $('admin-vouchers'); if (!el) return;
+        try {
+            const { resp, data } = await apiJSON('/api/admin/vouchers', { headers: authHeaders() });
+            if (!resp.ok) return;
+            const rows = (data.vouchers || []).map((v) => `<tr>
+                <td style="font-family:ui-monospace,monospace;padding:4px 10px 4px 0;">${escapeHtml(v.voucher_key)}</td>
+                <td style="padding:4px 10px;color:${v.is_claimed ? 'var(--muted)' : 'var(--accent)'};">${v.is_claimed ? 'claimed' : 'available'}</td>
+                <td style="padding:4px 0;color:var(--muted);font-size:12px;">${v.claimed_by_email ? escapeHtml(v.claimed_by_email) : ''}</td></tr>`).join('');
+            el.innerHTML = `<h3>Cohort vouchers</h3>
+                <p class="sub" style="margin:0 0 10px;">Generate codes to hand to a class or cohort — each grants one premium unlock. <span class="mono" style="color:var(--muted);">${data.claimed}/${data.total} claimed</span></p>
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+                    <input id="voucher-count" type="number" min="1" max="200" value="10" style="width:90px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);">
+                    <button class="btn" onclick="MACPrep.generateVouchers()">Generate codes</button>
+                    <span id="voucher-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
+                </div>
+                ${rows ? `<div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:10px;"><table style="width:100%;font-size:13px;">${rows}</table></div>` : '<div class="mono" style="color:var(--muted);font-size:13px;">No codes yet.</div>'}`;
+            el.classList.remove('hidden');
+        } catch (e) { /* ignore */ }
+    }
+
+    async function generateVouchers() {
+        const count = parseInt($('voucher-count').value, 10) || 10;
+        const msg = $('voucher-msg'); if (msg) msg.textContent = 'Generating…';
+        try {
+            const { resp, data } = await apiJSON('/api/admin/vouchers', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ count }) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
+            await loadVouchers();
+            if (msg) { msg.textContent = `Generated ${data.codes.length}. Copy them from the list below.`; }
         } catch (e) { if (msg) { msg.style.color = '#F87171'; msg.textContent = e.message; } }
     }
 
@@ -1008,7 +1059,7 @@
         go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
-        gotoQuestion, prevQuestion, submitExam,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
     };
 
     document.addEventListener('keydown', handleQuizKey);

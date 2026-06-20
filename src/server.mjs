@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { randomBytes } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -510,6 +511,68 @@ app.post('/api/admin/question', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Cohort vouchers — a program director generates codes and hands them to their
+// students; each code grants one premium unlock when redeemed.
+// ---------------------------------------------------------------------------
+function newVoucherCode() {
+    return 'MACP-' + randomBytes(4).toString('hex').toUpperCase(); // e.g. MACP-9F3A1C2B
+}
+
+app.post('/api/admin/vouchers', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 0, 1), 200);
+    try {
+        const rows = Array.from({ length: count }, () => ({ owner_director_id: admin.id, voucher_key: newVoucherCode(), is_claimed: false }));
+        const { data, error } = await supabase.from('program_vouchers').insert(rows).select('voucher_key');
+        if (error) throw error;
+        return res.json({ success: true, codes: (data || []).map((d) => d.voucher_key) });
+    } catch (err) {
+        console.error('Voucher generate failure:', err.message);
+        return res.status(500).json({ error: 'Could not generate vouchers.' });
+    }
+});
+
+app.get('/api/admin/vouchers', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    try {
+        const { data } = await supabase.from('program_vouchers')
+            .select('voucher_key, is_claimed, claimed_by_email, claimed_at')
+            .eq('owner_director_id', admin.id).order('created_at', { ascending: false }).limit(500);
+        const list = data || [];
+        return res.json({ vouchers: list, total: list.length, claimed: list.filter((v) => v.is_claimed).length });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not load vouchers.' });
+    }
+});
+
+// Redeem a voucher → grants premium to the signed-in user.
+app.post('/api/redeem-voucher', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    if (!code) return res.status(400).json({ error: 'Enter a code.' });
+    try {
+        const { data: v } = await supabase.from('program_vouchers')
+            .select('id, is_claimed').eq('voucher_key', code).maybeSingle();
+        if (!v) return res.status(404).json({ error: 'That code was not found.' });
+        if (v.is_claimed) return res.status(409).json({ error: 'That code has already been used.' });
+        // Claim it and upgrade the user (only if still unclaimed — guards double-claim).
+        const { data: claimed, error: cErr } = await supabase.from('program_vouchers')
+            .update({ is_claimed: true, claimed_by_id: user.id, claimed_by_email: user.email, claimed_at: new Date().toISOString() })
+            .eq('id', v.id).eq('is_claimed', false).select('id');
+        if (cErr) throw cErr;
+        if (!claimed || claimed.length === 0) return res.status(409).json({ error: 'That code has already been used.' });
+        await supabase.from(PROFILE_TABLE).update({ account_tier: 'premium', premium_unlocked_at: new Date().toISOString() }).eq('user_id', user.id);
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Voucher redeem failure:', err.message);
+        return res.status(500).json({ error: 'Could not redeem code.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
 // Questions — authenticated. Answers/explanations are NEVER sent here; grading
 // happens server-side via /api/grade.
 // ---------------------------------------------------------------------------
@@ -894,6 +957,14 @@ app.post('/api/create-checkout-session', async (req, res) => {
             ...(user ? { client_reference_id: user.id, metadata: { user_id: user.id } } : {}),
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
+            // Let buyers enter Stripe promotion codes (founding-member, student,
+            // referral, etc. — created in the Stripe dashboard).
+            allow_promotion_codes: true,
+            // Collect/charge sales tax automatically — only when STRIPE_AUTOMATIC_TAX
+            // is set (requires Stripe Tax to be active with registrations, or Stripe
+            // will reject the session).
+            ...(String(process.env.STRIPE_AUTOMATIC_TAX || '').toLowerCase() === 'true'
+                ? { automatic_tax: { enabled: true } } : {}),
             success_url: `${base}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
             cancel_url: `${base}/?status=cancelled`,
         });
