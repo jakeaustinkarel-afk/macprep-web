@@ -647,6 +647,7 @@ app.get('/api/user/profile', async (req, res) => {
                 days_to_exam,
                 missed_ids,
                 flagged_ids,
+                answered_ids: Array.from(answeredIds),
             },
         });
     } catch (err) {

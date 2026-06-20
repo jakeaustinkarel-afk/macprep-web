@@ -26,6 +26,29 @@
     function safeUrl(u) { return (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null; }
     function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+    // Markdown-lite: escape, then apply **bold**, *italic*, `code`, bullet lists,
+    // and paragraph/line breaks. Safe (escapes first, only re-introduces known tags).
+    function renderRich(text) {
+        let h = escapeHtml(text || '');
+        h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+             .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+             .replace(/`([^`]+)`/g, '<code style="background:#1f2937;padding:1px 5px;border-radius:3px;">$1</code>');
+        // bullet lists: lines starting with - or •
+        const lines = h.split('\n');
+        let out = '', inList = false;
+        for (const ln of lines) {
+            if (/^\s*[-•]\s+/.test(ln)) {
+                if (!inList) { out += '<ul style="margin:8px 0;padding-left:20px;">'; inList = true; }
+                out += '<li>' + ln.replace(/^\s*[-•]\s+/, '') + '</li>';
+            } else {
+                if (inList) { out += '</ul>'; inList = false; }
+                out += ln.trim() === '' ? '<br>' : '<div>' + ln + '</div>';
+            }
+        }
+        if (inList) out += '</ul>';
+        return out;
+    }
+
     async function refreshToken() {
         const rt = ls('macprep_refresh');
         if (!rt) return false;
@@ -176,6 +199,61 @@
         return { limit, used, remaining: Math.max(0, limit - used), unlimited: !!(p.premium_unlocked || p.is_admin) };
     }
 
+    function answeredIdSet() {
+        return new Set((state.profile && state.profile.answered_ids) || []);
+    }
+
+    function renderReadiness() {
+        const el = $('readiness'); if (!el) return;
+        const p = state.profile || {};
+        const streak = p.streak || 0;
+        const readiness = p.readiness || 0;
+        const exam = (p.days_to_exam != null) ? p.days_to_exam : null;
+        const trend = p.trend || [];
+        const spark = trend.length
+            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? '#FBBF24' : '#F87171'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
+            : '<span class="mono" style="color:var(--muted);font-size:12px;">Answer questions to see your trend.</span>';
+        const examLine = exam != null
+            ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
+            : `<div class="stat"><div class="n">—</div><div class="l">Set exam date in profile</div></div>`;
+        el.innerHTML = `<h3>Exam readiness</h3>
+            <div class="grid cols-3" style="margin-bottom:14px;">
+                <div class="stat"><div class="n">${readiness}%</div><div class="l">Readiness estimate</div></div>
+                <div class="stat"><div class="n">${streak}${streak ? ' 🔥' : ''}</div><div class="l">Day streak</div></div>
+                ${examLine}
+            </div>
+            <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
+            <div style="height:46px;">${spark}</div>`;
+    }
+
+    function renderOnboarding() {
+        const el = $('onboarding'); if (!el) return;
+        const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
+        if (answered > 0) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        el.innerHTML = `<h3>Welcome to MACPrep 👋</h3>
+            <p class="sub" style="margin:0 0 12px;">Here's how to start: pick a <strong>specialty</strong> and <strong>how many questions</strong> below, then hit Start. After each answer you'll see why every choice is right or wrong, with a source you can verify. Use <span class="mono">A–E</span> to answer and <span class="mono">→</span> to advance.</p>
+            <button class="btn" onclick="MACPrep.startSample()">Try a 5-question warm-up</button>`;
+    }
+    function startSample() {
+        const sel = $('domain-select'); if (sel) sel.value = 'all';
+        const diff = $('difficulty-select'); if (diff) diff.value = 'all';
+        const chips = $('count-chips'); if (chips) { chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); }
+        $('custom-count').value = '5';
+        startSession();
+    }
+
+    function smartReview() {
+        // Prioritize missed questions, then fill from weakest specialties.
+        const p = state.profile || {};
+        const ids = new Set(p.missed_ids || []);
+        const weak = (p.by_specialty || []).filter((s) => s.accuracy < 70).map((s) => s.category);
+        if (ids.size < 20 && weak.length) {
+            state.questions.forEach((q) => { if (weak.includes(q.category || q.domain_name) && ids.size < 20) ids.add(q.id); });
+        }
+        startFromIds(Array.from(ids), 'review');
+    }
+
     function renderDashboard() {
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
@@ -183,6 +261,8 @@
         $('stat-answered').textContent = stats.answered || 0;
         $('stat-accuracy').textContent = stats.attempts ? Math.round((stats.correct / stats.attempts) * 100) + '%' : '—';
         $('stat-bank').textContent = state.questions.length.toLocaleString();
+        renderReadiness();
+        renderOnboarding();
 
         const usage = freeUsage();
         const card = $('free-allowance-card');
@@ -262,6 +342,8 @@
             ? state.questions.slice()
             : state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
         if (diff && diff !== 'all') pool = pool.filter((q) => (q.difficulty || '').toLowerCase() === diff);
+        const unseen = $('unseen-only') && $('unseen-only').checked;
+        if (unseen) { const seen = answeredIdSet(); pool = pool.filter((q) => !seen.has(q.id)); }
         return pool;
     }
 
@@ -338,6 +420,25 @@
         btn.style.color = flagged ? '#FBBF24' : 'var(--muted)';
     }
 
+    async function loadNote() {
+        const s = state.session; const ta = $('note-text'); if (!s || !ta) return;
+        const q = s.pool[s.index]; if (!q) return;
+        ta.value = ''; ta.dataset.qid = q.id;
+        try {
+            const { data } = await apiJSON('/api/user/note?questionId=' + encodeURIComponent(q.id), { headers: authHeaders() });
+            if (ta.dataset.qid === q.id) ta.value = data.note || '';
+        } catch (e) { /* ignore */ }
+    }
+
+    async function saveNote() {
+        const ta = $('note-text'); if (!ta || !ta.dataset.qid) return;
+        const msg = $('note-msg');
+        try {
+            await apiJSON('/api/user/note', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: ta.dataset.qid, note: ta.value }) });
+            if (msg) { msg.textContent = 'Saved'; setTimeout(() => { msg.textContent = ''; }, 1500); }
+        } catch (e) { /* ignore */ }
+    }
+
     // ---- quiz -------------------------------------------------------------
     function renderQuestion() {
         const s = state.session; if (!s) return go('dashboard');
@@ -347,8 +448,9 @@
         s.locked = false;
         const q = s.pool[s.index];
 
-        $('question-meta').textContent = [q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
-        $('question-stem').textContent = q.stem || '';
+        $('question-meta').textContent = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;">` : '';
+        $('question-stem').innerHTML = renderRich(q.stem) + img;
         const container = $('choices-container');
         container.innerHTML = '';
         let choices = q.choices || [];
@@ -369,6 +471,7 @@
         $('explanation-pane').classList.add('hidden');
         $('explanation-pane').innerHTML = '';
         updateFlagButton();
+        loadNote();
         updateQuizProgress();
     }
 
@@ -410,8 +513,10 @@
             const verdict = data.correct
                 ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
                 : '<span style="color:#F87171;font-weight:bold;">INCORRECT</span>';
+            const peer = (data.peer_correct_pct != null)
+                ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
             const ex = $('explanation-pane');
-            let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}</div><div>${data.explanation || 'No explanation provided.'}</div>`;
+            let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
             const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
             if (refs.length) {
                 const items = refs.map((r) => {
@@ -630,6 +735,29 @@
     function toggleMobileNav() { const n = $('main-nav'); if (n) n.classList.toggle('nav-open'); }
     function closeMobileNav() { const n = $('main-nav'); if (n) n.classList.remove('nav-open'); }
 
+    // Keyboard shortcuts during a quiz: A-E / 1-5 select; Enter/→ advance; F flag.
+    function handleQuizKey(e) {
+        const s = state.session;
+        if (!s || $('quiz-view').classList.contains('hidden')) return;
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return; // don't hijack typing
+        const k = e.key.toLowerCase();
+        if (k === 'f') { e.preventDefault(); toggleFlag(); return; }
+        if (!s.locked) {
+            let idx = -1;
+            if (/^[a-e]$/.test(k)) idx = k.charCodeAt(0) - 97;
+            else if (/^[1-5]$/.test(k)) idx = parseInt(k, 10) - 1;
+            if (idx >= 0) {
+                const btn = $('choices-container').querySelector(`.choice-option-node[data-index="${idx}"]`);
+                if (btn) { e.preventDefault(); btn.click(); }
+            }
+        } else if (k === 'enter' || k === 'arrowright' || k === 'n') {
+            e.preventDefault();
+            const adv = $('advance-vignette-trigger');
+            if (adv) adv.click();
+        }
+    }
+
     // Error monitoring — self-configures from /api/config so no DSN is hardcoded.
     // Activates only when SENTRY_BROWSER_DSN is set on the server.
     async function initMonitoring() {
@@ -652,7 +780,10 @@
     window.MACPrep = {
         go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
+        smartReview, startSample, saveNote,
     };
+
+    document.addEventListener('keydown', handleQuizKey);
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
@@ -666,7 +797,9 @@
         state.token = getToken();
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
         $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);
+        $('unseen-only') && $('unseen-only').addEventListener('change', updateSessionHint);
         $('custom-count') && $('custom-count').addEventListener('input', updateSessionHint);
+        $('note-text') && $('note-text').addEventListener('blur', saveNote);
         if (state.token) {
             try { await bootAuthedSession(); }
             catch (e) { go('login'); }
