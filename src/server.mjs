@@ -4,9 +4,22 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { randomBytes } from 'crypto';
+import * as Sentry from '@sentry/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// --- Server-side error monitoring (dormant until SENTRY_DSN is set) --------
+// Captures uncaught exceptions, unhandled rejections, and errors that reach the
+// Express error handler below. With no DSN, init is skipped and captureException
+// is a no-op — safe to ship before the DSN exists.
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        tracesSampleRate: 0,
+    });
+}
 
 const app = express();
 
@@ -1233,13 +1246,27 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong.' });
 });
 
-// Surface crashes in logs rather than dying silently.
-process.on('unhandledRejection', (reason) => console.error('UnhandledRejection:', reason));
+// Express error handler — capture anything thrown or propagated to Express that
+// a route didn't handle itself, then return a generic 500. (Registered after all
+// routes, which are declared above.)
+app.use((err, req, res, next) => {
+    console.error('Express error:', err && err.stack ? err.stack : err);
+    Sentry.captureException(err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Something went wrong.' });
+});
+
+// Surface crashes in logs (and Sentry) rather than dying silently.
+process.on('unhandledRejection', (reason) => {
+    console.error('UnhandledRejection:', reason);
+    Sentry.captureException(reason);
+});
 process.on('uncaughtException', (err) => {
     console.error('UncaughtException:', err && err.stack ? err.stack : err);
-    // The process is in an undefined state after an uncaught exception — log and
-    // exit so the platform (Render) restarts a clean instance.
-    process.exit(1);
+    // The process is in an undefined state after an uncaught exception — capture,
+    // flush to Sentry, then exit so the platform (Render) restarts a clean instance.
+    Sentry.captureException(err);
+    Sentry.flush(2000).finally(() => process.exit(1));
 });
 
 // ---------------------------------------------------------------------------
