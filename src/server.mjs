@@ -127,9 +127,11 @@ const PROGRESS_TABLE = 'user_progress';
 // (status 'sme_review' or 'published'). Set SERVE_FILLER=true to temporarily
 // include the legacy filler (not recommended; its answers are unreliable).
 const SERVE_FILLER = String(process.env.SERVE_FILLER || '').toLowerCase() === 'true';
-// Once enough questions are SME-approved, set SERVE_PUBLISHED_ONLY=true on Render
-// so students see ONLY clinician-reviewed (status='published') content.
-const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY || '').toLowerCase() === 'true';
+// The public sees ONLY clinician-approved (status='published') questions by default.
+// Questions awaiting the CAA's sign-off (status='sme_review') are NOT served. For a
+// dev/preview environment that wants to see pending content too, set
+// SERVE_PUBLISHED_ONLY=false.
+const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY ?? 'true').toLowerCase() !== 'false';
 const SERVED_STATUSES = SERVE_PUBLISHED_ONLY ? ['published'] : ['sme_review', 'published'];
 function applyServedFilter(query) {
     return SERVE_FILLER ? query : query.in('status', SERVED_STATUSES);
