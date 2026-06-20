@@ -164,6 +164,8 @@
                 const data = await resp.json();
                 if (!resp.ok || !data.success) throw new Error(data.error || 'Registration failed.');
 
+                try { fetch('/api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'signup' }), keepalive: true }); } catch (e) {}
+
                 if (data.needsConfirmation) {
                     alert('Account created. Check your email to confirm, then sign in.');
                 } else {

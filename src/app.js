@@ -86,6 +86,13 @@
         return { resp, data };
     }
 
+    // Privacy-friendly analytics ping (best-effort, never blocks).
+    function track(name, meta) {
+        try {
+            fetch('/api/event', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ name, meta: meta || {} }), keepalive: true }).catch(() => {});
+        } catch (e) { /* ignore */ }
+    }
+
     // Global loading overlay.
     let _loadingCount = 0;
     function setLoading(on) {
@@ -127,6 +134,7 @@
             state.token = data.token || null;
             setToken(state.token);
             setRefresh(data.refresh_token || null);
+            track('login');
             await bootAuthedSession();
         } catch (err) {
             alert('Login failed: ' + err.message);
@@ -383,6 +391,7 @@
 
     function beginSession(pool) {
         state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [] };
+        track('session_start', { size: pool.length });
         go('quiz');
         renderQuestion();
     }
@@ -611,6 +620,7 @@
 
     function showPaywall(limit) {
         const s = state.session;
+        track('paywall_hit');
         $('question-meta').textContent = 'FREE LIMIT REACHED';
         const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session. ` : '';
         $('question-stem').innerHTML = `You've reached the end of the free tier — <strong>${limit || state.profile?.free_tier_limit || ''}</strong> questions (10% of the bank). ${statLine}Upgrade for one-time $50 lifetime access to the full journal-sourced bank with every explanation and source.`;
@@ -685,8 +695,30 @@
     }
 
     // ---- admin review queue ----------------------------------------------
+    async function loadAnalytics() {
+        const el = $('admin-analytics'); if (!el) return;
+        try {
+            const { resp, data } = await apiJSON('/api/admin/analytics', { headers: authHeaders() });
+            if (!resp.ok) return;
+            const t = data.total || {}; const w = data.last7 || {};
+            const row = (label, key) => `<div class="stat"><div class="n">${t[key] || 0}</div><div class="l">${label}<br><span style="color:var(--accent);">${w[key] || 0} / 7d</span></div></div>`;
+            el.innerHTML = `<h3>Analytics — last 30 days</h3>
+                <div class="grid cols-3" style="margin-bottom:10px;">
+                    ${row('Signups', 'signup')}
+                    ${row('Logins', 'login')}
+                    ${row('Sessions', 'session_start')}
+                    ${row('Paywall hits', 'paywall_hit')}
+                    ${row('Checkouts', 'checkout_started')}
+                    ${row('Upgrades', 'upgrade_success')}
+                </div>
+                <div class="mono" style="font-size:12px;color:var(--muted);">${data.activeUsers || 0} active users in the last 7 days</div>`;
+            el.classList.remove('hidden');
+        } catch (e) { /* ignore */ }
+    }
+
     async function reviewQueue() {
         go('admin');
+        loadAnalytics();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
         try {
             const { resp, data } = await apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() });
@@ -777,6 +809,7 @@
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Redirecting…'; }
+        track('checkout_started');
         try {
             const email = (state.profile && state.profile.email) || '';
             const { resp, data } = await apiJSON('/api/create-checkout-session', {
@@ -795,7 +828,7 @@
         if (params.get('status') === 'success') {
             // Webhook may take a moment; refresh profile shortly.
             setTimeout(async () => { try { await loadProfile(); renderDashboard();
-                if (state.profile && state.profile.premium_unlocked) alert('Payment received — full access unlocked. Thank you!');
+                if (state.profile && state.profile.premium_unlocked) { track('upgrade_success'); alert('Payment received — full access unlocked. Thank you!'); }
             } catch (e) {} }, 1500);
             history.replaceState({}, '', '/');
         } else if (params.get('status') === 'cancelled') {
@@ -878,6 +911,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
+        track('page_view');
         // Email-confirmation links land here with the new session in the URL hash.
         const hash = new URLSearchParams((location.hash || '').slice(1));
         if (hash.get('access_token')) {

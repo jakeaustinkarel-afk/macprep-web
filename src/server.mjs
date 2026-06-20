@@ -441,6 +441,48 @@ app.get('/api/admin/questions', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Privacy-friendly, self-hosted analytics. No third party, no cookies, no PII
+// beyond an optional user_id. Only whitelisted event names are accepted.
+// ---------------------------------------------------------------------------
+const ANALYTICS_EVENTS = new Set([
+    'page_view', 'signup', 'login', 'session_start', 'session_complete',
+    'paywall_hit', 'checkout_started', 'upgrade_success', 'feedback_submitted',
+]);
+app.post('/api/event', async (req, res) => {
+    if (!supabase) return res.json({ ok: true });
+    const name = String(req.body?.name || '');
+    if (!ANALYTICS_EVENTS.has(name)) return res.json({ ok: true }); // silently ignore unknown
+    const user = await getUserFromToken(req);
+    const meta = (req.body && typeof req.body.meta === 'object' && req.body.meta) ? req.body.meta : {};
+    try {
+        await supabase.from('analytics_events').insert({ name, user_id: user?.id || null, meta });
+    } catch (e) { /* analytics is best-effort */ }
+    return res.json({ ok: true });
+});
+
+// Admin analytics summary.
+app.get('/api/admin/analytics', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    try {
+        const since = new Date(Date.now() - 30 * 86400000).toISOString();
+        const { data } = await supabase.from('analytics_events').select('name, user_id, created_at').gte('created_at', since);
+        const rows = data || [];
+        const total = {}; const last7 = {};
+        const weekAgo = Date.now() - 7 * 86400000;
+        rows.forEach((r) => {
+            total[r.name] = (total[r.name] || 0) + 1;
+            if (new Date(r.created_at).getTime() >= weekAgo) last7[r.name] = (last7[r.name] || 0) + 1;
+        });
+        // distinct users active in last 7 days
+        const activeUsers = new Set(rows.filter((r) => r.user_id && new Date(r.created_at).getTime() >= weekAgo).map((r) => r.user_id)).size;
+        return res.json({ total, last7, activeUsers, window: '30d' });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not load analytics.' });
+    }
+});
+
 // Update a question's status and/or edit its content (admin only).
 app.post('/api/admin/question', async (req, res) => {
     const admin = await getAdminUser(req);
