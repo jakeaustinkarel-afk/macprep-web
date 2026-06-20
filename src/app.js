@@ -101,7 +101,7 @@
         if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -113,12 +113,13 @@
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
-        ['nav-dashboard', 'nav-profile', 'nav-feedback', 'nav-signout', 'tier-badge'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-profile', 'nav-feedback', 'nav-signout', 'tier-badge'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin') && $('nav-admin').classList.toggle('hidden', !isAdmin);
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
+        if (view === 'notebook') loadNotebook();
         window.scrollTo(0, 0);
     }
 
@@ -656,6 +657,39 @@
     function reviewConfidentMisses() {
         startFromIds((state.profile && state.profile.confident_missed_ids) || [], 'confident-miss');
     }
+
+    // ---- notebook ---------------------------------------------------------
+    async function loadNotebook() {
+        const body = $('notebook-body'); if (body) body.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
+        try {
+            const { resp, data } = await apiJSON('/api/user/notebook', { headers: authHeaders() });
+            if (!resp.ok) throw new Error(data.error || 'Could not load.');
+            state.notebook = { notes: data.notes || [], flagged: data.flagged || [] };
+            renderNotebook();
+        } catch (e) { if (body) body.innerHTML = `<div class="mono" style="color:#F87171;">${escapeHtml(e.message)}</div>`; }
+    }
+    function renderNotebook() {
+        const body = $('notebook-body'); if (!body || !state.notebook) return;
+        const term = ((($('notebook-search') || {}).value) || '').trim().toLowerCase();
+        const match = (s) => !term || (s || '').toLowerCase().includes(term);
+        const notes = state.notebook.notes.filter((n) => match(n.note) || match(n.stem) || match(n.category));
+        const flagged = state.notebook.flagged.filter((f) => match(f.stem) || match(f.category));
+        const snip = (s) => escapeHtml((s || '').slice(0, 160)) + ((s || '').length > 160 ? '…' : '');
+        const card = (inner) => `<div style="border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:10px;">${inner}</div>`;
+        const noteHtml = notes.length ? notes.map((n) => card(
+            `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(n.category || '')}</div>`
+            + `<div style="font-size:13px;color:#cbd5e1;margin-bottom:6px;">${snip(n.stem)}</div>`
+            + `<div style="font-size:14px;border-left:2px solid var(--accent);padding-left:10px;">${escapeHtml(n.note)}</div>`
+            + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(n.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
+        )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No notes match.</div>';
+        const flagHtml = flagged.length ? flagged.map((f) => card(
+            `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(f.category || '')}</div>`
+            + `<div style="font-size:13px;color:#cbd5e1;">${snip(f.stem)}</div>`
+            + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(f.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
+        )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No flagged questions match.</div>';
+        body.innerHTML = `<h3>Notes (${notes.length})</h3>${noteHtml}<h3 style="margin-top:24px;">Flagged (${flagged.length})</h3>${flagHtml}`;
+    }
+    function practiceOne(qid) { startFromIds([qid], 'notebook'); }
 
     // ---- quiz -------------------------------------------------------------
     function buildChoiceButton(choice, idx, qid) {
@@ -1358,7 +1392,7 @@
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
-        zoomImage, toggleLabs,
+        zoomImage, toggleLabs, renderNotebook, practiceOne,
     };
 
     document.addEventListener('keydown', handleQuizKey);

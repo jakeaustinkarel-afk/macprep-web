@@ -121,6 +121,7 @@
         <nav class="nav" id="main-nav">
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
+            <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
             <a id="nav-admin" class="hidden" onclick="MACPrep.reviewQueue()" style="color:#60A5FA;">Review</a>
             <a id="nav-profile" class="hidden" onclick="MACPrep.go('profile')">Profile</a>
             <a id="nav-feedback" class="hidden" onclick="MACPrep.go('feedback')">Feedback</a>
@@ -461,6 +462,13 @@
         <h2 style="margin-top:8px;">Content review</h2>
         <p class="sub">Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span></p>
         <div id="admin-body"></div>
+    </div>
+
+    <div class="wrap hidden" id="notebook-view">
+        <h1>My Notebook</h1>
+        <p class="sub">Your notes and flagged questions, in one searchable place.</p>
+        <input id="notebook-search" type="text" placeholder="Search notes and questions…" oninput="MACPrep.renderNotebook()" style="width:100%;max-width:480px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);margin-bottom:20px;">
+        <div id="notebook-body"></div>
     </div>
 
     <div id="labs-modal" class="hidden" onclick="if(event.target===this)MACPrep.toggleLabs()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">

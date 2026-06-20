@@ -1046,6 +1046,32 @@ app.post('/api/user/note', async (req, res) => {
     }
 });
 
+// My Notebook: all of the user's notes + flagged questions, with question context.
+app.get('/api/user/notebook', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.json({ notes: [], flagged: [] });
+    try {
+        const { data: notes } = await supabase.from('user_notes').select('question_id, note, updated_at').eq('user_id', user.id);
+        const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
+        const ids = Array.from(new Set([...(notes || []).map((n) => n.question_id), ...(flags || []).map((f) => f.question_id)]));
+        const qmap = {};
+        if (ids.length) {
+            const { data: qs } = await supabase.from('questions').select('id, category, domain_name, stem').in('id', ids);
+            (qs || []).forEach((q) => { qmap[String(q.id)] = { category: q.category || q.domain_name || 'General', stem: q.stem || '' }; });
+        }
+        const ctx = (id) => qmap[String(id)] || { category: '', stem: '' };
+        const noteList = (notes || []).filter((n) => (n.note || '').trim())
+            .map((n) => ({ question_id: n.question_id, note: n.note, updated_at: n.updated_at, ...ctx(n.question_id) }))
+            .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+        const flagList = (flags || []).map((f) => ({ question_id: f.question_id, ...ctx(f.question_id) }));
+        return res.json({ notes: noteList, flagged: flagList });
+    } catch (err) {
+        console.error('Notebook failure:', err.message);
+        return res.status(500).json({ error: 'Could not load notebook.' });
+    }
+});
+
 app.post('/api/feedback', feedbackLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const user = await getUserFromToken(req);
