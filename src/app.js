@@ -382,7 +382,9 @@
         const accMap = {};
         ((state.profile && state.profile.by_specialty) || []).forEach((r) => { accMap[r.category] = r; });
         const rows = cov.slice().sort((a, b) => (a.answered / (a.total || 1)) - (b.answered / (b.total || 1)) || b.total - a.total);
-        const bars = rows.map((c) => {
+        const expanded = !!state.coverageExpanded;
+        const shown = expanded ? rows : rows.slice(0, 5);
+        const bars = shown.map((c) => {
             const fracPct = c.total ? Math.round((c.answered / c.total) * 100) : 0;
             const acc = accMap[c.category];
             const accColor = acc ? (acc.accuracy >= 75 ? 'var(--accent)' : acc.accuracy >= 50 ? '#FBBF24' : '#F87171') : 'var(--muted)';
@@ -395,8 +397,13 @@
                 <div class="progress-bar"><span style="width:${fracPct}%;background:var(--accent);"></span></div>
             </div>`;
         }).join('');
-        el.innerHTML = `<h3>By specialty — coverage &amp; accuracy</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">Least-covered first — the bar shows how much of each specialty you've seen.</p>${bars}`;
+        const moreBtn = rows.length > 5
+            ? `<button class="btn ghost" type="button" onclick="MACPrep.toggleCoverage()" style="margin-top:6px;font-size:12px;padding:6px 12px;">${expanded ? 'Show less' : `Show all ${rows.length} specialties`}</button>`
+            : '';
+        el.innerHTML = `<h3>By specialty — coverage &amp; accuracy</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">${expanded ? 'All specialties, least-covered first.' : 'Your biggest coverage gaps.'}</p>${bars}${moreBtn}`;
     }
+
+    function toggleCoverage() { state.coverageExpanded = !state.coverageExpanded; renderSpecialtyPerformance(); }
 
     function selectedCount() {
         const custom = parseInt($('custom-count').value, 10);
@@ -1301,7 +1308,7 @@
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
-        drillSpecialty, reviewDue, resumeSession, discardSession,
+        drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
     };
 
     document.addEventListener('keydown', handleQuizKey);

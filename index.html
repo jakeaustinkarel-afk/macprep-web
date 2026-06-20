@@ -242,13 +242,13 @@
 
         <div class="card" id="readiness"></div>
 
-        <div class="grid cols-3" style="margin-bottom:24px;">
+        <div class="grid cols-3" style="margin-bottom:24px;order:3;">
             <div class="stat"><div class="n" id="stat-answered">0</div><div class="l">Questions Answered</div></div>
             <div class="stat"><div class="n" id="stat-accuracy">—</div><div class="l">Accuracy</div></div>
             <div class="stat"><div class="n" id="stat-bank">0</div><div class="l">Questions In Bank</div></div>
         </div>
 
-        <div class="card" id="free-allowance-card">
+        <div class="card" id="free-allowance-card" style="order:4;">
             <h3>Free Tier Usage</h3>
             <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
             <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
@@ -263,9 +263,9 @@
             </div>
         </div>
 
-        <div class="card"><div id="specialty-perf"></div></div>
+        <div class="card" style="order:5;"><div id="specialty-perf"></div></div>
 
-        <div class="card">
+        <div class="card" style="order:2;">
             <h3>Quick sessions</h3>
             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <button class="btn ghost" type="button" onclick="MACPrep.smartReview()">Smart review (weak + missed)</button>
@@ -276,7 +276,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="order:1;">
             <h2>Start a Practice Session</h2>
             <p class="sub">Choose a content domain and how many questions you want to practice.</p>
 
@@ -465,6 +465,9 @@
       .conf-chip{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
       .conf-chip:hover{border-color:var(--accent);color:var(--text);}
       .conf-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+      /* Dashboard: flex column so cards can be reordered (action first) without moving markup. */
+      #dashboard-view:not(.hidden){display:flex;flex-direction:column;}
+      #question-stem:focus{outline:none;}
     </style>
     <script src="/src/app.js"></script>
 </body>
