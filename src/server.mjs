@@ -8,7 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHmac, createHash } from 'crypto';
 import * as Sentry from '@sentry/node';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -359,6 +359,133 @@ app.get('/api/stats', async (req, res) => {
     } catch (e) { /* serve cached value */ }
     res.json({ published: _statsCache.published });
 });
+
+// ---------------------------------------------------------------------------
+// Retention: daily "come back and study" reminder emails (via Resend). Dormant
+// unless RESEND_API_KEY is set. Targets users with spaced-repetition questions
+// due, skips anyone who studied in the last 18h, throttles to once/~20h each,
+// and includes a one-click unsubscribe (CAN-SPAM).
+// ---------------------------------------------------------------------------
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM = process.env.RESEND_FROM || 'MACPrep <noreply@macprep.org>';
+const BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://www.macprep.org').replace(/\/+$/, '');
+const MAILING_ADDRESS = process.env.MAILING_ADDRESS || 'MACPrep LLC · Roswell, GA, USA';
+const NUDGE_SECRET = serviceKey ? createHash('sha256').update(serviceKey + '|nudge-unsub').digest('hex') : 'dev-nudge-secret';
+function unsubToken(userId) { return createHmac('sha256', NUDGE_SECRET).update(String(userId)).digest('hex').slice(0, 32); }
+function unsubLink(userId) { return `${BASE_URL}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`; }
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+async function sendEmail({ to, subject, html }) {
+    if (!RESEND_API_KEY) return { skipped: true };
+    const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: RESEND_FROM, to, subject, html }),
+    });
+    if (!r.ok) throw new Error(`Resend ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+    return r.json();
+}
+
+function nudgeEmailHtml({ name, dueCount, unsubUrl }) {
+    const hi = name ? `Hi ${escHtml(String(name).split(' ')[0])},` : 'Hi there,';
+    const qword = dueCount === 1 ? 'question' : 'questions';
+    return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr><td align="center">
+    <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;max-width:480px;width:100%;">
+      <tr><td style="background:#0D0E10;padding:20px 28px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:22px;font-weight:800;letter-spacing:-1px;color:#F9FAFB;">MAC<span style="color:#00A86B;">Prep</span></span>
+      </td></tr>
+      <tr><td style="padding:32px 28px;">
+        <p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 6px;">${hi}</p>
+        <h1 style="font-size:21px;color:#111827;margin:0 0 12px;">You have ${dueCount} ${qword} due for review 🔥</h1>
+        <p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 24px;">A few minutes of spaced review today locks these in right before your brain would forget them. Keep the momentum going.</p>
+        <a href="${BASE_URL}/" style="display:inline-block;background:#00A86B;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 28px;border-radius:6px;">Resume studying →</a>
+      </td></tr>
+      <tr><td style="background:#fafafa;border-top:1px solid #e5e7eb;padding:16px 28px;">
+        <p style="font-size:12px;color:#9ca3af;margin:0 0 6px;">MACPrep · NCCAA board review · <a href="${BASE_URL}" style="color:#00A86B;text-decoration:none;">macprep.org</a></p>
+        <p style="font-size:11px;color:#9ca3af;margin:0;">${escHtml(MAILING_ADDRESS)} · <a href="${escHtml(unsubUrl)}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe from study reminders</a></p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>`;
+}
+
+async function sendRetentionNudges(opts) {
+    opts = opts || {};
+    if (!supabase) return { error: 'no db' };
+    if (!RESEND_API_KEY && !opts.dry) return { error: 'RESEND_API_KEY not set' };
+    const nowIso = new Date().toISOString();
+    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', nowIso).limit(20000);
+    const counts = {};
+    (due || []).forEach((r) => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
+    const userIds = Object.keys(counts);
+    if (!userIds.length) return { sent: 0, candidates: 0 };
+    const activeCutoff = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
+    const { data: active } = await supabase.from(PROGRESS_TABLE).select('user_id').gte('created_at', activeCutoff).limit(20000);
+    const activeSet = new Set((active || []).map((r) => r.user_id));
+    const { data: profiles } = await supabase.from(PROFILE_TABLE)
+        .select('user_id, email, full_name, last_nudged_at, nudge_opt_out')
+        .in('user_id', userIds.slice(0, 1000));
+    const throttle = Date.now() - 20 * 3600 * 1000;
+    let sent = 0, eligible = 0;
+    for (const p of (profiles || [])) {
+        if (!p.email || p.nudge_opt_out) continue;
+        if (activeSet.has(p.user_id)) continue;
+        if (p.last_nudged_at && new Date(p.last_nudged_at).getTime() > throttle) continue;
+        eligible++;
+        if (opts.dry) continue;
+        try {
+            const n = counts[p.user_id];
+            await sendEmail({ to: p.email, subject: `${n} ${n === 1 ? 'question' : 'questions'} due for review on MACPrep`, html: nudgeEmailHtml({ name: p.full_name, dueCount: n, unsubUrl: unsubLink(p.user_id) }) });
+            await supabase.from(PROFILE_TABLE).update({ last_nudged_at: nowIso }).eq('user_id', p.user_id);
+            sent++;
+        } catch (e) { console.error('[nudges] send failed:', p.user_id, e.message); }
+    }
+    return { sent, eligible, candidates: userIds.length };
+}
+
+// One-click unsubscribe (token-signed, no login needed).
+app.get('/api/unsubscribe', async (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const u = req.query.u, t = req.query.t;
+    const page = (msg) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MACPrep</title><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7f9;color:#111827;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;"><div style="text-align:center;max-width:420px;padding:32px;"><div style="font-family:ui-monospace,monospace;font-size:24px;font-weight:800;">MAC<span style="color:#047857;">Prep</span></div><p style="font-size:16px;line-height:1.6;margin-top:18px;">${msg}</p><a href="${BASE_URL}/" style="color:#047857;">Back to MACPrep</a></div></body>`;
+    if (!u || !t || !supabase || t !== unsubToken(u)) return res.status(400).send(page('This unsubscribe link is invalid or expired.'));
+    try { await supabase.from(PROFILE_TABLE).update({ nudge_opt_out: true }).eq('user_id', u); } catch (e) {}
+    res.send(page("You've been unsubscribed from study reminders. Email support@macprep.org if you'd like them back on."));
+});
+
+// Admin-only manual trigger for testing. { testTo:"you@x.com" } sends one sample
+// reminder there; { dry:true } counts who would get one without sending.
+app.post('/api/admin/run-nudges', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Forbidden' });
+    try {
+        if (req.body?.testTo) {
+            await sendEmail({ to: req.body.testTo, subject: '3 questions due for review on MACPrep (test)', html: nudgeEmailHtml({ name: (admin.email || '').split('@')[0], dueCount: 3, unsubUrl: unsubLink(admin.id) }) });
+            return res.json({ ok: true, test_sent_to: req.body.testTo });
+        }
+        res.json(await sendRetentionNudges({ dry: !!req.body?.dry }));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
+// a US-morning window; the per-user 20h throttle makes restarts safe.
+if (RESEND_API_KEY) {
+    let _lastNudgeDay = null;
+    setInterval(async () => {
+        try {
+            const now = new Date();
+            const day = now.toISOString().slice(0, 10);
+            const h = now.getUTCHours();
+            if (h >= 13 && h < 15 && _lastNudgeDay !== day) {
+                _lastNudgeDay = day;
+                const r = await sendRetentionNudges();
+                console.log(`[nudges] daily run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} with due questions)`);
+            }
+        } catch (e) { console.error('[nudges] scheduler error:', e.message); }
+    }, 30 * 60 * 1000);
+    console.log('[nudges] daily study-reminder scheduler active');
+}
 
 // ---------------------------------------------------------------------------
 // Helper: verify a Supabase access token and return the user (or null).
