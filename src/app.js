@@ -563,6 +563,7 @@
         state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [], mode, answers: {} };
         if (mode === 'exam') state.session.timeLeft = pool.length * EXAM_SECONDS_PER_Q;
         track('session_start', { size: pool.length, mode });
+        track('quiz_start', { size: pool.length, mode });
         go('quiz');
         renderQuestion();
         focusQuestion();
@@ -1321,6 +1322,7 @@
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Redirecting…'; }
+        track('upgrade_click');
         track('checkout_started');
         try {
             const email = (state.profile && state.profile.email) || '';

@@ -145,7 +145,8 @@
             <div style="display:grid;grid-template-columns:1.15fr 0.85fr;gap:48px;align-items:center;" class="hero-grid">
                 <div>
                     <span class="tag">NCCAA Board Review · Certification &amp; Recertification</span>
-                    <h1 style="font-size:42px;line-height:1.15;margin:14px 0 16px;">Master the NCCAA boards with a question bank that actually teaches.</h1>
+                    <h1 style="font-size:42px;line-height:1.15;margin:14px 0 10px;">Master the NCCAA boards with a question bank that actually teaches.</h1>
+                    <div class="mono" style="font-size:12px;color:var(--accent);margin:0 0 14px;">Built by a practicing Certified Anesthesiologist Assistant · journal-sourced, with a verifiable source on every question</div>
                     <p class="sub" style="font-size:17px;max-width:560px;">Built for <strong>student anesthesiologist assistants (SAAs)</strong> preparing for the certification exam and <strong>Certified Anesthesiologist Assistants (CAAs)</strong> reviewing for recertification. In-depth, single-best-answer questions mapped to the official content outline — each with a clinical vignette, reasoning for every answer choice, and a source you can verify. Study by specialty, grade as you go, and track your progress.</p>
                     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;">
                         <a href="/register.html" class="btn" style="text-decoration:none;">Create free account</a>
@@ -200,6 +201,7 @@
         <!-- Trust strip -->
         <div class="wrap" style="padding-top:6px;padding-bottom:6px;">
             <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;">
+                <span style="font-size:13px;color:var(--text2);"><span style="color:var(--accent);">✓</span> <span id="qcount">1,000+</span> questions &amp; growing</span>
                 <span style="font-size:13px;color:var(--text2);"><span style="color:var(--accent);">✓</span> Journal-sourced &amp; cited</span>
                 <span style="font-size:13px;color:var(--text2);"><span style="color:var(--accent);">✓</span> Reviewed by a practicing CAA</span>
                 <span style="font-size:13px;color:var(--text2);"><span style="color:var(--accent);">✓</span> Reasoning for every choice</span>
@@ -245,6 +247,7 @@
                         <li>Lifetime access</li>
                     </ul>
                     <a href="/register.html" class="btn" style="text-decoration:none;display:inline-block;margin-top:16px;">Get full access</a>
+                    <div class="mono" style="font-size:11px;color:var(--muted);margin-top:12px;">48-hour, no-questions-asked refund · secured by Stripe</div>
                 </div>
             </div>
         </div>
@@ -600,6 +603,8 @@
         card.innerHTML=html;
         var nx=document.getElementById('demo-next'); if(nx) nx.onclick=function(){idx++;renderQ();};
       }
+      ev('landing_view');
+      fetch('/api/stats').then(function(r){return r.json();}).then(function(s){var el=document.getElementById('qcount');if(el&&s&&s.published){el.textContent=(Math.floor(s.published/50)*50).toLocaleString()+'+';}}).catch(function(){});
       load();
     })();
     </script>

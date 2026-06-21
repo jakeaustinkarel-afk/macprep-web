@@ -3,6 +3,7 @@
 // is first. Server-side error monitoring is dormant until SENTRY_DSN is set.
 import './instrument.mjs';
 import express from 'express';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
@@ -25,6 +26,10 @@ app.set('trust proxy', true);
 // The CSP is intentionally permissive for inline styles/handlers the app uses,
 // while still restricting object/base and locking the framing.
 // ---------------------------------------------------------------------------
+// Gzip all responses (notably the large /api/questions JSON) to cut bandwidth
+// and first-load time, especially on mobile.
+app.use(compression());
+
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -263,6 +268,11 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 } else {
                     console.log(`Upgraded ${data[0].user_id} to premium.`);
                 }
+                // Funnel analytics: record the purchase server-side (fire-and-forget).
+                const grantedUser = (data && data[0] && data[0].user_id) || userId;
+                if (grantedUser) {
+                    supabase.from('analytics_events').insert({ name: 'purchase', user_id: grantedUser, meta: { via: 'stripe' } }).then(() => {}, () => {});
+                }
             } catch (dbErr) {
                 console.error(`Webhook DB sync error: ${dbErr.message}`);
                 return res.status(500).send('Database sync failure.');
@@ -295,7 +305,20 @@ app.use((req, res, next) => {
 // JSON parsing + static assets for all normal routes
 // ---------------------------------------------------------------------------
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../')));
+app.use(express.static(path.join(__dirname, '../'), {
+    etag: true,
+    setHeaders: (res, filePath) => {
+        if (/\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
+            // Images/fonts rarely change — cache hard.
+            res.setHeader('Cache-Control', 'public, max-age=2592000');
+        } else if (/\.(html|js|css)$/i.test(filePath)) {
+            // Markup/code must stay fresh across deploys — revalidate via etag each load.
+            res.setHeader('Cache-Control', 'no-cache');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    },
+}));
 
 // ---------------------------------------------------------------------------
 // Health/version check — lets you confirm at a glance which build is live
@@ -322,6 +345,19 @@ app.get('/api/config', (req, res) => {
         sentryDsn: process.env.SENTRY_BROWSER_DSN || null,
         environment: process.env.NODE_ENV || 'production',
     });
+});
+
+// Public live count of published questions — powers the landing "X+ questions
+// and growing" counter. Cached 10 min.
+let _statsCache = { at: 0, published: 0 };
+app.get('/api/stats', async (req, res) => {
+    try {
+        if (supabase && Date.now() - _statsCache.at > 10 * 60 * 1000) {
+            const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'published');
+            if (typeof count === 'number') _statsCache = { at: Date.now(), published: count };
+        }
+    } catch (e) { /* serve cached value */ }
+    res.json({ published: _statsCache.published });
 });
 
 // ---------------------------------------------------------------------------
