@@ -478,10 +478,11 @@ app.get('/api/admin/metrics', async (req, res) => {
         const now = Date.now();
         const windowDays = 30;
         const since = new Date(now - windowDays * 86400000).toISOString();
-        const [{ data: users }, { data: events }, allPurchases] = await Promise.all([
+        const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
             supabase.from(PROFILE_TABLE).select('email, account_tier, target_exam_date, premium_unlocked_at, created_at'),
             supabase.from('analytics_events').select('name, created_at').gte('created_at', since).limit(100000),
             supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
+            supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
         ]);
         const U = users || [], E = events || [];
         const ec = {};
@@ -523,6 +524,8 @@ app.get('/api/admin/metrics', async (req, res) => {
             daily: Object.values(buckets),
             recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
                 .map((u) => ({ email: u.email, tier: u.account_tier, joined: u.created_at, exam_date: u.target_exam_date || null })),
+            feedback_count: (feedback || []).length,
+            recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1442,6 +1445,19 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
             suggestion_text: `[${kind}] ${message}`.slice(0, 4000),
         });
         if (error) throw error;
+        // Notify the founder by email (best-effort; only fires if RESEND_API_KEY is set).
+        sendEmail({
+            to: 'support@macprep.org',
+            subject: `New MACPrep feedback (${kind})`,
+            html: `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;max-width:520px;">
+  <tr><td>
+    <p style="font-size:15px;color:#111827;margin:0 0 6px;"><strong>New feedback — ${escHtml(kind)}</strong></p>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 12px;">From: ${escHtml(email)}</p>
+    <p style="font-size:15px;color:#111827;white-space:pre-wrap;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;margin:0 0 14px;">${escHtml(message)}</p>
+    <p style="font-size:12px;color:#9ca3af;margin:0;">Read all feedback on your dashboard: <a href="${BASE_URL}/metrics.html" style="color:#00A86B;">${BASE_URL}/metrics.html</a></p>
+  </td></tr>
+</table>`,
+        }).then(() => {}, () => {});
         return res.json({ success: true });
     } catch (err) {
         console.error('Feedback insert failure:', err.message);

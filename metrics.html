@@ -68,6 +68,12 @@
         .badge{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
         .badge.premium{background:var(--accent-soft);color:var(--accent);}
         .badge.free{background:var(--bg);color:var(--muted);border:1px solid var(--line);}
+        .badge.kind{background:var(--info-soft);color:var(--info);}
+        .fb{border-top:1px solid var(--line);padding:14px 2px;}
+        .fb:first-of-type{border-top:none;padding-top:2px;}
+        .fb-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap;}
+        .fb-meta{font-size:12px;color:var(--muted);}
+        .fb-body{font-size:14px;color:var(--text2);white-space:pre-wrap;line-height:1.55;}
         .muted{color:var(--muted);} .center{text-align:center;padding:64px 20px;}
         .loading{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:80px 0;font-size:14px;}
         .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
@@ -163,6 +169,21 @@
             html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
         });
         html += '</tbody></table></div>';
+
+        // Recent feedback
+        const fb = d.recent_feedback || [];
+        html += '<div class="card"><h2>Recent feedback' + (fb.length ? ' · ' + fb.length : '') + '</h2>';
+        if (!fb.length) {
+            html += '<p class="muted" style="margin:0;">No feedback yet. When someone uses the in-app Feedback form, it appears here and emails you a copy.</p>';
+        } else {
+            fb.forEach(f => {
+                const m = /^\[([^\]]+)\]\s*([\s\S]*)$/.exec(f.text || '');
+                const kind = m ? m[1] : 'note';
+                const body = m ? m[2] : (f.text || '');
+                html += '<div class="fb"><div class="fb-head"><span class="badge kind">' + esc(kind) + '</span><span class="fb-meta">' + esc(f.email || 'anonymous') + ' · ' + fmtDate(f.at) + '</span></div><div class="fb-body">' + esc(body) + '</div></div>';
+            });
+        }
+        html += '</div>';
 
         $('content').innerHTML = html;
     }
