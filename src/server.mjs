@@ -313,13 +313,6 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// TEMP smoke test: confirms server-side Sentry capture works end-to-end. Gated
-// behind a token so random/scanner traffic can't trigger 500s. Remove after use.
-app.get('/api/debug-sentry', (req, res) => {
-    if (req.query.token !== 'macprep-smoketest-2026') return res.status(404).end();
-    throw new Error('MACPrep Sentry smoke test — server-side error monitoring check');
-});
-
 // Public client config — lets the frontend self-configure error monitoring
 // without hardcoding a DSN. Set SENTRY_BROWSER_DSN on Render to turn it on.
 // (Browser Sentry DSNs are public by design.)
