@@ -9,61 +9,84 @@
     <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
     <style>
         :root{--text2:#cbd5e1;}
-        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
-        :root{--bg:#0D0E10;--panel:#111214;--line:#1F2937;--text:#F9FAFB;--text2:#cbd5e1;--muted:#828b9a;--accent:#00A86B;--accent-dim:#0f2a20;--warn:#FBBF24;--bad:#F87171;--info:#60A5FA;}
-        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e7eaee;--text:#0f172a;--text2:#334155;--muted:#64748b;--accent:#047857;--accent-soft:#e8f5ef;--warn:#b45309;--bad:#b42318;--info:#2563eb;--info-soft:#e8effd;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.04);}
+        :root{--bg:#0c0d0f;--panel:#141618;--line:#23262b;--text:#f4f6f8;--text2:#cbd5e1;--muted:#828b9a;--accent:#10b981;--accent-soft:#0f2a20;--warn:#fbbf24;--bad:#f87171;--info:#60a5fa;--info-soft:#142235;--shadow:none;}
+        *{box-sizing:border-box;}
+        body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;}
         a{color:var(--accent);text-decoration:none;}
-        .header-bar{padding:16px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-        .brand-logo{font-family:ui-monospace,monospace;font-size:20px;font-weight:800;letter-spacing:-1px;color:var(--text);}
-        .accent{color:var(--accent);}
-        .wrap{max-width:980px;margin:0 auto;padding:28px 22px 80px;}
-        h1{font-size:24px;margin:0 0 4px;}
-        .sub{color:var(--muted);font-size:13px;margin:0 0 22px;}
         .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
-        .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px;}
-        .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px;}
-        .kpi .n{font-size:30px;font-weight:800;letter-spacing:-1px;}
-        .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
-        .kpi .s{font-size:12px;color:var(--text2);margin-top:6px;}
-        .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:22px;}
-        .panel h2{font-size:15px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:ui-monospace,monospace;}
-        .frow{display:flex;align-items:center;gap:12px;margin:9px 0;}
-        .frow .flabel{width:150px;font-size:13px;color:var(--text2);flex-shrink:0;}
-        .fbar-track{flex:1;background:var(--bg);border-radius:6px;height:26px;position:relative;overflow:hidden;border:1px solid var(--line);}
-        .fbar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-dim));display:flex;align-items:center;min-width:2px;border-radius:6px;}
-        .frow .fn{width:120px;text-align:right;font-size:13px;color:var(--text);flex-shrink:0;}
-        .frow .fn b{font-weight:700;} .frow .fn span{color:var(--muted);font-size:11px;}
-        .chart{display:flex;align-items:flex-end;gap:4px;height:130px;border-bottom:1px solid var(--line);padding-bottom:0;}
-        .bar-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%;position:relative;}
-        .bar{width:70%;max-width:22px;border-radius:3px 3px 0 0;}
-        .chart-x{display:flex;gap:4px;margin-top:6px;} .chart-x span{flex:1;text-align:center;font-size:9px;color:var(--muted);}
-        .legend{display:flex;gap:16px;font-size:12px;color:var(--text2);margin-bottom:10px;}
-        .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle;}
-        table{width:100%;border-collapse:collapse;font-size:13px;}
-        th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);}
-        th{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;}
-        .badge{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:700;letter-spacing:.5px;}
-        .badge.premium{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+        .topbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+        .brand{font-family:ui-monospace,monospace;font-size:19px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+        .brand .dot{color:var(--accent);}
+        .brand .sub{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);font-weight:400;letter-spacing:0;}
+        .topbar-actions{display:flex;align-items:center;gap:8px;}
+        .ghost-btn{background:var(--panel);border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+        .ghost-btn:hover{border-color:var(--accent);color:var(--text);}
+        .icon-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:4px;line-height:1;}
+        .wrap{max-width:1000px;margin:0 auto;padding:30px 24px 90px;}
+        .page-title{font-size:25px;font-weight:800;letter-spacing:-.5px;margin:0 0 3px;display:flex;align-items:center;gap:10px;}
+        .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:3px 10px;}
+        .live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(16,185,129,.5);animation:pulse 2s infinite;}
+        @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.45);}70%{box-shadow:0 0 0 6px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+        .meta{color:var(--muted);font-size:12.5px;margin:0 0 26px;}
+        .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+        @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}}
+        .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+        .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:.85;}
+        .kpi.k-info::before{background:var(--info);} .kpi.k-warn::before{background:var(--warn);}
+        .kpi .n{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.05;}
+        .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:5px;font-weight:600;}
+        .kpi .s{font-size:12.5px;color:var(--text2);margin-top:8px;}
+        .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow);}
+        .card h2{font-size:12px;margin:0 0 18px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:700;font-family:ui-monospace,monospace;}
+        /* funnel */
+        .frow{display:grid;grid-template-columns:140px 1fr 132px;align-items:center;gap:14px;margin:7px 0;}
+        .frow .flabel{font-size:13.5px;color:var(--text2);}
+        .ftrack{background:var(--bg);border:1px solid var(--line);border-radius:8px;height:30px;overflow:hidden;}
+        .ffill{height:100%;background:var(--accent);border-radius:7px 0 0 7px;transition:width .5s ease;}
+        .ffill.zero{background:transparent;}
+        .fnum{text-align:right;font-size:13.5px;white-space:nowrap;}
+        .fnum b{font-weight:800;font-size:15px;}
+        .fnum .pct{color:var(--muted);font-size:11.5px;margin-left:2px;}
+        /* chart */
+        .legend{display:flex;gap:18px;font-size:12px;color:var(--text2);margin-bottom:16px;}
+        .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+        .chart{display:flex;align-items:flex-end;gap:3px;height:150px;padding-bottom:0;border-bottom:1px solid var(--line);}
+        .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;position:relative;}
+        .pmark{width:7px;height:7px;border-radius:50%;background:var(--warn);margin-bottom:1px;}
+        .bars{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%;width:100%;}
+        .bar{width:42%;max-width:9px;border-radius:3px 3px 0 0;min-height:0;transition:height .4s ease;}
+        .bar.v{background:var(--info);} .bar.s{background:var(--accent);}
+        .xaxis{display:flex;gap:3px;margin-top:7px;}
+        .xaxis .col{font-size:9.5px;color:var(--muted);height:auto;}
+        /* table */
+        table{width:100%;border-collapse:collapse;font-size:13.5px;}
+        th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);}
+        th{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;}
+        tr:last-child td{border-bottom:none;}
+        td.email{font-weight:500;}
+        .badge{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+        .badge.premium{background:var(--accent-soft);color:var(--accent);}
         .badge.free{background:var(--bg);color:var(--muted);border:1px solid var(--line);}
-        .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:600;font-size:13px;cursor:pointer;}
-        .btn.ghost{background:none;border:1px solid var(--line);color:var(--text2);}
-        .muted{color:var(--muted);} .center{text-align:center;padding:60px 20px;}
-        .ttoggle{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);}
+        .muted{color:var(--muted);} .center{text-align:center;padding:64px 20px;}
+        .loading{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:80px 0;font-size:14px;}
+        .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+        @keyframes spin{to{transform:rotate(360deg);}}
     </style>
 </head>
 <body>
-    <div class="header-bar">
-        <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span> <span class="mono" style="font-size:12px;color:var(--muted);font-weight:400;">/ metrics</span></a>
-        <div style="display:flex;align-items:center;gap:14px;">
-            <button class="btn ghost" onclick="load()">↻ Refresh</button>
-            <a href="/index.html" class="mono" style="font-size:12px;color:var(--muted);">← App</a>
-            <button id="theme-toggle" class="ttoggle" onclick="toggleTheme()" title="Toggle light / dark">☀️</button>
+    <div class="topbar">
+        <div class="brand">MAC<span class="dot">Prep</span> <span class="sub">/ metrics</span></div>
+        <div class="topbar-actions">
+            <button class="ghost-btn" onclick="load()">↻ Refresh</button>
+            <a class="ghost-btn" href="/index.html">← App</a>
+            <button id="theme-toggle" class="icon-btn" onclick="toggleTheme()" title="Toggle light / dark">☀️</button>
         </div>
     </div>
     <div class="wrap">
-        <h1>Founder Metrics</h1>
-        <p class="sub" id="gen-line">Live funnel &amp; conversion overview.</p>
-        <div id="content"><div class="center muted mono">Loading…</div></div>
+        <h1 class="page-title">Founder Metrics <span class="live">Live</span></h1>
+        <p class="meta" id="gen-line">Funnel &amp; conversion overview.</p>
+        <div id="content"><div class="loading"><span class="spinner"></span> Loading metrics…</div></div>
     </div>
 
     <script>
@@ -75,76 +98,77 @@
 
     async function load() {
         const C = $('content');
-        if (!TOKEN) { C.innerHTML = signedOut('You\'re not signed in. Open the app, sign in as an admin, then return here.'); return; }
-        C.innerHTML = '<div class="center muted mono">Loading…</div>';
+        if (!TOKEN) { C.innerHTML = signedOut("You're not signed in. Open the app, sign in as an admin, then return here."); return; }
+        C.innerHTML = '<div class="loading"><span class="spinner"></span> Loading metrics…</div>';
         try {
             const r = await fetch('/api/admin/metrics', { headers: { Authorization: 'Bearer ' + TOKEN } });
-            if (r.status === 403) { C.innerHTML = signedOut('This account isn\'t an admin. Sign in with your founder account.'); return; }
+            if (r.status === 403) { C.innerHTML = signedOut("This account isn't an admin. Sign in with your founder account."); return; }
             if (!r.ok) throw new Error('HTTP ' + r.status);
             render(await r.json());
-        } catch (e) { C.innerHTML = '<div class="center bad mono" style="color:var(--bad)">Couldn\'t load metrics: ' + esc(e.message) + '</div>'; }
+        } catch (e) { C.innerHTML = '<div class="center" style="color:var(--bad)">Couldn\'t load metrics: ' + esc(e.message) + '</div>'; }
     }
 
     function signedOut(msg) {
-        return '<div class="panel center"><div style="font-size:32px;margin-bottom:10px;">🔒</div><p class="muted" style="max-width:420px;margin:0 auto 18px;">' + esc(msg) + '</p><a class="btn" href="/index.html">Go to the app →</a></div>';
+        return '<div class="card center"><div style="font-size:34px;margin-bottom:12px;">🔒</div><p class="muted" style="max-width:420px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
     }
 
     function render(d) {
-        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + ' · funnel = last ' + d.window_days + ' days · revenue = all-time';
+        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + '  ·  funnel: last ' + d.window_days + ' days  ·  revenue: all-time';
         const t = d.totals, rev = d.revenue;
-        const visits = (d.funnel.find(f=>f.key==='visits')||{}).n || 0;
         const convRate = pct(rev.paid_conversions, t.users);
+        const dollars = '$' + (rev.est_revenue).toLocaleString();
 
-        // KPIs
         let html = '<div class="kpis">' +
-            kpi(t.users, 'Total users', t.with_exam_date + ' set an exam date') +
-            kpi(t.premium, 'Premium', t.free + ' on free tier') +
-            kpi('$' + (rev.est_revenue).toLocaleString(), 'Est. revenue', rev.paid_conversions + ' paid purchase' + (rev.paid_conversions===1?'':'s') + ' × $' + rev.price) +
-            kpi(convRate + '%', 'User → paid', rev.paid_conversions + ' of ' + t.users + ' users') +
+            kpi('', t.users.toLocaleString(), 'Total users', t.with_exam_date + ' set an exam date') +
+            kpi('', t.premium.toLocaleString(), 'Premium', t.free + ' on free tier') +
+            kpi('k-warn', dollars, 'Est. revenue', rev.paid_conversions + ' paid × $' + rev.price) +
+            kpi('k-info', convRate + '%', 'User → paid', rev.paid_conversions + ' of ' + t.users + ' users') +
         '</div>';
 
         // Funnel
         const top = Math.max(1, ...d.funnel.map(f=>f.n));
-        html += '<div class="panel"><h2>Conversion funnel · last ' + d.window_days + ' days</h2>';
+        html += '<div class="card"><h2>Conversion funnel · last ' + d.window_days + ' days</h2>';
         d.funnel.forEach((f, i) => {
             const w = Math.round((f.n/top)*100);
-            const ofTop = i===0 ? '' : '<span> · ' + pct(f.n, d.funnel[0].n) + '% of top</span>';
+            const ofTop = i===0 ? '<span class="pct">top of funnel</span>' : '<span class="pct">· ' + pct(f.n, d.funnel[0].n) + '% of views</span>';
             html += '<div class="frow"><div class="flabel">' + esc(f.label) + '</div>' +
-                '<div class="fbar-track"><div class="fbar" style="width:' + Math.max(2,w) + '%"></div></div>' +
-                '<div class="fn"><b>' + f.n + '</b>' + ofTop + '</div></div>';
+                '<div class="ftrack"><div class="ffill' + (f.n===0?' zero':'') + '" style="width:' + w + '%;min-width:' + (f.n>0?'6px':'0') + ';"></div></div>' +
+                '<div class="fnum"><b>' + f.n.toLocaleString() + '</b> ' + ofTop + '</div></div>';
         });
         html += '</div>';
 
-        // Daily chart
-        const dmax = Math.max(1, ...d.daily.map(x=>Math.max(x.visits, x.signups)));
-        html += '<div class="panel"><h2>Daily activity · last 21 days</h2>' +
-            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i style="background:var(--warn)"></i>Purchases</span></div>' +
+        // Daily chart — last 14 days, clean grouped columns
+        const days = d.daily.slice(-14);
+        const dmax = Math.max(1, ...days.map(x=>Math.max(x.visits, x.signups)));
+        const H = 120;
+        const h = (v) => v>0 ? Math.max(4, Math.round((v/dmax)*H)) : 0;
+        html += '<div class="card"><h2>Daily activity · last 14 days</h2>' +
+            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i style="background:var(--warn)"></i>Purchase</span></div>' +
             '<div class="chart">';
-        d.daily.forEach(x => {
-            const vh = Math.round((x.visits/dmax)*100), sh = Math.round((x.signups/dmax)*100);
+        days.forEach(x => {
             const title = x.date + ' — ' + x.visits + ' views, ' + x.signups + ' signups, ' + x.purchases + ' purchases';
-            html += '<div class="bar-col" title="' + title + '">' +
-                (x.purchases ? '<div class="bar" style="height:6px;background:var(--warn);width:80%;max-width:24px;" title="' + x.purchases + ' purchases"></div>' : '') +
-                '<div style="display:flex;gap:1px;align-items:flex-end;width:100%;justify-content:center;height:' + Math.max(vh,sh) + '%;">' +
-                  '<div class="bar" style="height:' + (vh? (vh/Math.max(vh,sh,1))*100:0) + '%;background:var(--info);"></div>' +
-                  '<div class="bar" style="height:' + (sh? (sh/Math.max(vh,sh,1))*100:0) + '%;background:var(--accent);"></div>' +
+            html += '<div class="col" title="' + title + '">' +
+                (x.purchases ? '<div class="pmark"></div>' : '') +
+                '<div class="bars">' +
+                  '<div class="bar v" style="height:' + h(x.visits) + 'px"></div>' +
+                  '<div class="bar s" style="height:' + h(x.signups) + 'px"></div>' +
                 '</div></div>';
         });
-        html += '</div><div class="chart-x">' + d.daily.map((x,i)=> (i%3===0? '<span>'+x.date.slice(5)+'</span>' : '<span></span>')).join('') + '</div></div>';
+        html += '</div><div class="xaxis">' + days.map((x,i)=> '<div class="col">' + ((i%3===0||i===days.length-1)? x.date.slice(5) : '') + '</div>').join('') + '</div></div>';
 
         // Recent signups
-        html += '<div class="panel"><h2>Recent signups</h2><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
+        html += '<div class="card"><h2>Recent signups</h2><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
         if (!d.recent_signups.length) html += '<tr><td colspan="4" class="muted">No signups yet.</td></tr>';
         d.recent_signups.forEach(u => {
-            html += '<tr><td>' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
+            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
         });
         html += '</tbody></table></div>';
 
         $('content').innerHTML = html;
     }
 
-    function kpi(n, l, s) {
-        return '<div class="kpi"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
+    function kpi(cls, n, l, s) {
+        return '<div class="kpi ' + cls + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
     }
 
     load();
