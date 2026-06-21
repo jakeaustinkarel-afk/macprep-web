@@ -1,3 +1,7 @@
+// Sentry.init() must run BEFORE express/http are imported (Sentry v8+ uses
+// OpenTelemetry auto-instrumentation set up at init), so this side-effect import
+// is first. Server-side error monitoring is dormant until SENTRY_DSN is set.
+import './instrument.mjs';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,18 +12,6 @@ import * as Sentry from '@sentry/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// --- Server-side error monitoring (dormant until SENTRY_DSN is set) --------
-// Captures uncaught exceptions, unhandled rejections, and errors that reach the
-// Express error handler below. With no DSN, init is skipped and captureException
-// is a no-op — safe to ship before the DSN exists.
-if (process.env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: process.env.SENTRY_DSN,
-        environment: process.env.NODE_ENV || 'development',
-        tracesSampleRate: 0,
-    });
-}
 
 const app = express();
 
@@ -1245,20 +1237,14 @@ app.use((req, res) => {
     });
 });
 
-// Express error handler — logs (visible in Render logs / observability) and
-// returns a clean JSON error instead of leaking a stack trace to the client.
+// Sentry's Express error handler captures anything thrown/propagated to Express
+// (no-op without a DSN) and MUST be registered before the response handler below.
+Sentry.setupExpressErrorHandler(app);
+
+// Log (visible in Render logs) and return a clean JSON error instead of leaking a
+// stack trace to the client.
 app.use((err, req, res, next) => {
     console.error('Unhandled route error:', err && err.stack ? err.stack : err);
-    if (res.headersSent) return next(err);
-    res.status(500).json({ error: 'Something went wrong.' });
-});
-
-// Express error handler — capture anything thrown or propagated to Express that
-// a route didn't handle itself, then return a generic 500. (Registered after all
-// routes, which are declared above.)
-app.use((err, req, res, next) => {
-    console.error('Express error:', err && err.stack ? err.stack : err);
-    Sentry.captureException(err);
     if (res.headersSent) return next(err);
     res.status(500).json({ error: 'Something went wrong.' });
 });
