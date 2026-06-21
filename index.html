@@ -175,29 +175,14 @@
         <!-- Product visual: a graded question, the way students see it -->
         <div class="wrap" style="padding-top:28px;padding-bottom:8px;">
             <div style="text-align:center;max-width:680px;margin:0 auto 22px;">
-                <span class="tag">See it in action</span>
-                <h2 style="font-size:28px;margin:12px 0 8px;">Every answer comes with reasoning and a source.</h2>
+                <span class="tag">Try it — no sign-up</span>
+                <h2 style="font-size:28px;margin:12px 0 8px;">Answer 3 real questions right now.</h2>
                 <p class="sub" style="margin:0;">Not just the right answer — <em>why</em> each option is right or wrong, with a citation you can verify and a clinician's sign-off.</p>
             </div>
-            <div class="card" style="max-width:760px;margin:0 auto;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);">
-                <div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:14px;">CARDIAC · VALVULAR DISEASE <span style="text-transform:none;letter-spacing:0;">· ✓ Reviewed by a practicing CAA</span></div>
-                <div style="font-size:16px;line-height:1.6;margin-bottom:18px;">A 72-year-old man with severe aortic stenosis (valve area 0.7 cm²) presents for non-cardiac surgery. Which hemodynamic goal matters most during induction?</div>
-
-                <div style="padding:12px 14px;border:1px solid var(--accent);background:var(--accent-dim);border-radius:6px;margin-bottom:4px;font-size:14px;"><span style="color:var(--accent);font-weight:bold;margin-right:10px;">A</span> Maintain afterload (SVR) and sinus rhythm</div>
-                <div style="font-size:13px;color:var(--muted);margin:0 0 12px 8px;">✓ A fixed stenotic valve depends on adequate preload, SVR, and sinus rhythm to keep coronary perfusion and output up.</div>
-
-                <div style="padding:12px 14px;border:1px solid var(--danger);background:var(--danger-dim);border-radius:6px;margin-bottom:4px;font-size:14px;"><span style="color:var(--bad);font-weight:bold;margin-right:10px;">B</span> Permit tachycardia to raise cardiac output</div>
-                <div style="font-size:13px;color:var(--muted);margin:0 0 12px 8px;">✗ Tachycardia shortens diastolic filling and coronary perfusion time — poorly tolerated in aortic stenosis.</div>
-
-                <div style="padding:12px 14px;border:1px solid var(--line);border-radius:6px;margin-bottom:4px;font-size:14px;"><span style="color:var(--muted);font-weight:bold;margin-right:10px;">C</span> Aggressively lower SVR to reduce afterload</div>
-                <div style="font-size:13px;color:var(--muted);margin:0 0 14px 8px;">✗ Dropping SVR collapses coronary perfusion pressure across the fixed valve.</div>
-
-                <div style="border-top:1px solid var(--line);padding-top:14px;">
-                    <div class="mono" style="font-size:12px;margin-bottom:8px;"><span style="color:var(--accent);font-weight:bold;">CORRECT</span> <span style="color:var(--muted);">· 64% of MACPrep users got this right</span></div>
-                    <div style="font-size:14px;line-height:1.6;color:var(--text2);">Severe AS is the classic "full, slow, sinus, maintain afterload" lesion: a fixed valve area means cardiac output can't rise to compensate, so coronary perfusion depends on keeping SVR and avoiding tachycardia or hypotension.</div>
-                    <div style="margin-top:12px;font-size:13px;"><span class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Source</span> &nbsp;<a href="#" onclick="event.preventDefault();">StatPearls — Aortic Stenosis</a></div>
-                </div>
+            <div class="card" id="demo-card" style="max-width:760px;margin:0 auto;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);min-height:220px;">
+                <div class="mono" style="font-size:12px;color:var(--muted);">Loading a sample question…</div>
             </div>
+            <p id="demo-progress" class="mono" style="text-align:center;font-size:12px;color:var(--muted);margin-top:14px;"></p>
         </div>
 
         <!-- Feature highlights -->
@@ -552,5 +537,71 @@
       #question-stem:focus{outline:none;}
     </style>
     <script src="/src/app.js"></script>
+    <script>
+    (function(){
+      // Public "try 3 free" demo — only on the logged-out landing.
+      try{ if(localStorage.getItem('macprep_token')) return; }catch(e){}
+      var card=document.getElementById('demo-card'), progress=document.getElementById('demo-progress');
+      if(!card) return;
+      function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+      function ev(n){try{fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n}),keepalive:true});}catch(e){}}
+      var qs=[],idx=0,sel=null,started=false;
+      var FAIL='<div class="mono" style="font-size:12px;color:var(--muted);">Demo unavailable right now — <a href="/register.html">create a free account</a> to start.</div>';
+      function load(){
+        fetch('/api/demo/questions').then(function(r){return r.json();}).then(function(d){
+          qs=(d&&d.questions)||[]; if(!qs.length){card.innerHTML=FAIL;return;} idx=0; renderQ();
+        }).catch(function(){card.innerHTML=FAIL;});
+      }
+      function renderQ(){
+        if(!started){started=true;ev('demo_started');}
+        sel=null; var q=qs[idx];
+        if(progress) progress.textContent='Question '+(idx+1)+' of '+qs.length;
+        var html='<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:14px;">'+esc(q.specialty)+'</div>';
+        html+='<div style="font-size:16px;line-height:1.6;margin-bottom:18px;">'+esc(q.stem)+'</div>';
+        q.choices.forEach(function(c,i){
+          html+='<button type="button" class="demo-choice" data-i="'+i+'" style="display:block;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:6px;margin-bottom:8px;font-size:14px;cursor:pointer;"><span style="color:var(--muted);font-weight:bold;margin-right:10px;">'+esc(c.label)+'</span>'+esc(c.text)+'</button>';
+        });
+        html+='<button type="button" id="demo-submit" class="btn" disabled style="margin-top:8px;opacity:.5;">Submit answer</button>';
+        card.innerHTML=html;
+        Array.prototype.forEach.call(card.querySelectorAll('.demo-choice'),function(b){
+          b.onclick=function(){
+            sel=parseInt(b.getAttribute('data-i'),10);
+            Array.prototype.forEach.call(card.querySelectorAll('.demo-choice'),function(x){x.style.borderColor='var(--line)';x.style.background='var(--bg)';});
+            b.style.borderColor='var(--accent)'; b.style.background='var(--accent-dim)';
+            var s=document.getElementById('demo-submit'); s.disabled=false; s.style.opacity='1';
+          };
+        });
+        document.getElementById('demo-submit').onclick=submit;
+      }
+      function submit(){
+        if(sel==null) return; var q=qs[idx];
+        var s=document.getElementById('demo-submit'); s.disabled=true; s.textContent='Checking…';
+        fetch('/api/demo/grade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:q.id,choiceIndex:sel})})
+          .then(function(r){return r.json();}).then(function(g){renderGraded(q,g);})
+          .catch(function(){s.disabled=false;s.textContent='Submit answer';});
+      }
+      function renderGraded(q,g){
+        var chosen=q.choices[sel]?q.choices[sel].label:null;
+        var html='<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:14px;">'+esc(q.specialty)+' <span style="color:'+(g.correct?'var(--accent)':'var(--bad)')+';">· '+(g.correct?'Correct ✓':'Not quite ✗')+'</span></div>';
+        html+='<div style="font-size:16px;line-height:1.6;margin-bottom:18px;">'+esc(q.stem)+'</div>';
+        (g.choices||[]).forEach(function(c){
+          var ok=c.correct, mine=c.label===chosen;
+          var bd=ok?'var(--accent)':(mine?'var(--danger)':'var(--line)'), bg=ok?'var(--accent-dim)':(mine?'var(--danger-dim)':'transparent'), mk=ok?'✓':(mine?'✗':'');
+          html+='<div style="padding:12px 14px;border:1px solid '+bd+';background:'+bg+';border-radius:6px;margin-bottom:4px;font-size:14px;"><span style="font-weight:bold;margin-right:10px;color:'+(ok?'var(--accent)':(mine?'var(--bad)':'var(--muted)'))+';">'+esc(c.label)+'</span>'+esc(c.text)+(mk?(' <span style="float:right;">'+mk+'</span>'):'')+'</div>';
+          html+='<div style="font-size:13px;color:var(--muted);margin:0 0 12px 8px;">'+esc(c.rationale||'')+'</div>';
+        });
+        if(g.explanation) html+='<div style="border-top:1px solid var(--line);padding-top:14px;font-size:14px;line-height:1.6;color:var(--text2);">'+esc(g.explanation)+'</div>';
+        var rf=(g.references||[])[0];
+        if(rf&&rf.url) html+='<div style="margin-top:12px;font-size:13px;"><span class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Source</span> &nbsp;<a href="'+esc(rf.url)+'" target="_blank" rel="noopener nofollow">'+esc(rf.source||rf.url)+'</a></div>';
+        html+='<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:16px;text-align:center;">';
+        if(idx<qs.length-1){ html+='<button type="button" id="demo-next" class="btn">Next question →</button>'; }
+        else { ev('demo_completed'); html+='<div style="font-size:15px;margin-bottom:12px;">That\'s the MACPrep experience — reasoning and a source on <strong>every</strong> question.</div><a href="/register.html" class="btn" style="text-decoration:none;display:inline-block;">Create your free account →</a><div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">1,000+ questions and counting · free to start · one-time \$50 for full access</div>'; }
+        html+='</div>';
+        card.innerHTML=html;
+        var nx=document.getElementById('demo-next'); if(nx) nx.onclick=function(){idx++;renderQ();};
+      }
+      load();
+    })();
+    </script>
 </body>
 </html>

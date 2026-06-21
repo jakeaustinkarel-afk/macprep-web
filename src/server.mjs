@@ -75,6 +75,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
 const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
+const demoLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -673,6 +674,60 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
         console.error('Voucher redeem failure:', err.message);
         return res.status(500).json({ error: 'Could not redeem code.' });
     }
+});
+
+// ---------------------------------------------------------------------------
+// Public "try before you sign up" demo. A small, bounded pool of PUBLISHED
+// questions powers an interactive 3-question demo on the landing page. Grading
+// is restricted to this pool, so the public endpoint can't be used to scrape
+// answers for the rest of the paid bank. Rate-limited on top of that.
+// ---------------------------------------------------------------------------
+const DEMO_POOL_SIZE = 24;
+let _demoPool = { at: 0, items: [] };
+async function getDemoPool() {
+    if (_demoPool.items.length && Date.now() - _demoPool.at < 30 * 60 * 1000) return _demoPool.items;
+    if (!supabase) return _demoPool.items;
+    const { data } = await supabase.from('questions').select('*')
+        .eq('status', 'published').order('id').limit(DEMO_POOL_SIZE);
+    if (data && data.length) _demoPool = { at: Date.now(), items: data };
+    return _demoPool.items;
+}
+function pickRandom(arr, n) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a.slice(0, n);
+}
+
+app.get('/api/demo/questions', demoLimiter, async (req, res) => {
+    try {
+        const picks = pickRandom(await getDemoPool(), 3).map((q) => ({
+            id: q.id,
+            specialty: q.specialty || q.category || '',
+            stem: q.stem,
+            choices: (q.choices || []).map((c) => ({ label: c.label, text: c.text })),
+        }));
+        res.json({ questions: picks });
+    } catch (e) { res.status(500).json({ error: 'Demo temporarily unavailable.', questions: [] }); }
+});
+
+app.post('/api/demo/grade', demoLimiter, async (req, res) => {
+    try {
+        const id = req.body?.id;
+        const sel = req.body?.choiceIndex;
+        const q = (await getDemoPool()).find((x) => x.id === id);
+        if (!q) return res.status(403).json({ error: 'That question is not part of the demo.' });
+        const choices = q.choices || [];
+        let chosenLabel = null;
+        if (typeof sel === 'number' && choices[sel]) chosenLabel = choices[sel].label;
+        else if (typeof sel === 'string') chosenLabel = sel;
+        res.json({
+            correct: chosenLabel != null && chosenLabel === q.correct_answer,
+            correct_answer: q.correct_answer,
+            choices: choices.map((c) => ({ label: c.label, text: c.text, correct: !!c.correct, rationale: c.rationale })),
+            explanation: q.explanation,
+            references: q.references || [],
+        });
+    } catch (e) { res.status(500).json({ error: 'Demo temporarily unavailable.' }); }
 });
 
 // ---------------------------------------------------------------------------
