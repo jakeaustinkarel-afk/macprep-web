@@ -468,6 +468,65 @@ app.post('/api/admin/run-nudges', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Admin-only funnel/metrics for the founder dashboard (/metrics.html).
+app.get('/api/admin/metrics', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Forbidden' });
+    if (!supabase) return res.status(500).json({ error: 'no db' });
+    try {
+        const PRICE = 50;
+        const now = Date.now();
+        const windowDays = 30;
+        const since = new Date(now - windowDays * 86400000).toISOString();
+        const [{ data: users }, { data: events }, allPurchases] = await Promise.all([
+            supabase.from(PROFILE_TABLE).select('email, account_tier, target_exam_date, premium_unlocked_at, created_at'),
+            supabase.from('analytics_events').select('name, created_at').gte('created_at', since).limit(100000),
+            supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
+        ]);
+        const U = users || [], E = events || [];
+        const ec = {};
+        E.forEach((e) => { ec[e.name] = (ec[e.name] || 0) + 1; });
+        const sum = (...names) => names.reduce((a, n) => a + (ec[n] || 0), 0);
+        const premium = U.filter((u) => u.account_tier === 'premium').length;
+        const paid = (allPurchases && allPurchases.count) || 0;
+
+        const funnel = [
+            { key: 'visits', label: 'Landing views', n: sum('page_view', 'landing_view') },
+            { key: 'signups', label: 'Signups', n: sum('signup') },
+            { key: 'practiced', label: 'Started practicing', n: sum('session_start', 'quiz_start', 'demo_started') },
+            { key: 'paywall', label: 'Hit paywall', n: sum('paywall_hit') },
+            { key: 'checkout', label: 'Started checkout', n: sum('checkout_started', 'upgrade_click') },
+            { key: 'purchase', label: 'Purchased', n: sum('purchase', 'upgrade_success') },
+        ];
+
+        const nDays = 21;
+        const buckets = {};
+        for (let i = nDays - 1; i >= 0; i--) {
+            const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
+            buckets[d] = { date: d, visits: 0, signups: 0, sessions: 0, purchases: 0 };
+        }
+        E.forEach((e) => {
+            const d = (e.created_at || '').slice(0, 10); const b = buckets[d]; if (!b) return;
+            if (e.name === 'page_view' || e.name === 'landing_view') b.visits++;
+            else if (e.name === 'session_start' || e.name === 'quiz_start') b.sessions++;
+            else if (e.name === 'purchase' || e.name === 'upgrade_success') b.purchases++;
+        });
+        U.forEach((u) => { const d = (u.created_at || '').slice(0, 10); if (buckets[d]) buckets[d].signups++; });
+
+        res.json({
+            generated_at: new Date(now).toISOString(),
+            window_days: windowDays,
+            totals: { users: U.length, premium, free: U.length - premium, with_exam_date: U.filter((u) => u.target_exam_date).length },
+            revenue: { paid_conversions: paid, est_revenue: paid * PRICE, price: PRICE },
+            funnel,
+            event_counts: ec,
+            daily: Object.values(buckets),
+            recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
+                .map((u) => ({ email: u.email, tier: u.account_tier, joined: u.created_at, exam_date: u.target_exam_date || null })),
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
 // a US-morning window; the per-user 20h throttle makes restarts safe.
 if (RESEND_API_KEY) {

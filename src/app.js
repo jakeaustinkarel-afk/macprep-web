@@ -117,6 +117,7 @@
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin') && $('nav-admin').classList.toggle('hidden', !isAdmin);
+        $('nav-metrics') && $('nav-metrics').classList.toggle('hidden', !isAdmin);
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
@@ -292,6 +293,36 @@
             <p class="sub" style="margin:0 0 12px;">Here's how to start: pick a <strong>specialty</strong> and <strong>how many questions</strong> below, then hit Start. After each answer you'll see why every choice is right or wrong, with a source you can verify. Use <span class="mono">A–E</span> to answer and <span class="mono">→</span> to advance.</p>
             <button class="btn" onclick="MACPrep.startSample()">Try a 5-question warm-up</button>`;
     }
+
+    function renderExamPrompt() {
+        const el = $('exam-prompt'); if (!el) return;
+        const p = state.profile || {};
+        if (!state.token || p.target_exam_date) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        const today = new Date().toISOString().slice(0, 10);
+        el.innerHTML = `<h3 style="margin-top:0;">📅 When's your exam?</h3>
+            <p class="sub" style="margin:0 0 14px;">Set your test date and MACPrep builds you a personalized daily plan — how many questions a day to be ready in time, with a streak and goal tracker to keep you on pace.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <input type="date" id="exam-date-input" min="${today}" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font-size:14px;color:var(--text);">
+                <button class="btn" id="exam-set-btn" onclick="MACPrep.setExamDate(document.getElementById('exam-date-input').value)">Build my plan</button>
+                <span id="exam-set-msg" class="mono" style="font-size:12px;color:var(--bad);"></span>
+            </div>`;
+    }
+
+    async function setExamDate(val) {
+        if (!val) { const m = $('exam-set-msg'); if (m) m.textContent = 'Pick a date first.'; return; }
+        const btn = $('exam-set-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        try {
+            const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ target_exam_date: val }) });
+            if (!resp.ok || !data.success) throw new Error((data && data.error) || 'Could not save.');
+            await loadProfile();
+            renderDashboard();
+        } catch (e) {
+            const m = $('exam-set-msg'); if (m) m.textContent = e.message;
+            if (btn) { btn.disabled = false; btn.textContent = 'Build my plan'; }
+        }
+    }
+
     function startSample() {
         const sel = $('domain-select'); if (sel) sel.value = 'all';
         const diff = $('difficulty-select'); if (diff) diff.value = 'all';
@@ -316,6 +347,7 @@
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
         renderResumeCard();
+        renderExamPrompt();
         const stats = p.stats || { answered: 0, correct: 0, attempts: 0 };
         $('stat-answered').textContent = stats.answered || 0;
         $('stat-accuracy').textContent = stats.attempts ? Math.round((stats.correct / stats.attempts) * 100) + '%' : '—';
@@ -1421,7 +1453,7 @@
 
     // ---- bootstrap --------------------------------------------------------
     window.MACPrep = {
-        go, login, signOut, startSession, advance, saveProfile, startCheckout, submitFeedback,
+        go, login, signOut, startSession, advance, saveProfile, setExamDate, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,

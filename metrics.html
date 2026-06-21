@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')!=='dark')document.documentElement.setAttribute('data-theme','light');}catch(e){}function s(){var b=document.getElementById('theme-toggle');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️';}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}s();};document.addEventListener('DOMContentLoaded',s);})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Metrics — MACPrep</title>
+    <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
+    <style>
+        :root{--text2:#cbd5e1;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        :root{--bg:#0D0E10;--panel:#111214;--line:#1F2937;--text:#F9FAFB;--text2:#cbd5e1;--muted:#6B7280;--accent:#00A86B;--accent-dim:#0f2a20;--warn:#FBBF24;--bad:#F87171;--info:#60A5FA;}
+        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;}
+        a{color:var(--accent);text-decoration:none;}
+        .header-bar{padding:16px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+        .brand-logo{font-family:ui-monospace,monospace;font-size:20px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+        .accent{color:var(--accent);}
+        .wrap{max-width:980px;margin:0 auto;padding:28px 22px 80px;}
+        h1{font-size:24px;margin:0 0 4px;}
+        .sub{color:var(--muted);font-size:13px;margin:0 0 22px;}
+        .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+        .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px;}
+        .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px;}
+        .kpi .n{font-size:30px;font-weight:800;letter-spacing:-1px;}
+        .kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+        .kpi .s{font-size:12px;color:var(--text2);margin-top:6px;}
+        .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:22px;}
+        .panel h2{font-size:15px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:ui-monospace,monospace;}
+        .frow{display:flex;align-items:center;gap:12px;margin:9px 0;}
+        .frow .flabel{width:150px;font-size:13px;color:var(--text2);flex-shrink:0;}
+        .fbar-track{flex:1;background:var(--bg);border-radius:6px;height:26px;position:relative;overflow:hidden;border:1px solid var(--line);}
+        .fbar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-dim));display:flex;align-items:center;min-width:2px;border-radius:6px;}
+        .frow .fn{width:120px;text-align:right;font-size:13px;color:var(--text);flex-shrink:0;}
+        .frow .fn b{font-weight:700;} .frow .fn span{color:var(--muted);font-size:11px;}
+        .chart{display:flex;align-items:flex-end;gap:4px;height:130px;border-bottom:1px solid var(--line);padding-bottom:0;}
+        .bar-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%;position:relative;}
+        .bar{width:70%;max-width:22px;border-radius:3px 3px 0 0;}
+        .chart-x{display:flex;gap:4px;margin-top:6px;} .chart-x span{flex:1;text-align:center;font-size:9px;color:var(--muted);}
+        .legend{display:flex;gap:16px;font-size:12px;color:var(--text2);margin-bottom:10px;}
+        .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+        table{width:100%;border-collapse:collapse;font-size:13px;}
+        th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);}
+        th{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;}
+        .badge{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:700;letter-spacing:.5px;}
+        .badge.premium{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+        .badge.free{background:var(--bg);color:var(--muted);border:1px solid var(--line);}
+        .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:600;font-size:13px;cursor:pointer;}
+        .btn.ghost{background:none;border:1px solid var(--line);color:var(--text2);}
+        .muted{color:var(--muted);} .center{text-align:center;padding:60px 20px;}
+        .ttoggle{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);}
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span> <span class="mono" style="font-size:12px;color:var(--muted);font-weight:400;">/ metrics</span></a>
+        <div style="display:flex;align-items:center;gap:14px;">
+            <button class="btn ghost" onclick="load()">↻ Refresh</button>
+            <a href="/index.html" class="mono" style="font-size:12px;color:var(--muted);">← App</a>
+            <button id="theme-toggle" class="ttoggle" onclick="toggleTheme()" title="Toggle light / dark">☀️</button>
+        </div>
+    </div>
+    <div class="wrap">
+        <h1>Founder Metrics</h1>
+        <p class="sub" id="gen-line">Live funnel &amp; conversion overview.</p>
+        <div id="content"><div class="center muted mono">Loading…</div></div>
+    </div>
+
+    <script>
+    const TOKEN = (function(){ try { return localStorage.getItem('macprep_token'); } catch(e){ return null; } })();
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const pct = (a,b) => b ? Math.round((a/b)*100) : 0;
+    const fmtDate = (iso) => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'}); } catch(e){ return iso.slice(0,10); } };
+
+    async function load() {
+        const C = $('content');
+        if (!TOKEN) { C.innerHTML = signedOut('You\'re not signed in. Open the app, sign in as an admin, then return here.'); return; }
+        C.innerHTML = '<div class="center muted mono">Loading…</div>';
+        try {
+            const r = await fetch('/api/admin/metrics', { headers: { Authorization: 'Bearer ' + TOKEN } });
+            if (r.status === 403) { C.innerHTML = signedOut('This account isn\'t an admin. Sign in with your founder account.'); return; }
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            render(await r.json());
+        } catch (e) { C.innerHTML = '<div class="center bad mono" style="color:var(--bad)">Couldn\'t load metrics: ' + esc(e.message) + '</div>'; }
+    }
+
+    function signedOut(msg) {
+        return '<div class="panel center"><div style="font-size:32px;margin-bottom:10px;">🔒</div><p class="muted" style="max-width:420px;margin:0 auto 18px;">' + esc(msg) + '</p><a class="btn" href="/index.html">Go to the app →</a></div>';
+    }
+
+    function render(d) {
+        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + ' · funnel = last ' + d.window_days + ' days · revenue = all-time';
+        const t = d.totals, rev = d.revenue;
+        const visits = (d.funnel.find(f=>f.key==='visits')||{}).n || 0;
+        const convRate = pct(rev.paid_conversions, t.users);
+
+        // KPIs
+        let html = '<div class="kpis">' +
+            kpi(t.users, 'Total users', t.with_exam_date + ' set an exam date') +
+            kpi(t.premium, 'Premium', t.free + ' on free tier') +
+            kpi('$' + (rev.est_revenue).toLocaleString(), 'Est. revenue', rev.paid_conversions + ' paid purchase' + (rev.paid_conversions===1?'':'s') + ' × $' + rev.price) +
+            kpi(convRate + '%', 'User → paid', rev.paid_conversions + ' of ' + t.users + ' users') +
+        '</div>';
+
+        // Funnel
+        const top = Math.max(1, ...d.funnel.map(f=>f.n));
+        html += '<div class="panel"><h2>Conversion funnel · last ' + d.window_days + ' days</h2>';
+        d.funnel.forEach((f, i) => {
+            const w = Math.round((f.n/top)*100);
+            const ofTop = i===0 ? '' : '<span> · ' + pct(f.n, d.funnel[0].n) + '% of top</span>';
+            html += '<div class="frow"><div class="flabel">' + esc(f.label) + '</div>' +
+                '<div class="fbar-track"><div class="fbar" style="width:' + Math.max(2,w) + '%"></div></div>' +
+                '<div class="fn"><b>' + f.n + '</b>' + ofTop + '</div></div>';
+        });
+        html += '</div>';
+
+        // Daily chart
+        const dmax = Math.max(1, ...d.daily.map(x=>Math.max(x.visits, x.signups)));
+        html += '<div class="panel"><h2>Daily activity · last 21 days</h2>' +
+            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i style="background:var(--warn)"></i>Purchases</span></div>' +
+            '<div class="chart">';
+        d.daily.forEach(x => {
+            const vh = Math.round((x.visits/dmax)*100), sh = Math.round((x.signups/dmax)*100);
+            const title = x.date + ' — ' + x.visits + ' views, ' + x.signups + ' signups, ' + x.purchases + ' purchases';
+            html += '<div class="bar-col" title="' + title + '">' +
+                (x.purchases ? '<div class="bar" style="height:6px;background:var(--warn);width:80%;max-width:24px;" title="' + x.purchases + ' purchases"></div>' : '') +
+                '<div style="display:flex;gap:1px;align-items:flex-end;width:100%;justify-content:center;height:' + Math.max(vh,sh) + '%;">' +
+                  '<div class="bar" style="height:' + (vh? (vh/Math.max(vh,sh,1))*100:0) + '%;background:var(--info);"></div>' +
+                  '<div class="bar" style="height:' + (sh? (sh/Math.max(vh,sh,1))*100:0) + '%;background:var(--accent);"></div>' +
+                '</div></div>';
+        });
+        html += '</div><div class="chart-x">' + d.daily.map((x,i)=> (i%3===0? '<span>'+x.date.slice(5)+'</span>' : '<span></span>')).join('') + '</div></div>';
+
+        // Recent signups
+        html += '<div class="panel"><h2>Recent signups</h2><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
+        if (!d.recent_signups.length) html += '<tr><td colspan="4" class="muted">No signups yet.</td></tr>';
+        d.recent_signups.forEach(u => {
+            html += '<tr><td>' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+
+        $('content').innerHTML = html;
+    }
+
+    function kpi(n, l, s) {
+        return '<div class="kpi"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
+    }
+
+    load();
+    </script>
+</body>
+</html>
