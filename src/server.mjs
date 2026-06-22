@@ -492,7 +492,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const paid = (allPurchases && allPurchases.count) || 0;
 
         const funnel = [
-            { key: 'visits', label: 'Landing views', n: sum('page_view', 'landing_view') },
+            { key: 'visits', label: 'Landing views', n: sum('landing_view') },
             { key: 'signups', label: 'Signups', n: sum('signup') },
             { key: 'practiced', label: 'Started practicing', n: sum('session_start', 'quiz_start', 'demo_started') },
             { key: 'paywall', label: 'Hit paywall', n: sum('paywall_hit') },
@@ -508,7 +508,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         }
         E.forEach((e) => {
             const d = (e.created_at || '').slice(0, 10); const b = buckets[d]; if (!b) return;
-            if (e.name === 'page_view' || e.name === 'landing_view') b.visits++;
+            if (e.name === 'landing_view') b.visits++;
             else if (e.name === 'session_start' || e.name === 'quiz_start') b.sessions++;
             else if (e.name === 'purchase' || e.name === 'upgrade_success') b.purchases++;
         });
