@@ -480,7 +480,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const since = new Date(now - windowDays * 86400000).toISOString();
         const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
             supabase.from(PROFILE_TABLE).select('email, account_tier, target_exam_date, premium_unlocked_at, created_at'),
-            supabase.from('analytics_events').select('name, created_at').gte('created_at', since).limit(100000),
+            supabase.from('analytics_events').select('name, created_at, meta').gte('created_at', since).limit(100000),
             supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
         ]);
@@ -488,11 +488,16 @@ app.get('/api/admin/metrics', async (req, res) => {
         const ec = {};
         E.forEach((e) => { ec[e.name] = (ec[e.name] || 0) + 1; });
         const sum = (...names) => names.reduce((a, n) => a + (ec[n] || 0), 0);
+        // Unique anonymous visitors: dedupe landing_view by visitor id (meta.vid). Older
+        // events lacking a vid fall back to created_at (≈ one per event).
+        const visitSet = new Set();
+        E.forEach((e) => { if (e.name === 'landing_view') visitSet.add((e.meta && e.meta.vid) || e.created_at); });
+        const visitCount = visitSet.size;
         const premium = U.filter((u) => u.account_tier === 'premium').length;
         const paid = (allPurchases && allPurchases.count) || 0;
 
         const funnel = [
-            { key: 'visits', label: 'Landing views', n: sum('landing_view') },
+            { key: 'visits', label: 'Landing views', n: visitCount },
             { key: 'signups', label: 'Signups', n: sum('signup') },
             { key: 'practiced', label: 'Started practicing', n: sum('session_start', 'quiz_start', 'demo_started') },
             { key: 'paywall', label: 'Hit paywall', n: sum('paywall_hit') },
@@ -506,12 +511,14 @@ app.get('/api/admin/metrics', async (req, res) => {
             const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
             buckets[d] = { date: d, visits: 0, signups: 0, sessions: 0, purchases: 0 };
         }
+        const dayVids = {};
         E.forEach((e) => {
             const d = (e.created_at || '').slice(0, 10); const b = buckets[d]; if (!b) return;
-            if (e.name === 'landing_view') b.visits++;
+            if (e.name === 'landing_view') { (dayVids[d] = dayVids[d] || new Set()).add((e.meta && e.meta.vid) || e.created_at); }
             else if (e.name === 'session_start' || e.name === 'quiz_start') b.sessions++;
             else if (e.name === 'purchase' || e.name === 'upgrade_success') b.purchases++;
         });
+        Object.keys(dayVids).forEach((d) => { if (buckets[d]) buckets[d].visits = dayVids[d].size; });
         U.forEach((u) => { const d = (u.created_at || '').slice(0, 10); if (buckets[d]) buckets[d].signups++; });
 
         res.json({
