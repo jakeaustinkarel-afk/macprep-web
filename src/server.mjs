@@ -81,6 +81,9 @@ const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
 const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const demoLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
+// Checkout + payment-verification: generous enough for real buyers, tight enough
+// to stop anyone hammering Stripe session creation or replaying session-id guesses.
+const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -584,6 +587,23 @@ async function isUserPremium(userId) {
         .eq('user_id', userId)
         .maybeSingle();
     return data?.account_tier === 'premium';
+}
+
+// Grant premium to a user, idempotently. Updates their profile row, or creates
+// one if none exists yet (so a paid/redeemed user is never left without access).
+// Used by the checkout-return verification path.
+async function grantPremium(userId, email) {
+    if (!supabase || !userId) return false;
+    const upg = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
+    const { data, error } = await supabase.from(PROFILE_TABLE).update(upg).eq('user_id', userId).select('user_id');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+        const up = { user_id: userId, ...upg };
+        if (email) up.email = email;
+        const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert(up, { onConflict: 'user_id' });
+        if (insErr) throw insErr;
+    }
+    return true;
 }
 
 // Returns the authenticated user only if they are an admin (program director).
@@ -1489,7 +1509,7 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
 // Stripe checkout session. Prefers the authenticated user's email so the
 // webhook can match the resulting payment back to their profile.
 // ---------------------------------------------------------------------------
-app.post('/api/create-checkout-session', async (req, res) => {
+app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
     try {
         if (!stripe) return res.status(500).json({ error: 'Payments not configured.' });
         const priceId = process.env.STRIPE_PRODUCTION_PRICE_ID;
@@ -1529,6 +1549,43 @@ app.post('/api/create-checkout-session', async (req, res) => {
     } catch (err) {
         console.error('Checkout API failure:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Verify a checkout session on the buyer's return — a belt-and-suspenders to the
+// webhook. The browser sends the session_id from the Stripe success redirect; we
+// ask Stripe directly whether it's paid and whether it belongs to THIS signed-in
+// user, then grant access. Guarantees a paying customer is unlocked immediately
+// even if the webhook is delayed or missed — and refuses to unlock on anyone
+// else's or an unpaid session.
+// ---------------------------------------------------------------------------
+app.post('/api/verify-checkout-session', checkoutLimiter, async (req, res) => {
+    try {
+        if (!stripe) return res.status(500).json({ error: 'Payments not configured.' });
+        const user = await getUserFromToken(req);
+        if (!user) return res.status(401).json({ error: 'Authentication required.' });
+
+        const sessionId = String(req.body?.session_id || '').trim();
+        // Stripe checkout session ids look like cs_live_... / cs_test_... — reject
+        // anything else outright so we never hand arbitrary input to the API.
+        if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return res.status(400).json({ error: 'Invalid session.' });
+
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        // The session must (a) be fully paid and (b) belong to this authenticated
+        // buyer — the id we attached at checkout. This blocks anyone from passing a
+        // stranger's session id to claim a payment that isn't theirs.
+        const owner = session.client_reference_id || session.metadata?.user_id || null;
+        const paid = session.payment_status === 'paid';
+        if (!paid || owner !== user.id) {
+            const already = await isUserPremium(user.id);
+            return res.json({ premium_unlocked: already });
+        }
+        await grantPremium(user.id, (session.customer_details?.email || user.email || '').toLowerCase().trim());
+        return res.json({ premium_unlocked: true });
+    } catch (err) {
+        console.error('verify-checkout-session failure:', err.message);
+        return res.status(500).json({ error: 'Could not verify payment.' });
     }
 });
 

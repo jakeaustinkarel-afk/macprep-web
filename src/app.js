@@ -1427,11 +1427,21 @@
     function maybeHandleCheckoutReturn() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('status') === 'success') {
-            // Webhook may take a moment; refresh profile shortly.
-            setTimeout(async () => { try { await loadProfile(); renderDashboard();
-                if (state.profile && state.profile.premium_unlocked) { track('upgrade_success'); toast('Payment received — full access unlocked. Thank you!', 'ok'); }
-            } catch (e) {} }, 1500);
+            const sessionId = params.get('session_id');
             history.replaceState({}, '', '/');
+            (async () => {
+                try {
+                    // Confirm the payment with our server (which verifies it directly
+                    // with Stripe) so access unlocks immediately — even if the Stripe
+                    // webhook is delayed or missed. Plain profile refresh is the fallback.
+                    if (sessionId) {
+                        try { await apiJSON('/api/verify-checkout-session', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ session_id: sessionId }) }); } catch (e) {}
+                    }
+                    await loadProfile(); renderDashboard();
+                    if (state.profile && state.profile.premium_unlocked) { track('upgrade_success'); toast('Payment received — full access unlocked. Thank you!', 'ok'); }
+                    else { toast('Payment received — your access will unlock momentarily.', 'ok'); }
+                } catch (e) {}
+            })();
         } else if (params.get('status') === 'cancelled') {
             history.replaceState({}, '', '/');
         }
