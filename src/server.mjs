@@ -155,6 +155,17 @@ if (IS_PROD) {
 // ('free' | 'premium') and links to the auth user via `user_id` (NOT `id`, which
 // is the row's own gen_random_uuid). There is no `is_premium` column.
 const PROFILE_TABLE = 'user_profiles';
+
+// Site admin is an explicit allowlist of account emails — the OWNER only. This is
+// deliberately decoupled from the `is_program_director` profile flag: a program
+// director is a paying customer persona (cohort licenses), NOT a site admin, and
+// must never inherit the review queue, metrics dashboard, or voucher generation.
+// Override/extend via the ADMIN_EMAILS env (comma-separated); defaults to the owner.
+const ADMIN_EMAILS = new Set(
+    (process.env.ADMIN_EMAILS || 'jakeaustin.karel@gmail.com')
+        .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+);
+const isAdminEmail = (email) => ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 const PROGRESS_TABLE = 'user_progress';
 
 // The legacy mass-generated bank is tagged status='unreviewed'. By default we do
@@ -606,12 +617,13 @@ async function grantPremium(userId, email) {
     return true;
 }
 
-// Returns the authenticated user only if they are an admin (program director).
+// Returns the authenticated user only if their (verified) account email is on the
+// admin allowlist — the site owner only. Not derived from any DB profile flag, so
+// it can never be granted by accident when a customer is flagged is_program_director.
 async function getAdminUser(req) {
     const user = await getUserFromToken(req);
-    if (!user || !supabase) return null;
-    const { data } = await supabase.from(PROFILE_TABLE).select('is_program_director').eq('user_id', user.id).maybeSingle();
-    return data?.is_program_director ? user : null;
+    if (!user) return null;
+    return isAdminEmail(user.email) ? user : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1338,7 +1350,7 @@ app.get('/api/user/profile', async (req, res) => {
                 email: profile?.email || user.email || null,
                 premium_unlocked: profile?.account_tier === 'premium',
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
-                is_admin: !!profile?.is_program_director,
+                is_admin: isAdminEmail(user.email),
                 full_name: profile?.full_name || '',
                 credential: profile?.credential || '',
                 training_program: profile?.training_program || '',
