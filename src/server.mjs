@@ -291,7 +291,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 // ---------------------------------------------------------------------------
 // Note: .txt is intentionally NOT blocked so /robots.txt is served. Answer-key
 // generators (.sql/.cjs/.cts/.mts) and the whole seeds/ dir are blocked outright.
-const BLOCKED_STATIC = /\.(mjs|cjs|cts|mts|ts|tsx|json|md|rtf|lock|sh|ya?ml|env|sql)$/i;
+const BLOCKED_STATIC = /\.(mjs|cjs|cts|mts|ts|tsx|json|md|rtf|lock|sh|ya?ml|env|sql|pdf|csv|xlsx?|docx?|pem|key|crt|cer|p12|pfx)$/i;
 app.use((req, res, next) => {
     const p = req.path.toLowerCase();
     if (p.startsWith('/api/')) return next();
