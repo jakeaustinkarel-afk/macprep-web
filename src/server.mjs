@@ -349,15 +349,22 @@ app.get('/api/config', (req, res) => {
 
 // Public live count of published questions — powers the landing "X+ questions
 // and growing" counter. Cached 10 min.
-let _statsCache = { at: 0, published: 0 };
+let _statsCache = { at: 0, published: 0, users: 0 };
 app.get('/api/stats', async (req, res) => {
     try {
         if (supabase && Date.now() - _statsCache.at > 10 * 60 * 1000) {
-            const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'published');
-            if (typeof count === 'number') _statsCache = { at: Date.now(), published: count };
+            const [{ count }, { count: users }] = await Promise.all([
+                supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'published'),
+                supabase.from(PROFILE_TABLE).select('id', { count: 'exact', head: true }),
+            ]);
+            _statsCache = {
+                at: Date.now(),
+                published: typeof count === 'number' ? count : _statsCache.published,
+                users: typeof users === 'number' ? users : _statsCache.users,
+            };
         }
     } catch (e) { /* serve cached value */ }
-    res.json({ published: _statsCache.published });
+    res.json({ published: _statsCache.published, users: _statsCache.users });
 });
 
 // ---------------------------------------------------------------------------
@@ -621,6 +628,8 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             return res.json({
                 success: true,
                 needsConfirmation: !data.session, // true when email confirmation is on
+                token: data.session?.access_token || null,
+                refresh_token: data.session?.refresh_token || null,
                 profile: { email, premium_unlocked: false },
             });
         }

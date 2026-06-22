@@ -152,26 +152,35 @@
                     <div class="mono" style="font-size:12px;color:var(--accent);margin:0 0 14px;">Built by a practicing Certified Anesthesiologist Assistant · journal-sourced, with a verifiable source on every question</div>
                     <p class="sub" style="font-size:17px;max-width:560px;">Built for <strong>student anesthesiologist assistants (SAAs)</strong> preparing for the certification exam and <strong>Certified Anesthesiologist Assistants (CAAs)</strong> reviewing for recertification. In-depth, single-best-answer questions mapped to the official content outline — each with a clinical vignette, reasoning for every answer choice, and a source you can verify. Study by specialty, grade as you go, and track your progress.</p>
                     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;">
-                        <a href="/register.html" class="btn" style="text-decoration:none;">Create free account</a>
-                        <a href="#login-form-container" class="btn ghost" style="text-decoration:none;">Sign in</a>
+                        <a href="#signup-pane" class="btn" style="text-decoration:none;">Start free — no card</a>
+                        <a href="#demo-card" class="btn ghost" style="text-decoration:none;">Try 3 questions first</a>
                     </div>
-                    <div class="mono" style="font-size:12px;color:var(--muted);margin-top:18px;">Free tier includes 10% of the full bank · Premium is a one-time $50 · no subscription</div>
+                    <div id="social-proof" class="mono" style="font-size:12.5px;color:var(--text2);margin-top:18px;min-height:18px;"><span style="color:var(--accent);">●</span> A growing community of SAAs &amp; CAAs is already studying</div>
                 </div>
                 <div id="login-form-container" class="card">
-                    <h2>Sign in</h2>
-                    <form onsubmit="event.preventDefault(); MACPrep.login();">
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="login-email" autocomplete="username email" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Password</label>
-                            <input type="password" id="login-password" autocomplete="current-password" required>
-                        </div>
-                        <button type="submit" id="login-submit-trigger" class="btn" style="width:100%;">Sign In</button>
-                    </form>
-                    <div class="footer-links" style="margin-top:14px;"><a href="#" onclick="event.preventDefault(); MACPrep.requestPasswordReset();">Forgot password?</a></div>
-                    <div class="footer-links" style="margin-top:8px;">New here? <a href="/register.html">Create an account</a></div>
+                    <div id="signup-pane">
+                        <h2 style="margin-bottom:4px;">Start free in 30 seconds</h2>
+                        <p class="sub" style="margin:0 0 16px;font-size:13px;">No card required — keep your demo momentum going.</p>
+                        <form onsubmit="event.preventDefault(); MACPrep.signupInline();">
+                            <div class="form-group"><label>Name</label><input type="text" id="su-name" autocomplete="name" placeholder="Jordan Lee, SAA / CAA" required></div>
+                            <div class="form-group"><label>Email</label><input type="email" id="su-email" autocomplete="email" required></div>
+                            <div class="form-group"><label>Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="8" placeholder="8+ characters" required></div>
+                            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin:0 0 14px;"><input type="checkbox" id="su-terms" required style="width:auto;margin-top:2px;"> I agree to the <a href="/terms.html" target="_blank">Terms</a> &amp; <a href="/privacy.html" target="_blank">Privacy</a>.</label>
+                            <button type="submit" id="su-submit" class="btn" style="width:100%;">Create my free account →</button>
+                            <div id="su-msg" class="mono" style="font-size:12px;margin-top:10px;text-align:center;"></div>
+                        </form>
+                        <div class="footer-links" style="margin-top:12px;">Already have an account? <a href="#" onclick="event.preventDefault(); MACPrep.showSignin();">Sign in</a></div>
+                    </div>
+                    <div id="signin-pane" class="hidden">
+                        <h2>Welcome back</h2>
+                        <form onsubmit="event.preventDefault(); MACPrep.login();">
+                            <div class="form-group"><label>Email</label><input type="email" id="login-email" autocomplete="username email" required></div>
+                            <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" required></div>
+                            <button type="submit" id="login-submit-trigger" class="btn" style="width:100%;">Sign In</button>
+                        </form>
+                        <div class="footer-links" style="margin-top:14px;"><a href="#" onclick="event.preventDefault(); MACPrep.requestPasswordReset();">Forgot password?</a></div>
+                        <div class="footer-links" style="margin-top:8px;">New here? <a href="#" onclick="event.preventDefault(); MACPrep.showSignup();">Create a free account</a></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -237,7 +246,7 @@
                         <li>Study by specialty</li>
                         <li>Progress tracking</li>
                     </ul>
-                    <a href="/register.html" class="btn ghost" style="text-decoration:none;display:inline-block;margin-top:16px;">Create free account</a>
+                    <a href="#signup-pane" class="btn ghost" style="text-decoration:none;display:inline-block;margin-top:16px;">Create free account</a>
                 </div>
                 <div class="card" style="border-color:var(--accent);">
                     <span class="badge premium">PREMIUM</span>
@@ -249,7 +258,7 @@
                         <li>All explanations, rationales &amp; sources</li>
                         <li>Lifetime access</li>
                     </ul>
-                    <a href="/register.html" class="btn" style="text-decoration:none;display:inline-block;margin-top:16px;">Get full access</a>
+                    <a href="#signup-pane" class="btn" style="text-decoration:none;display:inline-block;margin-top:16px;">Get full access</a>
                     <div class="mono" style="font-size:11px;color:var(--muted);margin-top:12px;">48-hour, no-questions-asked refund · secured by Stripe</div>
                 </div>
             </div>
@@ -555,7 +564,7 @@
       function vid(){try{var v=localStorage.getItem('macprep_vid');if(!v){v=Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem('macprep_vid',v);}return v;}catch(e){return 'na';}}
       function ev(n){try{fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true});}catch(e){}}
       var qs=[],idx=0,sel=null,started=false;
-      var FAIL='<div class="mono" style="font-size:12px;color:var(--muted);">Demo unavailable right now — <a href="/register.html">create a free account</a> to start.</div>';
+      var FAIL='<div class="mono" style="font-size:12px;color:var(--muted);">Demo unavailable right now — <a href="#signup-pane">create a free account</a> to start.</div>';
       function load(){
         fetch('/api/demo/questions').then(function(r){return r.json();}).then(function(d){
           qs=(d&&d.questions)||[]; if(!qs.length){card.innerHTML=FAIL;return;} idx=0; renderQ();
@@ -604,13 +613,13 @@
         if(rf&&rf.url) html+='<div style="margin-top:12px;font-size:13px;"><span class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Source</span> &nbsp;<a href="'+esc(rf.url)+'" target="_blank" rel="noopener nofollow">'+esc(rf.source||rf.url)+'</a></div>';
         html+='<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:16px;text-align:center;">';
         if(idx<qs.length-1){ html+='<button type="button" id="demo-next" class="btn">Next question →</button>'; }
-        else { ev('demo_completed'); html+='<div style="font-size:15px;margin-bottom:14px;">That\'s the MACPrep experience — reasoning and a source on <strong>every</strong> question.</div><div style="text-align:left;max-width:330px;margin:0 auto 18px;font-size:14px;color:var(--text2);line-height:1.9;">Create a <strong>free</strong> account to unlock:<br><span style="color:var(--accent);">✓</span> <strong>100+ free practice questions</strong><br><span style="color:var(--accent);">✓</span> <strong>Progress &amp; weak-spot tracking</strong><br><span style="color:var(--accent);">✓</span> <strong>A personalized plan from your exam date</strong></div><a href="/register.html" class="btn" style="text-decoration:none;display:inline-block;">Create your free account →</a><div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Free to start · no card required · upgrade once for full access ($50)</div>'; }
+        else { ev('demo_completed'); html+='<div style="font-size:15px;margin-bottom:14px;">That\'s the MACPrep experience — reasoning and a source on <strong>every</strong> question.</div><div style="text-align:left;max-width:330px;margin:0 auto 18px;font-size:14px;color:var(--text2);line-height:1.9;">Create a <strong>free</strong> account to unlock:<br><span style="color:var(--accent);">✓</span> <strong>100+ free practice questions</strong><br><span style="color:var(--accent);">✓</span> <strong>Progress &amp; weak-spot tracking</strong><br><span style="color:var(--accent);">✓</span> <strong>A personalized plan from your exam date</strong></div><a href="#signup-pane" class="btn" style="text-decoration:none;display:inline-block;">Create your free account →</a><div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Free to start · no card required · upgrade once for full access ($50)</div>'; }
         html+='</div>';
         card.innerHTML=html;
         var nx=document.getElementById('demo-next'); if(nx) nx.onclick=function(){idx++;renderQ();};
       }
       ev('landing_view');
-      fetch('/api/stats').then(function(r){return r.json();}).then(function(s){var el=document.getElementById('qcount');if(el&&s&&s.published){el.textContent=(Math.floor(s.published/50)*50).toLocaleString()+'+';}}).catch(function(){});
+      fetch('/api/stats').then(function(r){return r.json();}).then(function(s){var el=document.getElementById('qcount');if(el&&s&&s.published){el.textContent=(Math.floor(s.published/50)*50).toLocaleString()+'+';}var sp=document.getElementById('social-proof');if(sp&&s&&s.users){var n=Math.max(10,Math.floor(s.users/5)*5);sp.innerHTML='<span style="color:var(--accent);">●</span> Join '+n+'+ SAAs &amp; CAAs already studying on MACPrep';}}).catch(function(){});
       load();
     })();
     </script>

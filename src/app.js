@@ -172,6 +172,42 @@
         }
     }
 
+    function showSignin() { const a = $('signup-pane'), b = $('signin-pane'); if (a) a.classList.add('hidden'); if (b) b.classList.remove('hidden'); const e = $('login-email'); if (e) e.focus(); }
+    function showSignup() { const a = $('signup-pane'), b = $('signin-pane'); if (b) b.classList.add('hidden'); if (a) a.classList.remove('hidden'); const e = $('su-name'); if (e) e.focus(); }
+
+    // Inline signup on the landing — no page hop, and auto-logs-in when email
+    // confirmation is off (then drops the user straight into a warm-up).
+    async function signupInline() {
+        if (state.signupInFlight) return;
+        const name = ($('su-name').value || '').trim();
+        const email = ($('su-email').value || '').trim();
+        const password = $('su-password').value;
+        const btn = $('su-submit'); const msg = $('su-msg');
+        if (!email || !password) return;
+        if ($('su-terms') && !$('su-terms').checked) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please accept the Terms to continue.'; } return; }
+        state.signupInFlight = true;
+        if (btn) { btn.disabled = true; btn.textContent = 'Creating your account…'; }
+        if (msg) msg.textContent = '';
+        try {
+            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password }) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
+            track('signup');
+            if (data.token) {
+                state.token = data.token; setToken(state.token); setRefresh(data.refresh_token || null);
+                state.justSignedUp = true;
+                await bootAuthedSession();
+            } else {
+                const pane = $('signup-pane');
+                if (pane) pane.innerHTML = '<div style="text-align:center;padding:10px 0;"><div style="font-size:34px;margin-bottom:8px;">✉️</div><h2 style="margin:0 0 8px;">Check your email</h2><p class="sub" style="margin:0;">We sent a confirmation link to <strong>' + email.replace(/[<>&"]/g, '') + '</strong>. Click it and your free questions are ready.</p></div>';
+            }
+        } catch (err) {
+            if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Create my free account →'; }
+        } finally {
+            state.signupInFlight = false;
+        }
+    }
+
     function signOut() {
         stopExamTimer();
         setToken(null); setRefresh(null);
@@ -218,6 +254,12 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
+        // Post-signup activation: drop a brand-new user straight into a short warm-up.
+        if (state.justSignedUp) {
+            state.justSignedUp = false;
+            const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
+            if (answered === 0) { try { startSample(); } catch (e) {} }
+        }
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -1453,7 +1495,7 @@
 
     // ---- bootstrap --------------------------------------------------------
     window.MACPrep = {
-        go, login, signOut, startSession, advance, saveProfile, setExamDate, startCheckout, submitFeedback,
+        go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
