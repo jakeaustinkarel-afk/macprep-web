@@ -1270,7 +1270,11 @@ app.get('/api/user/profile', async (req, res) => {
         })).sort((a, b) => b.total - a.total);
 
         // Study streak: consecutive days (ending today or yesterday) with activity.
-        const dayKey = (d) => new Date(d).toISOString().slice(0, 10);
+        // Day boundaries use the user's LOCAL timezone (tz = browser getTimezoneOffset
+        // in minutes) so streaks, "answered today", and the trend roll over at local
+        // midnight, not UTC (which flipped ~7-8pm for US users).
+        const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
+        const dayKey = (d) => new Date(new Date(d).getTime() - tzOffset * 60000).toISOString().slice(0, 10);
         const activeDays = new Set((progress || []).map((r) => dayKey(r.created_at)));
         let streak = 0;
         const today = new Date();

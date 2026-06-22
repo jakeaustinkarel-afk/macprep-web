@@ -227,7 +227,8 @@
     }
 
     async function loadProfile() {
-        const { resp, data } = await apiJSON('/api/user/profile', { headers: authHeaders() });
+        const tz = (function () { try { return new Date().getTimezoneOffset(); } catch (e) { return 0; } })();
+        const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         state.profile = data.profile || null;
         return state.profile;
@@ -1154,16 +1155,28 @@
         const s = state.session;
         if (s) { s.complete = true; ls('macprep_session', null); }
         track('paywall_hit');
-        $('question-meta').textContent = 'FREE LIMIT REACHED';
-        const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session. ` : '';
-        $('question-stem').innerHTML = `You've reached the end of the free tier — <strong>${limit || state.profile?.free_tier_limit || ''}</strong> questions (10% of the bank). ${statLine}Upgrade for one-time $50 lifetime access to the full journal-sourced bank with every explanation and source.`;
+        $('question-meta').textContent = "NICE WORK — YOU'VE USED YOUR FREE QUESTIONS";
+        const n = limit || state.profile?.free_tier_limit || '';
+        const bank = (state.questions || []).length;
+        const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session — momentum worth keeping. ` : '';
+        $('question-stem').innerHTML = `You've worked through all <strong>${n}</strong> of your free questions (10% of the bank). ${statLine}`
+            + `<div style="margin-top:16px;text-align:left;max-width:480px;">Unlock <strong>full access</strong> and get:`
+            + `<div style="line-height:2;margin-top:8px;color:var(--text2);">`
+            + `<span style="color:var(--accent);">✓</span> The entire ${bank ? '<strong>' + bank.toLocaleString() + '+</strong> question ' : ''}bank — every domain &amp; specialty<br>`
+            + `<span style="color:var(--accent);">✓</span> Every explanation, rationale &amp; verifiable source<br>`
+            + `<span style="color:var(--accent);">✓</span> Progress tracking, weak-spot review &amp; your exam-date plan<br>`
+            + `<span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $50 payment, no subscription`
+            + `</div></div>`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         if (s && s.log && s.log.length) renderSessionReview(s.log);
         const btn = $('advance-vignette-trigger');
         btn.className = 'btn';
-        btn.textContent = 'Upgrade to Full Access — $50';
+        btn.textContent = 'Unlock full access — $50 (one-time)';
         btn.onclick = () => startCheckout(btn);
+        let rr = document.getElementById('paywall-refund');
+        if (!rr && btn.parentNode) { rr = document.createElement('div'); rr.id = 'paywall-refund'; rr.className = 'mono'; rr.style.cssText = 'font-size:11px;color:var(--muted);margin-top:10px;'; btn.parentNode.insertBefore(rr, btn.nextSibling); }
+        if (rr) rr.textContent = '48-hour, no-questions-asked refund · secured by Stripe · instant access';
     }
 
     // ---- profile ----------------------------------------------------------
