@@ -562,7 +562,7 @@
       if(!card) return;
       function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
       function vid(){try{var v=localStorage.getItem('macprep_vid');if(!v){v=Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem('macprep_vid',v);}return v;}catch(e){return 'na';}}
-      function ev(n){try{fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true});}catch(e){}}
+      function ev(n){try{fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true}).catch(function(){});}catch(e){}}
       var qs=[],idx=0,sel=null,started=false;
       var FAIL='<div class="mono" style="font-size:12px;color:var(--muted);">Demo unavailable right now — <a href="#signup-pane">create a free account</a> to start.</div>';
       function load(){

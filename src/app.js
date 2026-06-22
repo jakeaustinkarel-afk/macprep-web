@@ -1499,7 +1499,11 @@
             s.src = 'https://browser.sentry-cdn.com/7.120.3/bundle.min.js';
             s.crossOrigin = 'anonymous';
             s.onload = () => {
-                try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0 }); }
+                try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0,
+                    // Filter benign transient network blips (a user's flaky connection, not a bug)
+                    // and errors thrown by browser extensions rather than our own code.
+                    ignoreErrors: ['Failed to fetch', 'Load failed', 'NetworkError', 'AbortError', 'cancelled'],
+                    denyUrls: [/extension(s)?\//i, /^chrome:\/\//i, /-extension:\/\//i] }); }
                 catch (e) { /* ignore */ }
             };
             document.head.appendChild(s);
