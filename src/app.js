@@ -118,6 +118,8 @@
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin') && $('nav-admin').classList.toggle('hidden', !isAdmin);
         $('nav-metrics') && $('nav-metrics').classList.toggle('hidden', !isAdmin);
+        // "Log in" shows for logged-out visitors only.
+        $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();

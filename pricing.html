@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>(function(){try{if(localStorage.getItem('macprep_theme')!=='dark')document.documentElement.setAttribute('data-theme','light');}catch(e){}function s(){var b=document.getElementById('theme-toggle');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'🌙':'☀️';}window.toggleTheme=function(){var l=document.documentElement.getAttribute('data-theme')==='light';if(l)document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme','light');try{localStorage.setItem('macprep_theme',l?'dark':'light');}catch(e){}s();};document.addEventListener('DOMContentLoaded',s);})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing — MACPrep</title>
+    <link rel="canonical" href="https://www.macprep.org/pricing.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="MACPrep">
+    <meta property="og:title" content="MACPrep Pricing — One-time $50, no subscription">
+    <meta property="og:description" content="Start free, no card required. Full access to the NCCAA board-review question bank is a single one-time $50 — not a subscription, with a 48-hour refund.">
+    <meta property="og:url" content="https://www.macprep.org/pricing.html">
+    <meta property="og:image" content="https://www.macprep.org/macprep_og.png">
+    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MACPrep Pricing — One-time $50, no subscription">
+    <meta name="twitter:description" content="Start free. Full access is a one-time $50 — not a subscription.">
+    <meta name="twitter:image" content="https://www.macprep.org/macprep_og.png">
+    <meta name="description" content="MACPrep pricing: start free with no card, then unlock the full NCCAA board-review question bank for a one-time $50 — not a subscription, with a 48-hour refund.">
+    <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
+    <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
+    <link rel="apple-touch-icon" href="/macprep_icon.png">
+    <link rel="shortcut icon" href="/favicon.png?v=2">
+    <style>
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--accent-dim:#e6f5ee;}
+        :root { --bg:#0D0E10; --panel:#111214; --line:#1F2937; --text:#F9FAFB; --text2:#cbd5e1; --muted:#828b9a; --accent:#00A86B; --accent-dim:#0f1f18; }
+        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;}
+        a{color:var(--accent);text-decoration:none;}
+        .header-bar{padding:16px 32px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+        .brand-logo{font-family:ui-monospace,monospace;font-size:22px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+        .accent{color:var(--accent);}
+        .nav{display:flex;gap:22px;align-items:center;font-family:ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
+        .nav a{color:var(--muted);} .nav a:hover{color:var(--text);}
+        .nav-toggle{display:none;background:none;border:1px solid var(--line,#1F2937);color:var(--text,#F9FAFB);border-radius:4px;padding:6px 12px;font-size:18px;line-height:1;cursor:pointer;}
+        @media (max-width:720px){
+          .header-bar{position:relative;flex-wrap:wrap;padding:14px 16px;}
+          .nav-toggle{display:block;}
+          .nav{display:none;position:absolute;top:100%;right:12px;left:12px;margin-top:6px;flex-direction:column;align-items:stretch;gap:0;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:8px;padding:6px;z-index:50;}
+          .nav a,.nav button{padding:12px 10px;border-bottom:1px solid var(--line,#1F2937);text-align:left;}
+          .nav a:last-of-type{border-bottom:none;}
+          .nav.nav-open{display:flex;}
+        }
+        .wrap{max-width:880px;margin:0 auto;padding:48px 24px 70px;}
+        .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+        h1{font-size:34px;margin:8px 0 10px;text-align:center;}
+        .sub{color:var(--muted);margin:0 auto 8px;text-align:center;max-width:560px;}
+        .value{max-width:580px;margin:30px auto 4px;color:var(--text2);}
+        .value h3{font-size:13px;margin:0 0 12px;color:var(--muted);text-align:center;letter-spacing:1px;text-transform:uppercase;font-family:ui-monospace,monospace;}
+        .value ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;}
+        .value li{font-size:14px;} .value li b{color:var(--accent);font-weight:700;}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:760px;margin:30px auto 0;}
+        .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;}
+        .badge{display:inline-block;font-family:ui-monospace,monospace;font-size:11px;letter-spacing:1px;padding:3px 9px;border-radius:999px;text-transform:uppercase;}
+        .badge.free{background:var(--line);color:var(--text2);}
+        .badge.premium{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+        .card h2{margin:12px 0 4px;font-size:30px;}
+        .card ul{color:var(--text2);line-height:1.9;padding-left:18px;margin:0;}
+        .btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:12px 20px;font-weight:700;cursor:pointer;text-decoration:none;font-size:14px;}
+        .btn.ghost{background:none;border:1px solid var(--line);color:var(--text);}
+        .mono{font-family:ui-monospace,monospace;}
+        .pfaq{max-width:680px;margin:50px auto 0;}
+        .pfaq h2{text-align:center;font-size:22px;margin:0 0 14px;}
+        .qa{border-top:1px solid var(--line);padding:18px 0;}
+        .qa h3{font-size:16px;margin:0 0 6px;} .qa p{margin:0;color:var(--text2);font-size:14px;}
+        .cta{text-align:center;margin:44px auto 0;}
+        footer{border-top:1px solid var(--line);padding:28px 24px;text-align:center;font-size:12px;color:var(--muted);}
+        @media (max-width:640px){ .grid{grid-template-columns:1fr;} .value ul{grid-template-columns:1fr;} h1{font-size:28px;} }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span></a>
+        <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
+        <nav class="nav" id="site-nav">
+            <a href="/index.html">Home</a>
+            <a href="/pricing.html">Pricing</a>
+            <a href="/faq.html">FAQ</a>
+            <a href="/guides/">Guides</a>
+            <a href="/updates.html">Updates</a>
+            <a href="/login.html">Log in</a>
+            <a href="/index.html#signup-pane">Sign up</a>
+            <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark mode" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;">☀️</button>
+        </nav>
+    </div>
+
+    <div class="wrap">
+        <div style="text-align:center;"><span class="tag">Pricing</span></div>
+        <h1>Simple, honest pricing</h1>
+        <p class="sub">Start free — no card required. When you're ready for the full bank, it's a single one-time payment. No subscription, ever.</p>
+
+        <div class="value">
+            <h3>What you're getting</h3>
+            <ul>
+                <li><b>✓</b> Questions mapped to all 6 NCCAA domains</li>
+                <li><b>✓</b> A cited source + full rationale on every question</li>
+                <li><b>✓</b> Personalized study plan from your exam date</li>
+                <li><b>✓</b> Tutor &amp; timed modes</li>
+                <li><b>✓</b> Per-domain analytics &amp; readiness tracking</li>
+                <li><b>✓</b> New questions added every week</li>
+            </ul>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <span class="badge free">FREE</span>
+                <h2>$0</h2>
+                <p style="color:var(--muted);margin:0 0 14px;">Get started and try the platform.</p>
+                <ul>
+                    <li>10% of the full question bank</li>
+                    <li>Full explanations &amp; sources</li>
+                    <li>Study by specialty</li>
+                    <li>Progress tracking</li>
+                </ul>
+                <a href="/index.html#signup-pane" class="btn ghost" style="margin-top:16px;">Create free account</a>
+            </div>
+            <div class="card" style="border-color:var(--accent);">
+                <span class="badge premium">PREMIUM</span>
+                <h2>$50 <span class="mono" style="font-size:13px;color:var(--muted);">one-time</span></h2>
+                <p style="color:var(--muted);margin:0 0 14px;">Full access, no subscription.</p>
+                <ul>
+                    <li>The entire question bank</li>
+                    <li>Every domain &amp; specialty</li>
+                    <li>All explanations, rationales &amp; sources</li>
+                    <li>Lifetime access</li>
+                </ul>
+                <a href="/index.html#signup-pane" class="btn" style="margin-top:16px;">Get full access</a>
+                <div class="mono" style="font-size:11px;color:var(--muted);margin-top:12px;">48-hour, no-questions-asked refund · secured by Stripe</div>
+            </div>
+        </div>
+
+        <div class="pfaq">
+            <h2>Pricing questions</h2>
+            <div class="qa"><h3>Is it really one-time?</h3><p>Yes. $50 once unlocks the full question bank for good — no recurring charges, no auto-renew, no "annual" anything.</p></div>
+            <div class="qa"><h3>Can I try it before paying?</h3><p>Absolutely. The free tier gives you a real slice of the bank — full explanations and sources included — so you can judge the quality before you decide.</p></div>
+            <div class="qa"><h3>What if it's not for me?</h3><p>48-hour, no-questions-asked refund. Email <a href="mailto:support@macprep.org">support@macprep.org</a> within two days of purchase and we'll refund you in full.</p></div>
+            <div class="qa"><h3>Do I keep access as you add questions?</h3><p>Yes — full access includes everything we add. The bank grows every week and you get all of it at no extra cost.</p></div>
+        </div>
+
+        <div class="cta">
+            <a href="/index.html#signup-pane" class="btn">Start free — no card</a>
+            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Already have an account? <a href="/login.html">Log in</a></div>
+        </div>
+    </div>
+
+    <footer>© 2026 MACPrep LLC · Exam preparation only — not medical advice. · <a href="https://discord.com/servers/caa-706407688359247924" target="_blank" rel="noopener" style="color:var(--muted);">CAA Discord community</a></footer>
+</body>
+</html>

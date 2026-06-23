@@ -42,12 +42,31 @@
         th{color:var(--muted);font-family:ui-monospace,monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;}
         .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
         .muted{color:var(--muted);font-family:ui-monospace,monospace;font-size:12px;}
+    
+        .nav-toggle{display:none;background:none;border:1px solid var(--line,#1F2937);color:var(--text,#F9FAFB);border-radius:4px;padding:6px 12px;font-size:18px;line-height:1;cursor:pointer;}
+        @media (max-width:720px){
+          .header-bar{position:relative;flex-wrap:wrap;padding:14px 16px;}
+          .nav-toggle{display:block;}
+          .nav{display:none;position:absolute;top:100%;right:12px;left:12px;margin-top:6px;flex-direction:column;align-items:stretch;gap:0;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:8px;padding:6px;z-index:50;}
+          .nav a,.nav button{padding:12px 10px;border-bottom:1px solid var(--line,#1F2937);text-align:left;}
+          .nav a:last-of-type{border-bottom:none;}
+          .nav.nav-open{display:flex;}
+        }
     </style>
 </head>
 <body>
     <div class="header-bar">
         <a href="/index.html" class="brand-logo">MAC<span class="accent">Prep</span></a>
-        <nav class="nav"><a href="/index.html">Home</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><a href="/cookies.html">Cookies</a>            <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark mode" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;">☀️</button>
+        <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
+        <nav class="nav" id="site-nav">
+            <a href="/index.html">Home</a>
+            <a href="/pricing.html">Pricing</a>
+            <a href="/faq.html">FAQ</a>
+            <a href="/guides/">Guides</a>
+            <a href="/updates.html">Updates</a>
+            <a href="/login.html">Log in</a>
+            <a href="/index.html#signup-pane">Sign up</a>
+            <button id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle light or dark mode" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;">☀️</button>
         </nav>
     </div>
     <div class="wrap">
