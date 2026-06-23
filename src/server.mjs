@@ -1191,11 +1191,26 @@ app.post('/api/grade', async (req, res) => {
         supabase.rpc('sm2_review', { p_user: user.id, p_question: String(questionId), p_quality: sm2q })
             .then(({ error: sErr }) => { if (sErr) console.warn(`sm2_review warning: ${sErr.message}`); }, () => {});
 
-        // Peer stats: % of all attempts on this question that were correct.
+        // Peer stats: % correct + per-choice answer distribution for this question
+        // (so tutor mode can show how the user's pick compares to everyone else's).
+        // Includes the attempt just inserted above. Best-effort.
         let peerPct = null;
+        let choiceDistribution = null; // [pct per choice index] once enough responses
+        let responseCount = 0;
         try {
-            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct').eq('question_id', String(questionId));
-            if (rows && rows.length >= 3) peerPct = Math.round((rows.filter((r) => r.is_correct).length / rows.length) * 100);
+            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct, selected_label').eq('question_id', String(questionId));
+            if (rows && rows.length) {
+                responseCount = rows.length;
+                if (rows.length >= 3) peerPct = Math.round((rows.filter((r) => r.is_correct).length / rows.length) * 100);
+                const counts = new Array(choices.length).fill(0);
+                let total = 0;
+                rows.forEach((r) => {
+                    const i = String(r.selected_label || '').toUpperCase().charCodeAt(0) - 65;
+                    if (Number.isInteger(i) && i >= 0 && i < choices.length) { counts[i]++; total++; }
+                });
+                // Only surface a distribution once it's meaningful (avoids "100%" off 1-2 answers).
+                if (total >= 5) choiceDistribution = counts.map((c) => Math.round((c / total) * 100));
+            }
         } catch (e) { /* peer stats best-effort */ }
 
         // Per-choice rationale (so the client can show why each option is right/wrong)
@@ -1213,6 +1228,8 @@ app.post('/api/grade', async (req, res) => {
             rationales,
             references,
             peer_correct_pct: peerPct,
+            choice_distribution: choiceDistribution,
+            response_count: responseCount,
         });
     } catch (err) {
         console.error('Grade route failure:', err.message);

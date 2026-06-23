@@ -820,16 +820,30 @@
     function applyGradedView(data, selectedIndex) {
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
         const rationales = data.rationales || [];
+        // Tutor-only: show what % of all responses chose each option, so the user can
+        // see how they compare. Server only sends this once there's a meaningful sample.
+        const dist = data.choice_distribution;
+        const showDist = !!dist && state.session && state.session.mode === 'tutor';
         buttons.forEach((b) => {
             b.disabled = true; b.style.cursor = 'default';
             const idx = Number(b.dataset.index);
             if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
             else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = 'var(--danger-dim)'; }
+            let anchor = b;
             if (rationales[idx]) {
                 const r = document.createElement('div');
                 r.style.cssText = 'font-family:inherit;font-size:13px;color:var(--muted);margin:8px 0 2px;padding-left:34px;line-height:1.5;';
                 r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
-                b.insertAdjacentElement('afterend', r);
+                anchor.insertAdjacentElement('afterend', r); anchor = r;
+            }
+            if (showDist && typeof dist[idx] === 'number') {
+                const pct = dist[idx];
+                const barColor = idx === data.correctIndex ? 'var(--accent)' : 'var(--muted)';
+                const youTag = (idx === selectedIndex) ? ' · <span style="color:var(--accent);font-weight:bold;">your pick</span>' : '';
+                const d = document.createElement('div');
+                d.style.cssText = 'display:flex;align-items:center;gap:8px;margin:4px 0 2px;padding-left:34px;';
+                d.innerHTML = '<div style="flex:1;max-width:150px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + barColor + ';"></span></div><span class="mono" style="font-size:11px;color:var(--muted);">' + pct + '% chose this' + youTag + '</span>';
+                anchor.insertAdjacentElement('afterend', d); anchor = d;
             }
         });
         const verdict = data.correct
