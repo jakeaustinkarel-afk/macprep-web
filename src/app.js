@@ -296,7 +296,7 @@
         const trend = p.trend || [];
         const spark = trend.length
             ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
-            : '<span class="mono" style="color:var(--muted);font-size:12px;">Answer questions to see your trend.</span>';
+            : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:46px;"><span style="font-size:18px;">📈</span> Answer a few questions — your accuracy trend shows up here.</div>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
             ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
@@ -317,16 +317,30 @@
         const examLine = exam != null
             ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
             : `<div class="stat"><div class="n">—</div><div class="l">Set exam date in profile</div></div>`;
+        const C = 213.6; // ring circumference, 2πr with r=34
+        const ringOff = C * (1 - Math.max(0, Math.min(100, readiness)) / 100);
+        const streakHtml = streak
+            ? `<div class="n" style="color:var(--accent);">${streak} <span style="display:inline-block;animation:flamePulse 1.6s ease-in-out infinite;">🔥</span></div><div class="l">Day streak</div>`
+            : `<div class="n">0</div><div class="l">Day streak — start today!</div>`;
         el.innerHTML = `<h3>Exam readiness</h3>
-            <div class="grid cols-3" style="margin-bottom:14px;">
-                <div class="stat"><div class="n">${readiness}%</div><div class="l">Readiness estimate</div></div>
-                <div class="stat"><div class="n">${streak}${streak ? ' 🔥' : ''}</div><div class="l">Day streak</div></div>
+            <div class="grid cols-3" style="margin-bottom:14px;align-items:center;">
+                <div class="stat" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <svg viewBox="0 0 80 80" width="86" height="86" style="display:block;">
+                        <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line)" stroke-width="8"></circle>
+                        <circle class="ring-fill" cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
+                        <text x="40" y="46" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:18px;fill:var(--text);">${readiness}%</text>
+                    </svg>
+                    <div class="l">Readiness</div>
+                </div>
+                <div class="stat">${streakHtml}</div>
                 ${examLine}
             </div>
             ${planLine}
             ${goalLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
             <div style="height:46px;">${spark}</div>`;
+        const ring = el.querySelector('.ring-fill');
+        if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
     }
 
     function renderOnboarding() {
@@ -1016,7 +1030,9 @@
             $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
         } else {
             const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
-            $('question-stem').innerHTML = `You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+            const hype = pct >= 90 ? '🎉 Outstanding — ' : pct >= 75 ? '🎉 Great work — ' : '';
+            $('question-stem').innerHTML = `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+            if (pct >= 70 && s.answered >= 3) celebrate();
         }
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
@@ -1045,8 +1061,10 @@
         s.complete = true; ls('macprep_session', null); stopExamTimer();
         track('session_complete', { mode: 'tutor', answered: s.answered });
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
+        const hype = (s.answered >= 3 && pct >= 90) ? '🎉 Outstanding! ' : (s.answered >= 3 && pct >= 75) ? '🎉 Great work! ' : '';
         $('question-meta').textContent = 'SESSION COMPLETE';
-        $('question-stem').innerHTML = `You answered <strong>${s.answered}</strong> question${s.answered === 1 ? '' : 's'} with <strong>${pct}%</strong> accuracy (${s.correct}/${s.answered} correct).`;
+        $('question-stem').innerHTML = `${hype}You answered <strong>${s.answered}</strong> question${s.answered === 1 ? '' : 's'} with <strong>${pct}%</strong> accuracy (${s.correct}/${s.answered} correct).`;
+        if (s.answered >= 3 && pct >= 70) celebrate();
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         renderSessionBreakdown(s.log || []);
@@ -1071,6 +1089,42 @@
     function clearSessionReview() {
         const el = $('session-review'); if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
         const b = $('session-breakdown'); if (b) { b.innerHTML = ''; b.classList.add('hidden'); }
+    }
+
+    // Lightweight canvas confetti for celebratory moments — no dependency, self-removing.
+    function celebrate(count) {
+        try {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const W = window.innerWidth, H = window.innerHeight;
+            const canvas = document.createElement('canvas');
+            canvas.setAttribute('aria-hidden', 'true');
+            canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9998;';
+            document.body.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
+            const colors = ['#00A86B', '#34d399', '#fbbf24', '#60a5fa', '#f87171', '#a78bfa'];
+            const N = count || 130, parts = [];
+            for (let i = 0; i < N; i++) parts.push({
+                x: W / 2 + (Math.random() - 0.5) * 140, y: H * 0.3,
+                vx: (Math.random() - 0.5) * 10, vy: Math.random() * -11 - 4,
+                size: 5 + Math.random() * 6, color: colors[i % colors.length],
+                rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.32,
+            });
+            let frame = 0; const maxF = 190;
+            (function tick() {
+                frame++; ctx.clearRect(0, 0, W, H);
+                let alive = 0;
+                for (const p of parts) {
+                    p.vy += 0.22; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.rot += p.vr;
+                    if (p.y < H + 24) alive++;
+                    ctx.save(); ctx.globalAlpha = Math.max(0, 1 - frame / maxF);
+                    ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.62); ctx.restore();
+                }
+                if (frame < maxF && alive > 0) requestAnimationFrame(tick); else canvas.remove();
+            })();
+        } catch (e) { /* non-critical */ }
     }
 
     function renderSessionReview(log) {
