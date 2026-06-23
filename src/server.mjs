@@ -1208,8 +1208,9 @@ app.post('/api/grade', async (req, res) => {
                     const i = String(r.selected_label || '').toUpperCase().charCodeAt(0) - 65;
                     if (Number.isInteger(i) && i >= 0 && i < choices.length) { counts[i]++; total++; }
                 });
-                // Only surface a distribution once it's meaningful (avoids "100%" off 1-2 answers).
-                if (total >= 5) choiceDistribution = counts.map((c) => Math.round((c / total) * 100));
+                // Surface once there are a few responses (same floor as peer_correct_pct);
+                // avoids a misleading "100%" off a single answer.
+                if (total >= 3) choiceDistribution = counts.map((c) => Math.round((c / total) * 100));
             }
         } catch (e) { /* peer stats best-effort */ }
 
