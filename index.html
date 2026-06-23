@@ -73,7 +73,10 @@
         .form-group { margin-bottom: 18px; }
         .btn { background: var(--accent); color: #fff; border: none; padding: 13px 22px;
             font-family: ui-monospace, monospace; font-size: 13px; font-weight: bold; cursor: pointer;
-            border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 1px;
+            transition: transform .12s ease, box-shadow .15s ease, filter .15s ease; }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.18); filter: brightness(1.06); }
+        .btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; filter: brightness(.98); }
         .btn:disabled { opacity: .5; cursor: default; }
         .btn.secondary { background: var(--line); color: var(--text); }
         .btn.ghost { background: none; border: 1px solid var(--line); color: var(--text); }
