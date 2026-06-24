@@ -967,14 +967,17 @@
         }
     }
 
-    function gotoQuestion(idx) { const s = state.session; if (!s || idx < 0 || idx >= s.pool.length) return; s.index = idx; renderQuestion(); }
-    function prevQuestion() { const s = state.session; if (!s || s.index <= 0) return; s.index--; renderQuestion(); }
+    // Bring the next/prev question to the top of the viewport so the user isn't left
+    // scrolled down at the previous explanation. (Requested feedback.)
+    function scrollQuizToTop() { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { try { window.scrollTo(0, 0); } catch (_) {} } }
+    function gotoQuestion(idx) { const s = state.session; if (!s || idx < 0 || idx >= s.pool.length) return; s.index = idx; renderQuestion(); scrollQuizToTop(); }
+    function prevQuestion() { const s = state.session; if (!s || s.index <= 0) return; s.index--; renderQuestion(); scrollQuizToTop(); }
 
     function advance() {
         const s = state.session; if (!s) return;
         if (s.mode === 'tutor' && !s.locked && s.index < s.pool.length) return; // must answer first
-        if (s.index < s.pool.length - 1) { s.index++; renderQuestion(); }
-        else if (s.mode !== 'exam') finishSession();
+        if (s.index < s.pool.length - 1) { s.index++; renderQuestion(); scrollQuizToTop(); }
+        else if (s.mode !== 'exam') { finishSession(); scrollQuizToTop(); }
     }
 
     function renderPalette() {
