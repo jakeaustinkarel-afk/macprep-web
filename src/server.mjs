@@ -501,7 +501,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const since = new Date(now - windowDays * 86400000).toISOString();
         const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
             supabase.from(PROFILE_TABLE).select('email, account_tier, target_exam_date, premium_unlocked_at, created_at'),
-            supabase.from('analytics_events').select('name, created_at, meta').gte('created_at', since).limit(100000),
+            supabase.from('analytics_events').select('name, created_at, meta, user_id').gte('created_at', since).limit(100000),
             supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
         ]);
@@ -517,13 +517,21 @@ app.get('/api/admin/metrics', async (req, res) => {
         const premium = U.filter((u) => u.account_tier === 'premium').length;
         const paid = (allPurchases && allPurchases.count) || 0;
 
+        // Count DISTINCT users per stage (events carry user_id once signed in) so the
+        // funnel reads as a real user journey instead of summing raw events (which let
+        // "started practicing" exceed signups).
+        const usersWith = (...names) => {
+            const s = new Set();
+            E.forEach((e) => { if (names.includes(e.name) && e.user_id) s.add(e.user_id); });
+            return s.size;
+        };
         const funnel = [
             { key: 'visits', label: 'Landing views', n: visitCount },
-            { key: 'signups', label: 'Signups', n: sum('signup') },
-            { key: 'practiced', label: 'Started practicing', n: sum('session_start', 'quiz_start', 'demo_started') },
-            { key: 'paywall', label: 'Hit paywall', n: sum('paywall_hit') },
-            { key: 'checkout', label: 'Started checkout', n: sum('checkout_started', 'upgrade_click') },
-            { key: 'purchase', label: 'Purchased', n: sum('purchase', 'upgrade_success') },
+            { key: 'signups', label: 'Signups', n: Math.max(sum('signup'), usersWith('signup')) },
+            { key: 'practiced', label: 'Started practicing', n: usersWith('session_start', 'quiz_start', 'session_complete') },
+            { key: 'paywall', label: 'Hit paywall', n: usersWith('paywall_hit') },
+            { key: 'checkout', label: 'Started checkout', n: usersWith('checkout_started', 'upgrade_click') },
+            { key: 'purchase', label: 'Purchased', n: paid },
         ];
 
         const nDays = 21;
@@ -815,8 +823,9 @@ app.get('/api/admin/questions', async (req, res) => {
 // beyond an optional user_id. Only whitelisted event names are accepted.
 // ---------------------------------------------------------------------------
 const ANALYTICS_EVENTS = new Set([
-    'page_view', 'signup', 'login', 'session_start', 'session_complete',
-    'paywall_hit', 'checkout_started', 'upgrade_success', 'feedback_submitted',
+    'page_view', 'landing_view', 'signup', 'login', 'session_start', 'quiz_start',
+    'session_complete', 'demo_started', 'demo_completed', 'paywall_hit',
+    'checkout_started', 'upgrade_click', 'upgrade_success', 'feedback_submitted',
 ]);
 app.post('/api/event', eventLimiter, async (req, res) => {
     if (!supabase) return res.json({ ok: true });

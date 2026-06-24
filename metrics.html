@@ -136,7 +136,7 @@
         html += '<div class="card"><h2>Conversion funnel · last ' + d.window_days + ' days</h2>';
         d.funnel.forEach((f, i) => {
             const w = Math.round((f.n/top)*100);
-            const ofTop = i===0 ? '<span class="pct">top of funnel</span>' : '<span class="pct">· ' + pct(f.n, d.funnel[0].n) + '% of views</span>';
+            const ofTop = i===0 ? '<span class="pct">top of funnel</span>' : '<span class="pct">· ' + pct(f.n, d.funnel[i-1].n) + '% of prev</span>';
             html += '<div class="frow"><div class="flabel">' + esc(f.label) + '</div>' +
                 '<div class="ftrack"><div class="ffill' + (f.n===0?' zero':'') + '" style="width:' + w + '%;min-width:' + (f.n>0?'6px':'0') + ';"></div></div>' +
                 '<div class="fnum"><b>' + f.n.toLocaleString() + '</b> ' + ofTop + '</div></div>';
