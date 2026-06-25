@@ -842,7 +842,7 @@
                 const youTag = (idx === selectedIndex) ? ' · <span style="color:var(--accent);font-weight:bold;">your pick</span>' : '';
                 const d = document.createElement('div');
                 d.style.cssText = 'display:flex;align-items:center;gap:8px;margin:4px 0 2px;padding-left:34px;';
-                d.innerHTML = '<div style="flex:1;max-width:150px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + barColor + ';"></span></div><span class="mono" style="font-size:11px;color:var(--muted);">' + pct + '% chose this' + youTag + '</span>';
+                d.innerHTML = '<div style="flex:1;max-width:150px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;"><span style="display:block;height:100%;width:' + pct + '%;background:' + barColor + ';transform-origin:left;animation:barGrow .7s cubic-bezier(.2,.8,.2,1);"></span></div><span class="mono" style="font-size:11px;color:var(--muted);">' + pct + '% chose this' + youTag + '</span>';
                 anchor.insertAdjacentElement('afterend', d); anchor = d;
             }
         });
