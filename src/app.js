@@ -233,6 +233,12 @@
         const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         state.profile = data.profile || null;
+        // Restore the theme saved to this account (once per session boot, so a
+        // mid-session pick is never clobbered by a later profile refresh).
+        if (state.profile && state.profile.theme && !state._themeApplied && typeof window.setTheme === 'function') {
+            state._themeApplied = true;
+            if (state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
+        }
         return state.profile;
     }
 
@@ -244,6 +250,7 @@
     }
 
     async function bootAuthedSession() {
+        state._themeApplied = false;
         setLoading(true);
         try { await Promise.all([loadProfile(), loadQuestions()]); }
         finally { setLoading(false); }
@@ -1614,6 +1621,13 @@
     }
 
     // ---- bootstrap --------------------------------------------------------
+    // The theme picker lives in the <head> script; this hook persists the choice
+    // to the signed-in user's account so it follows them across devices and logins.
+    window.onThemeChange = function (id) {
+        if (!state.token) return;
+        apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ theme: id }) }).catch(() => {});
+    };
+
     window.MACPrep = {
         go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
