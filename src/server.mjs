@@ -1259,7 +1259,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1384,6 +1384,7 @@ app.get('/api/user/profile', async (req, res) => {
                 target_exam_date: profile?.target_exam_date || '',
                 study_goal: profile?.study_goal || null,
                 theme: profile?.theme || null,
+                font: profile?.font || null,
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
@@ -1428,8 +1429,11 @@ app.post('/api/user/profile', async (req, res) => {
         update.study_goal = b.study_goal;
         if (b.study_goal !== 'exam') update.target_exam_date = null; // practice/none → no exam countdown
     }
-    if (typeof b.theme === 'string' && ['light', 'dark', 'midnight', 'warm', 'slate', 'forest', 'rose', 'contrast'].includes(b.theme)) {
+    if (typeof b.theme === 'string' && ['light', 'dark', 'midnight', 'warm', 'slate', 'forest', 'rose', 'contrast', 'ocean', 'indigo', 'nord', 'sky', 'lavender', 'sandstone'].includes(b.theme)) {
         update.theme = b.theme;
+    }
+    if (typeof b.font === 'string' && ['modern', 'serif', 'mono', 'rounded'].includes(b.font)) {
+        update.font = b.font;
     }
     update.updated_at = new Date().toISOString();
 

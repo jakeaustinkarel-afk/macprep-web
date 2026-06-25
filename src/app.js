@@ -239,6 +239,10 @@
             state._themeApplied = true;
             if (state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
         }
+        if (state.profile && state.profile.font && !state._fontApplied && typeof window.setFont === 'function') {
+            state._fontApplied = true;
+            if (state.profile.font !== document.documentElement.getAttribute('data-font')) window.setFont(state.profile.font);
+        }
         return state.profile;
     }
 
@@ -251,6 +255,7 @@
 
     async function bootAuthedSession() {
         state._themeApplied = false;
+        state._fontApplied = false;
         setLoading(true);
         try { await Promise.all([loadProfile(), loadQuestions()]); }
         finally { setLoading(false); }
@@ -1626,6 +1631,10 @@
     window.onThemeChange = function (id) {
         if (!state.token) return;
         apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ theme: id }) }).catch(() => {});
+    };
+    window.onFontChange = function (id) {
+        if (!state.token) return;
+        apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ font: id }) }).catch(() => {});
     };
 
     window.MACPrep = {
