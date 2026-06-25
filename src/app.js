@@ -1118,6 +1118,7 @@
             canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9998;';
             document.body.appendChild(canvas);
             const ctx = canvas.getContext('2d');
+            if (!ctx) { canvas.remove(); return; }
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
             const colors = ['#00A86B', '#34d399', '#fbbf24', '#60a5fa', '#f87171', '#a78bfa'];

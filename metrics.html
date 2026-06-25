@@ -169,12 +169,12 @@
         html += '</div><div class="xaxis">' + days.map((x,i)=> '<div class="col">' + ((i%3===0||i===days.length-1)? x.date.slice(5) : '') + '</div>').join('') + '</div></div>';
 
         // Recent signups
-        html += '<div class="card"><h2>Recent signups</h2><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
+        html += '<div class="card"><h2>Recent signups</h2><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
         if (!d.recent_signups.length) html += '<tr><td colspan="4" class="muted">No signups yet.</td></tr>';
         d.recent_signups.forEach(u => {
             html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
         });
-        html += '</tbody></table></div>';
+        html += '</tbody></table></div></div>';
 
         // Recent feedback
         const fb = d.recent_feedback || [];

@@ -545,7 +545,7 @@ app.get('/api/admin/metrics', async (req, res) => {
             const d = (e.created_at || '').slice(0, 10); const b = buckets[d]; if (!b) return;
             if (e.name === 'landing_view') { (dayVids[d] = dayVids[d] || new Set()).add((e.meta && e.meta.vid) || e.created_at); }
             else if (e.name === 'session_start' || e.name === 'quiz_start') b.sessions++;
-            else if (e.name === 'purchase' || e.name === 'upgrade_success') b.purchases++;
+            else if (e.name === 'purchase') b.purchases++; // server-authoritative; avoids double-count with client upgrade_success
         });
         Object.keys(dayVids).forEach((d) => { if (buckets[d]) buckets[d].visits = dayVids[d].size; });
         U.forEach((u) => { const d = (u.created_at || '').slice(0, 10); if (buckets[d]) buckets[d].signups++; });
