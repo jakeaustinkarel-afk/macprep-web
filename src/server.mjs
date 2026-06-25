@@ -1259,7 +1259,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1382,6 +1382,7 @@ app.get('/api/user/profile', async (req, res) => {
                 credential: profile?.credential || '',
                 training_program: profile?.training_program || '',
                 target_exam_date: profile?.target_exam_date || '',
+                study_goal: profile?.study_goal || null,
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
@@ -1421,6 +1422,10 @@ app.post('/api/user/profile', async (req, res) => {
     if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
     else if (typeof b.target_exam_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.target_exam_date)) {
         update.target_exam_date = b.target_exam_date;
+    }
+    if (typeof b.study_goal === 'string' && ['exam', 'practice', 'none'].includes(b.study_goal)) {
+        update.study_goal = b.study_goal;
+        if (b.study_goal !== 'exam') update.target_exam_date = null; // practice/none → no exam countdown
     }
     update.updated_at = new Date().toISOString();
 

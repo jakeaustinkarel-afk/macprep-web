@@ -316,7 +316,9 @@
         }
         const examLine = exam != null
             ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
-            : `<div class="stat"><div class="n">—</div><div class="l">Set exam date in profile</div></div>`;
+            : (p.study_goal === 'practice'
+                ? `<div class="stat"><div class="n">${answeredToday}/10</div><div class="l">Today's goal</div></div>`
+                : `<div class="stat"><div class="n">—</div><div class="l">Add an exam date anytime</div></div>`);
         const C = 213.6; // ring circumference, 2πr with r=34
         const ringOff = C * (1 - Math.max(0, Math.min(100, readiness)) / 100);
         const streakHtml = streak
@@ -356,16 +358,23 @@
     function renderExamPrompt() {
         const el = $('exam-prompt'); if (!el) return;
         const p = state.profile || {};
-        if (!state.token || p.target_exam_date) { el.classList.add('hidden'); return; }
+        // Show the goal chooser only until the user has picked a goal or set an exam date.
+        if (!state.token || p.target_exam_date || p.study_goal) { el.classList.add('hidden'); return; }
         el.classList.remove('hidden');
         const today = new Date().toISOString().slice(0, 10);
-        el.innerHTML = `<h3 style="margin-top:0;">📅 When's your exam?</h3>
-            <p class="sub" style="margin:0 0 14px;">Set your test date and MACPrep builds you a personalized daily plan — how many questions a day to be ready in time, with a streak and goal tracker to keep you on pace.</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                <input type="date" id="exam-date-input" min="${today}" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font-size:14px;color:var(--text);">
-                <button class="btn" id="exam-set-btn" onclick="MACPrep.setExamDate(document.getElementById('exam-date-input').value)">Build my plan</button>
-                <span id="exam-set-msg" class="mono" style="font-size:12px;color:var(--bad);"></span>
-            </div>`;
+        el.innerHTML = `<h3 style="margin-top:0;">What brings you to MACPrep?</h3>
+            <p class="sub" style="margin:0 0 16px;">Pick what fits — it just tailors your dashboard. You can change it anytime in your profile.</p>
+            <div style="border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;">
+                <div style="font-weight:bold;margin-bottom:3px;">📅 I have an exam coming up</div>
+                <div class="sub" style="margin:0 0 11px;font-size:13px;">We'll build a daily plan and track your readiness.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <input type="date" id="exam-date-input" min="${today}" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font-size:14px;color:var(--text);">
+                    <button class="btn" id="exam-set-btn" onclick="MACPrep.setExamDate(document.getElementById('exam-date-input').value)">Build my plan</button>
+                    <span id="exam-set-msg" class="mono" style="font-size:12px;color:var(--bad);"></span>
+                </div>
+            </div>
+            <button class="btn ghost" type="button" style="width:100%;text-align:left;display:block;margin-bottom:8px;" onclick="MACPrep.setStudyGoal('practice')"><strong>💪 Just here to practice</strong> — set a daily goal &amp; keep a streak</button>
+            <button class="btn ghost" type="button" style="width:100%;text-align:left;display:block;" onclick="MACPrep.setStudyGoal('none')"><strong>No goal right now</strong> — just let me study</button>`;
     }
 
     async function setExamDate(val) {
@@ -380,6 +389,16 @@
             const m = $('exam-set-msg'); if (m) m.textContent = e.message;
             if (btn) { btn.disabled = false; btn.textContent = 'Build my plan'; }
         }
+    }
+
+    async function setStudyGoal(goal) {
+        try {
+            const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ study_goal: goal }) });
+            if (!resp.ok || !data.success) throw new Error((data && data.error) || 'Could not save.');
+            await loadProfile();
+            renderDashboard();
+            toast(goal === 'practice' ? 'Daily practice goal set — keep that streak going!' : "You're all set — practice whenever you like.", 'ok');
+        } catch (e) { toast(e.message || 'Could not save.', 'bad'); }
     }
 
     function startSample() {
@@ -1596,7 +1615,7 @@
 
     // ---- bootstrap --------------------------------------------------------
     window.MACPrep = {
-        go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, startCheckout, submitFeedback,
+        go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
