@@ -1522,7 +1522,9 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
     const kind = (req.body?.kind || 'suggestion').toString().slice(0, 40);
     const message = (req.body?.message || '').toString().trim();
     if (!message) return res.status(400).json({ error: 'A message is required.' });
-    const email = (user?.email || req.body?.email || 'anonymous').toString().slice(0, 200);
+    // Feedback is deliberately ANONYMOUS — we do not store or surface who sent it,
+    // so users feel free to be candid. (Auth is still checked for rate-limit purposes.)
+    const email = 'anonymous';
     try {
         const { error } = await supabase.from('user_suggestions').insert({
             user_email: email,
