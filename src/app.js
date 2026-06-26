@@ -1851,6 +1851,14 @@
         }
     });
     document.addEventListener('click', closeNavMenus);
+    // "About" footer/nav link → reveal the founder section (works from any view/page).
+    function showAboutSection() {
+        const a = $('about'); if (!a) return;
+        if (a.offsetParent === null) go('login'); // section lives in the landing view; reveal it
+        setTimeout(() => { const el = $('about'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 90);
+    }
+    window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); });
+    window.addEventListener('load', () => { if (location.hash === '#about') setTimeout(showAboutSection, 400); });
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
