@@ -114,10 +114,12 @@
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap', 'tier-badge'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
+        // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
+        $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Marketing links + "Log in" show for logged-out visitors only.
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
@@ -978,6 +980,10 @@
         $('question-meta').innerHTML = escapeHtml(metaText) + reviewedBadge;
         const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
         $('question-stem').innerHTML = renderRich(q.stem) + img;
+        // Question-swap motion: slide/fade the card in, but only when navigating to a
+        // different question (not on a same-question re-render after grading).
+        if (s._lastIdx !== s.index) { const _c = $('question-stem').closest('.card'); if (_c) { _c.classList.remove('q-anim'); void _c.offsetWidth; _c.classList.add('q-anim'); } }
+        s._lastIdx = s.index;
         const container = $('choices-container');
         container.innerHTML = '';
         let choices = q.choices || [];

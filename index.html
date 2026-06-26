@@ -134,6 +134,14 @@
         @keyframes explReveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         #explanation-pane:not(.hidden) { animation: explReveal .35s cubic-bezier(.2,.8,.2,1); }
         @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        :root { --dur-fast: .12s; --dur-base: .22s; --ease-out: cubic-bezier(.2,.8,.2,1); }
+        @keyframes viewEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden) { animation: viewEnter var(--dur-base) var(--ease-out); }
+        @keyframes qEnter { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+        .q-anim { animation: qEnter var(--dur-base) var(--ease-out); }
+        @media (prefers-reduced-motion: reduce) {
+          #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), .q-anim { animation: none !important; }
+        }
         @media (prefers-reduced-motion: reduce) { #explanation-pane:not(.hidden) { animation: none; } }
         /* Transform-only reveal — content stays fully visible (never opacity:0), so a
            stuck state is at worst a 16px shift, never invisible. */
