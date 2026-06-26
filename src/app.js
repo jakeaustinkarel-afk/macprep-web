@@ -248,15 +248,19 @@
         const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         state.profile = data.profile || null;
-        // Restore the theme saved to this account (once per session boot, so a
-        // mid-session pick is never clobbered by a later profile refresh).
+        // Theme & font: this device's saved choice (localStorage, applied instantly by the
+        // <head> script) ALWAYS wins on refresh. The account value only SEEDS a device that
+        // has no local choice yet — so a refresh can never reset your actual last pick, even
+        // if the account value is stale or a save hiccupped.
+        let lsTheme = null, lsFont = null;
+        try { lsTheme = localStorage.getItem('macprep_theme'); lsFont = localStorage.getItem('macprep_font'); } catch (e) {}
         if (state.profile && state.profile.theme && !state._themeApplied && typeof window.setTheme === 'function') {
             state._themeApplied = true;
-            if (state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
+            if (!lsTheme && state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
         }
         if (state.profile && state.profile.font && !state._fontApplied && typeof window.setFont === 'function') {
             state._fontApplied = true;
-            if (state.profile.font !== document.documentElement.getAttribute('data-font')) window.setFont(state.profile.font);
+            if (!lsFont && state.profile.font !== document.documentElement.getAttribute('data-font')) window.setFont(state.profile.font);
         }
         return state.profile;
     }
