@@ -163,6 +163,10 @@
             .social-row { justify-content: center !important; }
             .partner-strip { flex-direction: column !important; gap: 12px !important; }
         }
+        @media (max-width: 560px) {
+            #recommended-card > div { flex-direction: column; align-items: stretch; }
+            #recommended-card .btn { width: 100%; }
+        }
             :root{--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
         html[data-font="serif"]{--font:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
         html[data-font="mono"]{--font:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;}
@@ -343,7 +347,7 @@
     <!-- DASHBOARD -->
     <div class="wrap hidden" id="dashboard-view">
         <h1 id="dash-greeting">Welcome back</h1>
-        <p class="sub" id="dash-subtitle">Configure a practice session below.</p>
+        <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
 
         <div class="card hidden" id="resume-card" style="border-color:var(--accent);"></div>
         <div class="card hidden" id="onboarding" style="border-color:var(--accent);"></div>
