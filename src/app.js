@@ -296,6 +296,7 @@
             const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
             if (answered === 0) { try { startSample(); } catch (e) {} }
         }
+        if (location.hash === '#about') showAboutSection();
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -1858,7 +1859,7 @@
         setTimeout(() => { const el = $('about'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 90);
     }
     window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); });
-    window.addEventListener('load', () => { if (location.hash === '#about') setTimeout(showAboutSection, 400); });
+    window.addEventListener('load', () => { if (location.hash === '#about' && !state.token) setTimeout(showAboutSection, 250); });
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
