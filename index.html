@@ -27,6 +27,12 @@
     <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
     <link rel="apple-touch-icon" href="/macprep_icon.png">
     <link rel="shortcut icon" href="/favicon.png?v=2">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0D0E10">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MACPrep">
+    <meta name="mobile-web-app-capable" content="yes">
     <style>
         .social-ico{color:var(--muted,#6B7280);transition:color .15s ease;}.social-ico:hover{color:var(--accent,#00A86B);}
         :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;--good:#34D399;--warn:#FBBF24;--bad:#F87171;--info:#60A5FA;}
@@ -617,6 +623,7 @@
       #question-stem:focus{outline:none;}
     </style>
     <script src="/src/app.js"></script>
+    <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
     <script>
     (function(){
       // Public "try 3 free" demo — only on the logged-out landing.
