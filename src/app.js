@@ -377,6 +377,30 @@
         if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
     }
 
+    // Refer-a-classmate: a shareable message + the $10-off code (a Stripe promo
+    // code; checkout already accepts promo codes via allow_promotion_codes).
+    const REFERRAL_CODE = 'CLASSMATE10';
+    function renderReferral() {
+        const el = $('referral-card'); if (!el) return;
+        const link = 'https://www.macprep.org/pricing.html';
+        const msg = `Studying for NCCAA boards? MACPrep has cited, CAA-written practice questions — use code ${REFERRAL_CODE} for $10 off at checkout: ${link}`;
+        el.dataset.msg = msg;
+        el.classList.remove('hidden');
+        el.innerHTML = `<h3>Refer a classmate 🎓</h3>
+            <p class="sub" style="margin:0 0 12px;font-size:13.5px;">Know someone prepping for boards? Share MACPrep — your classmate gets <strong>$10 off</strong> with your code at checkout.</p>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <code style="font-family:ui-monospace,monospace;font-size:15px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 14px;letter-spacing:1px;color:var(--accent);">${REFERRAL_CODE}</code>
+                <button class="btn ghost" type="button" onclick="MACPrep.copyReferral()">Copy share message</button>
+                <span id="referral-copied" class="mono" style="font-size:12px;color:var(--accent);"></span>
+            </div>`;
+    }
+    function copyReferral() {
+        const el = $('referral-card'); const msg = (el && el.dataset.msg) || '';
+        const done = () => { const s = $('referral-copied'); if (s) { s.textContent = '✓ Copied!'; setTimeout(() => { s.textContent = ''; }, 2500); } };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(msg).then(done).catch(() => window.prompt('Copy this message:', msg)); }
+        else { window.prompt('Copy this message:', msg); }
+    }
+
     function renderOnboarding() {
         const el = $('onboarding'); if (!el) return;
         const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
@@ -467,6 +491,7 @@
         $('stat-bank').textContent = state.questions.length.toLocaleString();
         renderReadiness();
         renderOnboarding();
+        renderReferral();
 
         const usage = freeUsage();
         const card = $('free-allowance-card');
@@ -1687,7 +1712,7 @@
         go, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyReferral,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
