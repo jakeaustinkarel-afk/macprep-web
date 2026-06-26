@@ -339,7 +339,7 @@
             const met = answeredToday >= target;
             const pctDone = Math.min(100, Math.round((answeredToday / target) * 100));
             goalLine = `<div style="margin-bottom:14px;">
-                <div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '🔥 goal met!' : 'questions'}</div>
+                <div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '— 🔥 on pace, goal met!' : `· <strong>${Math.max(0, target - answeredToday)} more</strong> to stay on track`}</div>
                 <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : 'var(--warn)'};"></span></div>
             </div>`;
         } else if (answeredToday > 0) {
@@ -371,7 +371,8 @@
             ${planLine}
             ${goalLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
-            <div style="height:46px;">${spark}</div>`;
+            <div style="height:46px;">${spark}</div>
+            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:12px;font-size:13px;">📊 Take a diagnostic — get your readiness score</button>`;
         const ring = el.querySelector('.ring-fill');
         if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
     }
@@ -382,8 +383,11 @@
         if (answered > 0) { el.classList.add('hidden'); return; }
         el.classList.remove('hidden');
         el.innerHTML = `<h3>Welcome to MACPrep 👋</h3>
-            <p class="sub" style="margin:0 0 12px;">Here's how to start: pick a <strong>specialty</strong> and <strong>how many questions</strong> below, then hit Start. After each answer you'll see why every choice is right or wrong, with a source you can verify. Use <span class="mono">A–E</span> to answer and <span class="mono">→</span> to advance.</p>
-            <button class="btn" onclick="MACPrep.startSample()">Try a 5-question warm-up</button>`;
+            <p class="sub" style="margin:0 0 12px;">New here? Take a quick <strong>diagnostic</strong> — a short set across all six blueprint domains that gives you a predicted readiness score and shows exactly which domain to start with. Or jump straight in with a warm-up.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn" onclick="MACPrep.startDiagnostic()">📊 Take the diagnostic</button>
+                <button class="btn ghost" onclick="MACPrep.startSample()">Try a 5-question warm-up</button>
+            </div>`;
     }
 
     function renderExamPrompt() {
@@ -622,6 +626,27 @@
         const shuffled = pool.slice();
         for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
         beginSession(shuffled.slice(0, n));
+    }
+
+    // Diagnostic / readiness assessment: a balanced sample across the 6 blueprint
+    // domains, run as an exam, ending in a predicted-readiness score + the weakest
+    // domain to start with.
+    function startDiagnostic() {
+        const usage = freeUsage();
+        if (!usage.unlimited && usage.remaining < 6) { return startCheckout(); }
+        const all = state.questions || [];
+        if (all.length < 6) { toast('Not enough questions loaded yet — try again in a moment.'); return; }
+        const byDom = {};
+        all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
+        const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+        let pool = [];
+        Object.values(byDom).forEach((arr) => { pool = pool.concat(shuffle(arr.slice()).slice(0, 4)); });
+        shuffle(pool);
+        if (!usage.unlimited) pool = pool.slice(0, Math.min(pool.length, usage.remaining));
+        if (!pool.length) { toast('No questions available for a diagnostic yet.'); return; }
+        track('diagnostic_start', { size: pool.length });
+        beginSession(pool, 'exam');
+        if (state.session) state.session.diagnostic = true;
     }
 
     // Persist the in-progress session so a refresh or accidental navigation can be
@@ -1083,7 +1108,7 @@
         s.complete = true; ls('macprep_session', null);
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
-            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: q.category || q.domain_name || 'General', stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: s.diagnostic ? (q.domain_name || q.category || 'General') : (q.category || q.domain_name || 'General'), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
         });
         track('session_complete', { mode: 'exam', size: s.pool.length });
         try { await loadProfile(); } catch (e) {}
@@ -1092,13 +1117,15 @@
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         const allFailed = answeredIdx.length > 0 && s.answered === 0;
-        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : 'EXAM COMPLETE';
+        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
         if (allFailed) {
             $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
         } else {
             const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
             const hype = pct >= 90 ? '🎉 Outstanding — ' : pct >= 75 ? '🎉 Great work — ' : '';
-            $('question-stem').innerHTML = `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+            $('question-stem').innerHTML = s.diagnostic
+                ? `Your predicted readiness is <strong>${pct}%</strong> — across ${s.answered} questions spanning all six blueprint domains.${failWarn} The breakdown below shows exactly where to focus first.`
+                : `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
             if (pct >= 70 && s.answered >= 3) celebrate();
         }
         $('choices-container').innerHTML = '';
@@ -1657,7 +1684,7 @@
     };
 
     window.MACPrep = {
-        go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
+        go, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
