@@ -163,7 +163,7 @@
                     <li>Study by specialty</li>
                     <li>Progress tracking</li>
                 </ul>
-                <a href="/index.html#signup-pane" class="btn ghost" style="margin-top:16px;">Create free account</a>
+                <a href="/index.html#signup-pane" id="cta-free" class="btn ghost" style="margin-top:16px;">Create free account</a>
             </div>
             <div class="card" style="border-color:var(--accent);">
                 <span class="badge premium">PREMIUM</span>
@@ -175,7 +175,7 @@
                     <li>All explanations, rationales &amp; sources</li>
                     <li>Lifetime access</li>
                 </ul>
-                <a href="/index.html#signup-pane" class="btn" style="margin-top:16px;">Get full access</a>
+                <a href="/index.html#signup-pane" id="cta-premium" class="btn" style="margin-top:16px;">Get full access</a>
                 <div class="mono" style="font-size:11px;color:var(--muted);margin-top:12px;">48-hour, no-questions-asked refund · secured by Stripe</div>
             </div>
         </div>
@@ -189,8 +189,8 @@
         </div>
 
         <div class="cta">
-            <a href="/index.html#signup-pane" class="btn">Start free — no card</a>
-            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Already have an account? <a href="/login.html">Log in</a></div>
+            <a href="/index.html#signup-pane" id="cta-bottom" class="btn">Start free — no card</a>
+            <div id="cta-have-account" class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Already have an account? <a href="/login.html">Log in</a></div>
         </div>
     </div>
 
@@ -212,5 +212,23 @@
 </footer>
 
 <script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if(h==="/login.html"){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*pricingcta-v1*/(function(){try{
+  var tok=localStorage.getItem('macprep_token'); if(!tok) return;
+  var have=document.getElementById('cta-have-account'); if(have) have.style.display='none';
+  ['cta-free','cta-bottom'].forEach(function(id){var el=document.getElementById(id); if(el){el.textContent='Go to your dashboard'; el.setAttribute('href','/index.html');}});
+  var prem=document.getElementById('cta-premium'); if(!prem) return;
+  prem.setAttribute('href','#'); prem.textContent='Checking your account…';
+  fetch('/api/user/profile',{headers:{Authorization:'Bearer '+tok}}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    var p=d&&(d.profile||d);
+    if(p&&(p.premium_unlocked||p.is_admin)){ prem.textContent='✓ You already have full access'; prem.setAttribute('href','/index.html'); return; }
+    prem.textContent='Get full access — $50';
+    prem.addEventListener('click',function(e){
+      e.preventDefault(); if(prem.dataset.busy) return; prem.dataset.busy='1'; prem.textContent='Redirecting…';
+      fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({email:(p&&p.email)||''})})
+        .then(function(r){return r.json();}).then(function(c){ if(c&&c.url){window.location.href=c.url;} else { prem.dataset.busy=''; prem.textContent='Get full access — $50'; alert('Checkout could not start — please try from your dashboard.'); } })
+        .catch(function(){ prem.dataset.busy=''; prem.textContent='Get full access — $50'; });
+    });
+  }).catch(function(){ prem.textContent='Get full access — $50'; prem.setAttribute('href','/index.html'); });
+}catch(e){}})();</script>
 </body>
 </html>
