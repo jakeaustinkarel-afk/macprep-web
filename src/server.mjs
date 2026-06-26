@@ -971,7 +971,7 @@ async function getDemoPool() {
     if (!supabase) return _demoPool.items;
     const { data } = await supabase.from('questions').select('*')
         .eq('status', 'published').order('id').limit(DEMO_POOL_SIZE);
-    if (data && data.length) _demoPool = { at: Date.now(), items: data };
+    if (data && data.length) _demoPool = { at: Date.now(), items: data.map((q) => ({ ...q, choices: parseChoices(q.choices) })) };
     return _demoPool.items;
 }
 function pickRandom(arr, n) {
