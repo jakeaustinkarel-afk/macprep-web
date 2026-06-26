@@ -932,13 +932,13 @@
         const snip = (s) => escapeHtml((s || '').slice(0, 160)) + ((s || '').length > 160 ? '…' : '');
         const card = (inner) => `<div style="border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:10px;">${inner}</div>`;
         const noteHtml = notes.length ? notes.map((n) => card(
-            `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(n.category || '')}</div>`
+            `<div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:4px;">${escapeHtml(n.category || '')}</div>`
             + `<div style="font-size:13px;color:var(--text2);margin-bottom:6px;">${snip(n.stem)}</div>`
-            + `<div style="font-size:14px;border-left:2px solid var(--accent);padding-left:10px;">${escapeHtml(n.note)}</div>`
+            + `<div style="font-size:14px;border-left:2px solid var(--line);padding-left:10px;">${escapeHtml(n.note)}</div>`
             + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(n.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
         )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No notes match.</div>';
         const flagHtml = flagged.length ? flagged.map((f) => card(
-            `<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:4px;">${escapeHtml(f.category || '')}</div>`
+            `<div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:4px;">${escapeHtml(f.category || '')}</div>`
             + `<div style="font-size:13px;color:var(--text2);">${snip(f.stem)}</div>`
             + `<button class="btn ghost" type="button" onclick="MACPrep.practiceOne('${escapeHtml(f.question_id)}')" style="margin-top:8px;font-size:12px;padding:5px 10px;">Practice this</button>`
         )).join('') : '<div class="mono" style="color:var(--muted);font-size:13px;">No flagged questions match.</div>';
@@ -956,7 +956,7 @@
         btn.dataset.index = String(idx);
         btn.setAttribute('aria-label', `Answer ${letter}: ${text}`);
         btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:ui-monospace,monospace;cursor:pointer;border-radius:4px;';
-        btn.innerHTML = `<span style="color:var(--accent);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
+        btn.innerHTML = `<span style="color:var(--muted);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
         btn.onclick = () => answer(idx, qid);
         return btn;
     }
@@ -1037,7 +1037,7 @@
         s.locked = !!graded; // tutor: locked once graded
 
         const metaText = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
-        const reviewedBadge = q.reviewed ? ' <span style="text-transform:none;letter-spacing:0;color:var(--accent);">· ✓ Reviewed by a practicing CAA</span>' : '';
+        const reviewedBadge = q.reviewed ? ' <span style="text-transform:none;letter-spacing:0;color:var(--muted);">· <span style="color:var(--accent);">✓</span> Reviewed by a practicing CAA</span>' : '';
         $('question-meta').innerHTML = escapeHtml(metaText) + reviewedBadge;
         const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
         $('question-stem').innerHTML = renderRich(q.stem) + img;
@@ -1492,7 +1492,7 @@
             const { resp, data } = await apiJSON('/api/admin/analytics', { headers: authHeaders() });
             if (!resp.ok) return;
             const t = data.total || {}; const w = data.last7 || {};
-            const row = (label, key) => `<div class="stat"><div class="n">${t[key] || 0}</div><div class="l">${label}<br><span style="color:var(--accent);">${w[key] || 0} / 7d</span></div></div>`;
+            const row = (label, key) => `<div class="stat"><div class="n">${t[key] || 0}</div><div class="l">${label}<br><span style="color:var(--text2);">${w[key] || 0} / 7d</span></div></div>`;
             el.innerHTML = `<h3>Analytics — last 30 days</h3>
                 <div class="grid cols-3" style="margin-bottom:10px;">
                     ${row('Signups', 'signup')}
