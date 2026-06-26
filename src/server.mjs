@@ -1432,7 +1432,7 @@ app.post('/api/user/profile', async (req, res) => {
     if (typeof b.theme === 'string' && ['light', 'dark', 'midnight', 'warm', 'slate', 'forest', 'rose', 'contrast', 'ocean', 'indigo', 'nord', 'sky', 'lavender', 'sandstone'].includes(b.theme)) {
         update.theme = b.theme;
     }
-    if (typeof b.font === 'string' && ['modern', 'serif', 'mono', 'rounded'].includes(b.font)) {
+    if (typeof b.font === 'string' && ['modern', 'serif', 'mono', 'rounded', 'charter', 'times', 'grotesk', 'reader'].includes(b.font)) {
         update.font = b.font;
     }
     update.updated_at = new Date().toISOString();
