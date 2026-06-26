@@ -114,7 +114,7 @@
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
@@ -1775,18 +1775,81 @@
         apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ font: id }) }).catch(() => {});
     };
 
+    // ---- Command palette (⌘K / Ctrl-K) -----------------------------------
+    const CMDK = [
+        { icon: '▶', label: 'Start recommended session', hint: 'smart mix', run: () => startRecommended(), auth: true },
+        { icon: '📊', label: 'Take a diagnostic', hint: 'readiness score', run: () => startDiagnostic(), auth: true },
+        { icon: '🎯', label: 'Smart review — weak areas + missed', run: () => smartReview(), auth: true },
+        { icon: '↩', label: 'Redo my missed questions', run: () => redoMissed(), auth: true },
+        { icon: '☆', label: 'Review my flagged questions', run: () => startFlagged(), auth: true },
+        { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true },
+        { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
+        { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
+        { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
+        { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
+        { icon: '⭐', label: 'Upgrade to full access — $50', run: () => startCheckout(), auth: true, hidePremium: true },
+        { icon: '🚪', label: 'Sign out', run: () => signOut(), auth: true },
+        { icon: '🔑', label: 'Log in', run: () => { window.location.href = '/login.html'; }, guest: true },
+    ];
+    let cmdkIdx = 0, cmdkList = [];
+    function cmdkAvailable() {
+        const p = state.profile || {};
+        const authed = !!state.token;
+        const isAdmin = authed && p.is_admin;
+        const isPremium = !!(p.premium_unlocked || p.is_admin);
+        return CMDK.filter((c) => {
+            if (c.admin) return isAdmin;
+            if (c.guest) return !authed;
+            if (c.auth && !authed) return false;
+            if (c.hidePremium && isPremium) return false;
+            return true;
+        });
+    }
+    function renderCmdk(filter) {
+        const ul = $('cmdk-results'); if (!ul) return;
+        const f = (filter || '').trim().toLowerCase();
+        cmdkList = cmdkAvailable().filter((c) => !f || c.label.toLowerCase().includes(f) || (c.hint || '').toLowerCase().includes(f));
+        if (cmdkIdx >= cmdkList.length) cmdkIdx = Math.max(0, cmdkList.length - 1);
+        ul.innerHTML = cmdkList.length
+            ? cmdkList.map((c, i) => `<li class="cmdk-row${i === cmdkIdx ? ' sel' : ''}" data-i="${i}" onclick="MACPrep.cmdkRun(${i})"><span class="cmdk-ic">${c.icon}</span><span class="cmdk-lbl">${escapeHtml(c.label)}</span>${c.hint ? `<span class="cmdk-hint">${escapeHtml(c.hint)}</span>` : ''}</li>`).join('')
+            : '<li class="cmdk-empty">No matching commands</li>';
+    }
+    function openCmdk() {
+        const m = $('cmdk'); if (!m) return;
+        cmdkIdx = 0;
+        m.classList.remove('hidden');
+        renderCmdk('');
+        const inp = $('cmdk-input'); if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 0); }
+    }
+    function closeCmdk() { const m = $('cmdk'); if (m) m.classList.add('hidden'); }
+    function cmdkInput(v) { cmdkIdx = 0; renderCmdk(v); }
+    function cmdkRun(i) { const c = cmdkList[i]; if (!c) return; closeCmdk(); try { c.run(); } catch (e) {} }
+    function cmdkKey(e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); cmdkIdx = Math.min(cmdkList.length - 1, cmdkIdx + 1); renderCmdk($('cmdk-input').value); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkIdx = Math.max(0, cmdkIdx - 1); renderCmdk($('cmdk-input').value); }
+        else if (e.key === 'Enter') { e.preventDefault(); cmdkRun(cmdkIdx); }
+        else if (e.key === 'Escape') { e.preventDefault(); closeCmdk(); }
+    }
+
     window.MACPrep = {
         go, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyReferral,
-        startRecommended, toggleCustomize,
+        startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
     document.addEventListener('keydown', handleQuizKey);
+    document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            const m = $('cmdk');
+            if (m && m.classList.contains('hidden')) openCmdk(); else closeCmdk();
+        }
+    });
     document.addEventListener('click', closeNavMenus);
 
     document.addEventListener('DOMContentLoaded', async () => {

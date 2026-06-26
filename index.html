@@ -142,6 +142,20 @@
         @media (prefers-reduced-motion: reduce) {
           #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), .q-anim { animation: none !important; }
         }
+        /* Command palette (⌘K) */
+        #cmdk { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: rgba(0,0,0,.5); }
+        #cmdk.hidden { display: none; }
+        .cmdk-panel { width: min(560px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 64px rgba(0,0,0,.45); overflow: hidden; animation: viewEnter var(--dur-base) var(--ease-out); }
+        #cmdk-input { width: 100%; box-sizing: border-box; padding: 16px 18px; font-size: 16px; background: transparent; border: none; border-bottom: 1px solid var(--line); color: var(--text); outline: none; font-family: inherit; }
+        #cmdk-results { list-style: none; margin: 0; padding: 6px; max-height: 52vh; overflow-y: auto; }
+        .cmdk-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 8px; cursor: pointer; }
+        .cmdk-row.sel { background: var(--accent-dim); }
+        .cmdk-ic { width: 20px; text-align: center; flex: none; }
+        .cmdk-lbl { flex: 1; font-size: 14px; color: var(--text); }
+        .cmdk-hint { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; text-transform: uppercase; letter-spacing: .5px; }
+        .cmdk-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+        .cmdk-foot { padding: 9px 14px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+        @media (prefers-reduced-motion: reduce) { .cmdk-panel { animation: none; } }
         @media (prefers-reduced-motion: reduce) { #explanation-pane:not(.hidden) { animation: none; } }
         /* Transform-only reveal — content stays fully visible (never opacity:0), so a
            stuck state is at worst a 16px shift, never invisible. */
@@ -177,6 +191,14 @@
 <body>
     <!-- Header (shown when authenticated) -->
     <div id="global-loading" class="hidden" aria-hidden="true"><div class="spinner"></div></div>
+
+    <div id="cmdk" class="hidden" onclick="if(event.target===this)MACPrep.closeCmdk()">
+        <div class="cmdk-panel" role="dialog" aria-label="Command menu" aria-modal="true">
+            <input id="cmdk-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command — diagnostic, review, notebook…" oninput="MACPrep.cmdkInput(this.value)" onkeydown="MACPrep.cmdkKey(event)">
+            <ul id="cmdk-results"></ul>
+            <div class="cmdk-foot mono">↑ ↓ navigate · ↵ select · esc close</div>
+        </div>
+    </div>
     <div class="header-bar">
         <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')" style="display:flex;align-items:center;gap:9px;">
             <img src="/macprep_icon.svg" alt="" style="height:26px;width:26px;display:block;" onerror="this.style.display='none'">
@@ -212,7 +234,7 @@
                     <a onclick="MACPrep.signOut()">Sign out</a>
                 </div>
             </span>
-                    <span style="position:relative;display:inline-flex;align-items:center;margin-right:14px;"><button id="font-toggle" onclick="_fontMenu(event)" aria-haspopup="menu" aria-label="Choose a font" title="Font" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;font-weight:700;letter-spacing:.5px;">Aa</button><div id="font-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:150px;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div></span><span style="position:relative;display:inline-flex;align-items:center;">
+                    <button id="cmdk-trigger" class="hidden" type="button" onclick="MACPrep.openCmdk()" aria-label="Command menu" title="Command menu (⌘K)" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted);padding:0;margin-right:14px;font-family:ui-monospace,monospace;font-weight:700;">⌘K</button><span style="position:relative;display:inline-flex;align-items:center;margin-right:14px;"><button id="font-toggle" onclick="_fontMenu(event)" aria-haspopup="menu" aria-label="Choose a font" title="Font" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;font-weight:700;letter-spacing:.5px;">Aa</button><div id="font-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:150px;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div></span><span style="position:relative;display:inline-flex;align-items:center;">
                         <button id="theme-toggle" onclick="_themeMenu(event)" aria-haspopup="menu" aria-label="Choose a theme" title="Theme" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:0;line-height:1;">🎨</button>
                         <div id="theme-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:182px;max-height:min(72vh,360px);overflow-y:auto;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div>
                     </span>
