@@ -387,8 +387,17 @@
             </div>
         </div>
 
-        <div class="card" style="order:1;">
-            <h2>Start a Practice Session</h2>
+        <div class="card" id="recommended-card" style="order:1;border-color:var(--accent);">
+            <h2 style="margin-top:0;">Ready to study?</h2>
+            <p class="sub" id="recommended-sub">A focused ~20-question set from your due reviews, missed questions, and weakest areas.</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                <button class="btn" id="start-recommended-btn" onclick="MACPrep.startRecommended()" style="font-size:16px;padding:15px 28px;">▶&nbsp; Start recommended session</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.toggleCustomize()">⚙ Customize</button>
+            </div>
+        </div>
+
+        <div class="card hidden" id="customize-panel" style="order:1;">
+            <h2 style="margin-top:0;">Customize your session</h2>
             <p class="sub">Choose a content domain and how many questions you want to practice.</p>
 
             <div class="grid cols-2">

@@ -482,6 +482,66 @@
         startFromIds(Array.from(ids), 'review');
     }
 
+    // Recommended session: one obvious primary action. Builds a smart ~20-question
+    // mix — spaced-repetition due cards → missed → weakest areas → domain-balanced
+    // fill — so a returning user never has to configure anything to study well.
+    function startRecommended() {
+        const usage = freeUsage();
+        const p = state.profile || {};
+        const all = state.questions || [];
+        if (!all.length) { toast('Questions are still loading — try again in a moment.'); return; }
+        if (!usage.unlimited && usage.remaining < 1) { return startCheckout(); }
+        const byId = {}; all.forEach((q) => { byId[q.id] = q; });
+        const target = Math.min(20, all.length);
+        const picked = new Set();
+        const add = (id) => { if (picked.size < target && byId[id] && !picked.has(id)) picked.add(id); };
+        (p.due_ids || []).forEach(add);
+        (p.missed_ids || []).forEach(add);
+        const weak = (p.by_specialty || []).filter((s) => s.accuracy < 70).map((s) => s.category);
+        if (weak.length) all.forEach((q) => { if (weak.includes(q.category || q.domain_name)) add(q.id); });
+        const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+        if (picked.size < target) {
+            // domain-balanced round-robin fill (no history needed)
+            const byDom = {}; all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
+            const arrs = Object.values(byDom).map((a) => shuffle(a.slice()));
+            let progressed = true;
+            while (picked.size < target && progressed) {
+                progressed = false;
+                for (const arr of arrs) { if (picked.size >= target) break; const q = arr.pop(); if (q) { const b = picked.size; add(q.id); if (picked.size > b) progressed = true; } }
+            }
+        }
+        let pool = shuffle(Array.from(picked).map((id) => byId[id]));
+        if (!usage.unlimited) pool = pool.slice(0, Math.min(pool.length, usage.remaining));
+        if (!pool.length) { toast('No questions available right now.'); return; }
+        track('recommended_start', { size: pool.length });
+        beginSession(pool, 'tutor');
+    }
+
+    // Reflects what the recommended set will draw from (or a starter message for new users).
+    function renderRecommendedSub() {
+        const el = $('recommended-sub'); if (!el) return;
+        const p = state.profile || {};
+        const dueN = (p.due_ids || []).length;
+        const missN = (p.missed_ids || []).length;
+        const weakN = (p.by_specialty || []).filter((s) => s.accuracy < 70).length;
+        if (dueN || missN || weakN) {
+            const parts = [];
+            if (dueN) parts.push(`${dueN} due for review`);
+            if (missN) parts.push(`${missN} you missed`);
+            if (weakN) parts.push(`your ${weakN} weakest area${weakN > 1 ? 's' : ''}`);
+            el.textContent = `A focused ~20-question set from ${parts.join(', ')}.`;
+        } else {
+            el.textContent = 'A balanced ~20-question set across all 6 exam domains to get you started.';
+        }
+    }
+
+    function toggleCustomize() {
+        const panel = $('customize-panel'); if (!panel) return;
+        const show = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !show);
+        if (show) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function renderDashboard() {
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
@@ -494,6 +554,7 @@
         renderReadiness();
         renderOnboarding();
         renderReferral();
+        renderRecommendedSub();
 
         const usage = freeUsage();
         const card = $('free-allowance-card');
@@ -1719,6 +1780,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyReferral,
+        startRecommended, toggleCustomize,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
