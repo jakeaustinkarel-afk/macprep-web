@@ -65,6 +65,11 @@
         .nav a, .nav button { color: var(--muted); background: none; border: none; cursor: pointer;
             font-family: inherit; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
         .nav a:hover, .nav button:hover { color: var(--text); }
+        .navdrop { position: absolute; top: 26px; right: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 6px; min-width: 174px; z-index: 1000; box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+        .navdrop a { display: flex; align-items: center; width: 100%; padding: 8px 11px; border-radius: 6px; font-size: 13px; color: var(--text); text-transform: none; letter-spacing: 0; }
+        .navdrop a:hover { background: rgba(127,127,127,.12); color: var(--text); }
+        .navdrop hr { border: none; border-top: 1px solid var(--line); margin: 4px 6px; }
+        @media (max-width: 720px) { .navdrop { position: static; box-shadow: none; border: none; background: transparent; padding: 2px 0 6px 14px; min-width: 0; } }
         .badge { font-family: ui-monospace, monospace; font-size: 10px; padding: 3px 8px; border-radius: 3px;
             text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--line); }
         .badge.premium { color: var(--warn); border-color: var(--line); }
@@ -164,16 +169,31 @@
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
-            <a id="nav-admin" class="hidden" onclick="MACPrep.reviewQueue()" style="color:var(--info);">Review</a>
-            <a id="nav-metrics" class="hidden" href="/metrics.html" style="color:var(--info);">Metrics</a>
-            <a id="nav-profile" class="hidden" onclick="MACPrep.go('profile')">Profile</a>
-            <a id="nav-feedback" class="hidden" onclick="MACPrep.go('feedback')">Feedback</a>
-            <a href="/pricing.html">Pricing</a>
-            <a href="/faq.html">FAQ</a>
-            <a href="/guides/">Guides</a>
-            <a href="/updates.html">Updates</a>
+            <span id="nav-admin-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
+                <a onclick="MACPrep.toggleNavMenu('admin', event)" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
+                <div id="nav-admin-menu" class="navdrop hidden" role="menu">
+                    <a onclick="MACPrep.reviewQueue()">Review queue</a>
+                    <a href="/metrics.html">Metrics</a>
+                </div>
+            </span>
+            <a class="nav-market" href="/pricing.html">Pricing</a>
+            <a class="nav-market" href="/faq.html">FAQ</a>
+            <a class="nav-market" href="/guides/">Guides</a>
+            <a class="nav-market" href="/updates.html">Updates</a>
             <a id="nav-login" href="/login.html">Log in</a>
-            <button id="nav-signout" class="hidden" onclick="MACPrep.signOut()">Sign out</button>
+            <span id="nav-account-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
+                <a onclick="MACPrep.toggleNavMenu('account', event)">Account <span aria-hidden="true" style="font-size:9px;">▼</span></a>
+                <div id="nav-account-menu" class="navdrop hidden" role="menu">
+                    <a onclick="MACPrep.go('profile')">Profile</a>
+                    <a onclick="MACPrep.go('feedback')">Feedback</a>
+                    <a href="/updates.html">Updates</a>
+                    <a href="/guides/">Guides</a>
+                    <a href="/faq.html">FAQ</a>
+                    <a href="/pricing.html">Pricing</a>
+                    <hr>
+                    <a onclick="MACPrep.signOut()">Sign out</a>
+                </div>
+            </span>
                     <span style="position:relative;display:inline-flex;align-items:center;margin-right:14px;"><button id="font-toggle" onclick="_fontMenu(event)" aria-haspopup="menu" aria-label="Choose a font" title="Font" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;font-weight:700;letter-spacing:.5px;">Aa</button><div id="font-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:150px;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div></span><span style="position:relative;display:inline-flex;align-items:center;">
                         <button id="theme-toggle" onclick="_themeMenu(event)" aria-haspopup="menu" aria-label="Choose a theme" title="Theme" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:0;line-height:1;">🎨</button>
                         <div id="theme-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:182px;max-height:min(72vh,360px);overflow-y:auto;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div>

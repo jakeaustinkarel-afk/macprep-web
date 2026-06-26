@@ -113,17 +113,32 @@
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
-        ['nav-dashboard', 'nav-notebook', 'nav-profile', 'nav-feedback', 'nav-signout', 'tier-badge'].forEach((id) =>
+        // Signed-in app nav: study links, account menu, tier badge.
+        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap', 'tier-badge'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
-        $('nav-admin') && $('nav-admin').classList.toggle('hidden', !isAdmin);
-        $('nav-metrics') && $('nav-metrics').classList.toggle('hidden', !isAdmin);
-        // "Log in" shows for logged-out visitors only.
+        $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
+        // Marketing links + "Log in" show for logged-out visitors only.
+        document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
+        closeNavMenus();
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
         window.scrollTo(0, 0);
+    }
+
+    // Top-nav dropdown menus (Account / Admin).
+    function closeNavMenus() {
+        ['nav-account-menu', 'nav-admin-menu'].forEach((id) => { const m = $(id); if (m) m.classList.add('hidden'); });
+    }
+    function toggleNavMenu(which, ev) {
+        if (ev) ev.stopPropagation();
+        ['theme-menu', 'font-menu', which === 'account' ? 'nav-admin-menu' : 'nav-account-menu'].forEach((id) => {
+            const m = $(id); if (m) m.classList.add('hidden');
+        });
+        const m = $(which === 'account' ? 'nav-account-menu' : 'nav-admin-menu');
+        if (m) m.classList.toggle('hidden');
     }
 
     // ---- auth -------------------------------------------------------------
@@ -1639,7 +1654,7 @@
 
     window.MACPrep = {
         go, login, signupInline, showSignin, showSignup, signOut, startSession, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
-        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav,
+        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers,
         reportQuestion, setConfidence, reviewConfidentMisses,
@@ -1648,6 +1663,7 @@
     };
 
     document.addEventListener('keydown', handleQuizKey);
+    document.addEventListener('click', closeNavMenus);
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
