@@ -45,7 +45,7 @@
         html[data-theme="contrast"]{--bg:#000000;--panel:#0A0A0A;--line:#333333;--text:#FFFFFF;--text2:#E5E5E5;--muted:#A3A3A3;--accent:#00E676;--accent-dim:#04220f;--danger:#FF5252;--danger-dim:#2a0c0c;--good:#00E676;--warn:#FFD54F;--bad:#FF5252;--info:#40C4FF;}
         html[data-theme="ocean"]{--bg:#0B1A2B;--panel:#11263D;--line:#22384F;--text:#E6F0FA;--text2:#bcd0e3;--muted:#7d93a8;--accent:#38BDF8;--accent-dim:#0a2536;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#38bdf8;}
         html[data-theme="indigo"]{--bg:#14122B;--panel:#1E1B3A;--line:#332E54;--text:#ECEAFB;--text2:#cac6e8;--muted:#9690bb;--accent:#A78BFA;--accent-dim:#1e1840;--danger:#fb7185;--danger-dim:#2a1420;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#a78bfa;}
-        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#9aa5b8;--accent:#88C0D0;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
+        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#b0bbce;--accent:#88C0D0;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
         html[data-theme="sky"]{--bg:#F0F6FF;--panel:#ffffff;--line:#dbe6f5;--text:#0f2236;--text2:#33485f;--muted:#5f7388;--accent:#2563EB;--accent-dim:#e2ecfd;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
         html[data-theme="lavender"]{--bg:#F5F3FC;--panel:#ffffff;--line:#e6e1f4;--text:#241f33;--text2:#43395c;--muted:#6f6589;--accent:#7C3AED;--accent-dim:#efe9fc;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#7c3aed;}
         html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
@@ -86,6 +86,7 @@
         .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 28px; margin-bottom: 24px; }
         h1 { font-size: 26px; margin: 0 0 6px; }
         h2 { font-size: 19px; margin: 0 0 14px; }
+        .view-title { font-size: 26px; font-weight: 700; margin: 0 0 6px; line-height: 1.2; }
         h3 { font-size: 14px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: inherit; font-weight: 700; }
         p.sub { color: var(--muted); margin: 0 0 18px; line-height: 1.6; }
         label { display: block; font-family: inherit; font-weight: 600; font-size: 11px; color: var(--muted);
@@ -258,7 +259,7 @@
                         <a href="#signup-pane" class="btn" style="text-decoration:none;padding:14px 26px;">Start free — no card</a>
                         <a href="#demo-card" class="btn ghost" style="text-decoration:none;">Try 3 questions first</a>
                     </div>
-                    <div id="social-proof" class="mono" style="font-size:12.5px;color:var(--text2);margin-top:18px;min-height:18px;"><span style="color:var(--accent);">●</span> A growing community of SAAs &amp; CAAs is already studying</div>
+                    <div id="social-proof" class="mono" style="font-size:12.5px;color:var(--text2);margin-top:18px;min-height:18px;"><span style="color:var(--accent);">●</span> Every question written &amp; reviewed by a practicing CAA</div>
                 </div>
                 <div id="login-form-container" class="card">
                     <div id="signup-pane">
@@ -368,11 +369,24 @@
             <p style="text-align:center;margin-top:20px;"><a href="/pricing.html" style="font-family:ui-monospace,monospace;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">See full plan details &amp; pricing FAQ →</a></p>
         </div>
 
+        <!-- Founder / About -->
+        <div class="wrap" id="about" data-reveal style="max-width:760px;">
+            <div class="card" style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;">
+                <div style="flex:none;position:relative;width:88px;height:88px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-weight:700;font-size:27px;color:var(--accent);overflow:hidden;">JK<img src="/founder.jpg" alt="Jake Karel, CAA — founder of MACPrep" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()"></div>
+                <div style="flex:1;min-width:240px;">
+                    <div class="tag" style="margin-bottom:7px;">Who writes these questions</div>
+                    <h2 style="margin:0 0 10px;">Hi, I'm Jake — a practicing CAA.</h2>
+                    <p class="sub" style="margin:0 0 12px;line-height:1.7;">I'm a Certified Anesthesiologist Assistant, and I built MACPrep because board prep for our field was either outdated, uncited, or overpriced. Every question is written and reviewed by a practicing clinician — journal-sourced, with a rationale for every answer choice. It's the resource I wish I'd had studying for my own boards, and the tool I use to teach the SAAs I precept between cases.</p>
+                    <div class="mono" style="font-size:12px;color:var(--muted);">Jake Karel, CAA · Founder, MACPrep LLC</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- DASHBOARD -->
     <div class="wrap hidden" id="dashboard-view">
-        <h1 id="dash-greeting">Welcome back</h1>
+        <h2 class="view-title" id="dash-greeting">Welcome back</h2>
         <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
 
         <div class="card hidden" id="resume-card" style="border-color:var(--line);"></div>
@@ -533,7 +547,7 @@
 
     <!-- PROFILE -->
     <div class="wrap hidden" id="profile-view">
-        <h1>Your Profile</h1>
+        <h2 class="view-title">Your Profile</h2>
         <p class="sub">Manage your account details and subscription.</p>
 
         <div class="card">
@@ -582,7 +596,7 @@
 
     <!-- FEEDBACK -->
     <div class="wrap hidden" id="feedback-view">
-        <h1>Feedback</h1>
+        <h2 class="view-title">Feedback</h2>
         <p class="sub">Found a problem with a question, hit a bug, or have a suggestion? Tell us — we read everything. <strong style="color:var(--accent);">🔒 It's completely anonymous</strong> — we never see who sent it, so feel free to be candid.</p>
         <div class="card">
             <div class="form-group">
@@ -605,7 +619,7 @@
 
     <!-- ADMIN REVIEW QUEUE (program directors / SMEs only) -->
     <div class="wrap hidden" id="admin-view">
-        <h1>Admin</h1>
+        <h2 class="view-title">Admin</h2>
         <div class="card hidden" id="admin-analytics"></div>
         <div class="card hidden" id="admin-vouchers"></div>
         <h2 style="margin-top:8px;">Content review</h2>
@@ -614,7 +628,7 @@
     </div>
 
     <div class="wrap hidden" id="notebook-view">
-        <h1>My Notebook</h1>
+        <h2 class="view-title">My Notebook</h2>
         <p class="sub">Your notes and flagged questions, in one searchable place.</p>
         <input id="notebook-search" type="text" placeholder="Search notes and questions…" oninput="MACPrep.renderNotebook()" style="width:100%;max-width:480px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);margin-bottom:20px;">
         <div id="notebook-body"></div>

@@ -1749,7 +1749,7 @@
             const cfg = await r.json();
             if (!cfg.sentryDsn) return;
             const s = document.createElement('script');
-            s.src = 'https://browser.sentry-cdn.com/7.120.3/bundle.min.js';
+            s.src = '/sentry.min.js';
             s.crossOrigin = 'anonymous';
             s.onload = () => {
                 try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0,
