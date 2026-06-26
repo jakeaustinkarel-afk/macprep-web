@@ -170,7 +170,7 @@
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
             <span id="nav-admin-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
-                <a onclick="MACPrep.toggleNavMenu('admin', event)" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
+                <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.reviewQueue()">Review queue</a>
                     <a href="/metrics.html">Metrics</a>
@@ -182,7 +182,7 @@
             <a class="nav-market" href="/updates.html">Updates</a>
             <a id="nav-login" href="/login.html">Log in</a>
             <span id="nav-account-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
-                <a onclick="MACPrep.toggleNavMenu('account', event)">Account <span aria-hidden="true" style="font-size:9px;">▼</span></a>
+                <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('account', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('account', event);}">Account <span aria-hidden="true" style="font-size:9px;">▼</span></a>
                 <div id="nav-account-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.go('profile')">Profile</a>
                     <a onclick="MACPrep.go('feedback')">Feedback</a>

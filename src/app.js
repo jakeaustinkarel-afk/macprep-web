@@ -1676,6 +1676,8 @@
             history.replaceState({}, '', '/');
         }
         state.token = getToken();
+        // Opening the theme/font picker should also dismiss any open nav dropdown.
+        ['theme-toggle', 'font-toggle'].forEach((id) => { const b = $(id); if (b) b.addEventListener('click', closeNavMenus); });
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
         $('difficulty-select') && $('difficulty-select').addEventListener('change', updateSessionHint);
         $('pool-mode') && $('pool-mode').addEventListener('change', updateSessionHint);
