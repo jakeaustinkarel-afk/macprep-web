@@ -329,7 +329,7 @@
         const exam = (p.days_to_exam != null) ? p.days_to_exam : null;
         const trend = p.trend || [];
         const spark = trend.length
-            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:10px;height:${Math.max(4, Math.round(t.accuracy * 0.4))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)'};margin-right:3px;vertical-align:bottom;border-radius:2px;"></span>`).join('')
+            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:14px;height:${Math.max(6, Math.round(t.accuracy * 0.6))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)'};margin-right:4px;vertical-align:bottom;border-radius:3px;"></span>`).join('')
             : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:46px;"><span style="font-size:18px;">📈</span> Answer a few questions — your accuracy trend shows up here.</div>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
@@ -361,7 +361,7 @@
         el.innerHTML = `<h3>Exam readiness</h3>
             <div class="grid cols-3" style="margin-bottom:14px;align-items:center;">
                 <div class="stat" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <svg viewBox="0 0 80 80" width="86" height="86" style="display:block;">
+                    <svg viewBox="0 0 80 80" width="118" height="118" style="display:block;">
                         <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line)" stroke-width="8"></circle>
                         <circle class="ring-fill" cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
                         <text x="40" y="46" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:18px;fill:var(--text);">${readiness}%</text>
@@ -374,7 +374,7 @@
             ${planLine}
             ${goalLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
-            <div style="height:46px;">${spark}</div>
+            <div style="height:64px;">${spark}</div>
             <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:12px;font-size:13px;">📊 Take a diagnostic — get your readiness score</button>`;
         const ring = el.querySelector('.ring-fill');
         if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
