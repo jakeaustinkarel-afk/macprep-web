@@ -751,11 +751,17 @@
       function vid(){try{var v=localStorage.getItem('macprep_vid');if(!v){v=Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem('macprep_vid',v);}return v;}catch(e){return 'na';}}
       function ev(n){try{fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true}).catch(function(){});}catch(e){}}
       var qs=[],idx=0,sel=null,started=false;
-      var FAIL='<div class="mono" style="font-size:12px;color:var(--muted);">Demo unavailable right now — <a href="#signup-pane">create a free account</a> to start.</div>';
-      function load(){
-        fetch('/api/demo/questions').then(function(r){return r.json();}).then(function(d){
-          qs=(d&&d.questions)||[]; if(!qs.length){card.innerHTML=FAIL;return;} idx=0; renderQ();
-        }).catch(function(){card.innerHTML=FAIL;});
+      function showFail(){
+        card.innerHTML='<div class="mono" style="font-size:13px;color:var(--muted);margin-bottom:14px;">The sample didn\'t load — could be a slow connection.</div><button type="button" id="demo-retry" class="btn" style="font-size:13px;">Try again</button> <a href="#signup-pane" style="margin-left:10px;font-size:14px;">or create a free account →</a>';
+        var b=document.getElementById('demo-retry'); if(b) b.onclick=function(){load(0);};
+      }
+      // fetch with a hard timeout so a hung request (deploy swap, flaky network) can never spin forever
+      function fetchT(url,opts,ms){return new Promise(function(res,rej){var done=false,to=setTimeout(function(){if(!done){done=true;rej(new Error('timeout'));}},ms||9000);fetch(url,opts).then(function(r){if(done)return;done=true;clearTimeout(to);res(r);},function(e){if(done)return;done=true;clearTimeout(to);rej(e);});});}
+      function load(attempt){
+        card.innerHTML='<div class="mono" style="font-size:12px;color:var(--muted);">Loading a sample question…</div>';
+        fetchT('/api/demo/questions',{},9000).then(function(r){return r.json();}).then(function(d){
+          qs=(d&&d.questions)||[]; if(!qs.length) throw new Error('empty'); idx=0; renderQ();
+        }).catch(function(){ if(!attempt){ setTimeout(function(){load(1);},800); } else { showFail(); } });
       }
       function renderQ(){
         if(!started){started=true;ev('demo_started');}
@@ -781,7 +787,7 @@
       function submit(){
         if(sel==null) return; var q=qs[idx];
         var s=document.getElementById('demo-submit'); s.disabled=true; s.textContent='Checking…';
-        fetch('/api/demo/grade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:q.id,choiceIndex:sel})})
+        fetchT('/api/demo/grade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:q.id,choiceIndex:sel})},9000)
           .then(function(r){return r.json();}).then(function(g){renderGraded(q,g);})
           .catch(function(){s.disabled=false;s.textContent='Submit answer';});
       }
