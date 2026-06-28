@@ -1,0 +1,509 @@
+[
+  {
+    "stem": "A 67-year-old man (BMI 24, 50-pack-year smoking history, FEV1 62% predicted) is undergoing a right video-assisted thoracoscopic upper lobectomy. A left-sided double-lumen tube is confirmed in good position by fiberoptic bronchoscopy, and one-lung ventilation (left lung) is started with the right lung collapsed and open to air. Tidal volume is 5 mL/kg ideal body weight, FiO2 1.0, RR 14. Twenty minutes after starting OLV the SpO2 drifts from 99% to 86%. Auscultation and repeat bronchoscopy confirm the tube has not migrated and the dependent lung is well ventilated; peak airway pressure is 24 cmH2O. Which intervention is the most appropriate next step to improve oxygenation while surgery continues?",
+    "choices": [
+      {
+        "text": "Apply 5-10 cmH2O of CPAP with oxygen to the non-dependent (operative, right) lung",
+        "rationale": "Correct: once tube position and dependent-lung ventilation are confirmed adequate, CPAP to the non-ventilated lung oxygenates blood still perfusing that lung and reliably reverses shunt-related hypoxemia with minimal surgical interference at low pressures."
+      },
+      {
+        "text": "Increase the tidal volume to 10 mL/kg ideal body weight on the dependent lung",
+        "rationale": "Incorrect: large tidal volumes raise alveolar pressure in the dependent lung, divert its blood flow to the shunting non-dependent lung, and increase the risk of acute lung injury rather than improving oxygenation."
+      },
+      {
+        "text": "Clamp the pulmonary artery of the dependent (ventilated) lung to reduce shunt",
+        "rationale": "Incorrect: shunt arises from perfusion of the collapsed non-ventilated lung, so clamping the dependent lung's artery would worsen hypoxemia and is nonsensical for the ventilated side."
+      },
+      {
+        "text": "Disconnect the dependent lung from the circuit briefly to recruit the non-dependent lung passively",
+        "rationale": "Incorrect: disconnecting the only ventilated lung removes all gas exchange and would cause precipitous desaturation rather than correct it."
+      },
+      {
+        "text": "Reduce FiO2 to 0.5 to limit absorption atelectasis in the dependent lung",
+        "rationale": "Incorrect: during active OLV hypoxemia, FiO2 should remain at 1.0 to maximize the oxygen gradient; lowering it would deepen the desaturation."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Hypoxemia during one-lung ventilation is driven by transpulmonary shunt through the collapsed, still-perfused non-dependent lung, which can approach 30-50% of cardiac output before hypoxic pulmonary vasoconstriction partially compensates. After confirming the double-lumen tube position, dependent-lung ventilation, and hemodynamics, the highest-yield maneuvers are CPAP to the non-dependent lung (oxygenates the shunting blood) and PEEP to the dependent lung. CPAP of 5-10 cmH2O is generally first-line because it reliably raises SpO2 with minimal disturbance to the surgical field, whereas raising dependent-lung tidal volume diverts perfusion and risks injury.",
+    "difficulty": "hard",
+    "subtopic": "One-lung ventilation physiology and hypoxemia management",
+    "reference_title": "Hypoxia During One-Lung Ventilation - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/hypoxia-during-one-lung-ventilation/",
+    "category": "Thoracic & Vascular",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The stem deliberately pre-closes the earlier rungs of the standard OLV-hypoxemia algorithm (FiO2 already 1.0; tube position confirmed by bronchoscopy; dependent lung well-ventilated; peak pressure 24 cmH2O is not high), so the next appropriate maneuver is the CPAP/PEEP tier. Choice A (5-10 cmH2O CPAP to the non-dependent operative lung) is the single best answer among the options: it oxygenates blood still perfusing the collapsed lung and reliably reverses shunt-related hypoxemia. All distractors are genuinely inferior and correctly explained — increasing TV to 10 mL/kg risks ALI and diverts perfusion to the shunting lung (B); clamping the DEPENDENT lung's PA worsens shunt and is nonsensical, since the last-resort clamp is on the non-dependent/operative side (C); disconnecting the only ventilated lung removes all gas exchange (D); and reducing FiO2 during active hypoxemia deepens desaturation (E). The explanation's physiology (shunt 30-50% of CO before HPV compensates; CPAP and dependent-lung PEEP as highest-yield maneuvers) is accurate and current; \"CPAP generally first-line\" is a defensible, board-standard teaching, and PEEP-to-dependent-lung is not offered as a competing choice, so there is no ambiguity. REFERENCE: WebFetch of the OpenAnesthesia URL resolves with HTTP 200; page title is \"Hypoxia During One-Lung Ventilation - OpenAnesthesia\" and content directly covers OLV hypoxemia management including FiO2 1.0, bronchoscopic position check, recruitment maneuvers, and CPAP to the non-dependent lung — genuinely on-topic. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 70-year-old woman undergoes carotid endarterectomy under general anesthesia. She received systemic heparin (100 units/kg) before carotid cross-clamping. She has type 2 diabetes managed with NPH insulin and reports a prior 'reaction' to a medication she cannot name. At the end of the case the surgeon asks for heparin reversal. Two minutes into a protamine infusion she develops acute hypotension (BP 70/40), a rising peak inspiratory pressure with new wheezing, and elevation of pulmonary artery pressures. Which factor in this patient's history most increases her risk of a serious protamine reaction, and what is the most appropriate immediate management?",
+    "choices": [
+      {
+        "text": "Prior NPH (protamine-containing) insulin exposure increases risk; stop the protamine, support with epinephrine and fluids, and treat as an anaphylactic/anaphylactoid reaction",
+        "rationale": "Correct: NPH insulin is protamine-complexed, sensitizing patients to protamine, and a severe reaction is managed by stopping the drug and giving epinephrine, fluids, and supportive care as for anaphylaxis."
+      },
+      {
+        "text": "Her diabetes lowers protamine risk; the reaction is unrelated, so continue protamine and give a beta-blocker for the tachycardia",
+        "rationale": "Incorrect: diabetes treated with NPH raises (not lowers) protamine risk, and beta-blockade is contraindicated in this hypotensive, bronchospastic, anaphylactic picture."
+      },
+      {
+        "text": "Risk is driven by rapid administration alone; slow the protamine to a 30-minute infusion and otherwise continue unchanged",
+        "rationale": "Incorrect: while rapid infusion contributes to hypotension, a full reaction with bronchospasm and pulmonary hypertension requires stopping the drug and active resuscitation, not merely slowing it."
+      },
+      {
+        "text": "Her unnamed prior drug reaction is irrelevant; administer additional heparin to outcompete the protamine and reverse the effect",
+        "rationale": "Incorrect: giving more heparin does not treat a protamine anaphylactic reaction and would dangerously re-anticoagulate a patient at an arterial suture line."
+      },
+      {
+        "text": "Risk relates only to fish allergy; give diphenhydramine alone and resume protamine once the wheezing settles",
+        "rationale": "Incorrect: antihistamine monotherapy is inadequate for severe hypotension with bronchospasm, and resuming the offending agent risks fatal recurrence."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Protamine reactions span dose-dependent hypotension from rapid administration to true IgE-mediated anaphylaxis and catastrophic pulmonary vasoconstriction with right heart failure. Recognized risk factors include prior protamine exposure through NPH or protamine-zinc insulin, prior protamine administration, vasectomy, and fish allergy. Management of a severe reaction is immediate cessation of protamine and treatment as anaphylaxis: epinephrine, aggressive fluids, and airway/hemodynamic support. Slow administration and a small test dose reduce, but do not eliminate, the risk in sensitized patients.",
+    "difficulty": "medium",
+    "subtopic": "Protamine reversal reactions after vascular heparinization",
+    "reference_title": "Protamine - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK547753/",
+    "category": "Thoracic & Vascular",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Keyed answer (index 0) is the single best answer. NPH (Neutral Protamine Hagedorn) insulin is protamine-complexed; chronic low-dose exposure (0.5 mg/100 units) generates anti-protamine antibodies and is a well-established, protamine-specific sensitizer. The described picture — acute hypotension, rising PIP with wheezing, and elevated PA pressures 2 min into protamine — is classic severe protamine reaction (anaphylactic + pulmonary vasoconstriction). Correct management is stopping the drug and treating as anaphylaxis with epinephrine, fluids, and hemodynamic/airway support. All four distractors are genuinely inferior: B (diabetes lowers risk; beta-blocker) is doubly wrong and contraindicated in anaphylaxis; C (slow infusion alone) is inadequate for a full anaphylactic/pulmonary-HTN reaction; D (more heparin) is ineffective and re-anticoagulates an arterial suture line; E (fish allergy only, antihistamine monotherapy, resume agent) is inadequate and dangerous. The unnamed prior drug reaction in the stem is deliberately non-specific and cannot outrank the concrete NPH exposure, so the key is unambiguous. Explanation accurately captures the spectrum of reactions and the recognized risk factors (NPH/PZI insulin, prior protamine, vasectomy, fish allergy). REFERENCE: https://www.ncbi.nlm.nih.gov/books/NBK547753/ resolves to the StatPearls 'Protamine' article (Applefield & Krishnan, updated 2023) and directly supports the risk factors and management described. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 24-year-old healthy woman is undergoing inhalational induction for a brief gynecologic procedure. After preoxygenation, the CAA delivers 70% nitrous oxide with 2% sevoflurane in 28% oxygen via a tightly fitting mask. Compared with delivering the same 2% sevoflurane in a 70% air/30% oxygen carrier (no nitrous oxide), the high inspired concentration of nitrous oxide accelerates the rise of the alveolar (FA) sevoflurane concentration toward the inspired (FI) value. Which mechanism best explains this faster rise in alveolar sevoflurane concentration?",
+    "choices": [
+      {
+        "text": "Rapid alveolar uptake of the large volume of nitrous oxide concentrates the remaining alveolar sevoflurane and augments its uptake",
+        "rationale": "Correct: this is the second gas effect, in which bulk uptake of a high-volume first gas (N2O) shrinks alveolar volume and concentrates the co-administered second gas, speeding the rise of its FA/FI."
+      },
+      {
+        "text": "Nitrous oxide lowers the blood:gas partition coefficient of sevoflurane, reducing its solubility in blood",
+        "rationale": "Incorrect: the blood:gas partition coefficient of sevoflurane is an intrinsic physicochemical property that nitrous oxide does not change."
+      },
+      {
+        "text": "Nitrous oxide increases cardiac output, which by increasing pulmonary blood flow speeds the rise of alveolar sevoflurane",
+        "rationale": "Incorrect: increased cardiac output augments anesthetic removal from the alveoli and actually slows the rise of FA/FI for soluble agents, the opposite of the observed effect."
+      },
+      {
+        "text": "Nitrous oxide raises the minimum alveolar concentration (MAC) of sevoflurane, requiring a higher alveolar partial pressure",
+        "rationale": "Incorrect: nitrous oxide is additive with sevoflurane and lowers the sevoflurane MAC requirement; MAC is unrelated to the kinetics of FA/FI rise."
+      },
+      {
+        "text": "Nitrous oxide diffuses out of the blood into the alveolus, diluting sevoflurane and slowing its uptake",
+        "rationale": "Incorrect: this reverses the actual diffusion gradient at induction, when poorly soluble N2O moves rapidly from alveolus into blood, not the other way around."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "The concentration effect describes how a high inspired concentration of a gas speeds the rise of its own FA/FI; the second gas effect is its corollary, in which the rapid uptake of a large volume of a first gas (nitrous oxide, given in high concentration) reduces alveolar volume and concentrates a co-administered second gas, augmenting that gas's uptake and accelerating its alveolar rise. Both effects are clinically meaningful essentially only with nitrous oxide because only it is administered in high enough concentrations for bulk uptake to matter. Recognizing this explains why N2O-based carriers can speed inhalational induction with a volatile agent.",
+    "difficulty": "hard",
+    "subtopic": "Inhalational anesthetic pharmacokinetics (concentration and second gas effects)",
+    "reference_title": "Inhaled Anesthetic Agents: Mechanism of Action, Uptake, and Distribution - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/inhaled-anesthetic-agents-mechanism-of-action-uptake-and-distribution/",
+    "category": "Pharmacology",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 0) is the single best answer and a textbook-accurate statement of the second gas effect: rapid alveolar uptake of the large volume of high-concentration N2O reduces alveolar volume, concentrating the co-administered sevoflurane and augmenting its uptake, thereby speeding FA/FI rise. All four distractors are genuinely inferior with accurate rationales: (B) N2O does not alter sevoflurane's intrinsic blood:gas partition coefficient; (C) increased cardiac output augments alveolar uptake and SLOWS FA/FI rise for soluble agents (opposite of the effect, and N2O does not produce a relevant CO increase); (D) N2O is additive and LOWERS sevo MAC, and MAC is potency, not kinetics; (E) reverses the true induction gradient (poorly soluble N2O moves alveolus to blood, not blood to alveolus). The stem is internally consistent (70% N2O + 2% sevo + 28% O2 = 100%) and unambiguous. The explanation correctly distinguishes the concentration effect from its corollary second gas effect and correctly notes both are clinically meaningful essentially only with N2O. A minor nuance — the classic second gas effect also has an augmented-inspired-ventilation component — does not create ambiguity because no distractor offers it as an alternative. REFERENCE: WebFetch of the OpenAnesthesia URL resolves and is directly on-topic, explicitly covering FA/FI rise, the concentration effect and second gas effect (naming nitrous oxide), the blood:gas partition coefficient as a solubility property, and increased cardiac output slowing FA/FI rise. Citation supports the keyed answer and all distractor rationales."
+    }
+  },
+  {
+    "stem": "A 71-year-old man with hypertension and depression is undergoing transurethral resection of the prostate under spinal anesthesia. His long-standing depression has been managed with reserpine. After the block sets up, his blood pressure falls to 82/48 mmHg with a heart rate of 60/min. The CAA gives an initial 10 mg IV bolus of ephedrine, but the blood pressure response is minimal, and a second 10 mg dose is similarly ineffective. Which explanation best accounts for the blunted response to ephedrine in this patient?",
+    "choices": [
+      {
+        "text": "Reservine has depleted presynaptic norepinephrine stores, so the indirect-acting ephedrine has little neurotransmitter to release",
+        "rationale": "Correct: ephedrine acts largely indirectly by displacing norepinephrine from presynaptic vesicles, and chronic reserpine depletes those vesicular stores, blunting ephedrine's pressor effect."
+      },
+      {
+        "text": "Ephedrine is a pure beta-agonist and cannot raise systemic vascular resistance in any patient",
+        "rationale": "Incorrect: ephedrine has both alpha and beta activity and normally raises blood pressure through increased vascular resistance and cardiac output, so this mischaracterizes the drug."
+      },
+      {
+        "text": "Reserpine sensitizes adrenergic receptors, causing ephedrine to be metabolized too rapidly to act",
+        "rationale": "Incorrect: reserpine causes depletion-related up-regulation/denervation supersensitivity to direct agonists, and ephedrine's failure here is due to lack of releasable norepinephrine, not accelerated metabolism."
+      },
+      {
+        "text": "The spinal anesthetic has produced a total sympathectomy that no vasopressor can overcome",
+        "rationale": "Incorrect: a directly acting agent such as phenylephrine would still be effective despite the sympathectomy, so the block alone does not explain ephedrine's specific failure."
+      },
+      {
+        "text": "Ephedrine requires intact hepatic metabolism to its active form, which reserpine inhibits",
+        "rationale": "Incorrect: ephedrine is not a prodrug requiring hepatic activation, and reserpine does not block its conversion to an active metabolite."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Ephedrine is a mixed-acting sympathomimetic whose predominant pressor mechanism is indirect: it displaces norepinephrine from presynaptic storage vesicles. Chronic reserpine (and, similarly, conditions that deplete catecholamine stores or repeated ephedrine dosing causing tachyphylaxis) leaves little releasable norepinephrine, so ephedrine becomes ineffective. The appropriate rescue is a directly acting agent such as phenylephrine, which stimulates the adrenergic receptor independent of endogenous norepinephrine stores.",
+    "difficulty": "medium",
+    "subtopic": "Sympathomimetic vasopressor pharmacology (indirect-acting agents and catecholamine depletion)",
+    "reference_title": "Ephedrine - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK547661/",
+    "category": "Pharmacology",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 0) is the single best answer and is correct, unambiguous board-classic pharmacology. Reserpine irreversibly inhibits VMAT and depletes presynaptic norepinephrine stores; ephedrine acts predominantly indirectly by displacing/releasing stored NE, so its pressor effect is blunted when stores are depleted. The correct rescue is a direct-acting agent (phenylephrine), as the explanation states. All four distractors are genuinely inferior: (1) ephedrine is mixed alpha/beta, not a pure beta-agonist; (2) reserpine causes denervation/depletion supersensitivity to direct agonists, not accelerated ephedrine metabolism, and that choice is internally inconsistent; (3) phenylephrine would still work despite sympathectomy, so the block alone doesn't explain ephedrine's specific failure; (4) ephedrine is not a hepatic prodrug. Reserpine as a historical antidepressant/antihypertensive is pharmacologically valid. Rationales are all accurate and current. Only a cosmetic typo ('Reservine' in the keyed choice text) — no effect on correctness or ambiguity. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK547661/ resolves to the Ephedrine StatPearls page, directly on-topic. It explicitly states ephedrine's 'primary mode of action is indirectly achieved by inhibiting neuronal norepinephrine reuptake and displacing more norepinephrine from storage vesicles' and that 'Tachyphylaxis will develop with prolonged and repeated use as this depletes endogenous norepinephrine stores' — fully supporting the keyed mechanism. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 58-year-old man with end-stage renal disease on hemodialysis and a history of poorly controlled asthma requires a prolonged abdominal procedure expected to last several hours and to be followed by overnight mechanical ventilation in the ICU. The attending wants a nondepolarizing neuromuscular blocker whose clearance is least dependent on renal or hepatic function for a maintenance infusion. The CAA selects cisatracurium. Which property of cisatracurium most directly justifies this choice in a patient with end-stage renal disease?",
+    "choices": [
+      {
+        "text": "It is eliminated predominantly by organ-independent Hofmann elimination, a pH- and temperature-dependent chemical degradation",
+        "rationale": "Correct: cisatracurium undergoes spontaneous Hofmann elimination that does not depend on renal or hepatic clearance, so its duration is largely preserved in end-stage renal disease."
+      },
+      {
+        "text": "It is rapidly hydrolyzed by plasma pseudocholinesterase, which is unaffected by renal failure",
+        "rationale": "Incorrect: pseudocholinesterase (plasma) hydrolysis is the pathway for succinylcholine and mivacurium, not the primary route for cisatracurium, which relies on Hofmann elimination."
+      },
+      {
+        "text": "It is reversed only by sugammadex, which is cleared independently of the kidneys",
+        "rationale": "Incorrect: sugammadex selectively encapsulates aminosteroids such as rocuronium and vecuronium and does not reverse benzylisoquinolinium agents like cisatracurium, and the sugammadex-rocuronium complex is in fact renally eliminated."
+      },
+      {
+        "text": "It undergoes extensive biliary excretion, bypassing the kidney entirely",
+        "rationale": "Incorrect: cisatracurium does not rely on biliary/hepatic excretion of the parent drug for termination of effect; that route is more relevant to agents like vecuronium and rocuronium."
+      },
+      {
+        "text": "It causes substantial histamine release, which counteracts any prolongation from renal failure",
+        "rationale": "Incorrect: cisatracurium is notable for minimal histamine release (an advantage in asthma), and histamine release would not shorten a neuromuscular block."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Cisatracurium, a benzylisoquinolinium nondepolarizing blocker, is eliminated chiefly by Hofmann elimination, a spontaneous degradation dependent on physiologic pH and temperature rather than on renal or hepatic function, making its duration predictable in organ failure. Unlike atracurium, it produces minimal histamine release, an additional advantage in a patient with asthma. The metabolite laudanosine can theoretically accumulate and cause CNS excitation with very prolonged infusions, particularly in hepatic failure, but the parent drug's clearance remains organ-independent.",
+    "difficulty": "medium",
+    "subtopic": "Nondepolarizing neuromuscular blocker pharmacology (Hofmann elimination in organ failure)",
+    "reference_title": "Cisatracurium - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK539842/",
+    "category": "Pharmacology",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 0 — organ-independent Hofmann elimination, pH/temperature-dependent chemical degradation) is unambiguously the single best answer and the defining property justifying cisatracurium in ESRD. All four distractors are genuinely inferior with accurate rationales: pseudocholinesterase hydrolysis is the route for succinylcholine/mivacurium (cisatracurium relies predominantly on Hofmann); sugammadex encapsulates aminosteroids, not benzylisoquinoliniums, and its rocuronium complex is renally eliminated; biliary excretion applies more to vecuronium/rocuronium; cisatracurium has minimal (not substantial) histamine release, and histamine would not shorten block. The explanation correctly notes minimal histamine release vs atracurium (advantage in asthma) and the laudanosine accumulation caveat with prolonged infusion/hepatic failure. Medicine is correct and current. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK539842/ resolves to the Cisatracurium StatPearls page (title matches exactly) and directly confirms organ-independent, pH/temperature-dependent Hofmann elimination, laudanosine metabolite formation, and no significant PK difference in ESRD. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 67-year-old man with a T1 glottic squamous cell carcinoma is undergoing CO2 laser excision of the vocal cord lesion under general anesthesia. He is intubated with a laser-resistant endotracheal tube whose cuff has been filled with methylene-blue-tinted saline. The procedure is being conducted with total intravenous anesthesia. As the surgeon prepares to fire the laser, the anesthetist is delivering an FiO2 of 0.5 with the balance as air, and the most recent SpO2 reading is 99%. Which single intervention does the most to reduce the risk of an airway fire before the laser is activated?",
+    "choices": [
+      {
+        "text": "Reduce the delivered FiO2 to the lowest level that maintains acceptable oxygenation (target < 0.30) and avoid nitrous oxide",
+        "rationale": "An oxidizer-rich atmosphere is the limb of the fire triad the anesthetist directly controls, so titrating FiO2 to below 0.30 (with no nitrous oxide) before the laser fires is the single most protective step."
+      },
+      {
+        "text": "Switch the carrier gas from air to nitrous oxide to dilute the oxygen fraction",
+        "rationale": "Nitrous oxide is itself an oxidizer that supports combustion as readily as oxygen, so substituting it for air does not lower fire risk and is contraindicated during laser airway surgery."
+      },
+      {
+        "text": "Increase fresh gas flow to 10 L/min to flush volatile anesthetic from the circuit",
+        "rationale": "Raising fresh gas flow does not reduce the oxidizer concentration at the surgical field and, with TIVA, there is no volatile agent in the circuit to flush."
+      },
+      {
+        "text": "Confirm the cuff is inflated with air rather than saline to improve the seal",
+        "rationale": "Saline-filled cuffs are deliberately preferred because the fluid absorbs laser energy and helps extinguish a cuff strike, so converting to air would worsen, not improve, fire safety."
+      },
+      {
+        "text": "Apply continuous low-flow oxygen insufflation alongside the tube to keep saturations high",
+        "rationale": "Insufflating extra oxygen into the surgical field raises the local oxidizer concentration and directly increases the likelihood of ignition."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Airway fires require fuel (the tube, drapes), an ignition source (the laser), and an oxidizer (oxygen or nitrous oxide). The anesthetist's principal lever is the oxidizer: FiO2 should be minimized to the lowest level compatible with adequate saturation, ideally below 0.30, and nitrous oxide must be avoided because it supports combustion just as oxygen does. Saline-filled, dye-tinted cuffs and laser-resistant tubes are adjuncts, not substitutes, for controlling the inspired oxidizer fraction.",
+    "difficulty": "medium",
+    "subtopic": "Operating-room airway fire prevention during laser laryngeal surgery",
+    "reference_title": "Airway for Laser Surgery — StatPearls (NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK564406/",
+    "category": "Airway & ENT",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (A) is the single best answer. During CO2 laser laryngeal surgery, the anesthetist's principal control over the fire triad is the oxidizer limb; minimizing FiO2 to the lowest level compatible with oxygenation (commonly cited target around ≤0.30) and avoiding nitrous oxide is the standard ASA/APSF/StatPearls recommendation. The current FiO2 of 0.5 with SpO2 99% leaves clear room to titrate down, making this the most protective pre-firing step. All distractors are genuinely inferior with accurate rationales: B (N2O is itself an oxidizer that supports combustion, contraindicated), C (raising FGF does not lower field oxidizer concentration, and with TIVA there is no volatile to flush), D (saline-filled, methylene-blue-tinted cuffs are deliberately preferred to absorb laser energy and signal cuff strike, so switching to air worsens safety), and E (supplemental O2 insufflation raises local oxidizer and ignition risk). The explanation correctly states the fire triad and that laser-resistant tubes and saline cuffs are adjuncts, not substitutes, for controlling inspired oxidizer. No medical inaccuracy or ambiguity. Minor note: the specific '<0.30' figure is a practical heuristic rather than an absolute rule, but the choice leads with the correct guideline principle and remains unambiguously best. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK564406/ resolves to StatPearls 'Airway for Laser Surgery,' which directly covers anesthesia/airway management for laser airway surgery, FiO2 minimization, avoiding nitrous oxide, allowing oxidizer dispersal before firing, laser-resistant tube designs, and saline/methylene-blue cuff filling. Citation is valid and on-topic."
+    }
+  },
+  {
+    "stem": "A 4-year-old boy (16 kg) returns to the operating room 7 hours after adenotonsillectomy with brisk, recurrent oropharyngeal bleeding. He has been swallowing blood, is tachycardic at 150/min, has cool extremities, and a capillary refill of 3 seconds. He last drank clear fluids 2 hours ago. A 22-gauge IV is in place and a fluid bolus has been started. After ensuring volume resuscitation and having suction and a styletted smaller-than-usual endotracheal tube immediately available, which airway approach is most appropriate for securing this child's airway?",
+    "choices": [
+      {
+        "text": "Inhalational induction with sevoflurane while maintaining spontaneous ventilation",
+        "rationale": "A slow inhalational induction prolongs the period of an unprotected airway in a hypovolemic child with a stomach full of blood, markedly increasing aspiration and hypoxia risk."
+      },
+      {
+        "text": "Rapid sequence induction with cricoid pressure, a reduced induction-agent dose, and two functioning large-bore suction setups",
+        "rationale": "The combination of active bleeding, swallowed blood, and a non-fasted hypovolemic child makes a rapid sequence induction with cricoid pressure, dose-adjusted induction agent, and robust suction the safest way to rapidly secure a protected airway."
+      },
+      {
+        "text": "Awake fiberoptic intubation under topical anesthesia",
+        "rationale": "Awake fiberoptic intubation is impractical in a frightened 4-year-old and the blood-filled pharynx obscures the fiberoptic view, making this technique unsuitable for an emergent bleed."
+      },
+      {
+        "text": "Deep extubation criteria do not apply; proceed with an LMA to avoid laryngoscopy",
+        "rationale": "A supraglottic airway does not protect against aspiration of ongoing pharyngeal blood and is therefore inappropriate for a child actively bleeding into the airway."
+      },
+      {
+        "text": "Defer airway management until coagulation studies and a type-and-cross return",
+        "rationale": "Delaying definitive airway control during ongoing hemorrhage risks continued aspiration, worsening hypovolemia, and decompensation, so resuscitation and intubation must proceed without waiting for labs."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "The post-tonsillectomy bleed presents a child who is simultaneously hypovolemic and full-stomach (swallowed blood), with a pharynx that can obscure laryngoscopy. After volume resuscitation, a rapid sequence induction with cricoid pressure protects against aspiration while quickly securing the airway; the induction-agent dose is reduced to account for hypovolemia, a smaller styletted tube is chosen because edema and blood narrow the view, and two suction setups are mandatory. An inhalational induction prolongs unprotected airway time, and an LMA does not guard against aspiration of blood.",
+    "difficulty": "hard",
+    "subtopic": "Post-tonsillectomy hemorrhage — emergent airway and resuscitation strategy",
+    "reference_title": "Tonsillectomy — StatPearls (NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK536942/",
+    "category": "Airway & ENT",
+    "verdict": {
+      "keep": true,
+      "severity": "minor",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (modified RSI with cricoid pressure, reduced induction dose, robust suction) is the single best answer for a post-tonsillectomy bleed. The classic teaching controversy here is RSI vs. inhalational induction in spontaneous ventilation — the latter is favored by some when the patient is profoundly hypovolemic and at risk of cardiovascular collapse on induction. The stem deliberately neutralizes that argument by stating airway management proceeds \"after ensuring volume resuscitation,\" which makes aspiration of swallowed/ongoing blood the dominant risk and points unambiguously to RSI (the conventional board-correct answer per Coté and major pediatric anesthesia texts). All four distractors are genuinely inferior with accurate rationales: inhalational induction prolongs unprotected airway time (valid once resuscitated), awake fiberoptic is impractical in a frightened child with a blood-obscured pharynx, an LMA does not protect against aspiration of blood, and deferring for labs dangerously delays airway control. The explanation is accurate and current. One minor blemish: choice 3's stem text (\"Deep extubation criteria do not apply; proceed with an LMA\") is awkwardly garbled, but its intended meaning (use an LMA) is clear and does not create answer ambiguity. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK536942/ resolves to StatPearls \"Tonsillectomy,\" which covers the procedure, techniques, and complications including hemorrhage — on-topic and legitimate (a general ENT/procedure source rather than an anesthesia-specific airway reference, but appropriately relevant). Not fabricated, not a 404, not mismatched. Both clinical and reference are sound; keep with only minor wording cosmetics."
+    }
+  },
+  {
+    "stem": "A 58-year-old man with a 22-year history of type 1 diabetes presents for urgent incision and drainage of a foot abscess. He reports early satiety, intermittent nausea, and bloating after meals, and has resting tachycardia (HR 104) that does not vary with respiration. He last ate a full meal 9 hours ago and drank clear apple juice 4 hours ago. Point-of-care glucose is 188 mg/dL. Regarding his aspiration risk and airway plan, which assessment is most accurate?",
+    "choices": [
+      {
+        "text": "His 4-hour clear-liquid fast satisfies ASA guidelines, so a standard inhalational induction with mask ventilation is appropriate",
+        "rationale": "Standard fasting intervals assume normal gastric emptying, which cannot be presumed in a patient with symptomatic diabetic gastroparesis."
+      },
+      {
+        "text": "The resting tachycardia and GI symptoms reflect inadequate glycemic control alone and have no bearing on his aspiration risk",
+        "rationale": "Fixed resting tachycardia plus early satiety signals cardiovagal and GI autonomic neuropathy, which directly delays gastric emptying and raises aspiration risk."
+      },
+      {
+        "text": "Diabetic autonomic neuropathy with gastroparesis makes delayed gastric emptying likely, so he should be treated as a full stomach and undergo a rapid-sequence induction",
+        "rationale": "Autonomic neuropathy producing gastroparesis means the stomach may retain solids/liquids beyond standard fasting times, mandating full-stomach precautions and RSI."
+      },
+      {
+        "text": "Because his glucose is only mildly elevated, gastric emptying is necessarily normal and no aspiration precautions are warranted",
+        "rationale": "Gastroparesis is a structural/neuropathic emptying defect that persists independent of the current glucose value."
+      },
+      {
+        "text": "Metoclopramide is contraindicated and a non-particulate antacid would worsen his risk, so no pharmacologic prophylaxis should be used",
+        "rationale": "Metoclopramide (a prokinetic) and non-particulate antacids such as sodium citrate are in fact reasonable aspiration-prophylaxis measures, not contraindicated."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "Long-standing diabetes can produce autonomic neuropathy, and a resting tachycardia that loses beat-to-beat (respiratory) variability is a classic marker of cardiovagal denervation. The same autonomic dysfunction impairs vagally-mediated gastric motility, causing gastroparesis with delayed emptying that is unrelated to the day's glucose value and not corrected by a standard fasting interval. Such a patient should be managed as a full stomach: rapid-sequence induction with cricoid pressure, and consideration of a non-particulate antacid and/or prokinetic prophylaxis.",
+    "difficulty": "medium",
+    "subtopic": "Endocrine — diabetic autonomic neuropathy and gastroparesis (aspiration risk)",
+    "reference_title": "Gastroparesis (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK551528/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The stem is a textbook presentation of diabetic autonomic neuropathy — 22-yr type 1 DM, fixed resting tachycardia without respiratory (beat-to-beat) variation (cardiovagal denervation), plus early satiety/nausea/bloating (gastroparesis). Keyed answer (index 2) is the single best: gastroparesis delays gastric emptying beyond standard fasting intervals, so full-stomach precautions and RSI are correct anesthetic management. All distractors are genuinely inferior and their rationales accurate: (0) fasting guidelines presume normal emptying, invalid here; (1) falsely claims GI symptoms have 'no bearing' on aspiration risk — opposite is true; (3) gastroparesis is a neuropathic emptying defect not corrected by a normal glucose; (4) metoclopramide and non-particulate antacid (sodium citrate) are reasonable prophylaxis, not contraindicated. Minor note: the explanation mentions 'cricoid pressure,' which is debated in current practice, but this does not appear in the answer text and does not change which option is best; RSI/full-stomach management remains standard. No genuine ambiguity between choices 1 and 2 (choice 1 contains a categorically false clause). REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK551528/ resolves to 'Gastroparesis' (StatPearls, NCBI Bookshelf), directly on-topic — covers delayed gastric emptying, diabetic gastroparesis in type 1 DM with long disease duration and autonomic complications, and management (metoclopramide, dietary measures). Title and URL match. Both dimensions sound."
+    }
+  },
+  {
+    "stem": "A 34-year-old woman with poorly controlled Graves disease undergoes emergency appendectomy. She refused preoperative workup. Forty minutes into the case her temperature rises from 37.6 to 39.8 C, HR is 165 (atrial fibrillation with rapid ventricular response), BP 92/48, and she is agitated as anesthesia lightens. End-tidal CO2 is mildly elevated and minute ventilation has been stable; the soda lime is not exhausted and there is no masseter rigidity. Which is the MOST appropriate immediate pharmacologic step?",
+    "choices": [
+      {
+        "text": "Administer dantrolene 2.5 mg/kg IV and discontinue all volatile agent, treating this as malignant hyperthermia",
+        "rationale": "The absence of unexplained rising EtCO2, rigidity, and the presence of a clear thyrotoxic precipitant point to thyroid storm rather than MH, so dantrolene is not the priority."
+      },
+      {
+        "text": "Give a single dose of IV levothyroxine to stabilize the thyroid axis",
+        "rationale": "Thyroid storm is a state of hormone excess; administering more thyroid hormone would be harmful, not therapeutic."
+      },
+      {
+        "text": "Administer IV aspirin for antipyresis to rapidly lower the temperature",
+        "rationale": "Salicylates displace thyroid hormone from binding proteins and raise free hormone levels, so they are specifically avoided in thyroid storm."
+      },
+      {
+        "text": "Start an amiodarone infusion as the definitive treatment to suppress thyroid hormone synthesis",
+        "rationale": "Amiodarone is iodine-rich and can both worsen and cause thyrotoxicosis, making it a poor choice to treat thyroid storm."
+      },
+      {
+        "text": "Titrate IV propranolol (or esmolol) for rate and adrenergic control, then give a thionamide such as propylthiouracil, followed by iodine at least one hour later, plus hydrocortisone and active cooling",
+        "rationale": "This is the correct sequenced therapy: beta-blockade for adrenergic/cardiac control, a thionamide to block new hormone synthesis, iodine given AFTER the thionamide to block release, and corticosteroids plus cooling."
+      }
+    ],
+    "correct_index": 4,
+    "explanation": "Intraoperative thyroid storm is a clinical diagnosis—hyperthermia, severe tachyarrhythmia, hypotension/CV instability, and altered mental status in a thyrotoxic patient under a surgical stressor; it can mimic malignant hyperthermia but lacks MH's hallmark of an unexplained, progressively rising EtCO2 and rigidity. Treatment follows a deliberate sequence: beta-blockade (propranolol or esmolol) to control the adrenergic surge and ventricular rate, a thionamide (PTU or methimazole) to halt new hormone synthesis, then iodine given at least an hour after the thionamide to block hormone release without fueling synthesis, plus hydrocortisone (impairs peripheral T4-to-T3 conversion and covers relative adrenal insufficiency) and active cooling. Salicylates and amiodarone are avoided.",
+    "difficulty": "hard",
+    "subtopic": "Endocrine — intraoperative thyroid storm recognition and management",
+    "reference_title": "Thyroid Storm (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK448095/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The keyed answer (index 4) is the standard sequenced management of intraoperative thyroid storm: beta-blockade (propranolol/esmolol) for adrenergic/rate control, a thionamide (PTU/methimazole) to block new synthesis, iodine given >=1h AFTER the thionamide to block release without fueling synthesis, plus hydrocortisone (impairs peripheral T4->T3 conversion, covers relative adrenal insufficiency) and active cooling. All four distractors are genuinely inferior: (0) dantrolene/MH is excluded by the vignette's deliberate negative findings (stable minute ventilation with only mildly elevated EtCO2 rather than unexplained progressively rising EtCO2, no masseter rigidity, soda lime not exhausted, clear thyrotoxic precipitant); (1) levothyroxine adds hormone to a hormone-excess state; (2) aspirin/salicylates displace thyroid hormone from binding proteins and raise free hormone, specifically contraindicated; (3) amiodarone is iodine-rich (~37% iodine) and can cause/worsen thyrotoxicosis, not a treatment. The hypotension does not contraindicate titrated esmolol, which is included, so no genuine ambiguity. Explanation is accurate and current. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK448095/ resolves to StatPearls 'Thyroid Storm' and explicitly confirms every keyed element including 'Always administer thionamide before starting iodine solution,' hydrocortisone dosing, and 'Aspirin should be avoided due to its potential risk of increasing free thyroid hormone levels.' Citation is correct and on-topic."
+    }
+  },
+  {
+    "stem": "A 61-year-old woman with severe rheumatoid arthritis has taken prednisone 15 mg daily for the past 14 months. She presents for total knee arthroplasty under spinal anesthesia. After spinal placement and positioning she becomes progressively hypotensive (BP 78/40) and is poorly responsive to incremental phenylephrine and a fluid bolus, despite an adequate block height and no evidence of bleeding or high spinal. Heart rate is 96 and the airway is unremarkable. Which intervention most directly addresses the most likely cause?",
+    "choices": [
+      {
+        "text": "Administer a stress dose of IV hydrocortisone for suspected adrenal insufficiency from chronic exogenous glucocorticoid suppression",
+        "rationale": "Chronic daily prednisone suppresses the HPA axis, so refractory perioperative hypotension is best explained and treated by stress-dose corticosteroid replacement."
+      },
+      {
+        "text": "Give a 2.5 mg/kg IV dantrolene bolus",
+        "rationale": "There is no hypermetabolic picture (no hyperthermia, hypercarbia, or rigidity), so malignant hyperthermia is not the cause and dantrolene is not indicated."
+      },
+      {
+        "text": "Administer IV propranolol to treat presumed thyroid storm",
+        "rationale": "Nothing in the picture suggests thyrotoxicosis, and beta-blockade would worsen this patient's hypotension."
+      },
+      {
+        "text": "Place the patient in steep Trendelenburg and simply continue large-volume crystalloid as the sole therapy",
+        "rationale": "Positioning and fluids alone will not correct hypotension driven by glucocorticoid deficiency and delay the needed steroid replacement."
+      },
+      {
+        "text": "Administer IV insulin and dextrose to drive potassium intracellularly",
+        "rationale": "This treats hyperkalemia, which is not the described problem and does not address the suppressed adrenal axis."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Glucocorticoid administration exceeding roughly 3 weeks at suppressive doses (commonly cited as more than ~5 mg/day prednisone equivalent for over 3 weeks) can blunt the hypothalamic-pituitary-adrenal axis, leaving the patient unable to mount an endogenous cortisol surge to surgical stress. The result can be refractory intraoperative hypotension that responds poorly to vasopressors and fluids—a perioperative adrenal crisis. The directed treatment is stress-dose corticosteroid (e.g., IV hydrocortisone) in addition to ongoing hemodynamic support, with the dose scaled to surgical magnitude.",
+    "difficulty": "medium",
+    "subtopic": "Endocrine — perioperative corticosteroid coverage and secondary adrenal suppression",
+    "reference_title": "Adrenal Insufficiency (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK441832/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Clinical content is sound and unambiguous. A patient on prednisone 15 mg/day for 14 months is well beyond the standard HPA-suppression threshold (>5 mg/day prednisone equivalent for >3 weeks), so vasopressor- and fluid-refractory perioperative hypotension is classic for secondary/tertiary adrenal crisis, and stress-dose IV hydrocortisone is the single best answer that addresses the underlying cause. The stem deliberately excludes spinal-anesthesia confounders (adequate but not high block, no bleeding, no high spinal), preventing ambiguity. All distractors are genuinely inferior: no hypermetabolic picture rules out MH/dantrolene; no thyrotoxicosis and beta-blockade would worsen hypotension rules out propranolol; fluids already failed so Trendelenburg+fluids alone is inadequate; hyperkalemia is not described so insulin/dextrose is irrelevant. No distractor offers a competing defensible mechanism (e.g., vasopressin). Rationales and explanation are accurate and current. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK441832/ resolves to the StatPearls 'Adrenal Insufficiency' chapter, which directly covers glucocorticoid-induced tertiary adrenal insufficiency, perioperative stress-dose steroid protocols, and adrenal crisis management — fully on-topic and matches the cited title."
+    }
+  },
+  {
+    "stem": "A 71-year-old man is scheduled for elective open infrarenal abdominal aortic aneurysm repair. His history includes an ischemic stroke 2 years ago with no residual deficit, insulin-dependent type 2 diabetes, and stage 3 chronic kidney disease (serum creatinine 2.4 mg/dL). He has no history of myocardial infarction or heart failure. He reports that he can carry two bags of groceries up a flight of stairs without stopping, walk on level ground indefinitely, and do light yard work. His resting ECG shows nonspecific ST-T changes but no acute ischemia. According to current perioperative guidelines, what is the most appropriate next step in his cardiac evaluation?",
+    "choices": [
+      {
+        "text": "Proceed to surgery without further cardiac testing, with medical optimization",
+        "rationale": "Correct: although his Revised Cardiac Risk Index is elevated (high-risk surgery, cerebrovascular disease, insulin-dependent diabetes, creatinine >2 mg/dL = 4 points), his functional capacity is adequate (>4 METs), so noninvasive stress testing would not change management and surgery should proceed with optimization."
+      },
+      {
+        "text": "Obtain a pharmacologic (dobutamine or vasodilator) stress test before proceeding",
+        "rationale": "Incorrect: noninvasive stress testing is reserved for patients with poor or unknown functional capacity in whom the result would change management, and this patient demonstrates clearly adequate functional capacity (>4 METs)."
+      },
+      {
+        "text": "Refer for coronary angiography given the high Revised Cardiac Risk Index score",
+        "rationale": "Incorrect: a high RCRI score alone does not justify invasive angiography, which is indicated by the same criteria as in the nonoperative setting (e.g., acute coronary syndrome), not by elevated perioperative risk indices."
+      },
+      {
+        "text": "Cancel surgery because his Revised Cardiac Risk Index places him in a prohibitively high-risk category",
+        "rationale": "Incorrect: an elevated RCRI quantifies risk but is not a contraindication to a necessary vascular procedure, and adequate functional capacity supports proceeding."
+      },
+      {
+        "text": "Order a resting transthoracic echocardiogram to estimate ejection fraction before any decision",
+        "rationale": "Incorrect: routine preoperative resting echocardiography is not recommended in a patient without signs or symptoms of heart failure, valvular disease, or dyspnea of unknown origin."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Perioperative cardiac evaluation follows a stepwise algorithm: after excluding an acute cardiac condition and estimating combined surgical/clinical risk (e.g., via the RCRI), the pivotal branch point is functional capacity. A patient who can achieve greater than 4 METs—climbing a flight of stairs while carrying a load, doing yard work—can proceed to even high-risk surgery without further noninvasive testing, because a normal stress test would not change management. Stress testing is reserved for patients with poor or unknown functional capacity in whom the result would alter the perioperative plan.",
+    "difficulty": "medium",
+    "subtopic": "Preoperative cardiac risk stratification (RCRI and functional capacity)",
+    "reference_title": "Cardiac Risk Assessment (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK537146/",
+    "category": "Principles & Preop",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (proceed to surgery without further cardiac testing, with medical optimization) is the single best answer and unambiguous. This is a clean application of the ACC/AHA stepwise perioperative algorithm: no acute cardiac condition, then the pivotal branch is functional capacity. The patient demonstrates clearly adequate capacity (>4 METs: climbing a flight of stairs carrying a load, yard work), so noninvasive stress testing would not change management. The RCRI element count in the rationale is correct: suprainguinal/high-risk vascular surgery (1) + cerebrovascular disease/prior stroke (1) + insulin-dependent diabetes (1) + creatinine >2.0 mg/dL (1) = 4 points, with no ischemic heart disease and no HF history. All distractors are genuinely inferior and their rationales are accurate: stress testing is reserved for poor/unknown functional capacity; invasive angiography is indicated by the same criteria as the nonoperative setting (ACS), not by elevated RCRI; an elevated RCRI quantifies but does not contraindicate a needed vascular procedure; and routine resting TTE is not recommended absent HF signs/symptoms, valvular disease, or unexplained dyspnea (ACC/AHA no-benefit). Content is consistent with current 2014/2024 ACC/AHA and 2022 ESC perioperative guidance. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK537146/ resolves to the StatPearls 'Cardiac Risk Assessment' chapter, which directly covers preoperative cardiac evaluation, RCRI, METs/functional capacity, and the stepwise ACC/AHA algorithm including when to obtain stress testing vs proceed. The citation is accurate and on-topic. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A healthy 7-month-old, 8-kg infant is scheduled for elective inguinal hernia repair under general anesthesia, with the case expected to start at 8:00 AM. The mother asks the preoperative nurse for guidance on feeding overnight and in the morning. The infant is exclusively breast-fed but occasionally takes a bottle of cow's-milk-based formula. Per current American Society of Anesthesiologists preoperative fasting guidelines for healthy patients, which instruction is correct?",
+    "choices": [
+      {
+        "text": "Breast milk is permitted up to 4 hours before the procedure",
+        "rationale": "Correct: the ASA guidelines specify a minimum fasting interval of 4 hours for breast milk in infants, reflecting its faster gastric emptying compared with formula."
+      },
+      {
+        "text": "Infant formula is permitted up to 4 hours before the procedure",
+        "rationale": "Incorrect: formula requires a minimum 6-hour fast under ASA guidelines because it empties more slowly than breast milk; 4 hours is the breast-milk interval."
+      },
+      {
+        "text": "Clear liquids such as electrolyte solution must be stopped 6 hours before the procedure",
+        "rationale": "Incorrect: clear liquids require only a 2-hour fast, not 6 hours, which is the interval for solids and formula."
+      },
+      {
+        "text": "Breast milk and formula share the same minimum fasting interval of 6 hours",
+        "rationale": "Incorrect: ASA guidelines distinguish the two, assigning 4 hours to breast milk and 6 hours to formula."
+      },
+      {
+        "text": "Because the infant is under 1 year old, all intake including clear liquids must stop at midnight",
+        "rationale": "Incorrect: blanket midnight NPO orders are outdated and harmful in infants, who tolerate clear liquids until 2 hours preoperatively under modern guidelines."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "ASA preoperative fasting guidelines for healthy patients use graded intervals based on how quickly each substance empties from the stomach: 2 hours for clear liquids, 4 hours for breast milk, 6 hours for infant formula and a light meal/non-human milk, and longer for fatty or fried foods. The shorter breast-milk interval reflects its more rapid gastric emptying. Prolonged or 'midnight NPO' fasting in infants causes dehydration, hypoglycemia, and irritability and is discouraged.",
+    "difficulty": "easy",
+    "subtopic": "Preoperative fasting (pediatric NPO guidelines)",
+    "reference_title": "NPO Guidelines for Infants and Children (OpenAnesthesia)",
+    "reference_url": "https://www.openanesthesia.org/keywords/npo-guidelines-for-infants-and-children/",
+    "category": "Principles & Preop",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (breast milk permitted up to 4 hours preop) is the single best and unambiguous answer per current ASA fasting guidelines (clear liquids 2h, breast milk 4h, infant formula/nonhuman milk/light meal 6h, fatty meal 8h). All four distractors are genuinely inferior and clearly false: formula at 4h (should be 6h), clear liquids stopped at 6h (should be 2h), breast milk and formula sharing a 6h interval (they differ at 4h vs 6h), and a blanket midnight-NPO order (outdated). Rationales and the explanation are accurate and current; the \"faster gastric emptying\" justification for breast milk is the standard board-level explanation. The stem is well-constructed and specifies \"healthy patients\" and \"current ASA guidelines,\" so no ambiguity. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/npo-guidelines-for-infants-and-children/ resolves successfully and is directly on-topic, listing the ASA pediatric NPO intervals (clear liquids 2h, breast milk 4h, formula 6h, solids 6h) that match the keyed answer. Both clinical and reference dimensions are sound."
+    }
+  },
+  {
+    "stem": "A 64-year-old woman presents for elective total knee arthroplasty. Her history is notable for a myocardial infarction treated with a drug-eluting coronary stent 18 months ago; she has been asymptomatic since, exercises regularly, and takes aspirin and a statin. She also has hypertension well controlled on a single agent and type 2 diabetes well controlled on metformin (HbA1c 6.4%). She is a never-smoker with no other comorbidities. Vitals and labs are unremarkable. Which American Society of Anesthesiologists Physical Status (ASA-PS) classification most accurately describes this patient?",
+    "choices": [
+      {
+        "text": "ASA I",
+        "rationale": "Incorrect: ASA I denotes a normal healthy patient with no systemic disease, which does not apply to a patient with prior MI, a coronary stent, hypertension, and diabetes."
+      },
+      {
+        "text": "ASA II",
+        "rationale": "Incorrect: although her hypertension and diabetes alone would each be mild (ASA II) disease, her history of coronary artery disease with a prior MI and stent represents a substantive systemic disease that exceeds the ASA II threshold."
+      },
+      {
+        "text": "ASA III",
+        "rationale": "Correct: a history of MI and a coronary stent (remote, >3 months) constitutes severe systemic disease—established coronary artery disease—which is classified as ASA III even when the patient is currently asymptomatic and optimized."
+      },
+      {
+        "text": "ASA IV",
+        "rationale": "Incorrect: ASA IV requires severe systemic disease that is a constant threat to life, such as recent (<3 months) MI, ongoing ischemia, or severe ventricular dysfunction, none of which this stable patient has."
+      },
+      {
+        "text": "ASA V",
+        "rationale": "Incorrect: ASA V is a moribund patient not expected to survive without the operation, which is far more severe than this stable elective patient."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "The ASA-PS captures the severity of systemic disease, not a simple count of diagnoses. Stable, remote coronary artery disease—a prior MI and a coronary stent more than 3 months old—is classified as ASA III even when the patient is asymptomatic and well optimized, because established CAD is a severe systemic disease. Mild, well-controlled hypertension and diabetes are individually ASA II and should not be additively summed into a higher class; here the CAD is the determining factor. Reclassification to ASA IV would require a recent MI (within 3 months), ongoing ischemia, or another constant threat to life.",
+    "difficulty": "hard",
+    "subtopic": "ASA Physical Status classification",
+    "reference_title": "American Society of Anesthesiologists Physical Status Classification System (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK441940/",
+    "category": "Principles & Preop",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Verified against the official ASA-PS adult examples. ASA III explicitly lists \"history (>3 months) of MI ... or CAD/stents,\" which is exactly this patient: MI + drug-eluting stent 18 months ago, asymptomatic, exercising, with otherwise mild HTN and well-controlled T2DM (HbA1c 6.4%). ASA II is excluded because established CAD exceeds \"mild systemic disease.\" ASA IV is excluded because it requires recent (<3 months) MI/stents, ongoing ischemia, or severe LV dysfunction—none present. ASA I and V are clearly wrong. The keyed answer (ASA III) is the single best answer and the distractors are genuinely inferior. The explanation is accurate and current: ASA-PS grades severity of systemic disease rather than counting diagnoses, and mild HTN/DM are individually ASA II and not additively summed. The >3-month timing threshold separating III from IV is correctly applied. REFERENCE: reference_url https://www.ncbi.nlm.nih.gov/books/NBK441940/ resolves (HTTP 200) and is the standard StatPearls article on the ASA Physical Status Classification System—directly on-topic. (The examples table did not render in the fetched markdown, but the article is the correct and authoritative citation for this concept.) Both clinical content and citation are sound."
+    }
+  }
+]

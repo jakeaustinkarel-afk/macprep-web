@@ -1,0 +1,1027 @@
+[
+  {
+    "stem": "A 19-year-old man with no significant medical history undergoes urgent open reduction and internal fixation of a femur fracture under general anesthesia with sevoflurane and a single intubating dose of succinylcholine. Approximately 35 minutes into the case, the anesthesia care team notes an unexplained rise in end-tidal CO2 to 68 mmHg despite increasing minute ventilation, masseter rigidity was noted at induction, heart rate is 142/min, temperature has climbed from 36.8 to 38.9 C, and the soda lime canister is warm. Which of the following is the MOST appropriate immediate pharmacologic intervention?",
+    "choices": [
+      {
+        "text": "Administer dantrolene 2.5 mg/kg IV and repeat as needed",
+        "rationale": "Dantrolene, which inhibits ryanodine-receptor-mediated calcium release from the sarcoplasmic reticulum, is the definitive and life-saving treatment for malignant hyperthermia and must be given without delay.",
+        "correct": true
+      },
+      {
+        "text": "Administer a beta-blocker such as esmolol to control the tachycardia",
+        "rationale": "Beta-blockade treats only one downstream sign and does nothing to halt the underlying hypermetabolic calcium-release crisis, so it is not the appropriate immediate intervention.",
+        "correct": false
+      },
+      {
+        "text": "Give intravenous bicarbonate as the sole next step and continue the anesthetic",
+        "rationale": "Although bicarbonate may be used to treat the metabolic acidosis of MH, continuing the triggering anesthetic and omitting dantrolene would allow the crisis to progress.",
+        "correct": false
+      },
+      {
+        "text": "Deepen anesthesia with additional sevoflurane to suppress the hypermetabolic response",
+        "rationale": "Sevoflurane is itself a triggering agent and must be discontinued, so adding more volatile would worsen the crisis.",
+        "correct": false
+      },
+      {
+        "text": "Administer a calcium-channel blocker such as verapamil to reduce intracellular calcium",
+        "rationale": "Calcium-channel blockers do not treat MH and are specifically contraindicated with dantrolene because the combination can cause hyperkalemia and cardiovascular collapse.",
+        "correct": false
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "This presentation, with succinylcholine/volatile exposure, masseter rigidity, a rapidly rising end-tidal CO2 refractory to ventilation, tachycardia, and hyperthermia, is classic malignant hyperthermia. The single most important action is to stop all triggering agents and give dantrolene 2.5 mg/kg IV, repeated until signs abate, alongside supportive measures (hyperventilation with 100% O2, active cooling, treating hyperkalemia and acidosis). Calcium-channel blockers are contraindicated with dantrolene.",
+    "difficulty": "medium",
+    "subtopic": "Malignant hyperthermia — recognition and dantrolene management",
+    "reference_title": "Malignant Hyperthermia (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK430828/",
+    "category": "Trauma, Burns & Critical Events",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Textbook malignant hyperthermia presentation (succinylcholine + sevoflurane, masseter rigidity at induction, EtCO2 68 refractory to increased minute ventilation, tachycardia 142, rapid temp rise 36.8->38.9, warm soda lime canister). Keyed answer—dantrolene 2.5 mg/kg IV repeated as needed—is the single definitive treatment; mechanism (RyR1 inhibition reducing sarcoplasmic Ca release) is correct and dose matches current standard (2.5 mg/kg, up to 10 mg/kg max). All four distractors are genuinely inferior: esmolol treats only a downstream sign; bicarbonate-alone-while-continuing-anesthetic omits dantrolene and continues the trigger; additional sevoflurane worsens the crisis (it is a trigger); verapamil/CCB does not treat MH and is classically contraindicated with dantrolene (risk of hyperkalemia and cardiovascular collapse). The stem is well-scoped by asking for the MOST appropriate immediate PHARMACOLOGIC intervention, so non-pharmacologic first steps (stop triggers, call for help) do not compete. Answer is unambiguous. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK430828/ resolves to 'Malignant Hyperthermia - StatPearls' (NCBI Bookshelf) and directly covers presentation (hypercarbia, tachycardia, masseter spasm), triggers (halogenated agents + succinylcholine), and dantrolene dosing (2.5 mg/kg IV, max 10 mg/kg). Citation is accurate and on-topic. No clinical, reference, or ambiguity problems found."
+    }
+  },
+  {
+    "stem": "A 44-year-old man is brought to the trauma bay 90 minutes after being trapped in a house fire. He has deep partial- and full-thickness burns over an estimated 45% total body surface area involving the face, neck, and anterior chest. He is hoarse, has singed nasal hairs and carbonaceous sputum, and his voice is becoming muffled with audible stridor. Oxygen saturation is 94% on a non-rebreather. Which of the following is the MOST appropriate next step in airway management?",
+    "choices": [
+      {
+        "text": "Apply high-flow nasal cannula and observe in the ICU with serial arterial blood gases",
+        "rationale": "Watchful waiting with oxygen alone risks losing the airway as edema progresses, and supplemental oxygen does not address the impending obstruction.",
+        "correct": false
+      },
+      {
+        "text": "Defer intubation until formal fiberoptic findings and a CT neck are available",
+        "rationale": "Delaying a definitive airway for additional imaging in a patient with evolving stridor and inhalation injury invites catastrophic airway loss once edema worsens.",
+        "correct": false
+      },
+      {
+        "text": "Perform early endotracheal intubation, preferably with the largest feasible tube",
+        "rationale": "Progressive airway edema from inhalation injury can rapidly obliterate the airway, so early intubation while it is still patent is the standard of care, and a large tube facilitates later bronchoscopy and pulmonary toilet.",
+        "correct": true
+      },
+      {
+        "text": "Administer a full intubating dose of succinylcholine now to secure the airway",
+        "rationale": "Succinylcholine is reasonable in the first 24-48 hours after a burn but is best avoided as the default here because extrajunctional acetylcholine receptor upregulation makes it dangerous after roughly 24-48 hours, and rocuronium is the safer relaxant for a difficult, edematous burn airway.",
+        "correct": false
+      },
+      {
+        "text": "Place a laryngeal mask airway as the definitive airway",
+        "rationale": "A supraglottic device neither protects against aspiration nor maintains a patent airway as supraglottic edema progresses, making it inadequate as the definitive airway in inhalation injury.",
+        "correct": false
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "Signs of inhalation injury (facial burns, singed nasal hairs, carbonaceous sputum, hoarseness, and especially stridor) signal an airway that will swell rapidly over the ensuing hours. Definitive early intubation while the airway remains accessible is mandatory because delayed attempts after edema develops are far more likely to fail. A larger endotracheal tube is preferred to permit subsequent bronchoscopy and clearance of secretions. Succinylcholine becomes hazardous beginning about 24-48 hours post-burn owing to receptor upregulation and the risk of hyperkalemic arrest.",
+    "difficulty": "easy",
+    "subtopic": "Burn injury — inhalation injury and airway management",
+    "reference_title": "Inhalation Injury (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK513261/",
+    "category": "Trauma, Burns & Critical Events",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (early endotracheal intubation with the largest feasible tube) is the single best answer and is unambiguous. The stem describes classic impending upper-airway obstruction from inhalation injury (45% TBSA face/neck burns, hoarseness, singed nasal hairs, carbonaceous sputum, muffled voice, progressive stridor) — early/preemptive intubation while the airway is still patent is standard of care, and a large tube to permit bronchoscopy/pulmonary toilet is correct teaching. All four distractors are genuinely inferior: HFNC+observe (A) and deferring for CT/fiberoptic (B) both risk catastrophic airway loss; an LMA (E) neither protects against aspiration nor maintains patency as supraglottic edema worsens. Distractor D (succinylcholine now) is correctly not best because it is a paralytic sub-choice, not the airway-management action itself, and alone secures no airway. Note one minor imprecision in D's rationale: succinylcholine is actually SAFE at 90 minutes post-burn (hyperkalemia risk emerges only after ~24-48h of receptor upregulation), so framing it as something to avoid 'now' is slightly off — but the rationale itself states it is 'reasonable in the first 24-48 hours,' and this subtlety lives in a distractor explanation, not in the keyed answer or stem, and does not create two defensible answers. REFERENCE: reference_url https://www.ncbi.nlm.nih.gov/books/NBK513261/ resolves to StatPearls 'Inhalation Injury,' which is directly on-topic and explicitly supports a low threshold for early/preemptive intubation and stridor as a sign of impending airway compromise. Reference is valid and on-topic. Both clinical and reference are sound; keep."
+    }
+  },
+  {
+    "stem": "A 68-year-old man with COPD (FEV1 55% predicted) and a 50-pack-year smoking history is undergoing a right upper lobectomy via thoracotomy. A left-sided double-lumen tube is in good position, confirmed by fiberoptic bronchoscopy, and one-lung ventilation of the left lung has been established with FiO2 1.0, tidal volume 5 mL/kg, and PEEP 5 cm H2O. Twenty minutes after the right lung is collapsed, the SpO2 drifts from 99% to 86%. Peak airway pressures are stable, breath sounds are present over the dependent left chest, and the surgical field is quiet. An ABG confirms PaO2 of 54 mm Hg. What is the most appropriate next step?",
+    "choices": [
+      {
+        "text": "Apply 5–10 cm H2O of continuous positive airway pressure (CPAP) to the nonventilated right lung",
+        "rationale": "Correct: after re-confirming tube position and FiO2, applying CPAP to the collapsed, nonventilated lung is the most effective specific maneuver to improve oxygenation during one-lung ventilation because it allows some oxygen uptake from the operative lung without fully re-expanding it."
+      },
+      {
+        "text": "Immediately deflate the bronchial cuff and resume two-lung ventilation",
+        "rationale": "Incorrect: abandoning lung isolation re-expands the operative lung and obliterates the surgical field, and is reserved for refractory or life-threatening hypoxemia, not a stable patient with SpO2 of 86% who has not yet had graded interventions."
+      },
+      {
+        "text": "Decrease the FiO2 to 0.6 to reduce absorption atelectasis",
+        "rationale": "Incorrect: lowering FiO2 in the setting of active hypoxemia would worsen oxygenation and is the opposite of the indicated response."
+      },
+      {
+        "text": "Increase the tidal volume on the ventilated lung to 10 mL/kg",
+        "rationale": "Incorrect: large tidal volumes raise dependent-lung airway pressure, divert pulmonary blood flow toward the collapsed lung, and increase the risk of acute lung injury without reliably correcting shunt."
+      },
+      {
+        "text": "Administer inhaled nitric oxide to the dependent ventilated lung",
+        "rationale": "Incorrect: inhaled pulmonary vasodilators are an adjunct for refractory hypoxemia or pulmonary hypertension, not the first-line maneuver, and are not readily titrated as an immediate bedside response."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Hypoxemia during one-lung ventilation results primarily from transpulmonary shunt through the nonventilated, perfused lung. After confirming the double-lumen tube has not migrated and FiO2 is maximized, the most effective graded interventions are recruitment plus PEEP to the dependent lung and CPAP (5–10 cm H2O) to the operative lung, which permits oxygen uptake while keeping the surgical field largely undisturbed. Resuming two-lung ventilation is the rescue of last resort for refractory or critical desaturation.",
+    "difficulty": "medium",
+    "subtopic": "One-lung ventilation: management of intraoperative hypoxemia",
+    "reference_title": "Lung Isolation Anesthesia (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK555933/",
+    "category": "Thoracic & Vascular",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous given the choice set. The stem has already done the early algorithm steps (FOB-confirmed tube position, FiO2 1.0, PEEP 5 to dependent lung) and describes a hemodynamically stable patient with SpO2 86%/PaO2 54 and no mechanical problem (stable peak pressures, breath sounds present, quiet field). Among the five offered options, CPAP 5-10 cmH2O to the nonventilated operative lung is the single best next specific intervention to reduce transpulmonary shunt while preserving the surgical field. All distractors are genuinely inferior: resuming two-lung ventilation is the last-resort rescue (not for a stable 86%); decreasing FiO2 worsens active hypoxemia; increasing TV to 10 mL/kg raises dependent-lung pressure, diverts flow to the collapsed lung, risks lung injury, and does not fix shunt; inhaled NO is an adjunct for refractory hypoxemia/pulmonary HTN, not first-line. Adversarial note: contemporary teaching (Slinger) often favors a dependent-lung recruitment maneuver first, but that option is not among the choices, so it cannot compete with the keyed CPAP answer. Rationales and explanation are accurate. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK555933/ resolves to StatPearls 'Lung Isolation Anesthesia' (updated June 8, 2024), directly on-topic, and its own hypoxemia algorithm (confirm position, FiO2 1.0, recruit, PEEP, CPAP to operative lung, then two-lung ventilation) supports the keyed answer. Both checks pass."
+    }
+  },
+  {
+    "stem": "A 74-year-old man undergoes elective open repair of a 6.2-cm infrarenal abdominal aortic aneurysm under general anesthesia with a thoracic epidural and an arterial line. He has hypertension and stable coronary artery disease (EF 45%). The surgeon announces the infrarenal aortic cross-clamp is about to be released after graft placement. Just before unclamping, the anesthetist's most appropriate management to blunt the expected hemodynamic response is to:",
+    "choices": [
+      {
+        "text": "Deepen the anesthetic with a bolus of propofol to prevent a hypertensive surge",
+        "rationale": "Incorrect: hypertension is the response to clamp application, not release; declamping characteristically causes hypotension, so deepening anesthesia and adding a vasodilating bolus would worsen it."
+      },
+      {
+        "text": "Administer a bolus of esmolol and nitroglycerin to control afterload",
+        "rationale": "Incorrect: beta-blockade and nitroglycerin are useful to control the hypertension and increased afterload of clamp application, but they aggravate the hypotension that follows clamp release."
+      },
+      {
+        "text": "Ensure the patient is volume-loaded and communicate with the surgeon for gradual clamp release",
+        "rationale": "Correct: declamping hypotension is driven by central hypovolemia from venous pooling in the reperfused lower body plus washout of vasoactive/acidic metabolites, so optimizing preload beforehand and having the surgeon release the clamp slowly are the key preventive measures."
+      },
+      {
+        "text": "Begin an aggressive diuresis with furosemide to protect renal function",
+        "rationale": "Incorrect: inducing diuresis and reducing intravascular volume immediately before unclamping would exacerbate declamping hypotension and offers no proven renal protection in this context."
+      },
+      {
+        "text": "Withhold all intravenous fluids to avoid pulmonary edema after reperfusion",
+        "rationale": "Incorrect: restricting volume before declamping leaves the patient unable to fill the suddenly expanded distal vascular bed and predisposes to severe, prolonged hypotension."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "Aortic cross-clamp application raises afterload and causes proximal hypertension, whereas clamp release produces 'declamping hypotension' from venous pooling in the reperfused tissues, relative central hypovolemia, and the washout of lactate and vasoactive mediators from the ischemic lower body. Anticipatory management is volume loading toward the upper end of normal filling pressures and clear communication so the surgeon releases the clamp gradually, often partially and in stages. Vasopressors and bicarbonate are kept ready, while afterload-reducing agents used during clamping are stopped before release.",
+    "difficulty": "hard",
+    "subtopic": "Aortic surgery: cross-clamp and declamping hemodynamics",
+    "reference_title": "Aortic Cross-Clamping (OpenAnesthesia)",
+    "reference_url": "https://www.openanesthesia.org/keywords/aortic-cross-clamping/",
+    "category": "Thoracic & Vascular",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The stem asks how to blunt the response to aortic cross-clamp RELEASE, which classically produces declamping hypotension (central hypovolemia from venous pooling in the reperfused lower body, reduced SVR, washout of lactate/vasoactive metabolites). Choice C (volume-load beforehand + communicate with surgeon for gradual/staged clamp release) is the single best, textbook-correct answer and the only option that targets the actual declamping physiology. All four distractors are genuinely inferior and well-differentiated: A (propofol) and B (esmolol/NTG) are afterload-reduction measures appropriate for clamp APPLICATION and would worsen declamping hypotension; D (furosemide diuresis) and E (withholding fluids) both reduce preload and aggravate hypotension. The explanation (volume loading toward upper-normal filling pressures, staged release, pressors/bicarbonate kept ready, stopping vasodilators before release) is accurate and current. Bicarbonate is only described as 'kept ready,' which is consistent with classic teaching and does not affect the key. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/aortic-cross-clamping/ resolves (last updated 02/09/2024) and is directly on-topic, with a dedicated section on declamping/unclamping hypotension, venous pooling, central hypovolemia, fluid loading, and slow clamp removal — matching the question precisely."
+    }
+  },
+  {
+    "stem": "A 59-year-old woman (height 168 cm, weight 70 kg) is scheduled for a left lower lobectomy and requires lung isolation. The anesthesiologist plans to place a right-sided double-lumen tube is contraindicated by the surgeon's preference, so a left-sided double-lumen endobronchial tube is selected. Which statement about selection, sizing, and confirmation of this device is correct?",
+    "choices": [
+      {
+        "text": "A 35–37 Fr tube is a reasonable starting size for an average adult woman of this height",
+        "rationale": "Correct: double-lumen tube size is guided chiefly by patient height and sex, and 35–37 Fr tubes are the usual starting sizes for adult women, whereas 39–41 Fr tubes are typical for adult men."
+      },
+      {
+        "text": "Auscultation alone reliably confirms correct positioning, making bronchoscopy unnecessary",
+        "rationale": "Incorrect: auscultation frequently misses malposition, and fiberoptic bronchoscopy is the gold standard for confirming correct placement of a double-lumen tube."
+      },
+      {
+        "text": "An oversized tube is preferred because it guarantees a leak-free seal at low cuff pressures",
+        "rationale": "Incorrect: an oversized tube can cause airway trauma and bronchial rupture, while undersizing requires higher cuff pressures and risks dislodgement, so appropriate sizing—not oversizing—is the goal."
+      },
+      {
+        "text": "The bronchial cuff should be inflated with 8–10 mL of air to ensure isolation",
+        "rationale": "Incorrect: the bronchial cuff typically requires only about 1–3 mL of air, and inflating with 8–10 mL risks bronchial mucosal injury or rupture."
+      },
+      {
+        "text": "A left-sided tube must be avoided for any left-sided thoracic procedure",
+        "rationale": "Incorrect: a left-sided double-lumen tube is the most commonly used and is appropriate for most left-sided surgeries because the left mainstem bronchus is longer, giving a wider margin for safe positioning."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Double-lumen endobronchial tube size is chosen primarily by patient sex and height: 35–37 Fr for most adult women and 39–41 Fr for most adult men, with the largest tube that passes atraumatically preferred to allow suctioning and reduce resistance. Fiberoptic bronchoscopy is the gold standard for confirming position because clinical auscultation alone is unreliable. The bronchial cuff requires only a small volume of air (roughly 1–3 mL), and a left-sided tube is the default choice for most cases owing to the longer left mainstem bronchus.",
+    "difficulty": "easy",
+    "subtopic": "Lung isolation devices: double-lumen tube selection and confirmation",
+    "reference_title": "Double-Lumen Endobronchial Tubes (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK535366/",
+    "category": "Thoracic & Vascular",
+    "verdict": {
+      "keep": true,
+      "severity": "minor",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Clinically sound and reference verified. Keyed answer (35-37 Fr for an adult woman) is the single best choice: at 168 cm she is within the standard female DLT range, and the StatPearls reference explicitly states \"35-Fr and 37-Fr DLTs are used for adult females, 39-Fr and 41-Fr for adult males.\" All four distractors contain clear factual errors: auscultation alone is NOT reliable (fiberoptic bronchoscopy is gold standard); oversizing risks bronchial trauma/rupture, not a safe leak-free seal; bronchial cuff needs only ~1-3 mL (reference: \"no more than 3 mL\"), not 8-10 mL; and a left-sided DLT is the DEFAULT for left-sided cases, not contraindicated. Rationales and explanation are accurate and current. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK535366/ resolves to \"Double-Lumen Endobronchial Tubes - StatPearls,\" directly on-topic, and corroborates the sizing, cuff-volume, and bronchoscopy claims verbatim. The only flaw is a grammatical garble in the stem (\"plans to place a right-sided double-lumen tube is contraindicated by the surgeon's preference, so a left-sided...\") — awkward prose, but meaning is recoverable and it does not create answer ambiguity. Recommend a light copyedit of the stem, but content is keep-worthy."
+    }
+  },
+  {
+    "stem": "A 24-year-old woman undergoes laparoscopic appendectomy under general anesthesia with rocuronium for neuromuscular blockade. At the end of the case the train-of-four shows a deep block, and the anesthesia care team administers a 4 mg/kg dose of sugammadex to achieve rapid reversal. Her only regular medication is a combined oral contraceptive pill, which she takes for both birth control and acne. As the team prepares discharge instructions, which of the following is the most important counseling point related to her sugammadex dose?",
+    "choices": [
+      {
+        "text": "She should expect prolonged sedation from sugammadex and arrange a 24-hour observer",
+        "rationale": "Sugammadex itself does not cause sedation; it encapsulates the neuromuscular blocker without CNS depressant effects."
+      },
+      {
+        "text": "She must avoid all NSAIDs for 48 hours because sugammadex potentiates their bleeding risk",
+        "rationale": "Sugammadex has a transient effect on coagulation parameters but does not contraindicate NSAIDs, and this is not a standard discharge counseling point."
+      },
+      {
+        "text": "She is at increased risk of an anaphylactic reaction to any future opioid because of sugammadex",
+        "rationale": "Sugammadex hypersensitivity is a recognized but rare reaction to sugammadex itself, and it does not sensitize patients to opioids."
+      },
+      {
+        "text": "Her oral contraceptive may be rendered ineffective, equivalent to a missed dose, so she should use a backup non-hormonal method",
+        "rationale": "Sugammadex encapsulates progestogen, reducing free progestogen exposure equivalent to one missed pill, mandating backup contraception for 7 days."
+      },
+      {
+        "text": "She should hold her oral contraceptive permanently because sugammadex causes a lasting drug interaction",
+        "rationale": "The interaction is a single transient event equivalent to one missed dose, not a reason to discontinue the contraceptive permanently."
+      }
+    ],
+    "correct_index": 3,
+    "explanation": "Sugammadex is a modified gamma-cyclodextrin that encapsulates aminosteroid neuromuscular blockers, but it can also bind other steroidal molecules, including the progestogen component of hormonal contraceptives. A single dose reduces progestogen exposure to a degree considered equivalent to missing one dose of an oral contraceptive. Per the manufacturer labeling, patients on hormonal contraception must use an additional non-hormonal contraceptive method for the next 7 days. This is a high-yield counseling point because it affects young women receiving rocuronium/vecuronium reversal.",
+    "difficulty": "medium",
+    "subtopic": "Neuromuscular blocker reversal — sugammadex drug interactions",
+    "reference_title": "Sugammadex (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK470263/",
+    "category": "Pharmacology",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Keyed answer (index 3) is the single best answer and unambiguous. Sugammadex is a modified gamma-cyclodextrin that encapsulates aminosteroid NMBs and also binds progestogen; a single dose is regarded as equivalent to one missed oral contraceptive dose, mandating backup non-hormonal contraception for 7 days per Bridion labeling. The stem (young woman on a combined OCP receiving sugammadex) makes this the most important discharge counseling point. All four distractors are genuinely inferior with accurate rationales: sugammadex does not cause sedation (no CNS depressant effect); it transiently prolongs PT/aPTT (~25%, ~1 hour) but does not contraindicate NSAIDs and that is not a standard discharge point; hypersensitivity is to sugammadex itself, not opioid cross-sensitization; and the interaction is a single transient event, not grounds for permanent OCP discontinuation. No ambiguity. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK470263/ resolved successfully (StatPearls 'Sugammadex'). The page directly supports every load-bearing claim, including the verbatim statement that a single dose is 'similar to missing one dose of birth control,' the 7-day backup contraception recommendation, the absence of sedation/opioid-anaphylaxis effects, and the transient ~25% PT/aPTT prolongation. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 68-year-old man with normal hepatic and renal function undergoes a 6-hour open abdominal procedure. The anesthetic plan calls for a continuous opioid infusion titrated to maintain hemodynamic stability, with the goal of rapid, predictable emergence and extubation in the operating room at the end of the long case. Compared with a fentanyl infusion run for the same duration, which property best explains why a remifentanil infusion is preferred for predictable offset after a prolonged infusion?",
+    "choices": [
+      {
+        "text": "Remifentanil has a longer elimination half-life, which buffers against abrupt changes in plasma concentration",
+        "rationale": "A longer elimination half-life would slow, not speed, offset; remifentanil's terminal half-life is short, but it is its context-sensitive behavior that matters here."
+      },
+      {
+        "text": "Remifentanil's context-sensitive half-time remains short and nearly constant regardless of infusion duration because of rapid ester hydrolysis",
+        "rationale": "Remifentanil is metabolized by nonspecific plasma and tissue esterases, so its context-sensitive half-time stays roughly 3-5 minutes even after prolonged infusion."
+      },
+      {
+        "text": "Remifentanil does not accumulate in fat, so its volume of distribution increases progressively during long infusions",
+        "rationale": "An increasing volume of distribution would prolong offset; remifentanil's predictable offset stems from rapid metabolism, not from this mechanism."
+      },
+      {
+        "text": "Remifentanil is more lipophilic than fentanyl, allowing faster redistribution out of the central compartment after a long case",
+        "rationale": "Fentanyl is actually highly lipophilic and accumulates in peripheral tissues; remifentanil's advantage is metabolic clearance, not greater lipophilicity."
+      },
+      {
+        "text": "Remifentanil's clearance depends heavily on hepatic blood flow, which is well preserved in this patient",
+        "rationale": "Remifentanil clearance is organ-independent (esterase-mediated), so it is unaffected by hepatic blood flow, unlike many opioids."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Context-sensitive half-time is the time for plasma drug concentration to fall by 50% after stopping a continuous infusion, and it generally lengthens as infusion duration increases because peripheral tissues become saturated. Fentanyl's context-sensitive half-time climbs substantially with prolonged infusion as it accumulates in fat and muscle. Remifentanil is hydrolyzed by nonspecific plasma and tissue esterases independent of hepatic or renal function, so its context-sensitive half-time remains roughly 3-5 minutes and essentially flat regardless of how long it has been running. This makes remifentanil ideal when a long infusion must be followed by rapid, predictable emergence.",
+    "difficulty": "hard",
+    "subtopic": "Pharmacokinetics — context-sensitive half-time of opioid infusions",
+    "reference_title": "Context-Sensitive Half-Time and Anesthetic Implications (OpenAnesthesia)",
+    "reference_url": "https://www.openanesthesia.org/keywords/context-sensitive-half-time/",
+    "category": "Pharmacology",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 1) is the single best answer and is correct: remifentanil's context-sensitive half-time stays short and nearly constant (~3-5 min) regardless of infusion duration because of nonspecific plasma/tissue ester hydrolysis, independent of hepatic/renal function. All four distractors are genuinely inferior and their rationales are accurate: a longer elimination half-life would slow offset (0); an increasing Vd would prolong offset and is mechanistically wrong (2); fentanyl, not remifentanil, is the highly lipophilic accumulating drug (3); remifentanil clearance is organ-independent, not hepatic-blood-flow dependent (4). The explanation correctly defines CSHT, correctly contrasts fentanyl's rising CSHT due to fat/muscle accumulation with remifentanil's flat CSHT, and the stem is unambiguous with a single best answer. The \"3-5 minutes\" figure is within accepted textbook range (commonly cited ~3-4 min) and not an error. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/context-sensitive-half-time/ resolved successfully; the page is titled \"Context-Sensitive Half-Time and Anesthetic Implications\" and directly covers CSHT, fentanyl tissue accumulation, and remifentanil's plasma-esterase metabolism with stable short CSHT — exactly on-topic. Both clinical and reference checks pass."
+    }
+  },
+  {
+    "stem": "A healthy 4-year-old boy undergoes bilateral myringotomy with tube placement under sevoflurane via face mask without an airway device. Shortly after the mask is removed at the end of the case, while he is still deeply anesthetized and being transported, he develops paradoxical chest movement, suprasternal and substernal retractions, absent breath sounds, and a falling SpO2 of 84% with no capnography tracing. Gentle positive-pressure ventilation with 100% oxygen and a jaw-thrust with continuous positive airway pressure fails to move air. What is the most appropriate next step?",
+    "choices": [
+      {
+        "text": "Administer intravenous (or intramuscular) succinylcholine and continue positive-pressure ventilation",
+        "rationale": "Correct: laryngospasm refractory to CPAP and jaw thrust is broken by a small dose of succinylcholine, which relaxes the adducted vocal cords and restores ventilation."
+      },
+      {
+        "text": "Deepen anesthesia with an additional dose of intravenous propofol and reattempt CPAP only",
+        "rationale": "Incorrect: although propofol can break early or partial laryngospasm, with an SpO2 of 84% and complete obstruction unresponsive to CPAP, definitive relaxation is needed rather than further reliance on CPAP."
+      },
+      {
+        "text": "Perform immediate emergency cricothyrotomy",
+        "rationale": "Incorrect: a surgical airway is premature for laryngospasm, which is almost always reversible with succinylcholine; cricothyrotomy is reserved for a true cannot-intubate-cannot-oxygenate scenario after pharmacologic and other measures fail."
+      },
+      {
+        "text": "Administer intravenous racemic epinephrine and nebulized budesonide",
+        "rationale": "Incorrect: nebulized epinephrine and steroids treat post-extubation stridor from subglottic edema (croup), not the glottic closure reflex of laryngospasm, and a nebulizer cannot be delivered through a fully obstructed airway."
+      },
+      {
+        "text": "Apply firm bilateral pressure at the 'laryngospasm notch' and continue to observe for spontaneous resolution",
+        "rationale": "Incorrect: while the laryngospasm notch maneuver can help with partial spasm, passive observation is unacceptable with hypoxemia and complete obstruction that has already failed CPAP and jaw thrust."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Laryngospasm is an exaggerated, sustained glottic closure reflex most common in young children and at the lighter planes of anesthesia surrounding extubation/mask removal, with airway irritation (secretions, manipulation) as a trigger. First-line management is to remove the stimulus, apply 100% oxygen with CPAP and a jaw thrust (including firm pressure at the laryngospasm notch). When these fail and hypoxemia is progressing, succinylcholine (with atropine in small children to blunt bradycardia) reliably relaxes the cords; a surgical airway is reserved for true cannot-intubate-cannot-oxygenate failure.",
+    "difficulty": "medium",
+    "subtopic": "Laryngospasm — recognition and stepwise management",
+    "reference_title": "Laryngospasm (OpenAnesthesia)",
+    "reference_url": "https://www.openanesthesia.org/keywords/laryngospasm/",
+    "category": "Airway & ENT",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Clinically sound and unambiguous. The stem describes classic complete laryngospasm in a young child after mask removal (paradoxical chest movement, retractions, absent breath sounds, no capnography, SpO2 84%) that is refractory to first-line CPAP + jaw thrust with progressing hypoxemia. The keyed answer (succinylcholine + continued PPV) is the single best, textbook next step (IV ~0.1-0.5 mg/kg or IM 3-4 mg/kg when no IV access — relevant since BMT cases are often done without IV). All distractors are genuinely inferior: propofol + CPAP-only is inadequate for refractory complete obstruction with falling sats; cricothyrotomy is premature before pharmacologic rescue (reserved for true CICO); racemic epinephrine/budesonide treats subglottic post-extubation croup, not glottic laryngospasm, and cannot be delivered through a closed glottis; the laryngospasm-notch + passive observation is unacceptable with hypoxia and was effectively already attempted (jaw thrust/CPAP failed). The explanation is accurate and current, including the appropriate note about co-administering atropine in small children to blunt succinylcholine-induced bradycardia. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/laryngospasm/ resolves (not a 404) and is directly on-topic — it covers CPAP with 100% O2, jaw thrust, succinylcholine dosing including IM route, the laryngospasm-notch concept, and the heightened pediatric risk. Both clinical and reference checks pass."
+    }
+  },
+  {
+    "stem": "During preoperative airway assessment for an elective laparoscopic cholecystectomy, a 58-year-old man is noted to have a BMI of 41 kg/m2, a full beard, a history of obstructive sleep apnea using nightly CPAP, edentulous upper gum line when his dentures are removed, and a Mallampati class III view. He has a thyromental distance of 7 cm and good neck mobility. Which combination of findings places him at highest risk for the specific complication of difficult MASK ventilation?",
+    "choices": [
+      {
+        "text": "Mallampati class III with a thyromental distance of 7 cm",
+        "rationale": "Incorrect: a reduced thyromental distance and high Mallampati predict difficult laryngoscopy/intubation, and a 7 cm thyromental distance is actually reassuring, so this pairing is not the strongest mask-ventilation predictor."
+      },
+      {
+        "text": "Good neck mobility with an elective (non-emergent) surgical setting",
+        "rationale": "Incorrect: preserved neck extension and an unhurried elective setting are favorable factors that reduce, not increase, airway difficulty."
+      },
+      {
+        "text": "Obesity, obstructive sleep apnea, a beard, and being edentulous",
+        "rationale": "Correct: these are recognized independent predictors of difficult mask ventilation (the classic mnemonic includes Beard, Obese, Older, No teeth, Snorers/OSA), which together substantially impair an effective mask seal and ventilation."
+      },
+      {
+        "text": "Edentulous upper gum line alone, because leaving dentures out always eases the mask seal",
+        "rationale": "Incorrect: edentulousness worsens the mask seal because cheeks collapse, and the common bedside fix is to leave well-fitting dentures IN for induction and remove them only for laryngoscopy."
+      },
+      {
+        "text": "Male sex with a normal Mallampati on a separate visit",
+        "rationale": "Incorrect: male sex is a weak contributor at best and a normal Mallampati is reassuring, so this combination is not the dominant risk for difficult mask ventilation."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "Difficult mask ventilation and difficult laryngoscopy have overlapping but distinct predictors, and the exam frequently tests whether a candidate can separate them. The validated independent risk factors for difficult mask ventilation are captured by mnemonics such as BONES/MOANS: Beard, Obesity (BMI >26-30), Older age (>55), No teeth, and Snoring/OSA. Recognizing these prompts a plan that may include a two-person mask technique, an oral/nasal airway, leaving dentures in place for induction, and readiness to place a supraglottic device early.",
+    "difficulty": "easy",
+    "subtopic": "Airway assessment — predictors of difficult mask ventilation",
+    "reference_title": "Difficult Mask Ventilation (OpenAnesthesia)",
+    "reference_url": "https://www.openanesthesia.org/keywords/difficult-mask-ventilation/",
+    "category": "Airway & ENT",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The keyed answer (index 2: obesity, OSA, beard, edentulous) is the single best answer — these are the validated independent predictors of difficult mask ventilation captured by the BONES/MOANS/OBESE mnemonics from the Langeron (2000) and Kheterpal (2006) studies. All four distractors are genuinely inferior: index 0 (Mallampati III + 7 cm TMD) describes laryngoscopy/intubation predictors and a 7 cm TMD is reassuring; index 1 (good neck mobility + elective setting) lists favorable factors; index 3 correctly notes edentulousness worsens the seal and the bedside fix is leaving dentures IN for masking; index 4 (male sex + normal Mallampati) is a weak/reassuring combination. The stem cleanly distinguishes mask ventilation from intubation predictors. Minor non-errors: the explanation lightly garbles the mnemonic (mixes BONES/MOANS) and cites \"Obesity (BMI >26-30)\" — the >26 threshold is Langeron's, ≥30 is Kheterpal's, so the hedged range is defensible, not wrong. REFERENCE: WebFetch of the OpenAnesthesia 'Difficult Mask Ventilation' page resolved successfully (not a 404), and the page is directly on-topic — it defines DMV, lists predictors (obesity, OSA, male gender, facial hair, missing teeth, high Mallampati), notes cumulative risk (>30% with 3+ predictors), and covers management. Both clinical and reference checks pass."
+    }
+  },
+  {
+    "stem": "A 5-year-old girl who underwent tonsillectomy 7 days ago is brought to the emergency department actively swallowing repeatedly and spitting bright red blood; the parents report she has been vomiting dark 'coffee-ground' material. Heart rate is 158/min, blood pressure 78/44 mmHg, and she is pale and anxious. The otolaryngologist plans emergent return to the operating room to control the bleeding. Which anesthetic consideration is MOST important in planning her induction and intubation?",
+    "choices": [
+      {
+        "text": "Proceed with a standard inhalational induction in the supine position to keep the child calm before placing an IV",
+        "rationale": "Incorrect: a hypovolemic child with a bleeding, blood-filled airway should not undergo a slow supine inhalational induction, which risks aspiration and cardiovascular collapse on top of an unprotected airway."
+      },
+      {
+        "text": "Treat the patient as having a full stomach and significant hidden blood loss, securing IV access and resuscitating before a rapid-sequence induction with two functioning suction setups",
+        "rationale": "Correct: post-tonsillectomy hemorrhage means swallowed blood (full stomach) plus underestimated hypovolemia, so the priorities are volume resuscitation, large-bore IV access, and a rapid-sequence induction with redundant suction and a skilled airway operator."
+      },
+      {
+        "text": "Delay any airway intervention for several hours to allow gastric emptying of swallowed blood",
+        "rationale": "Incorrect: active hemorrhage with hypotension is a surgical emergency that cannot wait, and gastric emptying will not occur while the patient continues to swallow blood."
+      },
+      {
+        "text": "Avoid suction during laryngoscopy to prevent dislodging the clot and provoking further bleeding",
+        "rationale": "Incorrect: aggressive, immediately available suction is essential to visualize the glottis through pooled blood, and withholding it endangers the airway far more than it protects a clot."
+      },
+      {
+        "text": "Use a single small dose of dexmedetomidine for deep sedation and allow spontaneous ventilation without securing the airway",
+        "rationale": "Incorrect: sedation without a definitive airway in a hypovolemic child with ongoing airway bleeding invites aspiration and obstruction, and dexmedetomidine does not address the full-stomach or resuscitation needs."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Post-tonsillectomy hemorrhage is a classic shared-airway anesthetic emergency, most often presenting as secondary (delayed) bleeding around postoperative days 5-10. The swallowed blood makes these patients full-stomach aspiration risks, and actual blood loss is routinely underestimated because much is swallowed, so tachycardia and hypotension signal meaningful hypovolemia. Management is IV access and volume/blood resuscitation first, then a rapid-sequence induction with the patient's head down or turned, two working suction catheters, a styletted tube, and an experienced provider prepared for a difficult, blood-obscured view.",
+    "difficulty": "hard",
+    "subtopic": "Post-tonsillectomy hemorrhage — shared-airway emergency management",
+    "reference_title": "Tonsillectomy (StatPearls, NCBI Bookshelf)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK536942/",
+    "category": "Airway & ENT",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 1) is the single best, unambiguous choice. Post-tonsillectomy hemorrhage is the classic pediatric shared-airway emergency: swallowed blood = full stomach/aspiration risk, blood loss is underestimated (this child is already tachycardic 158 and hypotensive 78/44, signaling real hypovolemia), so the correct sequence is IV access + volume/blood resuscitation FIRST, then RSI with redundant suction and a skilled operator. This matches standard pediatric anesthesia teaching (Cote/Miller). All four distractors are genuinely inferior: A (slow supine inhalational induction) risks aspiration/CV collapse; C (delay for gastric emptying) is wrong because active hypotensive hemorrhage is an emergency and continued swallowing prevents emptying; D (avoid suction) is dangerous since suction is needed to visualize the glottis through blood; E (dexmedetomidine sedation without a secured airway) invites aspiration/obstruction. Rationales and explanation are accurate and current; the days 5-10 secondary-bleeding framing is correct general knowledge and consistent with the 7-day stem. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK536942/ resolves (StatPearls 'Tonsillectomy') and is genuinely on-topic — it explicitly covers post-tonsillectomy hemorrhage as a common/feared complication with incidence and management. It does not itemize the 'days 5-10' window or the RSI/full-stomach anesthetic specifics, but a citation need not contain every clause of the explanation; it supports the core subject and is not fabricated/404/mismatched. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 44-year-old woman with episodic headaches, palpitations, and diaphoresis is scheduled for laparoscopic resection of a 5-cm right adrenal mass. Plasma free metanephrines are markedly elevated. Her cardiologist started metoprolol 50 mg twice daily three days ago for a heart rate in the 110s. In clinic today her blood pressure is 178/104 mmHg, heart rate 72/min, and she reports a new severe pounding headache. Which of the following best explains her worsened hypertension and the most appropriate next step?",
+    "choices": [
+      {
+        "text": "Inadequate beta-blockade; increase the metoprolol dose to control the hypertension",
+        "rationale": "Increasing beta-blockade without alpha-blockade in place worsens the problem rather than fixing it, because the hypertension is driven by unopposed alpha-mediated vasoconstriction, not insufficient rate control."
+      },
+      {
+        "text": "Hypertensive response to untreated pain; administer an opioid and reassess",
+        "rationale": "The headache is a symptom of catecholamine-driven hypertension, not the cause, so analgesia alone would not address the underlying pharmacologic error."
+      },
+      {
+        "text": "Beta-blockade was started before alpha-blockade, causing unopposed alpha vasoconstriction; stop the beta-blocker, begin alpha-blockade (e.g., phenoxybenzamine or doxazosin), and add a beta-blocker only after alpha-blockade is established",
+        "rationale": "Beta-2 blockade removes vasodilatory tone while alpha-1 receptors remain stimulated by circulating catecholamines, producing unopposed vasoconstriction and a hypertensive crisis, so alpha-blockade must precede beta-blockade."
+      },
+      {
+        "text": "Volume overload from preoperative fluid loading; administer furosemide",
+        "rationale": "Pheochromocytoma patients are typically volume-contracted from chronic vasoconstriction, so diuresis would worsen hemodynamic instability rather than help."
+      },
+      {
+        "text": "Rebound hypertension from missed clonidine doses; restart clonidine",
+        "rationale": "There is no clonidine in this patient's regimen, so clonidine withdrawal cannot explain the presentation."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "In a catecholamine-secreting tumor, beta-adrenergic blockade should never be initiated before adequate alpha-blockade. Beta-2 blockade abolishes beta-mediated vasodilation while alpha-1-mediated vasoconstriction continues unopposed, precipitating a hypertensive crisis. The correct sequence is to establish alpha-blockade first (with phenoxybenzamine or a selective alpha-1 antagonist such as doxazosin) and allow time for volume re-expansion, then add a beta-blocker to control reflex tachycardia.",
+    "difficulty": "hard",
+    "subtopic": "Pheochromocytoma — preoperative pharmacologic preparation and the alpha-before-beta sequence",
+    "reference_title": "Pheochromocytoma — OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/pheochromocytoma/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound. Classic pheochromocytoma scenario (triad + 5-cm adrenal mass + markedly elevated plasma free metanephrines). A beta-blocker (metoprolol) was started without prior alpha-blockade, and the patient now has worsened hypertension (178/104) with rate controlled (72) plus a pounding headache — the textbook presentation of unopposed alpha-mediated vasoconstriction. Keyed answer (index 2) is the single best answer: stop the beta-blocker, establish alpha-blockade first (phenoxybenzamine or doxazosin), then add a beta-blocker. All four distractors are genuinely inferior: increasing metoprolol worsens the problem; the headache is a symptom not the cause, so opioids do not help; pheo patients are volume-contracted, so furosemide is wrong; and there is no clonidine in the regimen, excluding withdrawal. One minor adversarial nitpick: the rationale says 'beta-2 blockade removes vasodilatory tone,' which is slightly imprecise since metoprolol is beta-1 selective (the unopposed-alpha effect is classically most pronounced with non-selective agents like propranolol). However, beta-1 selectivity is dose-dependent/incomplete, the phenomenon is well-documented and standard board teaching even with cardioselective agents, and this does not change the unambiguously correct key or management. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/pheochromocytoma/ resolves (not a 404) and is directly on-topic — it explicitly states 'Beta blockade should never be performed before alpha blockade due to the risk of further blood pressure elevations from unopposed alpha stimulation,' and discusses phenoxybenzamine, doxazosin, and preoperative preparation. Citation is valid and relevant."
+    }
+  },
+  {
+    "stem": "A 61-year-old man with severe rheumatoid arthritis presents for an open hemicolectomy. He has taken prednisone 15 mg daily for the past 14 months. He is hemodynamically stable on arrival. Roughly two hours into the procedure, after significant blood loss and bowel manipulation, his blood pressure falls to 76/40 mmHg and remains poorly responsive to a 1-liter crystalloid bolus and incremental phenylephrine. Heart rate is 118/min, and there is no surgical bleeding source. Which of the following is the most appropriate next intervention?",
+    "choices": [
+      {
+        "text": "Administer a large bolus of vasopressin and titrate to a target MAP, deferring any other therapy",
+        "rationale": "Vasopressin may transiently raise pressure but does not correct the underlying glucocorticoid deficiency, so the hypotension will likely persist or recur."
+      },
+      {
+        "text": "Administer intravenous hydrocortisone (e.g., 100 mg) for suspected secondary adrenal insufficiency and stress-dose coverage",
+        "rationale": "Chronic exogenous glucocorticoids suppress the HPA axis, leaving the patient unable to mount a stress cortisol response, and refractory intraoperative hypotension warrants empiric stress-dose hydrocortisone."
+      },
+      {
+        "text": "Deepen anesthesia with additional volatile agent to treat presumed light anesthesia",
+        "rationale": "Light anesthesia typically causes hypertension and tachycardia, not refractory hypotension, and deepening the anesthetic would worsen the hypotension."
+      },
+      {
+        "text": "Give a beta-blocker to control the tachycardia and improve diastolic filling",
+        "rationale": "The tachycardia is a compensatory response to hypotension, so blunting it with a beta-blocker risks precipitating cardiovascular collapse."
+      },
+      {
+        "text": "Transfuse two units of packed red blood cells empirically despite no identifiable bleeding",
+        "rationale": "Without ongoing hemorrhage or evidence of anemia driving the instability, empiric transfusion does not address the catecholamine- and fluid-refractory mechanism most consistent with adrenal insufficiency."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Patients on chronic supraphysiologic glucocorticoids (roughly prednisone 5 mg/day or more for more than about 3 weeks) develop tertiary/secondary HPA-axis suppression and cannot mount an adequate cortisol surge to surgical stress. Refractory intraoperative hypotension unresponsive to fluids and vasopressors should prompt empiric stress-dose hydrocortisone. Major surgery typically warrants supplemental perioperative glucocorticoid coverage in addition to the patient's usual daily dose.",
+    "difficulty": "medium",
+    "subtopic": "Adrenal insufficiency — perioperative stress-dose steroid coverage in chronic glucocorticoid users",
+    "reference_title": "Adrenal Insufficiency — NCBI Bookshelf (Endotext)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK279083/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (IV hydrocortisone 100 mg for suspected secondary/tertiary adrenal insufficiency) is the single best answer. The stem describes a classic scenario: prednisone 15 mg/day x 14 months (well above the ~5 mg/>3 weeks suppressive threshold), major abdominal surgery, and fluid- plus vasopressor-refractory hypotension with compensatory tachycardia and no surgical bleeding source. Empiric stress-dose steroids are the correct intervention here. All four distractors are genuinely inferior and the rationales are accurate: vasopressin alone defers definitive therapy; deepening anesthesia would worsen hypotension (light anesthesia causes hypertension); beta-blockade would blunt compensatory tachycardia and risk collapse; empiric PRBC transfusion does not address the mechanism with no hemorrhage source. The explanation's pathophysiology (HPA-axis suppression, inability to mount a stress cortisol surge) and the 100 mg hydrocortisone dose are correct and current. The mixed phrasing 'tertiary/secondary' is acceptable (exogenous steroids cause tertiary CRH suppression that behaves like secondary AI). REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK279083/ resolves to the Endotext 'Adrenal Insufficiency' chapter, which is directly on-topic and explicitly recommends perioperative stress-dose hydrocortisone (e.g., 100 mg IV before induction of anesthesia for major surgery). Both clinical content and citation are sound."
+    }
+  },
+  {
+    "stem": "A 19-year-old man with type 1 diabetes presents to the emergency department with abdominal pain and is found to have a perforated appendix requiring emergent appendectomy. Labs show glucose 512 mg/dL, pH 7.12, bicarbonate 9 mEq/L, anion gap 26, and large serum ketones. Serum potassium is 5.4 mEq/L. He is started on intravenous fluids and an insulin infusion. The surgeon wants to proceed urgently. Regarding electrolyte management as insulin therapy is initiated, which statement is most accurate?",
+    "choices": [
+      {
+        "text": "The measured potassium of 5.4 mEq/L reflects a true potassium excess, so potassium should be aggressively removed before surgery",
+        "rationale": "Despite the elevated serum value, total-body potassium is depleted in DKA, so aggressive removal would be dangerous."
+      },
+      {
+        "text": "Insulin and correction of acidosis will raise serum potassium, so potassium-lowering therapy should be anticipated",
+        "rationale": "Insulin and acidosis correction drive potassium intracellularly and lower serum potassium, the opposite of what this option states."
+      },
+      {
+        "text": "Sodium bicarbonate should be given routinely at this pH to correct the acidosis and stabilize the potassium",
+        "rationale": "Routine bicarbonate is not recommended in DKA at this pH and can worsen hypokalemia and cause paradoxical CNS acidosis, so it is not the correct management principle."
+      },
+      {
+        "text": "Serum potassium will fall as insulin drives it intracellularly and acidosis resolves; potassium must be monitored frequently and repleted, with insulin typically withheld or potassium added once potassium falls below about 3.3 mEq/L",
+        "rationale": "Insulin shifts potassium into cells and correction of acidosis lowers serum potassium despite total-body depletion, so frequent monitoring and repletion are essential, and insulin should be held or potassium added if potassium drops below roughly 3.3 mEq/L."
+      },
+      {
+        "text": "Because the initial potassium is in the normal-to-high range, no potassium monitoring is needed during the case",
+        "rationale": "Potassium can fall precipitously and dangerously once insulin is running, so omitting monitoring risks life-threatening intraoperative hypokalemia and arrhythmia."
+      }
+    ],
+    "correct_index": 3,
+    "explanation": "In DKA, total-body potassium is markedly depleted even when the measured serum value is normal or high, because acidosis and insulin deficiency shift potassium out of cells. Once insulin is started and acidosis corrects, serum potassium falls rapidly, so frequent monitoring and repletion are mandatory. Standard practice is to add potassium to fluids once it is below about 5.0-5.3 mEq/L with adequate urine output, and to hold insulin (or give potassium first) if potassium is below approximately 3.3 mEq/L to avoid life-threatening hypokalemia.",
+    "difficulty": "hard",
+    "subtopic": "Diabetic ketoacidosis — perioperative potassium dynamics during insulin therapy for emergent surgery",
+    "reference_title": "Diabetic Ketoacidosis — OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/diabetic-ketoacidosis/",
+    "category": "Endocrine",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Clinical: Keyed answer (index 3) is the single best answer and unambiguous. In DKA, total-body potassium is depleted despite a normal/high measured value; insulin and correction of acidosis shift K+ intracellularly, lowering serum K+, mandating frequent monitoring and repletion. The ~3.3 mEq/L threshold for holding insulin (or giving K+ first) matches ADA consensus. All four distractors contain genuine errors and are clearly inferior: index 0 falsely claims true K+ excess; index 1 is backwards (insulin/acidosis correction lowers, not raises, K+); index 2 endorses routine bicarbonate, not recommended at pH 7.12 (reserved for pH <6.9); index 4 wrongly says no monitoring is needed. The explanation's repletion threshold (~5.0-5.3 mEq/L with adequate urine output) aligns with guidelines. The stem K+ of 5.4 being marginally above the repletion trigger does not create ambiguity since the keyed choice tests the management principle. Reference: WebFetch confirmed https://www.openanesthesia.org/keywords/diabetic-ketoacidosis/ resolves (not 404) and is an OpenAnesthesia DKA summary explicitly covering insulin-induced potassium shifts and electrolyte management timing — directly on-topic."
+    }
+  },
+  {
+    "stem": "A 4-year-old, 16-kg boy with no significant medical history is undergoing bilateral medial rectus recession for esotropia under general anesthesia with a laryngeal mask airway, sevoflurane, and spontaneous ventilation. No anticholinergic premedication was given. As the surgeon places traction on the right medial rectus muscle, the heart rate abruptly falls from 110 to 54 beats per minute over several seconds, with a regular sinus rhythm and a blood pressure of 88/52 mmHg. Oxygen saturation remains 100%. What is the most appropriate immediate action?",
+    "choices": [
+      {
+        "text": "Ask the surgeon to release traction on the extraocular muscle",
+        "rationale": "Correct: cessation of muscle traction is the first-line maneuver and the bradycardia of the oculocardiac reflex typically resolves within seconds once the afferent trigeminal stimulus is removed."
+      },
+      {
+        "text": "Administer atropine 0.3 mg IV immediately before any other step",
+        "rationale": "Incorrect: anticholinergics are reserved for bradycardia that persists or recurs after traction is released, not the very first response to an otherwise hemodynamically tolerated, self-limited reflex."
+      },
+      {
+        "text": "Deepen anesthesia with a sevoflurane bolus to blunt the reflex",
+        "rationale": "Incorrect: deepening volatile anesthesia does not abolish the trigeminovagal reflex arc and can worsen hypotension while the inciting traction continues."
+      },
+      {
+        "text": "Begin chest compressions and call for the resuscitation cart",
+        "rationale": "Incorrect: the patient has a perfusing sinus rhythm with a normal blood pressure and saturation, so CPR is not indicated for this reflex bradycardia."
+      },
+      {
+        "text": "Administer glycopyrrolate 0.16 mg IV as the definitive first-line treatment",
+        "rationale": "Incorrect: glycopyrrolate has a slower onset than removing the stimulus and is a second-line measure used only if bradycardia persists after traction is released."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "The oculocardiac reflex is a trigeminovagal arc (afferent CN V, efferent CN X) classically triggered by traction on the extraocular muscles, especially the medial rectus, during strabismus surgery. It is defined as a 20% or greater fall in heart rate, and the first and most effective response is to have the surgeon release the traction, which terminates the reflex within seconds. Anticholinergics such as atropine or glycopyrrolate are given only if bradycardia persists or recurs, and the reflex fatigues with repeated stimulation.",
+    "difficulty": "easy",
+    "subtopic": "Oculocardiac reflex during strabismus surgery",
+    "reference_title": "Oculocardiac Reflex - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/oculocardiac-reflex/",
+    "category": "Ophthalmic",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The stem is a textbook oculocardiac reflex (traction on medial rectus during strabismus surgery, HR 110->54 = ~50% fall, well beyond the 20% threshold; perfusing sinus rhythm, age-normal BP 88/52, SpO2 100%). The keyed answer (release traction) is the single best immediate action — universally taught as first-line because removing the afferent trigeminal stimulus terminates the reflex within seconds. Distractors are all genuinely inferior: atropine/glycopyrrolate are correctly framed as second-line for persistent/recurrent bradycardia (and the doses given are actually within standard ranges — 0.3 mg ~19 mcg/kg and 0.16 mg = 10 mcg/kg — so they fail on sequencing, not dosing); deepening with sevoflurane does not abolish the reflex arc and can worsen hypotension; CPR is not indicated in a perfusing rhythm with normal BP. The explanation is accurate and current: trigeminovagal arc (CN V afferent, CN X efferent), 20% HR-fall definition, release-first management, and reflex fatigue with repeated stimulation. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/oculocardiac-reflex/ resolves to the OpenAnesthesia 'Oculocardiac Reflex' page, directly on-topic. It corroborates the definition (>=20% HR reduction), the trigeminovagal pathway, medial-rectus/strabismus trigger, and the stepwise management (cease traction first, then anticholinergics atropine 10-20 mcg/kg or glycopyrrolate 10 mcg/kg if persistent). Both clinical and reference checks pass."
+    }
+  },
+  {
+    "stem": "A 63-year-old man with type 2 diabetes and hypertension underwent pars plana vitrectomy with intraocular injection of perfluoropropane (C3F8) gas 10 days ago for a macular hole. He now presents for an urgent laparoscopic appendectomy under general anesthesia. His vital signs are stable and his airway exam is unremarkable. Which anesthetic decision is most important to prevent a catastrophic ophthalmic complication during this case?",
+    "choices": [
+      {
+        "text": "Avoid nitrous oxide for the entire anesthetic",
+        "rationale": "Correct: nitrous oxide diffuses into and expands a residual intraocular gas bubble, raising intraocular pressure enough to compromise retinal perfusion and cause permanent vision loss, and it must be avoided for weeks after gas injection."
+      },
+      {
+        "text": "Avoid succinylcholine because it will rupture the gas bubble",
+        "rationale": "Incorrect: succinylcholine transiently raises intraocular pressure through extraocular muscle contraction but does not expand an intraocular gas bubble, and it is not the principal concern in an eye without an open wound."
+      },
+      {
+        "text": "Maintain strict normocapnia to keep the bubble from expanding",
+        "rationale": "Incorrect: routine normocapnia is reasonable but modest changes in arterial carbon dioxide do not drive the dangerous bubble expansion that nitrous oxide causes."
+      },
+      {
+        "text": "Position the patient in steep reverse Trendelenburg to decompress the bubble",
+        "rationale": "Incorrect: body positioning does not meaningfully offset nitrous-oxide-driven bubble expansion and is not the key protective measure."
+      },
+      {
+        "text": "Use total intravenous anesthesia solely to avoid volatile-agent-induced bubble expansion",
+        "rationale": "Incorrect: volatile halogenated agents do not appreciably expand the bubble; the specific offending agent is nitrous oxide, so TIVA is not required as long as nitrous oxide is omitted."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Intraocular gases such as sulfur hexafluoride (SF6) and perfluoropropane (C3F8) are injected during vitreoretinal surgery to tamponade the retina and reabsorb slowly over weeks. Nitrous oxide is roughly 34 times more soluble than nitrogen, so it diffuses into a residual bubble faster than the bubble's gas leaves, expanding it and raising intraocular pressure to levels that can occlude the central retinal artery and cause blindness. Nitrous oxide should therefore be avoided for about 4 to 6 weeks after vitreoretinal surgery using an injected gas bubble, and this patient at 10 days remains well within that window.",
+    "difficulty": "medium",
+    "subtopic": "Nitrous oxide and intraocular gas bubble interaction in vitreoretinal surgery",
+    "reference_title": "Anesthesia for Ophthalmic Surgery - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK572131/",
+    "category": "Ophthalmic",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (avoid nitrous oxide) is the single best, unambiguous answer. N2O diffuses into a residual intraocular C3F8 bubble faster than the bubble's gas can leave (N2O blood:gas ~0.47 vs nitrogen ~0.015, a ~31-34x solubility ratio—the cited \"34x\" is the standard textbook figure), expanding the bubble, raising IOP, and risking central retinal artery occlusion and permanent blindness. C3F8/perfluoropropane persists for weeks, so a patient at 10 days is well within the 4-6 week danger window; the explanation is accurate and current. All distractors are genuinely inferior with correct rationales: succinylcholine raises IOP via extraocular muscle contraction but does not expand a bubble in a closed eye; modest CO2 changes do not drive dangerous bubble expansion; positioning does not offset N2O-driven expansion; and volatile agents do not appreciably expand the bubble, so TIVA is not required as long as N2O is omitted (the strongest distractor, correctly refuted). REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK572131/ resolves to \"Anesthesia for Ophthalmic Surgery - StatPearls,\" which explicitly states N2O can enter and expand an SF6/perfluoropropane gas bubble and should be avoided for 4-6 weeks after vitreoretinal surgery. The citation is on-topic and directly supports the keyed answer."
+    }
+  },
+  {
+    "stem": "A 28-year-old man arrives for emergent repair of an open-globe injury sustained 90 minutes ago when a metal fragment struck his right eye. He ate a full meal 1 hour before the injury, and visible vitreous is present at the wound. He is in pain and retching intermittently. He has no neuromuscular or musculoskeletal disease and a reassuring airway exam. The team plans a rapid sequence induction. Regarding control of intraocular pressure during induction, which statement best guides management?",
+    "choices": [
+      {
+        "text": "Succinylcholine transiently raises intraocular pressure and a high-dose nondepolarizing agent such as rocuronium is generally preferred for rapid sequence induction in this setting",
+        "rationale": "Correct: succinylcholine produces a transient rise in intraocular pressure that could promote extrusion of intraocular contents through the open wound, so a high-dose rapid-onset nondepolarizing relaxant such as rocuronium is favored to secure the airway while protecting the globe."
+      },
+      {
+        "text": "Succinylcholine is the agent of choice because its short duration minimizes the time of elevated intraocular pressure",
+        "rationale": "Incorrect: the brief duration does not negate the transient intraocular pressure spike succinylcholine causes, which is the specific hazard in an open globe."
+      },
+      {
+        "text": "Awake intubation without neuromuscular blockade is preferred to keep intraocular pressure low",
+        "rationale": "Incorrect: coughing, bucking, and Valsalva during awake laryngoscopy markedly raise intraocular pressure and risk content extrusion, making it a poor choice for an open globe."
+      },
+      {
+        "text": "Ketamine should be avoided in all open-globe cases because it reliably and substantially raises intraocular pressure",
+        "rationale": "Incorrect: when given with adequate co-induction agents ketamine has a minimal and clinically acceptable effect on intraocular pressure and is not categorically contraindicated, so this is not the best guiding statement."
+      },
+      {
+        "text": "Deep extubation is mandatory and intraocular pressure control during induction is of secondary importance",
+        "rationale": "Incorrect: induction is precisely when laryngoscopy, coughing, and succinylcholine can spike intraocular pressure, so it cannot be treated as secondary, and emergence planning does not override induction-phase globe protection."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "In open-globe injury the eye wall is breached, so any acute rise in intraocular pressure threatens extrusion of intraocular contents and irreversible vision loss. This patient also has a full stomach and is at high aspiration risk, mandating a rapid sequence induction that simultaneously protects the airway and avoids intraocular pressure spikes. Succinylcholine causes a transient increase in intraocular pressure and is best avoided when possible; a high-dose rapid-onset nondepolarizing agent such as rocuronium provides comparable intubating conditions without that pressure rise, and a smooth, deep plane of anesthesia blunts the laryngoscopy response.",
+    "difficulty": "hard",
+    "subtopic": "Open-globe injury: succinylcholine, intraocular pressure, and rapid sequence induction",
+    "reference_title": "Anesthesia for Ophthalmic Surgery - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK572131/",
+    "category": "Ophthalmic",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 0) is the single best answer. Succinylcholine produces a well-documented transient IOP rise (~6-8 mmHg), and in an open globe a high-dose rapid-onset nondepolarizer (rocuronium 1.2 mg/kg, reversible with sugammadex) is the widely-taught preferred RSI relaxant. The stem deliberately removes confounders by specifying a reassuring airway and no neuromuscular/musculoskeletal disease, and the answer is appropriately hedged (\"generally preferred\"), which handles the known literature nuance that no extrusion has been definitively attributed to sux. All four distractors are genuinely inferior and correctly keyed wrong: index 1 (short duration negates the spike) is false; index 2 (awake intubation) is wrong because coughing/bucking markedly raise IOP; index 3 uses false absolutes (\"all,\" \"reliably and substantially\") about ketamine, whose IOP effect is minimal with co-induction; index 4 is doubly wrong since induction is precisely when IOP spikes occur and deep extubation is contraindicated in a full-stomach aspiration-risk patient. Rationales and explanation are accurate and current. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK572131/ resolves to \"Anesthesia for Ophthalmic Surgery - StatPearls,\" which explicitly discusses succinylcholine/ketamine raising IOP, recommends avoiding succinylcholine during intubation, and cites a rocuronium-vs-neuromuscular-blocker IOP comparison. Title matches reference_title exactly and the page is on-topic. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 4-week-old, 3.8-kg term male presents with a 5-day history of progressive non-bilious projectile vomiting after feeds. An olive-shaped epigastric mass is palpable and ultrasound confirms hypertrophic pyloric stenosis. He is lethargic with a sunken fontanelle and dry mucous membranes. Vitals: HR 178, RR 44, BP 68/40. Laboratory values: Na 134 mEq/L, K 2.9 mEq/L, Cl 88 mEq/L, HCO3 34 mEq/L, pH 7.52. The pediatric surgeon asks to take the infant to the operating room for pyloromyotomy as soon as possible. What is the most appropriate next step?",
+    "choices": [
+      {
+        "text": "Proceed immediately to the operating room and perform a rapid sequence induction, correcting electrolytes intraoperatively",
+        "rationale": "Pyloric stenosis is a medical rather than a surgical emergency, and proceeding before correcting the hypochloremic, hypokalemic metabolic alkalosis and dehydration exposes the infant to arrhythmias and postoperative apnea."
+      },
+      {
+        "text": "Begin isotonic fluid resuscitation with potassium-containing maintenance fluid and delay surgery until chloride is greater than 100 mEq/L, bicarbonate is less than 30 mEq/L, and the infant is voiding",
+        "rationale": "Correct, because surgery should be deferred until the metabolic alkalosis and dehydration are corrected, with accepted targets of serum chloride >100 mEq/L, bicarbonate <30 mEq/L, normalized potassium, and adequate urine output."
+      },
+      {
+        "text": "Administer a normal saline bolus followed by acetazolamide to accelerate correction of the metabolic alkalosis before induction",
+        "rationale": "Acetazolamide is not standard therapy; volume and chloride/potassium repletion correct the alkalosis, and adding a carbonic anhydrase inhibitor risks worsening hypokalemia without addressing the underlying volume deficit."
+      },
+      {
+        "text": "Resuscitate with 0.45% saline boluses to avoid sodium overload, then proceed once the infant is hemodynamically stable",
+        "rationale": "Hypotonic fluid is inappropriate for acute resuscitation of a dehydrated, hypochloremic infant; isotonic crystalloid is required to restore intravascular volume and replace chloride losses."
+      },
+      {
+        "text": "Replace potassium aggressively with a rapid IV potassium bolus to normalize the serum potassium before any fluid resuscitation",
+        "rationale": "Rapid potassium boluses are dangerous and contraindicated, and much of the apparent hypokalemia resolves once volume is restored and the kidney stops excreting potassium to preserve volume."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Hypertrophic pyloric stenosis causes loss of gastric HCl, producing a hypochloremic, hypokalemic metabolic alkalosis with dehydration. It is never a surgical emergency: operating on an alkalotic, volume-depleted infant increases the risk of arrhythmias, hemodynamic instability, and CSF-mediated postoperative apnea (because CSF pH equilibrates with plasma over hours). Resuscitation with isotonic crystalloid plus potassium-containing maintenance fluid is continued until chloride exceeds 100 mEq/L, bicarbonate falls below 30 mEq/L, and the infant produces urine, which usually takes 12 to 48 hours.",
+    "difficulty": "medium",
+    "subtopic": "Neonatal/infant surgical emergencies: pyloric stenosis fluid and electrolyte optimization",
+    "reference_title": "Pyloric Stenosis - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/pyloric-stenosis/",
+    "category": "Pediatric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Clinically sound and unambiguous. The stem is a textbook HPS presentation with internally consistent labs (Cl 88, K 2.9, HCO3 34, pH 7.52 = hypochloremic hypokalemic metabolic alkalosis with dehydration). Keyed answer B (isotonic fluid resuscitation with K-containing maintenance fluid; delay surgery until Cl >100, HCO3 <30, and voiding) is the single best answer and the recognized standard of care. All four distractors are genuinely inferior with accurate rationales: A wrongly treats HPS as a surgical emergency; C adds non-standard acetazolamide that worsens hypokalemia; D uses inappropriate hypotonic fluid for acute resuscitation; E uses a dangerous rapid K bolus. The post-anesthetic apnea / CSF-pH point and the explanation are accurate and current. REFERENCE: WebFetch of the reference_url resolved successfully; the page is titled \"Pyloric Stenosis - OpenAnesthesia\" and is directly on-topic, explicitly stating HPS is a medical not surgical emergency and citing the same correction targets (serum Cl >100 mEq/L, HCO3 <30 mEq/L, 12-48 h). Reference is valid and supports the key."
+    }
+  },
+  {
+    "stem": "A healthy 3-year-old, 15-kg child is undergoing adenotonsillectomy under general anesthesia maintained with sevoflurane via a single-lumen endotracheal tube. At the end of the case the tube is removed while the child is in a light plane of anesthesia. Within seconds the child develops stridor that rapidly progresses to complete absence of air movement despite vigorous bag-mask attempts, paradoxical chest movement, and a falling SpO2 now reading 78%. A jaw-thrust with firm bilateral pressure at the laryngospasm notch and CPAP with 100% oxygen do not break the obstruction. There is a functioning IV in place. What is the most appropriate next intervention?",
+    "choices": [
+      {
+        "text": "Administer atropine 0.02 mg/kg IV and continue mask CPAP while preparing for reintubation",
+        "rationale": "Atropine treats or prevents the reflex bradycardia that may accompany laryngospasm and hypoxia but does not relieve the glottic closure itself, so it should not take priority over breaking the spasm."
+      },
+      {
+        "text": "Administer succinylcholine 0.5-1 mg/kg IV to relax the glottic musculature, with atropine available for bradycardia",
+        "rationale": "Correct, because when first-line maneuvers (CPAP, 100% oxygen, and Larson's maneuver) fail and hypoxia is worsening, IV succinylcholine rapidly relaxes the laryngeal muscles and is the definitive treatment, with atropine ready to counter bradycardia."
+      },
+      {
+        "text": "Deliver a deepening bolus of propofol 3 mg/kg IV and continue gentle mask ventilation",
+        "rationale": "Deepening anesthesia with propofol can abort early or partial laryngospasm but is unreliable in complete spasm with profound hypoxia and may worsen hypotension, making it inadequate as the next step here."
+      },
+      {
+        "text": "Perform immediate emergency cricothyrotomy to bypass the glottic obstruction",
+        "rationale": "Surgical airway is not indicated for laryngospasm that has not yet been treated pharmacologically, and cricothyrotomy is hazardous and relatively contraindicated in young children given subglottic anatomy."
+      },
+      {
+        "text": "Administer racemic epinephrine via nebulizer and apply continued CPAP",
+        "rationale": "Nebulized racemic epinephrine treats subglottic edema or post-extubation croup, not acute laryngospasm, and requires gas flow through a glottis that is currently closed."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Laryngospasm is an exaggerated glottic closure reflex most common at emergence in children, particularly after airway surgery. The initial response is removal of the stimulus, 100% oxygen with CPAP, and a vigorous jaw thrust with bilateral pressure at Larson's point. When these fail and hypoxia progresses, succinylcholine (roughly 0.5 to 1 mg/kg IV, or 3 to 4 mg/kg IM with no IV access) is the definitive treatment because it relaxes the laryngeal muscles within seconds; atropine should be available because hypoxia and succinylcholine can both provoke bradycardia in young children.",
+    "difficulty": "hard",
+    "subtopic": "Pediatric airway complications: emergence laryngospasm management",
+    "reference_title": "Laryngospasm - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/laryngospasm/",
+    "category": "Pediatric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. Stem describes complete emergence laryngospasm in a 3-year-old after adenotonsillectomy, refractory to CPAP/100% O2/jaw-thrust at Larson's point with progressive hypoxia (SpO2 78%) and a functioning IV. The single best next step is IV succinylcholine to relax the glottic musculature, with atropine available for bradycardia (children and succinylcholine both predispose to bradycardia, and hypoxia compounds it) — keyed answer (index 1) is correct. Dosing is accurate and current: 0.5-1 mg/kg IV is within accepted teaching for breaking laryngospasm, and the explanation's 3-4 mg/kg IM (no IV) is also correct. All distractors are genuinely inferior: atropine alone treats bradycardia not glottic closure; propofol can abort partial/early spasm but is unreliable in complete spasm with profound hypoxia; cricothyrotomy is premature before pharmacologic treatment; racemic epinephrine treats post-extubation croup/subglottic edema and needs airflow through an already-closed glottis. Rationales are individually accurate. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/laryngospasm/ resolves and is directly on-topic — it covers the same management algorithm (remove stimulus, CPAP with 100% O2, vigorous jaw thrust, Larson's point, and succinylcholine including IM dosing). Citation is valid and matched."
+    }
+  },
+  {
+    "stem": "You are preparing to intubate a healthy 2-year-old child for an elective inguinal hernia repair. A student anesthesiologist assistant asks you why a tube that passes easily through the vocal cords can still meet resistance a bit lower, and why cricothyrotomy is avoided in a child this age. Which statement best explains the relevant pediatric airway anatomy?",
+    "choices": [
+      {
+        "text": "The narrowest point of the young child's airway is functionally at the level of the cricoid cartilage, a complete non-expandable ring, whereas in the adult the narrowest point is at the glottis",
+        "rationale": "Correct, because in young children the subglottic region at the cricoid cartilage is the narrowest functional segment and, being a complete ring of cartilage, cannot accommodate a tube that passed the cords, while in adults the rima glottidis is narrowest."
+      },
+      {
+        "text": "The narrowest point in both children and adults is the glottis, so a tube that clears the cords will always pass freely below them",
+        "rationale": "Incorrect, because the pediatric airway narrows further at the subglottic cricoid ring, so a tube can pass the cords yet still meet resistance below them."
+      },
+      {
+        "text": "The child's larynx sits lower in the neck (around C6) than the adult's, making the angle of intubation more acute",
+        "rationale": "Incorrect, because the pediatric larynx is positioned more cephalad (higher, around C3-C4) than the adult larynx, not lower."
+      },
+      {
+        "text": "The epiglottis in a young child is stiff and flat, so a Macintosh blade reliably lifts it indirectly via the vallecula",
+        "rationale": "Incorrect, because the pediatric epiglottis is relatively long, floppy, and omega-shaped, which is why a straight Miller blade to directly lift the epiglottis is often preferred."
+      },
+      {
+        "text": "The cricothyroid membrane in a 2-year-old is large and easily palpable, making cricothyrotomy the preferred emergency airway",
+        "rationale": "Incorrect, because in young children the cricothyroid membrane is very small and difficult to identify, which is precisely why surgical cricothyrotomy is avoided in this age group."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "In infants and young children the larynx is positioned more cephalad (about C3-C4 versus C6 in adults), the epiglottis is longer and more floppy, and the functionally narrowest portion of the airway is the subglottic region at the cricoid cartilage, the only complete cartilaginous ring of the airway. This explains why an endotracheal tube can pass the vocal cords yet meet resistance below them, and it underlies the use of appropriately sized (historically uncuffed, now often low-pressure cuffed) tubes with a leak. Because the cricothyroid membrane is small and hard to identify in young children, cricothyrotomy is avoided and alternative airway strategies are used.",
+    "difficulty": "easy",
+    "subtopic": "Developmental airway anatomy: pediatric subglottic narrowing and tube selection",
+    "reference_title": "Airway Management - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK470403/",
+    "category": "Pediatric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 0) is the single best answer and correctly explains both phenomena in the stem. In young children the functionally narrowest airway segment is the subglottic region at the cricoid cartilage—the only complete (non-expandable) cartilaginous ring—so a tube clearing the cords can still meet resistance below, whereas in adults the glottis (rima glottidis) is narrowest. The word \"functionally\" is an appropriately careful hedge: modern MRI/bronchoscopy data (Dalal, Litman) suggest the anatomically narrowest point may actually be the glottis even in children, but the cricoid remains the functionally/clinically limiting point because it is the least distensible complete ring. All four distractors are genuinely inferior and their rationales are accurate: glottis-narrowest-in-both is false; the pediatric larynx is more cephalad (C3-C4), not lower at C6; the pediatric epiglottis is long, floppy, omega-shaped favoring a Miller blade, not stiff/flat; and the cricothyroid membrane in a 2-year-old is small and hard to identify, which is precisely why cricothyrotomy is avoided (needle techniques preferred). The explanation's note on historically uncuffed vs. now low-pressure cuffed tubes is current. Stem is unambiguous.\\n\\nREFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK470403/ resolves to the StatPearls \"Airway Management\" article (matching reference_title), updated January 2025. It explicitly states the pediatric airway is narrowest at the subglottis, the larynx is positioned more rostrally, and that surgical cricothyrotomy is rarely performed in pediatric patients with needle cricothyrotomy preferred—directly on-topic for every point the question tests."
+    }
+  },
+  {
+    "stem": "An anesthesiologist assistant is helping prepare a patient for elective arthroscopy of the left knee. As the team performs the Universal Protocol immediately before incision, the surgeon, anesthesia provider, and circulating nurse pause to confirm the patient's identity, the procedure, and the surgical site. Which element is the defining purpose of this final step of the Universal Protocol?",
+    "choices": [
+      {
+        "text": "Reviewing the anesthetic plan and confirming airway equipment is available",
+        "rationale": "Equipment and anesthetic planning belong to the pre-induction sign-in and machine check, not the pre-incision verification of patient, procedure, and site."
+      },
+      {
+        "text": "Verifying that the surgical consent form has been signed by the patient",
+        "rationale": "Consent verification occurs earlier during the pre-procedure check-in; the final pause assumes consent is already documented."
+      },
+      {
+        "text": "Active confirmation of correct patient, correct procedure, and correct site by the whole team just before incision",
+        "rationale": "The time-out is the team's final active verification of patient, procedure, and site immediately before starting, which is the core safeguard against wrong-site surgery.",
+        "correct": true
+      },
+      {
+        "text": "Counting surgical sponges and instruments before the procedure begins",
+        "rationale": "Instrument and sponge counts prevent retained foreign objects and are a separate nursing safety process, not the purpose of the time-out."
+      },
+      {
+        "text": "Documenting the estimated blood loss and planned postoperative disposition",
+        "rationale": "Blood loss and disposition are recorded during and after the case, not as the function of the pre-incision pause."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "The Universal Protocol comprises pre-procedure verification, marking of the operative site, and a final time-out. The time-out is a deliberate pause in which the entire team actively confirms the correct patient, correct procedure, and correct site immediately before incision, and it is the principal defense against wrong-patient, wrong-procedure, and wrong-site surgery. Consent review, equipment checks, and sponge counts are important but are distinct steps performed at other points in the perioperative workflow.",
+    "difficulty": "easy",
+    "subtopic": "Patient safety — Universal Protocol and prevention of wrong-site surgery",
+    "reference_title": "Wrong-Site Surgery (Patient Safety Network, AHRQ)",
+    "reference_url": "https://psnet.ahrq.gov/primer/wrong-site-wrong-procedure-and-wrong-patient-surgery",
+    "category": "Principles & Preop",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (index 2) is unambiguously the single best answer. The Joint Commission Universal Protocol has three components — pre-procedure verification, site marking, and the final time-out — and the time-out's defining purpose is the entire team's active confirmation of correct patient, correct procedure, and correct site immediately before incision, the principal defense against wrong-site/procedure/patient surgery. All four distractors are genuinely inferior and correctly mapped to other points in the workflow: anesthetic/equipment review (sign-in/machine check), consent verification (pre-procedure verification, earlier), sponge/instrument counts (retained-object safeguard), and EBL/disposition (intra/postoperative documentation). Rationales and explanation are accurate and current. Stem is clear; difficulty rating \"easy\" is appropriate. REFERENCE: WebFetch of https://psnet.ahrq.gov/primer/wrong-site-wrong-procedure-and-wrong-patient-surgery resolves successfully; it is the AHRQ PSNet primer \"Wrong-Site, Wrong-Procedure, and Wrong-Patient Surgery,\" directly on-topic, explicitly covering the Universal Protocol, site marking, and the surgical time-out. No clinical, reference, or ambiguity problems found."
+    }
+  },
+  {
+    "stem": "A 34-year-old man with a complete C6 spinal cord injury sustained 8 months ago presents to the operating room for cystoscopy and bladder stone removal under monitored anesthesia care. Twenty minutes into the procedure, while the bladder is being distended with irrigation fluid, he develops a pounding headache, flushing and sweating above the clavicles, and nasal congestion. His blood pressure rises from a baseline of 105/65 mm Hg to 215/120 mm Hg, and the heart rate falls from 78 to 46 beats/min. The skin below the level of injury is cool and pale. What is the most appropriate immediate next step?",
+    "choices": [
+      {
+        "text": "Stop the bladder irrigation and drain the bladder, sit the patient upright, and loosen any constrictive items",
+        "rationale": "Removing the inciting noxious stimulus below the level of injury (bladder distension) while sitting the patient up to promote orthostatic blood-pressure reduction is the first-line intervention for autonomic dysreflexia."
+      },
+      {
+        "text": "Administer intravenous atropine 0.5 mg to treat the bradycardia",
+        "rationale": "The bradycardia is a baroreceptor-mediated reflex response to severe hypertension, not the primary problem, so treating it without removing the stimulus or lowering blood pressure ignores the life-threatening hypertension."
+      },
+      {
+        "text": "Place the patient in steep Trendelenburg position to improve cerebral perfusion",
+        "rationale": "Trendelenburg would raise an already dangerously high blood pressure toward the brain and is the opposite of the head-up positioning needed to help lower it."
+      },
+      {
+        "text": "Give a 500 mL crystalloid fluid bolus for presumed hypovolemia",
+        "rationale": "The patient is severely hypertensive from sympathetic overactivity, not hypovolemic, and a fluid bolus would worsen the hypertension."
+      },
+      {
+        "text": "Deepen anesthesia with a propofol infusion and continue the procedure",
+        "rationale": "While anesthetic depth can blunt the reflex, the priority is to remove the triggering stimulus and lower the blood pressure to prevent stroke; simply deepening anesthesia without draining the bladder fails to address the cause."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Autonomic dysreflexia is a syndrome of uncontrolled sympathetic discharge triggered by noxious stimuli below the level of a spinal cord injury at or above T6, with bladder distension being the most common trigger. The hallmark is paroxysmal hypertension with reflex (baroreceptor-mediated) bradycardia, headache, and flushing/sweating above the lesion with pallor below it. Immediate management is to remove the stimulus (drain/decompress the bladder, stop irrigation), sit the patient upright, and loosen constrictive clothing; if hypertension persists, a rapid-onset antihypertensive such as nitroprusside or nifedipine is added.",
+    "difficulty": "medium",
+    "subtopic": "Autonomic dysreflexia in chronic spinal cord injury",
+    "reference_title": "Autonomic dysreflexia",
+    "reference_url": "https://en.wikipedia.org/wiki/Autonomic_dysreflexia",
+    "category": "Neuro",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "Textbook autonomic dysreflexia in a chronic (8-month) complete C6 SCI (above T6) triggered by bladder distension during cystoscopy/irrigation. The stem is internally consistent: paroxysmal hypertension (105/65 to 215/120), baroreceptor-mediated reflex bradycardia (78 to 46), headache/flushing/sweating/nasal congestion above the lesion, and cool/pale skin below — all classic and unambiguous. The keyed answer (index 0: stop irrigation, drain the bladder, sit upright, loosen constrictive items) is the single best immediate step per standard guidance; removing the noxious stimulus plus head-up positioning is first-line, with rapid antihypertensives reserved for persistent HTN. All four distractors are genuinely inferior: atropine treats a secondary reflex bradycardia rather than the life-threatening HTN; Trendelenburg worsens cerebral hypertension; a fluid bolus is wrong in a hypertensive (not hypovolemic) patient; and deepening anesthesia without draining the bladder leaves the trigger in place. The explanation accurately states the T6 threshold, most common trigger, hallmark signs, and escalation drugs (nitroprusside/nifedipine). REFERENCE: the Wikipedia 'Autonomic dysreflexia' URL resolves and is squarely on-topic, confirming the T6 level, bladder distension as the most common trigger, the above/below-lesion sign pattern, and the upright-positioning/remove-stimulus/antihypertensive management. No clinical or reference issue found."
+    }
+  },
+  {
+    "stem": "A 27-year-old man is brought to the OR for irrigation and debridement of sacral pressure ulcers. He sustained a complete T4 spinal cord injury 5 weeks ago and has flaccid paralysis below the level of injury. He has no renal disease and his preoperative potassium is 4.4 mEq/L. The anesthesiologist assistant is planning a rapid-sequence induction. Shortly after a standard intubating dose of succinylcholine is administered, the monitor shows peaked T waves, a widening QRS complex, and then ventricular fibrillation. Which mechanism best explains this catastrophic potassium release?",
+    "choices": [
+      {
+        "text": "Reduced plasma cholinesterase activity prolonging succinylcholine's effect at the motor endplate",
+        "rationale": "A cholinesterase deficiency prolongs paralysis but does not cause the exaggerated potassium efflux responsible for hyperkalemic arrest."
+      },
+      {
+        "text": "Up-regulation and extrajunctional spread of immature (fetal-type) nicotinic acetylcholine receptors across the denervated muscle membrane",
+        "rationale": "Denervation injury triggers proliferation of extrajunctional immature acetylcholine receptors, so succinylcholine opens channels across the entire muscle membrane and produces a massive, potentially fatal potassium efflux."
+      },
+      {
+        "text": "Triggering of malignant hyperthermia with rhabdomyolysis and secondary hyperkalemia",
+        "rationale": "Malignant hyperthermia causes hyperkalemia but is accompanied by hypercarbia, rigidity, and a rising temperature, none of which are described here, and the time course here reflects receptor-mediated potassium release."
+      },
+      {
+        "text": "Impaired renal potassium excretion from undiagnosed chronic kidney disease",
+        "rationale": "The patient has documented normal renal function and a normal baseline potassium, so impaired excretion does not explain an acute lethal rise after succinylcholine."
+      },
+      {
+        "text": "Direct depression of the Na+/K+-ATPase pump by succinylcholine causing intracellular potassium loss",
+        "rationale": "Succinylcholine does not inhibit the sodium-potassium pump; the hyperkalemia results from receptor channel opening, not pump failure."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "After denervation injuries (spinal cord injury, stroke, prolonged immobility, burns), skeletal muscle up-regulates and spreads immature extrajunctional nicotinic acetylcholine receptors across the sarcolemma. When succinylcholine depolarizes these widely distributed receptors, potassium floods out of the cell, and serum potassium can rise enough to cause peaked T waves, QRS widening, and cardiac arrest, far exceeding the ~0.5 mEq/L rise seen in normal patients. This vulnerability typically develops within a few days of injury and can persist for months, so a nondepolarizing agent like rocuronium should be used for rapid-sequence induction in these patients.",
+    "difficulty": "hard",
+    "subtopic": "Succinylcholine-induced hyperkalemia after denervation injury",
+    "reference_title": "Succinylcholine Chloride (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK499984/",
+    "category": "Neuro",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Keyed answer B (up-regulation/extrajunctional spread of immature fetal-type nicotinic ACh receptors after denervation) is the single best, textbook-correct mechanism for succinylcholine-induced hyperkalemic arrest after spinal cord injury. Timing fits: vulnerability develops within days and persists months, so a complete T4 SCI at 5 weeks is squarely high-risk. All distractors are genuinely inferior: A (pseudocholinesterase deficiency) prolongs block but does not cause hyperkalemia; C (MH/rhabdo) lacks the described hypercarbia/rigidity/hyperthermia and is not linked to the denervation history; D (renal) is excluded by normal K+ 4.4 and no renal disease; E (direct Na/K-ATPase inhibition) is pharmacologically false. Explanation accurate and current, including the ~0.5 mEq/L normal rise figure and the correct management point (use rocuronium for RSI). Stem is unambiguous. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK499984/ resolves to StatPearls 'Succinylcholine Chloride,' matching the cited title, and directly covers hyperkalemia from upregulation of acetylcholine receptors plus the quoted 0.5 mEq/L baseline. Both checks pass."
+    }
+  },
+  {
+    "stem": "A 58-year-old woman is undergoing craniotomy for resection of a large parietal glioma with surrounding edema. Intraoperatively the surgeon notes a tense, bulging brain. The patient's mean arterial pressure is 70 mm Hg and an intraparenchymal monitor reads an intracranial pressure of 28 mm Hg. Arterial blood gas shows PaCO2 of 44 mm Hg. Which intervention will most directly and rapidly lower this patient's intracranial pressure through cerebral vasoconstriction?",
+    "choices": [
+      {
+        "text": "Increasing the inspired oxygen fraction (FiO2) to 1.0",
+        "rationale": "Raising FiO2 improves oxygen delivery but has negligible effect on cerebral blood volume or intracranial pressure under normoxic conditions."
+      },
+      {
+        "text": "Administering a phenylephrine infusion to raise mean arterial pressure to 95 mm Hg",
+        "rationale": "Raising MAP increases cerebral perfusion pressure but does not directly reduce intracranial pressure and, with disrupted autoregulation, may worsen edema."
+      },
+      {
+        "text": "Instituting controlled hyperventilation to lower the PaCO2 to approximately 30-34 mm Hg",
+        "rationale": "Lowering PaCO2 causes prompt cerebral arteriolar vasoconstriction, reducing cerebral blood volume and thereby rapidly lowering intracranial pressure."
+      },
+      {
+        "text": "Switching the maintenance anesthetic to 1.5 MAC of a volatile agent",
+        "rationale": "Higher-dose volatile anesthetics are cerebral vasodilators that increase cerebral blood volume and tend to raise, not lower, intracranial pressure."
+      },
+      {
+        "text": "Lowering the head of the operating table into a 15-degree head-down tilt",
+        "rationale": "Head-down positioning impedes cerebral venous drainage and increases intracranial pressure rather than lowering it."
+      }
+    ],
+    "correct_index": 2,
+    "explanation": "Cerebral blood flow is tightly coupled to PaCO2 over the range of about 20-80 mm Hg, so reducing PaCO2 produces rapid cerebral vasoconstriction, decreased cerebral blood volume, and a prompt fall in intracranial pressure. Targeting a PaCO2 near 30-34 mm Hg is an effective temporizing maneuver for acute intraoperative brain swelling, though excessive or prolonged hyperventilation (PaCO2 below ~25-30 mm Hg) risks ischemia from over-vasoconstriction. Other ICP-lowering strategies include head elevation to promote venous drainage, osmotherapy with mannitol or hypertonic saline, and avoiding high-dose volatile vasodilators.",
+    "difficulty": "medium",
+    "subtopic": "Cerebral physiology and intracranial pressure management",
+    "reference_title": "Increased Intracranial Pressure (StatPearls)",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK482119/",
+    "category": "Neuro",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The stem explicitly asks for the intervention that lowers ICP \"through cerebral vasoconstriction,\" which uniquely identifies hyperventilation (choice C). Lowering PaCO2 from the patient's elevated baseline of 44 to ~30-34 mm Hg produces prompt cerebral arteriolar vasoconstriction, reduced cerebral blood volume, and rapid ICP reduction — the textbook temporizing maneuver for acute intraoperative brain swelling. CO2 reactivity over roughly 20-80 mm Hg is accurate, as is the caveat that PaCO2 below ~25-30 risks ischemia. All distractors are genuinely inferior: FiO2 1.0 has negligible CBV effect under normoxia; phenylephrine raises CPP but does not directly lower ICP and may worsen edema with disrupted autoregulation; 1.5 MAC volatile is a cerebral vasodilator that raises ICP; 15-degree head-down impedes venous drainage and raises ICP. Each rationale is correct. No second defensible answer. REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK482119/ resolves to the StatPearls \"Increased Intracranial Pressure\" article (matching reference_title exactly). It is directly on-topic — covering ICP pathophysiology, Monro-Kellie doctrine, monitoring, and management including hyperventilation/PaCO2-induced cerebral vasoconstriction with congruent targets (PaCO2 not lower than ~35 routinely; below 30 reserved for acute herniation). Both axes pass."
+    }
+  },
+  {
+    "stem": "A 31-year-old G2P1 woman at 35 weeks gestation with severe preeclampsia is receiving a magnesium sulfate infusion at 2 g/hr for seizure prophylaxis. Her blood pressure is 162/108 mmHg and she has a documented serum creatinine of 1.6 mg/dL with a urine output of 15 mL/hr over the last 2 hours. On reassessment, she is somnolent, her deep tendon reflexes are absent, and her respiratory rate has fallen to 8 breaths/min with an SpO2 of 90% on room air. A stat magnesium level is sent. After stopping the infusion and supporting ventilation, which is the most appropriate immediate pharmacologic intervention?",
+    "choices": [
+      {
+        "text": "Administer calcium gluconate 1 g IV over 10 minutes",
+        "rationale": "Calcium directly antagonizes magnesium at the neuromuscular junction and myocardium and is the antidote for the respiratory depression and areflexia of magnesium toxicity."
+      },
+      {
+        "text": "Administer flumazenil 0.2 mg IV",
+        "rationale": "Flumazenil reverses benzodiazepines and has no effect on magnesium-induced neuromuscular blockade or CNS depression."
+      },
+      {
+        "text": "Administer naloxone 0.4 mg IV",
+        "rationale": "Naloxone reverses opioids, but this patient's depression is from magnesium accumulation, not an opioid, so it would be ineffective."
+      },
+      {
+        "text": "Administer furosemide 40 mg IV to enhance magnesium excretion",
+        "rationale": "Although diuresis can increase renal magnesium clearance, it is far too slow to address acute respiratory depression and risks worsening intravascular volume depletion."
+      },
+      {
+        "text": "Administer a 1 L bolus of lactated Ringer's solution",
+        "rationale": "A fluid bolus does not antagonize magnesium's effects and may precipitate pulmonary edema in a preeclamptic patient with renal impairment."
+      }
+    ],
+    "correct_index": 0,
+    "explanation": "Magnesium is renally cleared, so the oliguria and elevated creatinine of severe preeclampsia predispose to accumulation and toxicity even at standard infusion rates. The progression of loss of deep tendon reflexes (around 10 mEq/L), then respiratory depression, then cardiac arrest tracks rising serum levels, and reflex loss is an early clinical warning sign. The definitive antidote is IV calcium (1 g calcium gluconate over 10 minutes), which competitively antagonizes magnesium at the neuromuscular junction and myocardium while the infusion is stopped and ventilation is supported.",
+    "difficulty": "medium",
+    "subtopic": "Hypertensive disorders of pregnancy: magnesium sulfate toxicity and management",
+    "reference_title": "Magnesium in Pregnancy - OpenAnesthesia",
+    "reference_url": "https://www.openanesthesia.org/keywords/magnesium-in-pregnancy/",
+    "category": "Obstetric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (calcium gluconate 1 g IV over 10 min) is the single best answer and the universally accepted antidote for magnesium toxicity, directly antagonizing Mg at the neuromuscular junction and myocardium. The stem cleanly describes classic progressive hypermagnesemia (areflexia -> somnolence -> respiratory depression at RR 8) in a preeclamptic with renal impairment (Cr 1.6, oliguria) predisposing to accumulation. All four distractors are genuinely inferior with accurate rationales: flumazenil (benzo-specific, no Mg effect), naloxone (opioid-specific; no opioid in stem), furosemide (too slow, worsens volume depletion), and LR bolus (no antagonism, pulmonary edema risk). The quantitative claim 'loss of DTRs around 10 mEq/L' is a standard textbook value and is consistent with the reference's '12 mg/dL' (1 mEq/L Mg ~ 1.2 mg/dL). No ambiguity. REFERENCE: WebFetch of https://www.openanesthesia.org/keywords/magnesium-in-pregnancy/ resolved successfully and is directly on-topic; it explicitly states the management protocol (discontinue infusion, give calcium gluconate 1 g IV over 10 min, supportive care) and the toxicity progression including loss of patellar reflexes. Citation matches the keyed answer exactly. Both clinical and reference are sound."
+    }
+  },
+  {
+    "stem": "A 29-year-old G3P2 woman is undergoing an uncomplicated repeat cesarean delivery under spinal anesthesia. Approximately 3 minutes after delivery of the infant during oxytocin administration, she suddenly becomes agitated, complains of dyspnea, and her SpO2 falls from 99% to 78%. Her blood pressure drops to 62/30 mmHg, she becomes unresponsive, and the surgical field begins oozing diffusely from previously dry tissue planes. There is no rash, bronchospasm, or wheeze. Which of the following best explains the most likely diagnosis?",
+    "choices": [
+      {
+        "text": "Bupivacaine-induced local anesthetic systemic toxicity from the spinal block",
+        "rationale": "LAST is implausible here because the intrathecal bupivacaine dose is far below toxic thresholds and the event occurred well after block placement, at the time of delivery."
+      },
+      {
+        "text": "Amniotic fluid embolism causing cardiopulmonary collapse and disseminated intravascular coagulation",
+        "rationale": "The abrupt peripartum hypoxia, profound hypotension/cardiovascular collapse, and acute consumptive coagulopathy manifesting as diffuse surgical-field bleeding are the classic triad of amniotic fluid embolism."
+      },
+      {
+        "text": "Anaphylaxis to oxytocin",
+        "rationale": "Anaphylaxis is less likely because there is no cutaneous, mucosal, or bronchospastic component and anaphylaxis does not typically produce an acute consumptive coagulopathy."
+      },
+      {
+        "text": "High/total spinal anesthesia from cephalad spread of local anesthetic",
+        "rationale": "A high spinal can cause hypotension and apnea but does not cause diffuse coagulopathic bleeding, and the block had been stable for the entire case before delivery."
+      },
+      {
+        "text": "Venous air embolism through the open uterine sinuses",
+        "rationale": "Venous air embolism can cause hypoxia and hypotension but characteristically lacks the acute DIC with diffuse bleeding seen here and is far rarer than amniotic fluid embolism."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Amniotic fluid embolism (AFE), the anaphylactoid syndrome of pregnancy, presents as sudden peripartum cardiorespiratory collapse with hypoxemia and hypotension, frequently followed by disseminated intravascular coagulation. The diffuse oozing from previously dry tissue is a hallmark of the consumptive coagulopathy. AFE is the leading cause of peripartum cardiac arrest and a leading cause of maternal death; management is supportive with high-quality resuscitation, aggressive correction of coagulopathy, and early consideration of perimortem cesarean if arrest occurs before delivery.",
+    "difficulty": "easy",
+    "subtopic": "Obstetric emergencies: amniotic fluid embolism",
+    "reference_title": "Amniotic Fluid Embolism - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK559107/",
+    "category": "Obstetric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: The keyed answer (B, amniotic fluid embolism) is the single best answer. The stem presents the textbook AFE triad — abrupt peripartum hypoxemia (SpO2 99→78%), profound hypotension (62/30), and acute consumptive coagulopathy manifesting as diffuse oozing from previously dry tissue planes — with deliberate exclusion of rash/bronchospasm/wheeze. The diffuse coagulopathic bleeding is the discriminating hallmark that uniquely separates AFE from every distractor, making the answer unambiguous. All four distractors are genuinely inferior and correctly refuted in their rationales: LAST (subtoxic intrathecal dose, wrong timing), oxytocin anaphylaxis (no cutaneous/mucosal/bronchospastic signs and no DIC), high/total spinal (no coagulopathy, stable block), and VAE (no DIC, rarer). The explanation is accurate and current (AFE as anaphylactoid syndrome of pregnancy, leading cause of peripartum arrest/maternal death, supportive management with coagulopathy correction and perimortem cesarean if arrest precedes delivery). REFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK559107/ resolves to StatPearls \"Amniotic Fluid Embolism,\" directly on-topic, confirming the triad of hypoxemia/hypotension/coagulopathy (DIC ~80%), anaphylactoid mechanism, and supportive/transfusion/resuscitative-hysterotomy management. Both dimensions sound."
+    }
+  },
+  {
+    "stem": "A 33-year-old G1P0 parturient has had a well-functioning lumbar labor epidural for 6 hours. She is now taken for an urgent cesarean delivery for an arrest of descent. Without re-aspirating, the anesthesia provider boluses 18 mL of 2% lidocaine with epinephrine through the existing catheter to extend the block. Within 4 minutes the patient reports difficulty breathing and her hands feel weak; she then becomes unable to speak above a whisper, her blood pressure falls to 70/40 mmHg with a heart rate of 44/min, and she rapidly becomes apneic and unresponsive while still maintaining a pulse. Which of the following is the most appropriate immediate priority?",
+    "choices": [
+      {
+        "text": "Administer 20% lipid emulsion 1.5 mL/kg bolus",
+        "rationale": "Lipid emulsion treats local anesthetic systemic toxicity, but this presentation is a total spinal from intrathecal migration rather than a systemic toxic event, so it is not the priority."
+      },
+      {
+        "text": "Secure the airway with endotracheal intubation and provide controlled ventilation",
+        "rationale": "The ascending motor and respiratory paralysis of a total spinal causes apnea, so immediate airway control and ventilation are the life-saving first priority while circulation is supported."
+      },
+      {
+        "text": "Place the patient in steep reverse Trendelenburg to limit cephalad spread",
+        "rationale": "Once intrathecal local anesthetic has been injected and apnea has developed, positioning will not arrest the established total spinal and delays definitive airway management."
+      },
+      {
+        "text": "Administer dantrolene 2.5 mg/kg IV",
+        "rationale": "Dantrolene treats malignant hyperthermia, which is not occurring here, and has no role in the management of a total spinal."
+      },
+      {
+        "text": "Give phenylephrine 100 mcg IV as the sole intervention and continue surgery",
+        "rationale": "A vasopressor partially addresses hypotension but ignores the immediately life-threatening apnea, which must be managed by securing the airway."
+      }
+    ],
+    "correct_index": 1,
+    "explanation": "Bolusing a large dose of local anesthetic through an epidural catheter that has migrated intrathecally, without re-aspirating, can produce a total spinal: a rapidly ascending block causing profound hypotension, bradycardia, diaphragmatic/respiratory paralysis, apnea, and loss of consciousness. Because the proximate threat to life is apnea, the immediate priority is airway control with intubation and controlled ventilation, followed by hemodynamic support with fluids, vasopressors, and atropine for bradycardia. The effects are time-limited and the patient typically recovers fully with aggressive cardiorespiratory support until the block regresses.",
+    "difficulty": "hard",
+    "subtopic": "Neuraxial complications in obstetrics: total (high) spinal anesthesia",
+    "reference_title": "Spinal Anesthesia - StatPearls - NCBI Bookshelf",
+    "reference_url": "https://www.ncbi.nlm.nih.gov/books/NBK537299/",
+    "category": "Obstetric",
+    "verdict": {
+      "keep": true,
+      "severity": "ok",
+      "clinically_sound": true,
+      "issue": "none",
+      "reason": "CLINICAL: Sound and unambiguous. The vignette (18 mL/360 mg of 2% lidocaine bolused without re-aspiration through a migrated epidural catheter, producing ascending motor paralysis — hand weakness, whisper voice, apnea — plus profound hypotension/bradycardia and LOC with a maintained pulse, and no CNS-excitation/seizure phase) is a textbook total (high) spinal, not LAST. The keyed answer (secure airway + controlled ventilation) is the single best immediate priority because the proximate threat to life is apnea; ABC dictates airway/ventilation first, then circulatory support (fluids, vasopressors, atropine for bradycardia). Distractors are all genuinely inferior: lipid emulsion treats LAST (wrong mechanism and not the priority in an apneic patient); reverse Trendelenburg cannot reverse an established intrathecal block, delays airway management, and would worsen cerebral perfusion in a hypotensive patient; dantrolene treats MH (absent); phenylephrine-alone ignores the apnea. The explanation's pathophysiology, management sequence, and time-limited/full-recovery prognosis are accurate and current.\n\nREFERENCE: WebFetch of https://www.ncbi.nlm.nih.gov/books/NBK537299/ resolves to StatPearls 'Spinal Anesthesia' (Olawin & Das), which explicitly lists total spinal anesthesia as the 'most feared complication.' On-topic and valid, though it is light on detailed total-spinal management specifics. Citation is legitimate, not fabricated."
+    }
+  }
+]

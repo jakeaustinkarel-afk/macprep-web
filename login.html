@@ -11,18 +11,34 @@
     <!-- Sign-in now lives on the main app page; redirect there for a single,
          consistent login experience. -->
     <meta http-equiv="refresh" content="0; url=/index.html">
-    <style>body{background:#0D0E10;color:#6B7280;font-family:ui-monospace,monospace;}        html[data-theme="midnight"]{--bg:#0A0F1E;--panel:#131B2F;--line:#27314D;--text:#EAF0FF;--text2:#c2cee6;--muted:#8493B4;--accent:#33DFA3;--accent-dim:#0e2c22;--danger:#ff6b6b;--danger-dim:#2a1414;--good:#33DFA3;--warn:#f5c451;--bad:#ff8a7a;--info:#5aa9ff;}
-        html[data-theme="warm"]{--bg:#F1E9DA;--panel:#FBF6EB;--line:#E1D5C0;--text:#2A2620;--text2:#4a4339;--muted:#796D5B;--accent:#1F5D43;--accent-dim:#e6efe9;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#1F5D43;--warn:#9a6a14;--bad:#9a3a2a;--info:#3a6ea5;}
-        html[data-theme="slate"]{--bg:#1B2027;--panel:#242B34;--line:#374151;--text:#EAEEF3;--text2:#c3ccd6;--muted:#8b97a6;--accent:#2DD4BF;--accent-dim:#0c2b27;--danger:#f87171;--danger-dim:#2a1414;--good:#2DD4BF;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
-        html[data-theme="forest"]{--bg:#0F1A14;--panel:#16241B;--line:#2A3D31;--text:#E8F3EC;--text2:#c2d6c9;--muted:#7e9587;--accent:#4ADE80;--accent-dim:#0e2c1a;--danger:#f87171;--danger-dim:#2a1414;--good:#4ADE80;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
-        html[data-theme="rose"]{--bg:#FBF1F2;--panel:#ffffff;--line:#EBDADC;--text:#2A1F22;--text2:#4a3a3e;--muted:#8a6f74;--accent:#0E7C66;--accent-dim:#e3f3ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#0E7C66;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
-        html[data-theme="contrast"]{--bg:#000000;--panel:#0A0A0A;--line:#333333;--text:#FFFFFF;--text2:#E5E5E5;--muted:#A3A3A3;--accent:#00E676;--accent-dim:#04220f;--danger:#FF5252;--danger-dim:#2a0c0c;--good:#00E676;--warn:#FFD54F;--bad:#FF5252;--info:#40C4FF;}
-        html[data-theme="ocean"]{--bg:#0B1A2B;--panel:#11263D;--line:#22384F;--text:#E6F0FA;--text2:#bcd0e3;--muted:#7d93a8;--accent:#38BDF8;--accent-dim:#0a2536;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#38bdf8;}
-        html[data-theme="indigo"]{--bg:#14122B;--panel:#1E1B3A;--line:#332E54;--text:#ECEAFB;--text2:#cac6e8;--muted:#9690bb;--accent:#A78BFA;--accent-dim:#1e1840;--danger:#fb7185;--danger-dim:#2a1420;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#a78bfa;}
-        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#9aa5b8;--accent:#88C0D0;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
-        html[data-theme="sky"]{--bg:#F0F6FF;--panel:#ffffff;--line:#dbe6f5;--text:#0f2236;--text2:#33485f;--muted:#5f7388;--accent:#2563EB;--accent-dim:#e2ecfd;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
-        html[data-theme="lavender"]{--bg:#F5F3FC;--panel:#ffffff;--line:#e6e1f4;--text:#241f33;--text2:#43395c;--muted:#6f6589;--accent:#7C3AED;--accent-dim:#efe9fc;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#7c3aed;}
-        html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
+    <style>body{background:#0D0E10;color:#6B7280;font-family:ui-monospace,monospace;}
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--on-accent:#ffffff;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="warm"]{--bg:#F1E9DA;--panel:#FBF6EB;--line:#E1D5C0;--text:#2A2620;--text2:#4a4339;--muted:#796D5B;--accent:#1F5D43;--on-accent:#ffffff;--accent-dim:#e6efe9;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#1F5D43;--warn:#9a6a14;--bad:#9a3a2a;--info:#3a6ea5;}
+        html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--on-accent:#ffffff;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
+        html[data-theme="rose"]{--bg:#FBF1F2;--panel:#ffffff;--line:#EBDADC;--text:#2A1F22;--text2:#4a3a3e;--muted:#8a6f74;--accent:#0E7C66;--on-accent:#ffffff;--accent-dim:#e3f3ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#0E7C66;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="bloom"]{--bg:#FDF1F8;--panel:#ffffff;--line:#F0DBE8;--text:#2E1A26;--text2:#4f3343;--muted:#8a6478;--accent:#C026D3;--on-accent:#ffffff;--accent-dim:#f7e3fa;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="sky"]{--bg:#F0F6FF;--panel:#ffffff;--line:#dbe6f5;--text:#0f2236;--text2:#33485f;--muted:#5f7388;--accent:#2563EB;--on-accent:#ffffff;--accent-dim:#e2ecfd;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="lavender"]{--bg:#F5F3FC;--panel:#ffffff;--line:#e6e1f4;--text:#241f33;--text2:#43395c;--muted:#6f6589;--accent:#7C3AED;--on-accent:#ffffff;--accent-dim:#efe9fc;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#7c3aed;}
+        html[data-theme="slate"]{--bg:#1B2027;--panel:#242B34;--line:#374151;--text:#EAEEF3;--text2:#c3ccd6;--muted:#8b97a6;--accent:#2DD4BF;--on-accent:#0c1116;--accent-dim:#0c2b27;--danger:#f87171;--danger-dim:#2a1414;--good:#2DD4BF;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#b0bbce;--accent:#88C0D0;--on-accent:#0c1116;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
+        html[data-theme="ocean"]{--bg:#0B1A2B;--panel:#11263D;--line:#22384F;--text:#E6F0FA;--text2:#bcd0e3;--muted:#7d93a8;--accent:#38BDF8;--on-accent:#0c1116;--accent-dim:#0a2536;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#38bdf8;}
+        html[data-theme="indigo"]{--bg:#14122B;--panel:#1E1B3A;--line:#332E54;--text:#ECEAFB;--text2:#cac6e8;--muted:#9690bb;--accent:#A78BFA;--on-accent:#0c1116;--accent-dim:#1e1840;--danger:#fb7185;--danger-dim:#2a1420;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#a78bfa;}
+        html[data-theme="contrast"]{--bg:#000000;--panel:#0A0A0A;--line:#333333;--text:#FFFFFF;--text2:#E5E5E5;--muted:#A3A3A3;--accent:#00E676;--on-accent:#0c1116;--accent-dim:#04220f;--danger:#FF5252;--danger-dim:#2a0c0c;--good:#00E676;--warn:#FFD54F;--bad:#FF5252;--info:#40C4FF;}
+        html[data-theme="graphite"]{--bg:#161618;--panel:#202022;--line:#34343a;--text:#F4F4F5;--text2:#cfcfd4;--muted:#9a9aa2;--accent:#A1A1AA;--on-accent:#18181b;--accent-dim:#2a2a30;--danger:#f87171;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#f87171;--info:#60a5fa;}
+        html[data-theme="ember"]{--bg:#1A1214;--panel:#241719;--line:#3A2529;--text:#FBECEE;--text2:#e6cace;--muted:#b38f94;--accent:#F87171;--on-accent:#2a0a0a;--accent-dim:#331619;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#60a5fa;}
+        html[data-theme="amber"]{--bg:#19150A;--panel:#231E0F;--line:#3C3318;--text:#FBF4E1;--text2:#e8dcb8;--muted:#b2a176;--accent:#F5B73C;--on-accent:#231903;--accent-dim:#31270b;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="espresso"]{--bg:#1A1410;--panel:#241C16;--line:#3A2E23;--text:#F5EBDD;--text2:#ddcab2;--muted:#a8927a;--accent:#D6A06A;--on-accent:#241803;--accent-dim:#332518;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+
+
+
+
+
+
+
+
+
+
+
         .hidden{display:none;}
             :root{--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
         html[data-font="serif"]{--font:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
