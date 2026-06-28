@@ -1861,7 +1861,10 @@
         [120, 700, 1600].forEach((d) => setTimeout(toAbout, d));
     }
     window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); });
-    window.addEventListener('load', () => { if (location.hash === '#about' && !state.token) setTimeout(showAboutSection, 250); });
+    window.addEventListener('load', () => {
+        if (location.hash === '#about' && !state.token) setTimeout(showAboutSection, 250);
+        if (location.hash === '#signin' && !state.token) setTimeout(() => { try { showSignin(); const c = $('login-form-container'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 250);
+    });
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();

@@ -234,7 +234,7 @@
             <a class="nav-market" href="/guides/">Guides</a>
             <a class="nav-market" href="/updates.html">Updates</a>
             <a class="nav-market" href="/#about">About</a>
-            <a id="nav-login" href="/login.html">Log in</a>
+            <a id="nav-login" href="/login.html" onclick="event.preventDefault(); MACPrep.showSignin(); var c=document.getElementById('login-form-container'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});">Log in</a>
             <span id="nav-account-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
                 <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('account', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('account', event);}">Account <span aria-hidden="true" style="font-size:9px;">▼</span></a>
                 <div id="nav-account-menu" class="navdrop hidden" role="menu">
