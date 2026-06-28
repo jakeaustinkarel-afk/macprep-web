@@ -129,6 +129,8 @@
         .grid { display: grid; gap: 16px; }
         .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
         .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .step-num { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); font-family: ui-monospace, monospace; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
         .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 16px; text-align: center; }
         .stat .n { font-size: 28px; font-weight: 800; }
         .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: ui-monospace, monospace; }
@@ -193,8 +195,8 @@
             .nav.nav-open { display: flex; }
             .header-bar { position: relative; }
         }
-        @media (max-width: 720px) { .grid.cols-3 { grid-template-columns: 1fr; } }
-        @media (max-width: 640px) { .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; } .header-bar { padding: 14px 16px; } h1 { font-size: 30px !important; } .card { padding: 20px; } h2 { font-size: 24px !important; }
+        @media (max-width: 720px) { .grid.cols-3 { grid-template-columns: 1fr; } .grid.cols-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .grid.cols-3, .grid.cols-2, .grid.cols-4 { grid-template-columns: 1fr; } .header-bar { padding: 14px 16px; } h1 { font-size: 30px !important; } .card { padding: 20px; } h2 { font-size: 24px !important; }
             .site-footer-row { flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 24px !important; }
             .site-footer-row .footer-links { text-align: center !important; }
             .social-row { justify-content: center !important; }
@@ -340,7 +342,7 @@
         </div>
 
         <!-- Anatomy of a question -->
-        <div class="wrap" data-reveal style="padding-top:8px;">
+        <div class="wrap" data-reveal style="padding-top:8px;padding-bottom:28px;">
             <div style="text-align:center;max-width:680px;margin:0 auto 22px;">
                 <span class="tag">Anatomy of a question</span>
                 <h2 style="font-size:28px;margin:12px 0 8px;">Built to teach, not just test.</h2>
@@ -375,7 +377,7 @@
         </div>
 
         <!-- Feature highlights -->
-        <div class="wrap" data-reveal style="padding-top:24px;">
+        <div class="wrap" data-reveal style="padding-top:24px;padding-bottom:28px;">
             <div class="grid cols-3">
                 <div class="card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;display:block;" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><h3>Mapped to the blueprint</h3><p class="sub" style="margin:0;">Every question is tagged to the six NCCAA domains and a clinical subtopic, so you study the way the exam is scored.</p></div>
                 <div class="card"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;display:block;" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5"/></svg><h3>Reasoning, not just answers</h3><p class="sub" style="margin:0;">See why the correct answer is right <em>and</em> why each distractor is wrong, with a teaching explanation and a citation to a publicly accessible source.</p></div>
@@ -398,18 +400,19 @@
         </div>
 
         <!-- How it works -->
-        <div class="wrap" data-reveal>
+        <div class="wrap" data-reveal style="padding-top:16px;padding-bottom:28px;">
             <h2 style="text-align:center;">How it works</h2>
-            <div class="grid cols-3" style="margin-top:18px;">
-                <div class="card"><div class="mono accent" style="font-size:13px;">01</div><h3 style="margin-top:6px;">Create your account</h3><p class="sub" style="margin:0;">Free to start — no card required.</p></div>
-                <div class="card"><div class="mono accent" style="font-size:13px;">02</div><h3 style="margin-top:6px;">Pick an area &amp; length</h3><p class="sub" style="margin:0;">Choose a specialty and how many questions to practice.</p></div>
-                <div class="card"><div class="mono accent" style="font-size:13px;">03</div><h3 style="margin-top:6px;">Practice with feedback</h3><p class="sub" style="margin:0;">Answer, then read the reasoning and source for every choice.</p></div>
-                <div class="card"><div class="mono accent" style="font-size:13px;">04</div><h3 style="margin-top:6px;">Track &amp; upgrade</h3><p class="sub" style="margin:0;">Watch your accuracy climb; unlock the full bank when ready.</p></div>
+            <p class="sub" style="text-align:center;max-width:520px;margin:8px auto 24px;">From your first question to exam-ready — four simple steps.</p>
+            <div class="grid cols-4">
+                <div class="card"><div class="step-num">1</div><h3 style="margin:0 0 7px;">Create your account</h3><p class="sub" style="margin:0;">Free to start, no card required — and your demo progress carries right over.</p></div>
+                <div class="card"><div class="step-num">2</div><h3 style="margin:0 0 7px;">Pick an area &amp; length</h3><p class="sub" style="margin:0;">Choose a domain or specialty and how many questions — a quick set of 10 or a full block.</p></div>
+                <div class="card"><div class="step-num">3</div><h3 style="margin:0 0 7px;">Practice with feedback</h3><p class="sub" style="margin:0;">Answer, then read the reasoning for every choice with a citation you can verify.</p></div>
+                <div class="card"><div class="step-num">4</div><h3 style="margin:0 0 7px;">Track &amp; upgrade</h3><p class="sub" style="margin:0;">Watch your readiness climb by domain; unlock the full bank for a one-time $50.</p></div>
             </div>
         </div>
 
         <!-- Pricing -->
-        <div class="wrap" data-reveal>
+        <div class="wrap" data-reveal style="padding-top:12px;padding-bottom:32px;">
             <h2 style="text-align:center;">Simple pricing</h2>
             <div class="grid cols-2" style="margin-top:18px;max-width:760px;margin-left:auto;margin-right:auto;">
                 <div class="card">
@@ -442,7 +445,7 @@
         </div>
 
         <!-- Founder / About -->
-        <div class="wrap" id="about" data-reveal style="max-width:760px;">
+        <div class="wrap" id="about" data-reveal style="max-width:760px;padding-top:20px;">
             <div class="card" style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;">
                 <div style="flex:none;position:relative;width:88px;height:88px;border-radius:50%;background:var(--accent-dim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-weight:700;font-size:27px;color:var(--accent);overflow:hidden;">JK<img src="/founder.jpg" alt="Jake Karel, CAA — founder of MACPrep" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()"></div>
                 <div style="flex:1;min-width:240px;">
