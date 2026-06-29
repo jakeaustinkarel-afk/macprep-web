@@ -219,6 +219,10 @@
 /* ===== Premium landing layer (lp-) — added for the redesigned #login-view ===== */
 :root{--ease:cubic-bezier(.2,.8,.2,1);}
 html{scroll-behavior:smooth;}
+/* in-page landing nav: section links flow top->bottom; shown only logged-out */
+body.app-authed .nav-landing{display:none;}
+body:not(.app-authed) .nav-market{display:none;}
+#login-view section[id],#demo-card,#signup-pane{scroll-margin-top:92px;}
 #login-view{overflow-x:clip;}
 /* elevate the shared top bar on the logged-out landing only */
 body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filter:saturate(1.2) blur(12px);-webkit-backdrop-filter:saturate(1.2) blur(12px);background:color-mix(in srgb,var(--bg) 82%,transparent);}
@@ -412,6 +416,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <a href="/metrics.html">Metrics</a>
                 </div>
             </span>
+            <a class="nav-landing" href="#try" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Try a question</a>
+            <a class="nav-landing" href="#features" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Features</a>
+            <a class="nav-landing" href="#how" onclick="document.getElementById('main-nav').classList.remove('nav-open')">How it works</a>
+            <a class="nav-landing" href="#about" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Who writes these</a>
+            <a class="nav-landing" href="#pricing" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Pricing</a>
             <a class="nav-market" href="/pricing.html">Pricing</a>
             <a class="nav-market" href="/faq.html">FAQ</a>
             <a class="nav-market" href="/guides/">Guides</a>
