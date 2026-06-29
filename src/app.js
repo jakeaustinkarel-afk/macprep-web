@@ -1754,9 +1754,12 @@
             s.crossOrigin = 'anonymous';
             s.onload = () => {
                 try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0,
-                    // Filter benign transient network blips (a user's flaky connection, not a bug)
-                    // and errors thrown by browser extensions rather than our own code.
-                    ignoreErrors: ['Failed to fetch', 'Load failed', 'NetworkError', 'AbortError', 'cancelled'],
+                    // Filter benign transient network blips (a user's flaky connection, not a bug),
+                    // errors thrown by browser extensions, and native bridges injected by iOS
+                    // in-app browsers (WKWebView) when a visitor opens the site from Instagram/
+                    // LinkedIn/Facebook/email — e.g. window.webkit.messageHandlers / sendDataToNative.
+                    ignoreErrors: ['Failed to fetch', 'Load failed', 'NetworkError', 'AbortError', 'cancelled',
+                        'messageHandlers', 'window.webkit', 'sendDataToNative', 'sendPageHideMessage'],
                     denyUrls: [/extension(s)?\//i, /^chrome:\/\//i, /-extension:\/\//i] }); }
                 catch (e) { /* ignore */ }
             };
