@@ -790,10 +790,10 @@
          keep the existing top bar untouched, so the live cohort on phones is unaffected. */
       @media (min-width:900px){
         body.app-authed{padding-left:232px;}
-        body.app-authed .header-bar{position:fixed;top:0;left:0;bottom:0;width:232px;box-sizing:border-box;flex-direction:column;align-items:stretch;gap:2px;padding:20px 14px 18px;border-right:1px solid var(--line);border-bottom:none;background:var(--panel);overflow:visible;z-index:50;}
+        body.app-authed .header-bar{position:fixed;top:0;left:0;bottom:0;width:232px;box-sizing:border-box;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:2px;padding:20px 14px 18px;border-right:1px solid var(--line);border-bottom:none;background:var(--panel);overflow:visible;z-index:50;}
         body.app-authed .header-bar .brand-logo{margin:0 4px 18px;}
         body.app-authed .nav-toggle{display:none;}
-        body.app-authed #main-nav{display:flex;flex-direction:column;align-items:stretch;gap:1px;width:100%;}
+        body.app-authed #main-nav{display:flex;flex:1;flex-direction:column;align-items:stretch;gap:1px;width:100%;min-height:0;}
         body.app-authed #main-nav>#tier-badge{align-self:flex-start;width:auto;margin:0 0 10px 4px;}
         body.app-authed #main-nav>a,body.app-authed #main-nav>span>a{box-sizing:border-box;width:100%;padding:10px 12px;border-radius:8px;margin:0;cursor:pointer;font-size:14px;}
         body.app-authed #main-nav>a:hover,body.app-authed #main-nav>span>a:hover{background:var(--accent-dim);}
