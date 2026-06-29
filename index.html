@@ -269,6 +269,17 @@ body:not(.app-authed) .nav-market{display:none;}
   .lp-statband .lp-stats{padding:30px 0;}
   .lp-section{padding:54px 0;}
 }
+/* mobile: keep the theme/font dropdowns fully on-screen. In the hamburger nav the
+   toggle sits mid-row, so the desktop right:0 anchor pushed the menu off the left edge.
+   Pin them to the top-right of the viewport instead (fixed), scrollable, never clipped. */
+@media (max-width:720px){
+  #theme-menu, #font-menu{
+    position:fixed !important;
+    top:64px !important; right:12px !important; left:auto !important;
+    min-width:0 !important; width:min(70vw,240px);
+    max-height:min(70vh,440px) !important;
+  }
+}
 #login-view{overflow-x:clip;}
 /* elevate the shared top bar on the logged-out landing only */
 body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filter:saturate(1.2) blur(12px);-webkit-backdrop-filter:saturate(1.2) blur(12px);background:color-mix(in srgb,var(--bg) 82%,transparent);}
