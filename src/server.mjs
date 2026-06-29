@@ -959,6 +959,113 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Weekly study leaderboard (global). Ranks opted-in users by questions answered
+// this week (resets Monday 00:00 UTC) and shows each player's study streak.
+// Privacy: opt-in only, shown by a chosen handle — never email or real name.
+// ---------------------------------------------------------------------------
+function lbWeekStartUTC() {
+    const now = new Date();
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // back to Monday
+    return d;
+}
+function lbDayKey(d) { return new Date(d).toISOString().slice(0, 10); }
+function lbStreak(daySet) {
+    let s = 0;
+    const now = Date.now();
+    for (let i = 0; i < 400; i++) {
+        const k = lbDayKey(new Date(now - i * 86400000));
+        if (daySet.has(k)) s++;
+        else if (i === 0) continue; // today not yet studied — keep counting from yesterday
+        else break;
+    }
+    return s;
+}
+
+app.get('/api/leaderboard', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.json({ leaderboard: [], me: null });
+    try {
+        const weekStart = lbWeekStartUTC();
+        const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
+        const { data: players } = await supabase.from(PROFILE_TABLE)
+            .select('user_id, leaderboard_handle')
+            .eq('leaderboard_opt_in', true).not('leaderboard_handle', 'is', null);
+        const playerList = players || [];
+        const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 1000);
+        const weekCount = {}, daysByUser = {};
+        if (allIds.length) {
+            const { data: wp } = await supabase.from(PROGRESS_TABLE)
+                .select('user_id').in('user_id', allIds).gte('created_at', weekStart.toISOString());
+            (wp || []).forEach((r) => { weekCount[r.user_id] = (weekCount[r.user_id] || 0) + 1; });
+            const since = new Date(Date.now() - 120 * 86400000).toISOString();
+            const { data: ap } = await supabase.from(PROGRESS_TABLE)
+                .select('user_id, created_at').in('user_id', allIds).gte('created_at', since);
+            (ap || []).forEach((r) => { (daysByUser[r.user_id] = daysByUser[r.user_id] || new Set()).add(lbDayKey(r.created_at)); });
+        }
+        const rows = playerList.map((p) => ({
+            handle: p.leaderboard_handle,
+            weekly: weekCount[p.user_id] || 0,
+            streak: lbStreak(daysByUser[p.user_id] || new Set()),
+            is_me: p.user_id === user.id,
+        })).sort((a, b) => b.weekly - a.weekly || b.streak - a.streak || a.handle.localeCompare(b.handle));
+        rows.forEach((r, i) => { r.rank = i + 1; });
+        const mineRow = rows.find((r) => r.is_me);
+        const myProfile = playerList.find((p) => p.user_id === user.id);
+        const me = {
+            opted_in: !!myProfile,
+            handle: myProfile ? myProfile.leaderboard_handle : null,
+            weekly: weekCount[user.id] || 0,
+            streak: lbStreak(daysByUser[user.id] || new Set()),
+            rank: mineRow ? mineRow.rank : null,
+            players: rows.length,
+        };
+        return res.json({ week_resets_at: weekResetsAt, leaderboard: rows.slice(0, 50), me });
+    } catch (err) {
+        console.error('Leaderboard failure:', err.message);
+        return res.status(500).json({ error: 'Could not load the leaderboard.' });
+    }
+});
+
+app.post('/api/leaderboard/settings', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const optIn = !!(req.body && req.body.opt_in);
+    const handle = ((req.body && req.body.handle) || '').toString().trim();
+    if (handle && !/^[A-Za-z0-9_]{3,20}$/.test(handle)) {
+        return res.status(400).json({ error: 'Handle must be 3-20 letters, numbers, or underscores.' });
+    }
+    try {
+        if (optIn && !handle) {
+            const { data: cur } = await supabase.from(PROFILE_TABLE).select('leaderboard_handle').eq('user_id', user.id).maybeSingle();
+            if (!cur || !cur.leaderboard_handle) return res.status(400).json({ error: 'Choose a handle to appear on the leaderboard.' });
+        }
+        const upd = { leaderboard_opt_in: optIn };
+        if (handle) upd.leaderboard_handle = handle;
+        const { data, error } = await supabase.from(PROFILE_TABLE).update(upd).eq('user_id', user.id).select('user_id');
+        if (error) {
+            if (error.code === '23505' || String(error.message || '').toLowerCase().includes('duplicate')) {
+                return res.status(409).json({ error: 'That handle is already taken - pick another.' });
+            }
+            throw error;
+        }
+        if (!data || !data.length) {
+            const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert({ user_id: user.id, email: user.email, ...upd }, { onConflict: 'user_id' });
+            if (insErr) {
+                if (insErr.code === '23505') return res.status(409).json({ error: 'That handle is already taken - pick another.' });
+                throw insErr;
+            }
+        }
+        return res.json({ success: true, opt_in: optIn, handle: handle || null });
+    } catch (err) {
+        console.error('Leaderboard settings failure:', err.message);
+        return res.status(500).json({ error: 'Could not save your leaderboard settings.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
 // Public "try before you sign up" demo. A small, bounded pool of PUBLISHED
 // questions powers an interactive 3-question demo on the landing page. Grading
 // is restricted to this pool, so the public endpoint can't be used to scrape
@@ -1259,7 +1366,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1385,6 +1492,8 @@ app.get('/api/user/profile', async (req, res) => {
                 study_goal: profile?.study_goal || null,
                 theme: profile?.theme || null,
                 font: profile?.font || null,
+                leaderboard_handle: profile?.leaderboard_handle || null,
+                leaderboard_opt_in: !!profile?.leaderboard_opt_in,
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },

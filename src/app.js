@@ -1422,7 +1422,7 @@
         btn.onclick = () => startCheckout(btn);
         let rr = document.getElementById('paywall-refund');
         if (!rr && btn.parentNode) { rr = document.createElement('div'); rr.id = 'paywall-refund'; rr.className = 'mono'; rr.style.cssText = 'font-size:11px;color:var(--muted);margin-top:10px;'; btn.parentNode.insertBefore(rr, btn.nextSibling); }
-        if (rr) rr.textContent = '48-hour, no-questions-asked refund · secured by Stripe · instant access';
+        if (rr) rr.innerHTML = '48-hour, no-questions-asked refund &middot; secured by Stripe &middot; instant access<br><a href="#redeem" onclick="event.preventDefault(); MACPrep.goRedeem();" style="color:var(--accent);">Have a class or cohort code? Redeem it free instead &rarr;</a>';
     }
 
     // ---- profile ----------------------------------------------------------
@@ -1845,7 +1845,7 @@
     }
 
     window.MACPrep = {
-        go, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
+        go, goRedeem, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyReferral,
@@ -1872,10 +1872,22 @@
         // Re-assert across the async landing content (demo card, counters) that shifts layout.
         [120, 700, 1600].forEach((d) => setTimeout(toAbout, d));
     }
-    window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); });
+    // Jump to + highlight the dashboard class-code box (used by pricing-page callouts
+    // and #redeem deep links — so cohort codes never get carried into Stripe checkout).
+    function goRedeem() {
+        if (!state.token) { try { showSignin(); } catch (e) {} toast('Sign in first — your class-code box is on your Dashboard.', 'ok'); return; }
+        go('dashboard');
+        setTimeout(() => {
+            const el = $('redeem'); const inp = $('redeem-code');
+            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 2px var(--accent)'; setTimeout(() => { if (el) el.style.boxShadow = ''; }, 2200); }
+            if (inp) inp.focus();
+        }, 160);
+    }
+    window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); else if (location.hash === '#redeem') goRedeem(); });
     window.addEventListener('load', () => {
         if (location.hash === '#about' && !state.token) setTimeout(showAboutSection, 250);
         if (location.hash === '#signin' && !state.token) setTimeout(() => { try { showSignin(); const c = $('login-form-container'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 250);
+        if (location.hash === '#redeem') setTimeout(goRedeem, 450);
     });
 
     document.addEventListener('DOMContentLoaded', async () => {

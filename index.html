@@ -416,6 +416,9 @@
         <!-- Pricing -->
         <div class="wrap" data-reveal style="padding-top:12px;padding-bottom:32px;">
             <h2 style="text-align:center;">Simple pricing</h2>
+            <div style="max-width:620px;margin:14px auto 0;border:1px solid var(--accent);border-radius:12px;background:var(--accent-dim);padding:14px 18px;text-align:center;">
+                <strong style="color:var(--text);">Have a class or cohort code?</strong> <span class="sub" style="font-size:14px;">It's <strong>not</strong> a checkout code — <a href="#redeem" onclick="event.preventDefault(); MACPrep.goRedeem();" style="color:var(--accent);font-weight:600;">redeem it on your dashboard →</a></span>
+            </div>
             <div class="grid cols-2" style="margin-top:18px;max-width:760px;margin-left:auto;margin-right:auto;">
                 <div class="card">
                     <span class="badge free">FREE</span>
@@ -492,11 +495,12 @@
             <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
             <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
             <button class="btn" style="margin-top:16px;" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $50</button>
-            <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
-                <label>Have a class or cohort code?</label>
+            <div id="redeem" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+                <label style="font-weight:600;color:var(--text);">Have a class or cohort code?</label>
+                <div class="sub" style="font-size:12px;margin:2px 0 8px;">Paste it here to unlock premium for free — <strong>don't</strong> enter it at checkout.</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <input id="redeem-code" type="text" placeholder="MACP-XXXXXXXX" style="flex:1;min-width:160px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);text-transform:uppercase;">
-                    <button class="btn ghost" type="button" onclick="MACPrep.redeemCode()">Redeem</button>
+                    <button class="btn" type="button" onclick="MACPrep.redeemCode()">Redeem</button>
                 </div>
                 <span id="redeem-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
             </div>
