@@ -1622,9 +1622,16 @@
         try {
             const { resp, data } = await apiJSON('/api/admin/vouchers', { headers: authHeaders() });
             if (!resp.ok) return;
+            const fmtDate = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
+            const header = `<tr style="text-align:left;border-bottom:1px solid var(--line);">
+                <th style="padding:2px 10px 8px 0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Code</th>
+                <th style="padding:2px 10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Status</th>
+                <th style="padding:2px 10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Generated</th>
+                <th style="padding:2px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Claimed by</th></tr>`;
             const rows = (data.vouchers || []).map((v) => `<tr>
                 <td style="font-family:ui-monospace,monospace;padding:4px 10px 4px 0;">${escapeHtml(v.voucher_key)}</td>
                 <td style="padding:4px 10px;color:${v.is_claimed ? 'var(--muted)' : 'var(--accent)'};">${v.is_claimed ? 'claimed' : 'available'}</td>
+                <td style="padding:4px 10px;color:var(--muted);font-size:12px;white-space:nowrap;">${fmtDate(v.created_at)}</td>
                 <td style="padding:4px 0;color:var(--muted);font-size:12px;">${v.claimed_by_email ? escapeHtml(v.claimed_by_email) : ''}</td></tr>`).join('');
             el.innerHTML = `<h3>Cohort vouchers</h3>
                 <p class="sub" style="margin:0 0 10px;">Generate codes to hand to a class or cohort — each grants one premium unlock. <span class="mono" style="color:var(--muted);">${data.claimed}/${data.total} claimed</span></p>
@@ -1633,7 +1640,7 @@
                     <button class="btn" onclick="MACPrep.generateVouchers()">Generate codes</button>
                     <span id="voucher-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
                 </div>
-                ${rows ? `<div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:10px;"><table style="width:100%;font-size:13px;">${rows}</table></div>` : '<div class="mono" style="color:var(--muted);font-size:13px;">No codes yet.</div>'}`;
+                ${rows ? `<div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:10px;"><table style="width:100%;font-size:13px;border-collapse:collapse;">${header}${rows}</table></div>` : '<div class="mono" style="color:var(--muted);font-size:13px;">No codes yet.</div>'}`;
             el.classList.remove('hidden');
         } catch (e) { /* ignore */ }
     }

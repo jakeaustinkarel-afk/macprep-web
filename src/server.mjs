@@ -917,7 +917,7 @@ app.get('/api/admin/vouchers', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
         const { data } = await supabase.from('program_vouchers')
-            .select('voucher_key, is_claimed, claimed_by_email, claimed_at')
+            .select('voucher_key, is_claimed, claimed_by_email, claimed_at, created_at')
             .eq('owner_director_id', admin.id).order('created_at', { ascending: false }).limit(500);
         const list = data || [];
         return res.json({ vouchers: list, total: list.length, claimed: list.filter((v) => v.is_claimed).length });
