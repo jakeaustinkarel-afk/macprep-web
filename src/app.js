@@ -101,7 +101,7 @@
         if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view', 'leaderboard-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -114,7 +114,7 @@
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
@@ -127,6 +127,7 @@
         if (view === 'dashboard') renderDashboard();
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
+        if (view === 'leaderboard') loadLeaderboard();
         window.scrollTo(0, 0);
     }
 
@@ -915,6 +916,75 @@
     }
 
     // ---- notebook ---------------------------------------------------------
+    // ---- study league (weekly global leaderboard) -------------------------
+    async function loadLeaderboard() {
+        const el = $('leaderboard-body'); if (!el) return;
+        el.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
+        try {
+            const { resp, data } = await apiJSON('/api/leaderboard', { headers: authHeaders() });
+            if (!resp.ok) { el.innerHTML = '<div class="mono" style="color:var(--bad);">Could not load the leaderboard.</div>'; return; }
+            state.leaderboard = data;
+            renderLeaderboard();
+        } catch (e) { el.innerHTML = '<div class="mono" style="color:var(--bad);">Could not load the leaderboard.</div>'; }
+    }
+    function lbCountdown(iso) {
+        const ms = new Date(iso).getTime() - Date.now();
+        if (ms <= 0) return 'resetting now';
+        const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
+        return 'resets in ' + d + 'd ' + h + 'h';
+    }
+    function renderLeaderboard() {
+        const el = $('leaderboard-body'); const data = state.leaderboard; if (!el || !data) return;
+        const me = data.me || {}; const rows = data.leaderboard || [];
+        const handleVal = me.handle || (state.profile && state.profile.leaderboard_handle) || '';
+        const optedIn = !!me.opted_in;
+        const settings =
+            '<div class="card" style="margin-bottom:18px;">'
+            + '<h3 style="margin:0 0 4px;">' + (optedIn ? 'Your league profile' : 'Join the league') + '</h3>'
+            + '<p class="sub" style="margin:0 0 12px;font-size:13px;">' + (optedIn ? 'You appear on the board under your handle. Change it or leave anytime — your name and email are never shown.' : 'Pick a handle and opt in to appear on the global board. Your name and email are never shown.') + '</p>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
+            + '<input id="lb-handle" type="text" maxlength="20" value="' + escapeHtml(handleVal) + '" placeholder="Your handle (e.g. GasPasser22)" style="flex:1;min-width:180px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);">'
+            + (optedIn
+                ? '<button class="btn" onclick="MACPrep.saveLeaderboardSettings(true)">Update</button><button class="btn ghost" onclick="MACPrep.saveLeaderboardSettings(false)">Leave board</button>'
+                : '<button class="btn" onclick="MACPrep.saveLeaderboardSettings(true)">Join the board</button>')
+            + '</div><div id="lb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div></div>';
+        const standing =
+            '<div class="card" style="margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;align-items:center;">'
+            + '<div><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">This week — ' + escapeHtml(lbCountdown(data.week_resets_at)) + '</div>'
+            + '<div style="font-size:15px;margin-top:4px;">' + (optedIn && me.rank ? 'You are <strong style="color:var(--accent);">#' + me.rank + '</strong> of ' + me.players : 'Join above to claim your spot') + '</div></div>'
+            + '<div style="display:flex;gap:22px;">'
+            + '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;">' + (me.weekly || 0) + '</div><div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;">this week</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent);">' + (me.streak || 0) + ' 🔥</div><div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;">day streak</div></div>'
+            + '</div></div>';
+        let board;
+        if (!rows.length) {
+            board = '<div class="card"><div class="mono" style="color:var(--muted);">No one is on the board yet this week — answer some questions and be the first.</div></div>';
+        } else {
+            const trs = rows.map((r) =>
+                '<tr style="' + (r.is_me ? 'background:var(--accent-dim);' : '') + '">'
+                + '<td style="padding:9px 10px;font-family:ui-monospace,monospace;' + (r.rank <= 3 ? 'font-weight:700;color:var(--accent);' : 'color:var(--text2);') + '">' + r.rank + '</td>'
+                + '<td style="padding:9px 10px;">' + escapeHtml(r.handle) + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
+                + '<td style="padding:9px 10px;text-align:right;color:var(--text2);">' + r.streak + ' 🔥</td>'
+                + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + r.weekly + '</td></tr>').join('');
+            board = '<div class="card" style="padding:6px;"><table style="width:100%;font-size:14px;border-collapse:collapse;">'
+                + '<tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">#</th><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Player</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Streak</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">This week</th></tr>'
+                + trs + '</table></div>';
+        }
+        el.innerHTML = settings + standing + board;
+    }
+    async function saveLeaderboardSettings(optIn) {
+        const inp = $('lb-handle'); const msg = $('lb-msg');
+        const handle = inp ? inp.value.trim() : '';
+        if (optIn && !handle) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Choose a handle first.'; } return; }
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Saving…'; }
+        try {
+            const { resp, data } = await apiJSON('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ handle: handle, opt_in: optIn }) });
+            if (!resp.ok) throw new Error(data.error || 'Could not save.');
+            await loadProfile();
+            await loadLeaderboard();
+        } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
     async function loadNotebook() {
         const body = $('notebook-body'); if (body) body.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
         try {
@@ -1798,6 +1868,7 @@
         { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true },
         { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
         { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
+        { icon: '🏆', label: 'Study League — weekly leaderboard', run: () => go('leaderboard'), auth: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
         { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
         { icon: '⭐', label: 'Upgrade to full access — $50', run: () => startCheckout(), auth: true, hidePremium: true },
@@ -1848,7 +1919,7 @@
         go, goRedeem, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,

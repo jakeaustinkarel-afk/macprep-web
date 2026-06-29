@@ -161,11 +161,11 @@
         @keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
         :root { --dur-fast: .12s; --dur-base: .22s; --ease-out: cubic-bezier(.2,.8,.2,1); }
         @keyframes viewEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden) { animation: viewEnter var(--dur-base) var(--ease-out); }
+        #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden) { animation: viewEnter var(--dur-base) var(--ease-out); }
         @keyframes qEnter { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
         .q-anim { animation: qEnter var(--dur-base) var(--ease-out); }
         @media (prefers-reduced-motion: reduce) {
-          #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), .q-anim { animation: none !important; }
+          #dashboard-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden), .q-anim { animation: none !important; }
         }
         /* Command palette (⌘K) */
         #cmdk { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: rgba(0,0,0,.5); }
@@ -244,6 +244,7 @@
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
+            <a id="nav-leaderboard" class="hidden" onclick="MACPrep.go('leaderboard')">League</a>
             <span id="nav-admin-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
                 <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
@@ -715,6 +716,12 @@
         <h2 style="margin-top:8px;">Content review</h2>
         <p class="sub">Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span></p>
         <div id="admin-body"></div>
+    </div>
+
+    <div class="wrap hidden" id="leaderboard-view">
+        <h2 class="view-title">Study League</h2>
+        <p class="sub" style="margin:-6px 0 20px;">Answer questions this week to climb the global board — it resets every Monday. Shown by your chosen handle; your name and email are never public.</p>
+        <div id="leaderboard-body"><div class="mono" style="color:var(--muted);">Loading…</div></div>
     </div>
 
     <div class="wrap hidden" id="notebook-view">
