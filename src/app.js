@@ -390,12 +390,11 @@
         const link = 'https://www.macprep.org/pricing.html';
         const msg = `Studying for NCCAA boards? MACPrep has cited, CAA-written practice questions — use code ${REFERRAL_CODE} for $10 off at checkout: ${link}`;
         el.dataset.msg = msg;
-        el.classList.remove('hidden');
-        el.innerHTML = `<h3>Refer a classmate 🎓</h3>
-            <p class="sub" style="margin:0 0 12px;font-size:13.5px;">Know someone prepping for boards? Share MACPrep — your classmate gets <strong>$10 off</strong> with your code at checkout.</p>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <code style="font-family:ui-monospace,monospace;font-size:15px;font-weight:700;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 14px;letter-spacing:1px;color:var(--accent);">${REFERRAL_CODE}</code>
-                <button class="btn ghost" type="button" onclick="MACPrep.copyReferral()">Copy share message</button>
+        el.className = ''; // slim note, not its own card
+        el.style.cssText = 'order:5;margin:0;';
+        el.innerHTML = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;">
+                <span>Know a classmate prepping for boards? Share <code style="font-family:ui-monospace,monospace;font-weight:700;color:var(--accent);letter-spacing:.5px;">${REFERRAL_CODE}</code> — they get <strong style="color:var(--text2);">$10 off</strong> at checkout.</span>
+                <a href="#" onclick="event.preventDefault();MACPrep.copyReferral();" style="color:var(--accent);white-space:nowrap;">Copy share message</a>
                 <span id="referral-copied" class="mono" style="font-size:12px;color:var(--accent);"></span>
             </div>`;
     }
@@ -686,24 +685,28 @@
         ((state.profile && state.profile.by_specialty) || []).forEach((r) => { accMap[r.category] = r; });
         const rows = cov.slice().sort((a, b) => (a.answered / (a.total || 1)) - (b.answered / (b.total || 1)) || b.total - a.total);
         const expanded = !!state.coverageExpanded;
-        const shown = expanded ? rows : rows.slice(0, 5);
-        const bars = shown.map((c) => {
+        const shown = expanded ? rows : rows.slice(0, 6);
+        const tiles = shown.map((c) => {
             const fracPct = c.total ? Math.round((c.answered / c.total) * 100) : 0;
             const acc = accMap[c.category];
-            const accColor = acc ? (acc.accuracy >= 75 ? 'var(--accent)' : acc.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)') : 'var(--muted)';
-            const accStr = acc ? `${acc.accuracy}% acc` : 'not started';
-            return `<div style="margin-bottom:12px;">
-                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-                    <span>${c.category}</span>
-                    <span class="mono" style="color:var(--muted);">seen ${c.answered}/${c.total} · <span style="color:${accColor};">${accStr}</span></span>
+            const started = c.answered > 0;
+            const accColor = !started ? 'var(--muted)' : (acc && acc.accuracy >= 75 ? 'var(--accent)' : acc && acc.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)');
+            const accStr = started && acc ? acc.accuracy + '%' : '—';
+            const barColor = started ? 'var(--accent)' : 'var(--line)';
+            return `<div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:13px;font-weight:600;line-height:1.25;">${escapeHtml(c.category)}</span>
+                    <span class="mono" style="font-size:13px;font-weight:700;color:${accColor};flex:none;">${accStr}</span>
                 </div>
-                <div class="progress-bar"><span style="width:${fracPct}%;background:var(--accent);"></span></div>
+                <div class="progress-bar" style="margin:0 0 6px;"><span style="width:${fracPct}%;background:${barColor};"></span></div>
+                <div class="mono" style="font-size:10px;color:var(--muted);">${c.answered}/${c.total} seen${started ? '' : ' · not started'}</div>
             </div>`;
         }).join('');
-        const moreBtn = rows.length > 5
-            ? `<button class="btn ghost" type="button" onclick="MACPrep.toggleCoverage()" style="margin-top:6px;font-size:12px;padding:6px 12px;">${expanded ? 'Show less' : `Show all ${rows.length} specialties`}</button>`
+        const moreBtn = rows.length > 6
+            ? `<button class="btn ghost" type="button" onclick="MACPrep.toggleCoverage()" style="margin-top:12px;font-size:12px;padding:6px 12px;">${expanded ? 'Show less' : `Show all ${rows.length} specialties`}</button>`
             : '';
-        el.innerHTML = `<h3>By specialty — coverage &amp; accuracy</h3><p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 12px;">${expanded ? 'All specialties, least-covered first.' : 'Your biggest coverage gaps.'}</p>${bars}${moreBtn}`;
+        el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;"><h3 style="margin:0;">By specialty</h3><span class="mono" style="font-size:11px;color:var(--muted);">${expanded ? 'all · least-covered first' : 'your biggest gaps · % = accuracy'}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-top:13px;">${tiles}</div>${moreBtn}`;
     }
 
     function renderCalibration() {
