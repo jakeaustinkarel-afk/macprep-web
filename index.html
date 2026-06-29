@@ -790,7 +790,7 @@
          the existing top bar untouched — so the live cohort on mobile is unaffected. */
       @media (min-width:900px){
         body.app-authed{padding-left:228px;}
-        body.app-authed .header-bar{position:fixed;top:0;left:0;bottom:0;width:228px;box-sizing:border-box;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:20px 14px 16px;border-right:1px solid var(--line);border-bottom:none;background:var(--panel);overflow:visible;z-index:50;}
+        body.app-authed .header-bar{position:fixed;top:0;left:0;bottom:0;width:228px;box-sizing:border-box;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:20px 14px 16px;border-right:1px solid var(--line);border-bottom:none;background:var(--panel);overflow-y:auto;z-index:50;}
         body.app-authed .header-bar .brand-logo{margin:0 6px 18px;}
         body.app-authed .nav-toggle{display:none;}
         body.app-authed #main-nav{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;}
