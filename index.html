@@ -785,6 +785,24 @@
       #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
       @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
+      /* Desktop app-shell: the top header becomes a fixed LEFT SIDEBAR for signed-in
+         users on wide screens. Phones/tablets (<900px) and logged-out visitors keep
+         the existing top bar untouched — so the live cohort on mobile is unaffected. */
+      @media (min-width:900px){
+        body.app-authed{padding-left:228px;}
+        body.app-authed .header-bar{position:fixed;top:0;left:0;bottom:0;width:228px;box-sizing:border-box;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:20px 14px 16px;border-right:1px solid var(--line);border-bottom:none;background:var(--panel);overflow-y:auto;z-index:50;}
+        body.app-authed .header-bar .brand-logo{margin:0 6px 18px;}
+        body.app-authed .nav-toggle{display:none;}
+        body.app-authed #main-nav{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;}
+        body.app-authed #main-nav>a,body.app-authed #main-nav>span{width:100%;padding:9px 10px;border-radius:8px;box-sizing:border-box;justify-content:flex-start;margin:0;}
+        body.app-authed #main-nav>a{cursor:pointer;}
+        body.app-authed #main-nav>a:hover{background:var(--accent-dim);}
+        body.app-authed #main-nav>#tier-badge{width:auto;align-self:flex-start;margin:0 0 8px 10px;}
+        body.app-authed #main-nav>.nav-market,body.app-authed #main-nav>#nav-login{display:none;}
+        body.app-authed #main-nav>#cmdk-trigger{width:100%;margin:auto 0 0;padding:9px 10px;border-radius:8px;justify-content:flex-start;}
+        body.app-authed .navdrop{left:8px;right:auto;}
+        body.app-authed #theme-menu,body.app-authed #font-menu{top:auto;bottom:32px;left:8px;right:auto;}
+      }
       #question-stem:focus{outline:none;}
     </style>
     <script src="/src/app.js"></script>
