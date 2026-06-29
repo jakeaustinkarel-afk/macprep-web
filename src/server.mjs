@@ -1501,6 +1501,7 @@ app.get('/api/user/profile', async (req, res) => {
                 calibration,
                 coverage,
                 streak,
+                active_days: Array.from(activeDays),
                 trend,
                 readiness,
                 days_to_exam,

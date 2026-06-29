@@ -544,6 +544,68 @@
         if (show) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    // ---- question of the day + study-activity calendar --------------------
+    // One question per day, deterministic by date so everyone sees the same QotD.
+    function questionOfTheDay() {
+        const qs = state.questions || [];
+        if (!qs.length) return null;
+        const key = new Date().toISOString().slice(0, 10);
+        let h = 0; for (let i = 0; i < key.length; i++) { h = (h * 31 + key.charCodeAt(i)) >>> 0; }
+        return qs[h % qs.length];
+    }
+    function qotdDoneToday() { return ls('macprep_qotd_done') === new Date().toISOString().slice(0, 10); }
+    // Launches the QotD as a real 1-question tutor session — identical render, grading,
+    // rationale, source, and activity tracking as any quiz question.
+    function startQotd() {
+        const q = questionOfTheDay();
+        if (!q) { toast('Today\'s question is still loading — try again in a moment.'); return; }
+        ls('macprep_qotd_done', new Date().toISOString().slice(0, 10));
+        beginSession([q], 'tutor');
+        if (state.session) state.session.qotd = true;
+    }
+    function renderQotd() {
+        const card = $('qotd-card'); if (!card) return;
+        const q = questionOfTheDay();
+        if (!q) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        const meta = [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · ');
+        const reviewed = q.reviewed ? '<span style="font-size:11px;color:var(--accent);white-space:nowrap;">✓ reviewed by a CAA</span>' : '';
+        const action = qotdDoneToday()
+            ? '<div class="mono" style="font-size:13px;color:var(--muted);">✓ Answered today — a fresh one drops tomorrow. <a href="#" onclick="event.preventDefault();MACPrep.startQotd();" style="color:var(--accent);">Review it again →</a></div>'
+            : '<button class="btn" onclick="MACPrep.startQotd()">Answer today\'s question →</button>';
+        card.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><h3 style="margin:0;">Question of the day</h3>' + reviewed + '</div>'
+            + '<div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;">' + escapeHtml(meta) + '</div>'
+            + '<div style="font-size:15px;line-height:1.6;margin-bottom:15px;">' + renderRich(q.stem) + '</div>'
+            + action;
+    }
+    function renderActivityCalendar() {
+        const card = $('activity-card'); if (!card) return;
+        const active = new Set((state.profile && state.profile.active_days) || []);
+        const now = new Date();
+        const year = now.getFullYear(), month = now.getMonth();
+        const monthName = now.toLocaleString(undefined, { month: 'long' });
+        const startDow = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const pad = (n) => String(n).padStart(2, '0');
+        const todayDk = year + '-' + pad(month + 1) + '-' + pad(now.getDate());
+        let cells = '';
+        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((d) => { cells += '<div class="mono" style="font-size:10px;color:var(--muted);text-align:center;padding:2px 0;">' + d + '</div>'; });
+        for (let i = 0; i < startDow; i++) cells += '<div></div>';
+        let studiedCount = 0;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dk = year + '-' + pad(month + 1) + '-' + pad(day);
+            const studied = active.has(dk); if (studied) studiedCount++;
+            const style = studied ? 'background:var(--accent-dim);color:var(--accent);font-weight:bold;' : 'color:var(--text2);';
+            const ring = dk === todayDk ? 'box-shadow:inset 0 0 0 1px var(--accent);' : '';
+            cells += '<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px;border-radius:6px;' + style + ring + '">' + day + '</div>';
+        }
+        card.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><h3 style="margin:0;">Study activity</h3>'
+            + '<span class="mono" style="font-size:12px;color:var(--muted);">' + studiedCount + ' day' + (studiedCount === 1 ? '' : 's') + ' this ' + escapeHtml(monthName) + '</span></div>'
+            + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">' + cells + '</div>';
+    }
+
     function renderDashboard() {
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
@@ -554,6 +616,8 @@
         $('stat-accuracy').textContent = stats.attempts ? Math.round((stats.correct / stats.attempts) * 100) + '%' : '—';
         $('stat-bank').textContent = state.questions.length.toLocaleString();
         renderReadiness();
+        renderQotd();
+        renderActivityCalendar();
         renderOnboarding();
         renderReferral();
         renderRecommendedSub();
@@ -1916,7 +1980,7 @@
     }
 
     window.MACPrep = {
-        go, goRedeem, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
+        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, loadLeaderboard, saveLeaderboardSettings, copyReferral,
