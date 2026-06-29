@@ -779,8 +779,12 @@
       .conf-chip{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
       .conf-chip:hover{border-color:var(--accent);color:var(--text);}
       .conf-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
-      /* Dashboard: flex column so cards can be reordered (action first) without moving markup. */
-      #dashboard-view:not(.hidden){display:flex;flex-direction:column;}
+      /* Dashboard: app-style 2-column grid (1 col on mobile). order: still controls flow;
+         banners, the greeting, the stats row, and the primary CTA span both columns. */
+      #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
+      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
+      #dashboard-view>#dash-subtitle{margin-top:-10px;}
+      @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
       #question-stem:focus{outline:none;}
     </style>
     <script src="/src/app.js"></script>
