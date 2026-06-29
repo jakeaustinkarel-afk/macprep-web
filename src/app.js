@@ -684,16 +684,14 @@
         const accMap = {};
         ((state.profile && state.profile.by_specialty) || []).forEach((r) => { accMap[r.category] = r; });
         const rows = cov.slice().sort((a, b) => (a.answered / (a.total || 1)) - (b.answered / (b.total || 1)) || b.total - a.total);
-        const expanded = !!state.coverageExpanded;
-        const shown = expanded ? rows : rows.slice(0, 6);
-        const tiles = shown.map((c) => {
+        const tiles = rows.map((c) => {
             const fracPct = c.total ? Math.round((c.answered / c.total) * 100) : 0;
             const acc = accMap[c.category];
             const started = c.answered > 0;
             const accColor = !started ? 'var(--muted)' : (acc && acc.accuracy >= 75 ? 'var(--accent)' : acc && acc.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)');
             const accStr = started && acc ? acc.accuracy + '%' : '—';
             const barColor = started ? 'var(--accent)' : 'var(--line)';
-            return `<div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;">
+            return `<div style="flex:1 1 172px;max-width:212px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;">
                     <span style="font-size:13px;font-weight:600;line-height:1.25;">${escapeHtml(c.category)}</span>
                     <span class="mono" style="font-size:13px;font-weight:700;color:${accColor};flex:none;">${accStr}</span>
@@ -702,11 +700,8 @@
                 <div class="mono" style="font-size:10px;color:var(--muted);">${c.answered}/${c.total} seen${started ? '' : ' · not started'}</div>
             </div>`;
         }).join('');
-        const moreBtn = rows.length > 6
-            ? `<button class="btn ghost" type="button" onclick="MACPrep.toggleCoverage()" style="margin-top:12px;font-size:12px;padding:6px 12px;">${expanded ? 'Show less' : `Show all ${rows.length} specialties`}</button>`
-            : '';
-        el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;"><h3 style="margin:0;">By specialty</h3><span class="mono" style="font-size:11px;color:var(--muted);">${expanded ? 'all · least-covered first' : 'your biggest gaps · % = accuracy'}</span></div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-top:13px;">${tiles}</div>${moreBtn}`;
+        el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;"><h3 style="margin:0;">By specialty</h3><span class="mono" style="font-size:11px;color:var(--muted);">all · least-covered first</span></div>
+            <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:13px;">${tiles}</div>`;
     }
 
     function renderCalibration() {
@@ -730,7 +725,6 @@
         el.classList.remove('hidden');
     }
 
-    function toggleCoverage() { state.coverageExpanded = !state.coverageExpanded; renderSpecialtyPerformance(); }
 
     function selectedCount() {
         const custom = parseInt($('custom-count').value, 10);
@@ -1990,7 +1984,7 @@
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
-        drillSpecialty, reviewDue, resumeSession, discardSession, toggleCoverage,
+        drillSpecialty, reviewDue, resumeSession, discardSession,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
