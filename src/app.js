@@ -1410,7 +1410,9 @@
             + `<span style="color:var(--accent);">✓</span> Every explanation, rationale &amp; verifiable source<br>`
             + `<span style="color:var(--accent);">✓</span> Progress tracking, weak-spot review &amp; your exam-date plan<br>`
             + `<span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $50 payment, no subscription`
-            + `</div></div>`;
+            + `</div>`
+            + `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);font-size:13px;color:var(--text);display:flex;gap:8px;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $50 back.</span></div>`
+            + `</div>`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         if (s && s.log && s.log.length) renderSessionReview(s.log);
