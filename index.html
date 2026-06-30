@@ -1086,6 +1086,19 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         </div>
       </div>
     </div>
+    <div id="specialty-picker" class="hidden" onclick="if(event.target===this)MACPrep.closeSpecialtyPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div role="dialog" aria-modal="true" aria-labelledby="sp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:430px;width:100%;padding:26px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px;">
+          <div>
+            <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">Focused quiz</div>
+            <h3 id="sp-title" style="margin:5px 0 0;font-size:19px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:700;">Specialty</h3>
+          </div>
+          <button type="button" onclick="MACPrep.closeSpecialtyPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <p id="sp-sub" class="sub" style="font-size:13px;margin:8px 0 18px;">How many questions?</p>
+        <div id="sp-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+      </div>
+    </div>
     <div id="lightbox" class="hidden" onclick="this.classList.add('hidden')" style="position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;">
       <img id="lightbox-img" alt="Enlarged figure" style="max-width:95%;max-height:95%;border-radius:6px;">
     </div>
@@ -1117,6 +1130,14 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .conf-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
       /* Dashboard: app-style 2-column grid (1 col on mobile). order: still controls flow;
          banners, the greeting, the stats row, and the primary CTA span both columns. */
+      /* By-specialty tiles are clickable → focused-quiz picker */
+      .spec-tile{cursor:pointer;transition:border-color .16s ease,transform .16s ease,box-shadow .2s ease;}
+      .spec-tile:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line)) !important;transform:translateY(-2px);box-shadow:0 12px 26px -18px rgba(0,0,0,.55);}
+      .spec-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+      .sp-opt{display:flex;align-items:center;justify-content:center;padding:15px 10px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,color .15s,transform .1s;}
+      .sp-opt:hover{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+      .sp-opt:active{transform:translateY(1px);}
+      @media (prefers-reduced-motion: reduce){.spec-tile,.sp-opt{transition:none;}.spec-tile:hover{transform:none;}}
       #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
       #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}

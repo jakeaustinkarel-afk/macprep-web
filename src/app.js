@@ -691,7 +691,7 @@
             const accColor = !started ? 'var(--muted)' : (acc && acc.accuracy >= 75 ? 'var(--accent)' : acc && acc.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)');
             const accStr = started && acc ? acc.accuracy + '%' : '—';
             const barColor = started ? 'var(--accent)' : 'var(--line)';
-            return `<div style="flex:1 1 172px;max-width:212px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;">
+            return `<div class="spec-tile" data-cat="${escapeHtml(c.category)}" role="button" tabindex="0" aria-label="Start a focused quiz on ${escapeHtml(c.category)}" onclick="MACPrep.openSpecialtyPicker(this.dataset.cat)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.openSpecialtyPicker(this.dataset.cat);}" style="flex:1 1 172px;max-width:212px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;">
                     <span style="font-size:13px;font-weight:600;line-height:1.25;">${escapeHtml(c.category)}</span>
                     <span class="mono" style="font-size:13px;font-weight:700;color:${accColor};flex:none;">${accStr}</span>
@@ -1494,6 +1494,44 @@
         startSession();
     }
 
+    // Click a specialty tile → pick a set size → start a category-focused quiz.
+    function specialtyPool(cat) {
+        return (state.questions || []).filter((q) => (q.category || q.domain_name || 'General') === cat);
+    }
+    function openSpecialtyPicker(cat) {
+        const modal = $('specialty-picker'); if (!modal) return;
+        const avail = specialtyPool(cat).length;
+        if (!avail) { toast('No questions available for that specialty yet.'); return; }
+        $('sp-title').textContent = cat;
+        $('sp-sub').textContent = `${avail} question${avail === 1 ? '' : 's'} available — pick your set.`;
+        const opts = [5, 10, 25].filter((n) => n < avail).map((n) => ({ label: `${n} questions`, val: n }));
+        opts.push({ label: `All ${avail} questions`, val: 'all' });
+        const box = $('sp-options'); box.innerHTML = '';
+        opts.forEach((o) => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'sp-opt'; b.textContent = o.label;
+            b.onclick = () => startSpecialtyQuiz(cat, o.val);
+            box.appendChild(b);
+        });
+        modal.classList.remove('hidden');
+    }
+    function closeSpecialtyPicker() { const m = $('specialty-picker'); if (m) m.classList.add('hidden'); }
+    function startSpecialtyQuiz(cat, count) {
+        closeSpecialtyPicker();
+        const usage = freeUsage();
+        if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
+        const pool = specialtyPool(cat).slice();
+        if (!pool.length) { toast('No questions available for that specialty yet.'); return; }
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        let n = (count === 'all') ? pool.length : Math.min(count, pool.length);
+        if (!usage.unlimited) n = Math.min(n, usage.remaining);
+        n = Math.min(n, pool.length);
+        if (n <= 0) { return startCheckout(); }
+        try { track('specialty_quiz_start', { category: cat, count: n }); } catch (e) {}
+        const sel = $('domain-select'); if (sel) sel.value = cat;
+        beginSession(pool.slice(0, n));
+    }
+
     function reviewDue() { startFromIds((state.profile && state.profile.due_ids) || [], 'due'); }
 
     // Printable take-home exam → opens a clean print-to-PDF window (premium).
@@ -1984,7 +2022,7 @@
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
-        drillSpecialty, reviewDue, resumeSession, discardSession,
+        drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
