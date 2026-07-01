@@ -1135,10 +1135,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
           </div>
           <button type="button" onclick="MACPrep.closeMockPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
         </div>
-        <p class="sub" style="font-size:13px;margin:8px 0 16px;">Full-length and timed, sampled across all six NCCAA domains in proportion to the bank. Ends with a per-domain score breakdown.</p>
+        <p class="sub" style="font-size:13px;margin:8px 0 16px;">Built to match the real NCCAA exam: <strong>180 questions</strong> timed to the board's <strong>220 minutes</strong> (two 110-minute blocks of 90). Sampled across all six NCCAA domains in proportion to the bank, with a per-domain score breakdown at the end.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button type="button" class="sp-opt" onclick="MACPrep.startMockExam(100)">100 questions</button>
-          <button type="button" class="sp-opt" onclick="MACPrep.startMockExam(150)">150 questions</button>
+          <button type="button" class="sp-opt" style="flex-direction:column;gap:3px;padding:14px 10px;" onclick="MACPrep.startMockExam(180)">Full exam · 180 Q<span class="mono" style="font-size:11px;font-weight:400;opacity:.7;">2 blocks · 220 min</span></button>
+          <button type="button" class="sp-opt" style="flex-direction:column;gap:3px;padding:14px 10px;" onclick="MACPrep.startMockExam(90)">One block · 90 Q<span class="mono" style="font-size:11px;font-weight:400;opacity:.7;">110 min</span></button>
         </div>
       </div>
     </div>

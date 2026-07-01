@@ -906,7 +906,12 @@
         if (!pool.length) { toast('No questions available for a mock exam yet.'); return; }
         try { track('mock_exam_start', { size: pool.length }); } catch (e) {}
         beginSession(pool, 'exam');
-        if (state.session) { state.session.mock = true; saveSession(); }
+        if (state.session) {
+            state.session.mock = true;
+            // Match the real NCCAA exam pace: 110 minutes per 90-item block (so a full 180 → 220 minutes).
+            state.session.timeLeft = Math.round((pool.length / 90) * 110 * 60);
+            saveSession();
+        }
     }
     function smTile(cls, cat, title, desc, count, onclick, tag) {
         return `<button type="button" class="sm-tile ${cls}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag">${tag}</span>` : ''}</div>`
@@ -920,7 +925,7 @@
         const recCount = recParts.length ? recParts.join(' · ') : 'a smart mix for you';
         const t = [];
         t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
-        t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Full-length, timed, blueprint-weighted.', '100 or 150 · timed', 'MACPrep.openMockPicker()', 'New'));
+        t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
