@@ -2555,6 +2555,8 @@
     async function reviewQueue() {
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
         go('admin');
+        const t = $('admin-review-title'); if (t) t.textContent = 'Content review';
+        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
         loadAnalytics();
         loadVouchers();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
@@ -2641,6 +2643,97 @@
             r.index++;
             renderReview();
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
+    // ---- Answer-length edit review (proposed choice rewrites) --------------
+    async function reviewEdits() {
+        if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
+        go('admin');
+        ['admin-analytics', 'admin-vouchers'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
+        const t = $('admin-review-title'); if (t) t.textContent = 'Answer-length edits';
+        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Rebalanced answer choices so the correct option is no longer the longest. <strong>Approve</strong> applies the edit to the live question; the original stays untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
+        const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading length-balance edits…</div>';
+        try {
+            const { resp, data } = await apiJSON('/api/admin/edits', { headers: authHeaders() });
+            if (!resp.ok) throw new Error(data.error || 'Could not load.');
+            state.edits = { list: data.edits || [], index: 0, counts: data.counts || {} };
+            renderEditReview();
+        } catch (e) { if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`; }
+    }
+
+    function renderEditReview() {
+        const r = state.edits; const wrap = $('admin-body'); if (!r || !wrap) return;
+        const c = r.counts || {};
+        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.pending || 0} pending · ${c.approved || 0} approved · ${c.rejected || 0} rejected`;
+        if (!r.list.length || r.index >= r.list.length) {
+            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">No pending length edits.</div></div>';
+            return;
+        }
+        const GREEN = '#16a34a';
+        const e = r.list[r.index]; const q = e.question || {};
+        const orig = e.original_choices || [], prop = e.proposed_choices || [];
+        const byLabel = {}; orig.forEach((o, i) => { byLabel[o.label || i] = o; });
+        const rows = prop.map((p, i) => {
+            const o = byLabel[p.label] || orig[i] || {};
+            const isC = p.correct === true;
+            const oLen = (o.text || '').length, pLen = (p.text || '').length;
+            return `<div style="border:1px solid ${isC ? GREEN : 'var(--line)'};border-radius:8px;padding:11px;margin:9px 0;background:${isC ? 'color-mix(in srgb,' + GREEN + ' 9%,transparent)' : 'var(--bg)'};">
+                <div style="font-family:ui-monospace,monospace;font-size:11px;color:${isC ? GREEN : 'var(--muted)'};margin-bottom:6px;font-weight:${isC ? 700 : 400};">[${escapeHtml(p.label || String.fromCharCode(65 + i))}]${isC ? ' ✓ CORRECT' : ''}</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Original <span class="mono">(${oLen})</span> · <span style="color:var(--text2);">${escapeHtml(o.text || '—')}</span></div>
+                <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Proposed <span class="mono">(<span data-len="${i}">${pLen}</span>)</span></div>
+                <input data-ptext="${i}" oninput="MACPrep._editLen(${i})" value="${escapeHtml(p.text || '')}" style="width:100%;margin:2px 0;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:5px;color:var(--text);font-size:13px;">
+                <textarea data-prat="${i}" rows="2" style="width:100%;margin-top:4px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:5px;color:var(--muted);font-size:12px;">${escapeHtml(p.rationale || '')}</textarea>
+            </div>`;
+        }).join('');
+        const correctLen = ((prop.find((p) => p.correct === true) || {}).text || '').length;
+        const maxOther = Math.max(0, ...prop.filter((p) => !p.correct).map((p) => (p.text || '').length));
+        const fixed = correctLen > 0 && correctLen <= maxOther;
+        wrap.innerHTML = `
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Edit ${r.index + 1} of ${r.list.length} · ${escapeHtml(e.question_id)} · ${escapeHtml((q.category || '') + (q.subtopic ? ' · ' + q.subtopic : ''))}</div>
+            <div class="card">
+                <div style="font-size:14px;line-height:1.55;margin-bottom:8px;">${escapeHtml(q.stem || '')}</div>
+                <div class="mono" style="font-size:11px;color:${fixed ? GREEN : 'var(--warn)'};margin-bottom:4px;">${fixed ? '✓ correct is no longer the longest choice' : '⚠ correct is still the longest — trim it or lengthen a distractor before approving'}</div>
+                ${e.note ? `<div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:8px;">${escapeHtml(e.note)}</div>` : ''}
+                ${rows}
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+                    <button class="btn" onclick="MACPrep.editAction('approve')">✓ Approve &amp; apply</button>
+                    <button class="btn ghost" onclick="MACPrep.editAction('skip')">Skip →</button>
+                    <button class="btn" style="background:var(--danger);" onclick="MACPrep.editAction('reject')">✗ Reject</button>
+                </div>
+                <span id="edit-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
+            </div>`;
+    }
+
+    function _editLen(i) {
+        const inp = $('admin-body').querySelector(`[data-ptext="${i}"]`);
+        const span = $('admin-body').querySelector(`[data-len="${i}"]`);
+        if (inp && span) span.textContent = (inp.value || '').length;
+    }
+
+    function collectEditChoices() {
+        const r = state.edits; const e = r.list[r.index]; const prop = e.proposed_choices || [];
+        return prop.map((p, i) => {
+            const t = $('admin-body').querySelector(`[data-ptext="${i}"]`);
+            const ra = $('admin-body').querySelector(`[data-prat="${i}"]`);
+            return { ...p, text: t ? t.value : p.text, rationale: ra ? ra.value : p.rationale };
+        });
+    }
+
+    async function editAction(action) {
+        const r = state.edits; if (!r) return;
+        const e = r.list[r.index]; const msg = $('edit-msg');
+        if (action === 'skip') { r.index++; renderEditReview(); return; }
+        const body = { id: e.id, action };
+        if (action === 'approve') body.choices = collectEditChoices();
+        try {
+            const { resp, data } = await apiJSON('/api/admin/edit', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
+            if (action === 'approve') r.counts.approved = (r.counts.approved || 0) + 1;
+            if (action === 'reject') r.counts.rejected = (r.counts.rejected || 0) + 1;
+            r.counts.pending = Math.max(0, (r.counts.pending || 1) - 1);
+            r.index++;
+            renderEditReview();
+        } catch (err) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; } }
     }
 
     // ---- vouchers / codes -------------------------------------------------
@@ -2942,7 +3035,7 @@
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
-        smartReview, startSample, saveNote, reviewQueue, adminAction,
+        smartReview, startSample, saveNote, reviewQueue, adminAction, reviewEdits, editAction, _editLen,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,

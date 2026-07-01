@@ -910,6 +910,70 @@ app.post('/api/admin/question', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Question-edit review queue. Proposed choice rewrites (e.g. answer-length
+// rebalancing) live in `question_edits` as status='pending' and NEVER touch the
+// live published question until an admin approves — preserving clinician sign-off.
+// ---------------------------------------------------------------------------
+app.get('/api/admin/edits', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    try {
+        const { data, error } = await supabase
+            .from('question_edits')
+            .select('id, question_id, batch, kind, original_choices, proposed_choices, note, status, created_at')
+            .eq('status', 'pending')
+            .order('id', { ascending: true })
+            .limit(500);
+        if (error) throw error;
+        const ids = [...new Set((data || []).map((e) => e.question_id))];
+        const qmap = {};
+        if (ids.length) {
+            const { data: qs } = await supabase.from('questions').select('id, stem, category, subtopic, difficulty').in('id', ids);
+            (qs || []).forEach((q) => { qmap[q.id] = q; });
+        }
+        const edits = (data || []).map((e) => ({ ...e, question: qmap[e.question_id] || null }));
+        const STATUSES = ['pending', 'approved', 'rejected'];
+        const cr = await Promise.all(STATUSES.map((s) => supabase.from('question_edits').select('id', { count: 'exact', head: true }).eq('status', s)));
+        const counts = {}; STATUSES.forEach((s, i) => { counts[s] = cr[i].count || 0; });
+        return res.json({ edits, counts });
+    } catch (err) {
+        console.error('Edits list failure:', err.message);
+        return res.status(500).json({ error: 'Could not load edits.' });
+    }
+});
+
+app.post('/api/admin/edit', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const id = parseInt(req.body?.id, 10);
+    const action = String(req.body?.action || '');
+    if (!id || !['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Bad request.' });
+    try {
+        const { data: edit, error: e1 } = await supabase.from('question_edits').select('id, question_id, proposed_choices, status').eq('id', id).maybeSingle();
+        if (e1) throw e1;
+        if (!edit) return res.status(404).json({ error: 'Edit not found.' });
+        if (edit.status !== 'pending') return res.json({ success: true, already: true });
+        if (action === 'approve') {
+            const finalChoices = Array.isArray(req.body?.choices) && req.body.choices.length ? req.body.choices : edit.proposed_choices;
+            // Answer-key guard: exactly one correct choice must remain, or refuse.
+            const nCorrect = (finalChoices || []).filter((c) => c && c.correct === true).length;
+            if (nCorrect !== 1) return res.status(400).json({ error: 'Edit must keep exactly one correct choice.' });
+            const { error: e2 } = await supabase.from('questions').update({ choices: finalChoices }).eq('id', edit.question_id);
+            if (e2) throw e2;
+            const { error: e3 } = await supabase.from('question_edits').update({ status: 'approved', proposed_choices: finalChoices, reviewed_at: new Date().toISOString() }).eq('id', id);
+            if (e3) throw e3;
+        } else {
+            const { error: e4 } = await supabase.from('question_edits').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', id);
+            if (e4) throw e4;
+        }
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Edit action failure:', err.message);
+        return res.status(500).json({ error: 'Could not apply edit.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
 // Cohort vouchers — a program director generates codes and hands them to their
 // students; each code grants one premium unlock when redeemed.
 // ---------------------------------------------------------------------------
