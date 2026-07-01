@@ -660,9 +660,11 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 9;
+    const WHATS_NEW_VERSION = 10;
     const WHATS_NEW = [
-        { tag: 'New', date: 'Jul 1', title: 'Arcade modes', desc: 'Two fast, score-chasing modes in Study Modes: Survival (endless — 3 lives, one miss costs a life) and Time Attack (a five-minute sprint). Each keeps your personal best.' },
+        { tag: 'New', date: 'Jul 1', title: 'Fresh questions every time', desc: 'Practice sets, specialty quizzes, and mock exams now serve questions you haven’t seen yet first — so you keep drawing new questions from the full bank instead of repeats, and no two people get the same quiz.' },
+        { tag: 'New', date: 'Jul 1', title: 'In-quiz calculator', desc: 'A calculator now sits next to Lab values in every question — basic math plus quick medical conversions (cm↔in, kg↔lb, °C↔°F) for when a stem gives height in centimeters.' },
+        { tag: 'New', date: 'Jul 1', title: 'Arcade modes', desc: 'Two fast, score-chasing modes in Study Modes (and now in the menu): Survival (endless — 3 lives, one miss costs a life) and Time Attack (a five-minute sprint). Each keeps your personal best.' },
         { tag: 'New', date: 'Jul 1', title: 'Domain Bosses', desc: 'Take on a Domain Boss from Study Modes — score 80%+ on a short mastery challenge to "defeat" a domain. Clear all six to become a Boss Slayer.' },
         { tag: 'New', date: 'Jul 1', title: 'Daily Quests', desc: 'A fresh set of daily goals on your dashboard that resets at 7 AM ET. Finish all three to open a daily chest, and rack up quest days for new achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'XP + Levels', desc: 'Every question you answer now earns XP and levels you up — see your level and progress bar right on the dashboard. Levels come fast early on, and there are new Level achievements to chase. (First of several game modes on the way.)' },
