@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 88" width="320" height="88" role="img" aria-label="MACPrep">
+  <title>MACPrep logo (light background)</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@800&amp;display=swap');</style>
+  <g transform="translate(8,12) scale(0.125)">
+    <rect width="512" height="512" rx="112" fill="#146A4A"/>
+    <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="88" y="59" font-family="Figtree, system-ui, -apple-system, sans-serif" font-weight="800" font-size="46" letter-spacing="-1"><tspan fill="#0E1512">MAC</tspan><tspan fill="#146A4A">Prep</tspan></text>
+</svg>

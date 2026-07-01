@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" width="2560" height="1440" role="img" aria-label="MACPrep — NCCAA board review, built by a practicing CAA">
+  <title>MACPrep YouTube channel art</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@500;800&amp;display=swap');</style>
+  <rect width="2560" height="1440" fill="#0E1512"/>
+  <g transform="translate(1232,520) scale(0.1875)"><rect width="512" height="512" rx="112" fill="#146A4A"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="1280" y="708" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="800" font-size="76" letter-spacing="-2"><tspan fill="#F5F7F5">MAC</tspan><tspan fill="#4FCC8E">Prep</tspan></text>
+  <text x="1280" y="778" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="500" font-size="34" fill="#C7CFCA">NCCAA board review, built by a practicing CAA</text>
+</svg>

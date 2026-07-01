@@ -1,4 +1,4 @@
-const CACHE = 'macprep-v1';
+const CACHE = 'macprep-v2';
 const OFFLINE = '/offline.html';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll([OFFLINE, '/icon-192.png'])).then(() => self.skipWaiting()));

@@ -72,20 +72,21 @@ Personalize `[First name]`. The goal of every reply: make the next step effortle
 
 ---
 
-## Code redemption steps (send when a program says yes + you've generated a code)
-_CONFIRMED 2026-06-25 (Jake sent these live to Patrick Flaherty): the code is entered at the Stripe
-checkout "Add promotion code / Have a code?" field → total drops to $0 → premium unlocks for life._
+## Code redemption steps — ONE universal method
 
-> Here's all it takes:
-> 1. Go to **macprep.org** and click **Sign up** to make your free account — no card needed. (Already
->    have one? Just log in.)
-> 2. Head to the **Pricing** page and click **Get full access**.
-> 3. At checkout, enter your code **[CODE]** in the "Add promotion code / Have a code?" field.
-> 4. Your total drops to **$0** — confirm to finish (no charge).
-> 5. Done! Premium unlocks instantly — the entire question bank, every domain, with all sources and
->    rationales, yours for life.
+**The dashboard box takes BOTH premium AND class/cohort codes** (confirmed by Jake, 2026-06-28). Use this
+for everyone — partners, influencers, PDs, students:
+> 1. Go to **macprep.org**, sign up for a free account (no card) or log in.
+> 2. On your **dashboard**, find the **"Free Tier Usage"** card.
+> 3. In the **"Have a class or cohort code?"** box, paste your code **[CODE]** and hit **Redeem**.
+> 4. Done — full access unlocks instantly, for life.
 >
-> Shout if anything's clunky and I'll hop on a quick screen-share!
+> _(The box says "class or cohort code," but it takes premium codes too — just drop it right in.)_
+
+_Alternative for premium codes only:_ Pricing → Get full access → Stripe checkout "Add promotion code"
+field → total drops to $0 → confirm. Works, but the dashboard box above is simpler — prefer it.
+
+_Shout if anything's clunky and I'll hop on a quick screen-share!_
 
 ## Reminders
 - **Reply fast** — interest is perishable. Same-day if you can.

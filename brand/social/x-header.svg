@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" width="1500" height="500" role="img" aria-label="MACPrep">
+  <title>MACPrep X / Twitter header</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@800&amp;family=JetBrains+Mono:wght@500&amp;display=swap');</style>
+  <rect width="1500" height="500" fill="#0E1512"/>
+  <g transform="translate(718,120) scale(0.125)"><rect width="512" height="512" rx="112" fill="#146A4A"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="750" y="258" text-anchor="middle" font-family="Figtree, sans-serif" font-weight="800" font-size="60" letter-spacing="-1.5"><tspan fill="#F5F7F5">MAC</tspan><tspan fill="#4FCC8E">Prep</tspan></text>
+  <path d="M654 300 H706 L728 278 L752 322 L772 288 L784 300 H846" fill="none" stroke="#4FCC8E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="750" y="360" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-weight="500" font-size="22" fill="#9AA39E">Every question cites a real source · Every answer explained</text>
+</svg>

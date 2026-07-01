@@ -14,29 +14,30 @@
     <meta property="og:title" content="MACPrep — NCCAA Board Review for CAAs & SAAs">
     <meta property="og:description" content="In-depth, journal-sourced NCCAA board review for SAAs preparing for certification and CAAs reviewing for recertification. Reasoning for every answer, study by specialty, track your readiness.">
     <meta property="og:url" content="https://www.macprep.org/">
-    <meta property="og:image" content="https://www.macprep.org/macprep_og.png">
+    <meta property="og:image" content="https://www.macprep.org/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="MACPrep — NCCAA Board Review for CAAs & SAAs">
     <meta name="twitter:description" content="Journal-sourced NCCAA board review for SAAs (certification) and CAAs (recertification).">
-    <meta name="twitter:image" content="https://www.macprep.org/macprep_og.png">
+    <meta name="twitter:image" content="https://www.macprep.org/og-image.png">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"WebSite","name":"MACPrep","url":"https://www.macprep.org/","description":"NCCAA board review question bank for student anesthesiologist assistants (SAAs) and Certified Anesthesiologist Assistants (CAAs)."}
     </script>
-    <link rel="icon" type="image/png" sizes="1024x1024" href="/favicon.png?v=2">
-    <link rel="icon" type="image/svg+xml" href="/macprep_icon.svg">
-    <link rel="apple-touch-icon" href="/macprep_icon.png">
-    <link rel="shortcut icon" href="/favicon.png?v=2">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/svg+xml" href="/brand/macprep-mark.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#0D0E10">
+    <meta name="theme-color" content="#146A4A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MACPrep">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Figtree:wght@800&display=swap">
     <style>
         .social-ico{color:var(--muted,#6B7280);transition:color .15s ease;}.social-ico:hover{color:var(--accent,#00A86B);}
         :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;--good:#34D399;--warn:#FBBF24;--bad:#F87171;--info:#60A5FA;}
@@ -57,6 +58,9 @@
         html[data-theme="ember"]{--bg:#1A1214;--panel:#241719;--line:#3A2529;--text:#FBECEE;--text2:#e6cace;--muted:#b38f94;--accent:#F87171;--on-accent:#2a0a0a;--accent-dim:#331619;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#60a5fa;}
         html[data-theme="amber"]{--bg:#19150A;--panel:#231E0F;--line:#3C3318;--text:#FBF4E1;--text2:#e8dcb8;--muted:#b2a176;--accent:#F5B73C;--on-accent:#231903;--accent-dim:#31270b;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
         html[data-theme="espresso"]{--bg:#1A1410;--panel:#241C16;--line:#3A2E23;--text:#F5EBDD;--text2:#ddcab2;--muted:#a8927a;--accent:#D6A06A;--on-accent:#241803;--accent-dim:#332518;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        /* Brand wordmark colors — theme-aware: MAC = ink (light) / paper (dark); Prep = brand green (light) / mint (dark). The pulse tile stays brand green on every theme. */
+        :root{--logo-mac:#0E1512;--logo-prep:#146A4A;}
+        html[data-theme="slate"],html[data-theme="nord"],html[data-theme="ocean"],html[data-theme="indigo"],html[data-theme="contrast"],html[data-theme="graphite"],html[data-theme="ember"],html[data-theme="amber"],html[data-theme="espresso"],html[data-theme="dark"]{--logo-mac:#F5F7F5;--logo-prep:#4FCC8E;}
 
 
 
@@ -84,7 +88,7 @@
         /* Header */
         .header-bar { padding: 16px 32px; border-bottom: 1px solid var(--line);
             display: flex; align-items: center; justify-content: space-between; }
-        .brand-logo { font-family: ui-monospace, monospace; font-size: 22px; font-weight: 800;
+        .brand-logo { font-family: 'Figtree', ui-monospace, system-ui, sans-serif; font-size: 22px; font-weight: 800;
             letter-spacing: -1px; cursor: pointer; }
         .accent { color: var(--accent); }
         .nav { display: flex; gap: 22px; align-items: center; font-family: inherit; font-size: 12px; }
@@ -466,13 +470,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div class="brand-row">
         <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')" style="display:flex;align-items:center;gap:9px;">
             <svg width="26" height="26" viewBox="0 0 512 512" style="display:block;flex:none;" aria-hidden="true">
-                <rect width="512" height="512" rx="112" fill="#0D0E10"/>
-                <g transform="translate(116, 86)">
-                    <path d="M20 20 L260 20 L250 180 C250 270, 140 330, 140 330 C140 330, 30 270, 30 180 Z" fill="none" stroke="#1F2937" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M50 180 L100 185 L130 50 L160 290 L190 185 L230 180" fill="none" stroke="var(--accent)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-                </g>
+                <rect width="512" height="512" rx="112" fill="#146A4A"/>
+                <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span>MAC<span class="accent">Prep</span></span>
+            <span><span style="color:var(--logo-mac);">MAC</span><span style="color:var(--logo-prep);">Prep</span></span>
         </div>
         <button id="sidebar-collapse" class="sb-only" type="button" onclick="MACPrep.toggleSidebar()" aria-label="Collapse menu" title="Collapse menu"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path><path d="M15.5 9.5 13 12l2.5 2.5" class="sb-caret"></path></svg></button>
         </div>

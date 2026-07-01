@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 312" width="820" height="312" role="img" aria-label="MACPrep — the board prep that shows its work">
+  <title>MACPrep Facebook cover</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@500;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap');</style>
+  <rect width="820" height="312" fill="#146A4A"/>
+  <path d="M486 158 H602 L636 74 L690 250 L724 96 L744 158 H820" fill="none" stroke="#8FE3BB" stroke-width="4" opacity="0.26" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(56,66) scale(0.109375)"><rect width="512" height="512" rx="112" fill="#0E1512"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="128" y="112" font-family="Figtree, sans-serif" font-weight="800" font-size="42" letter-spacing="-1"><tspan fill="#FFFFFF">MAC</tspan><tspan fill="#8FE3BB">Prep</tspan></text>
+  <text x="56" y="184" font-family="Figtree, sans-serif" font-weight="500" font-size="24" fill="#FFFFFF">The board prep that shows its work.</text>
+  <text x="56" y="220" font-family="'JetBrains Mono', monospace" font-weight="500" font-size="14" fill="#B7E9CF">NCCAA board review · A real source on every question · One-time $50, lifetime</text>
+</svg>

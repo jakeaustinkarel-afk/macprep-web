@@ -2278,7 +2278,16 @@
     // ---- bootstrap --------------------------------------------------------
     // The theme picker lives in the <head> script; this hook persists the choice
     // to the signed-in user's account so it follows them across devices and logins.
+    // Keep the mobile browser chrome (address bar) in sync with the chosen theme's background.
+    function syncThemeColor() {
+        try {
+            const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+            const m = document.querySelector('meta[name="theme-color"]');
+            if (m && bg) m.setAttribute('content', bg);
+        } catch (e) {}
+    }
     window.onThemeChange = function (id) {
+        syncThemeColor();
         if (!state.token) return;
         apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ theme: id }) }).catch(() => {});
     };
@@ -2394,6 +2403,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
+        syncThemeColor();
         track('page_view');
         // Email-confirmation links land here with the new session in the URL hash.
         const hash = new URLSearchParams((location.hash || '').slice(1));

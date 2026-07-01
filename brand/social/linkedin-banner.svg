@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 396" width="1584" height="396" role="img" aria-label="MACPrep — NCCAA board review, built by a practicing CAA">
+  <title>MACPrep LinkedIn banner</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@500;800&amp;display=swap');</style>
+  <rect width="1584" height="396" fill="#F5F7F5"/>
+  <g transform="translate(80,74) scale(0.1094)"><rect width="512" height="512" rx="112" fill="#146A4A"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="152" y="122" font-family="Figtree, sans-serif" font-weight="800" font-size="46" letter-spacing="-1"><tspan fill="#0E1512">MAC</tspan><tspan fill="#146A4A">Prep</tspan></text>
+  <text x="80" y="210" font-family="Figtree, sans-serif" font-weight="500" font-size="26" fill="#4A554E">NCCAA board review, built by a practicing CAA.</text>
+  <g font-family="Figtree, sans-serif" font-weight="500" font-size="22">
+    <rect x="1284" y="104" width="220" height="46" rx="23" fill="#DCF1E6"/><text x="1394" y="134" text-anchor="middle" fill="#0F5238">Research-cited</text>
+    <rect x="1150" y="166" width="354" height="46" rx="23" fill="#DCF1E6"/><text x="1327" y="196" text-anchor="middle" fill="#0F5238">Rationale on every answer</text>
+    <rect x="1104" y="228" width="400" height="46" rx="23" fill="#DCF1E6"/><text x="1304" y="258" text-anchor="middle" fill="#0F5238">$50 · lifetime · no subscription</text>
+  </g>
+</svg>
