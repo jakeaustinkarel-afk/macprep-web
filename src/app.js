@@ -101,7 +101,7 @@
         if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view', 'leaderboard-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -115,7 +115,7 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
@@ -130,6 +130,7 @@
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
         if (view === 'leaderboard') loadLeaderboard();
+        if (view === 'achievements') renderAchievementsView();
         window.scrollTo(0, 0);
     }
 
@@ -547,20 +548,27 @@
 
     // ---- question of the day + study-activity calendar --------------------
     // One question per day, deterministic by date so everyone sees the same QotD.
+    // The QotD "day" flips at 7:00 AM US Eastern (handles EST/EDT automatically).
+    // Shift "now" back 7h, then read the Eastern calendar date, so the boundary is 07:00 ET.
+    function qotdDayKey() {
+        const shifted = new Date(Date.now() - 7 * 3600 * 1000);
+        try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(shifted); }
+        catch (e) { return shifted.toISOString().slice(0, 10); }
+    }
     function questionOfTheDay() {
         const qs = state.questions || [];
         if (!qs.length) return null;
-        const key = new Date().toISOString().slice(0, 10);
+        const key = qotdDayKey();
         let h = 0; for (let i = 0; i < key.length; i++) { h = (h * 31 + key.charCodeAt(i)) >>> 0; }
         return qs[h % qs.length];
     }
-    function qotdDoneToday() { return ls('macprep_qotd_done') === new Date().toISOString().slice(0, 10); }
+    function qotdDoneToday() { return ls('macprep_qotd_done') === qotdDayKey(); }
     // Launches the QotD as a real 1-question tutor session — identical render, grading,
     // rationale, source, and activity tracking as any quiz question.
     function startQotd() {
         const q = questionOfTheDay();
         if (!q) { toast('Today\'s question is still loading — try again in a moment.'); return; }
-        ls('macprep_qotd_done', new Date().toISOString().slice(0, 10));
+        ls('macprep_qotd_done', qotdDayKey());
         beginSession([q], 'tutor');
         if (state.session) state.session.qotd = true;
     }
@@ -569,16 +577,21 @@
         const q = questionOfTheDay();
         if (!q) { card.classList.add('hidden'); return; }
         card.classList.remove('hidden');
+        // Once answered, collapse to a compact "checked off" state until the 7am-ET reset.
+        if (qotdDoneToday()) {
+            card.innerHTML = '<div style="display:flex;align-items:center;gap:14px;">'
+                + '<span style="width:44px;height:44px;border-radius:50%;background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>'
+                + '<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;color:var(--text);">Question of the day — done ✓</div>'
+                + '<div class="sub" style="font-size:12.5px;margin-top:2px;">A fresh one drops at <strong>7:00&nbsp;AM&nbsp;ET</strong>. <a href="#" onclick="event.preventDefault();MACPrep.startQotd();" style="color:var(--accent);">Review today\'s again →</a></div></div></div>';
+            return;
+        }
         const meta = [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · ');
         const reviewed = q.reviewed ? '<span style="font-size:11px;color:var(--accent);white-space:nowrap;">✓ reviewed by a CAA</span>' : '';
-        const action = qotdDoneToday()
-            ? '<div class="mono" style="font-size:13px;color:var(--muted);">✓ Answered today — a fresh one drops tomorrow. <a href="#" onclick="event.preventDefault();MACPrep.startQotd();" style="color:var(--accent);">Review it again →</a></div>'
-            : '<button class="btn" onclick="MACPrep.startQotd()">Answer today\'s question →</button>';
         card.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><h3 style="margin:0;">Question of the day</h3>' + reviewed + '</div>'
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">Question of the day</span>' + reviewed + '</div>'
             + '<div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;">' + escapeHtml(meta) + '</div>'
             + '<div style="font-size:15px;line-height:1.6;margin-bottom:15px;">' + renderRich(q.stem) + '</div>'
-            + action;
+            + '<button class="btn" onclick="MACPrep.startQotd()">Answer today\'s question →</button>';
     }
     function renderActivityCalendar() {
         const card = $('activity-card'); if (!card) return;
@@ -608,8 +621,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 3;
+    const WHATS_NEW_VERSION = 4;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jun 30', title: 'Achievements to chase', desc: 'A new Achievements page in the menu — 18 badges to unlock, each showing how close you are. And the Question of the Day now sits up top and resets at 7am ET.' },
         { tag: 'New', date: 'Jun 30', title: 'A livelier dashboard', desc: 'Daily-goal rings, streak, achievements, and a Study Modes grid to jump into anything fast.' },
         { tag: 'New', date: 'Jun 30', title: 'Mock Exam', desc: 'Full-length, timed, weighted across all six NCCAA domains — with a per-domain score report.' },
         { tag: 'New', date: 'Jun 29', title: 'Focused quizzes by specialty', desc: 'Tap any specialty to launch a 5 / 10 / 25 / all quiz on just that area.' },
@@ -719,16 +733,21 @@
         const total = s.answered || 0, streak = p.streak || 0, att = s.attempts || 0, corr = s.correct || 0;
         const acc = att ? Math.round((corr / att) * 100) : 0;
         const cov = p.coverage || []; const started = cov.filter((c) => (c.seen || 0) > 0).length; const totalSpec = cov.length || 16;
-        const qtier = (n, title) => ({ icon: 'star', title, met: total >= n, sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
-        return [
-            { icon: 'flag', title: 'Off the mark', met: total >= 1, sub: total >= 1 ? 'Unlocked' : 'Answer your first question' },
-            qtier(100, 'Century — 100 questions'),
-            qtier(500, '500 club'),
-            qtier(1000, 'Four figures — 1,000'),
-            { icon: 'flame', title: 'One week strong', met: streak >= 7, sub: streak >= 7 ? 'Unlocked' : `${7 - streak} day${7 - streak === 1 ? '' : 's'} to go` },
-            { icon: 'target', title: 'Sharpshooter — 80% accuracy', met: att >= 50 && acc >= 80, sub: (att >= 50 && acc >= 80) ? 'Unlocked' : (att < 50 ? `${50 - att} more to qualify` : `at ${acc}% — reach 80%`) },
-            { icon: 'grid', title: 'Full coverage', met: totalSpec > 0 && started >= totalSpec, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` },
-        ];
+        const mastered = cov.filter((c) => c.total && (c.seen || 0) >= c.total).length;
+        const qotdEver = !!ls('macprep_qotd_done');
+        const A = [];
+        const vol = (n, title) => A.push({ cat: 'Volume', icon: 'star', title, met: total >= n, pct: Math.min(100, Math.round((total / n) * 100)), sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
+        A.push({ cat: 'Volume', icon: 'flag', title: 'Off the mark', met: total >= 1, pct: total >= 1 ? 100 : 0, sub: total >= 1 ? 'Unlocked' : 'Answer your first question' });
+        vol(100, 'Century — 100 questions'); vol(500, '500 club'); vol(1000, 'Four figures — 1,000');
+        vol(2500, 'Halfway hero — 2,500'); vol(5000, 'High five — 5,000'); vol(10000, 'Five figures — 10,000');
+        const strk = (n, title) => A.push({ cat: 'Consistency', icon: 'flame', title, met: streak >= n, pct: Math.min(100, Math.round((streak / n) * 100)), sub: streak >= n ? 'Unlocked' : `${n - streak} day${n - streak === 1 ? '' : 's'} to go` });
+        strk(2, 'Two in a row'); strk(7, 'One week strong'); strk(14, 'Fortnight'); strk(30, 'A month deep'); strk(100, 'Centurion streak');
+        const accA = (t, minAtt, title) => A.push({ cat: 'Accuracy', icon: 'target', title, met: att >= minAtt && acc >= t, pct: att < minAtt ? Math.round((att / minAtt) * 100) : Math.min(100, Math.round((acc / t) * 100)), sub: (att >= minAtt && acc >= t) ? 'Unlocked' : (att < minAtt ? `${minAtt - att} more answers to qualify` : `at ${acc}% — reach ${t}%`) });
+        accA(70, 50, 'On target — 70%'); accA(80, 50, 'Sharpshooter — 80%'); accA(90, 100, 'Elite — 90%');
+        A.push({ cat: 'Coverage', icon: 'grid', title: 'Explorer — every specialty', met: totalSpec > 0 && started >= totalSpec, pct: totalSpec ? Math.round((started / totalSpec) * 100) : 0, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` });
+        A.push({ cat: 'Coverage', icon: 'grid', title: 'Specialist — 100% of a specialty', met: mastered >= 1, pct: mastered >= 1 ? 100 : 0, sub: mastered >= 1 ? 'Unlocked' : 'Fully cover any one specialty' });
+        A.push({ cat: 'Coverage', icon: 'star', title: 'Daily habit — Question of the Day', met: qotdEver, pct: qotdEver ? 100 : 0, sub: qotdEver ? 'Unlocked' : 'Answer a Question of the Day' });
+        return A;
     }
     function achIcon(name, met) {
         const P = {
@@ -741,11 +760,34 @@
         const path = met ? (P[name] || P.star) : '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
         return `<span style="width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:${met ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${met ? 'color-mix(in srgb,var(--accent) 40%,var(--line))' : 'var(--line)'};color:${met ? 'var(--accent)' : 'var(--muted)'};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
     }
+    function achChip(a) {
+        const bar = a.met ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:7px;overflow:hidden;"><span style="display:block;height:100%;width:${a.pct || 0}%;background:var(--accent);border-radius:3px;"></span></div>`;
+        return `<div style="display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);${a.met ? '' : 'opacity:.95;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span>${bar}</span></div>`;
+    }
     function renderAchievements() {
         const el = $('achievements-card'); if (!el) return;
         const A = computeAchievements(); const done = A.filter((a) => a.met).length;
-        const chips = A.map((a) => `<div style="display:flex;align-items:center;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);${a.met ? '' : 'opacity:.9;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span></span></div>`).join('');
-        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Achievements</span><span class="mono" style="font-size:12px;color:var(--accent);font-weight:700;">${done} / ${A.length} unlocked</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;">${chips}</div>`;
+        // dashboard preview: the ones closest to unlocking (most motivating), then fill with unlocked
+        const locked = A.filter((a) => !a.met).sort((a, b) => (b.pct || 0) - (a.pct || 0));
+        const unlocked = A.filter((a) => a.met);
+        const preview = locked.slice(0, 6);
+        while (preview.length < 6 && unlocked.length) preview.push(unlocked.shift());
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Achievements · <span style="color:var(--accent);font-weight:700;">${done} / ${A.length}</span></span><a href="#" onclick="event.preventDefault();MACPrep.go('achievements');" class="mono" style="font-size:12px;color:var(--accent);text-decoration:none;">View all →</a></div>`
+            + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;">${preview.map(achChip).join('')}</div>`;
+    }
+    function renderAchievementsView() {
+        const el = $('achievements-body'); if (!el) return;
+        const A = computeAchievements(); const done = A.filter((a) => a.met).length;
+        const C = 2 * Math.PI * 26, off = C * (1 - done / A.length);
+        const ring = `<svg width="70" height="70" viewBox="0 0 70 70" style="flex:none;"><circle cx="35" cy="35" r="26" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="35" cy="35" r="26" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 35 35)"/><text x="35" y="40" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:16px;fill:var(--text);">${done}</text></svg>`;
+        let html = `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;"><div><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;">${done} of ${A.length} unlocked</div><div class="sub" style="font-size:13px;margin-top:3px;">Every one shows how close you are — keep answering to chase them down.</div></div>${ring}</div>`;
+        ['Volume', 'Consistency', 'Accuracy', 'Coverage'].forEach((cat) => {
+            const items = A.filter((a) => a.cat === cat); if (!items.length) return;
+            const d = items.filter((a) => a.met).length;
+            html += `<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:22px 0 12px;">${cat} · <span style="color:var(--accent);">${d}/${items.length}</span></div>`
+                + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">${items.map(achChip).join('')}</div>`;
+        });
+        el.innerHTML = html;
     }
 
     // ---- Study Modes bento + Mock Exam ----

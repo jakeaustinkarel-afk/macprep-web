@@ -467,6 +467,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
             <a id="nav-leaderboard" class="hidden" onclick="MACPrep.go('leaderboard')">League</a>
+            <a id="nav-achievements" class="hidden" onclick="MACPrep.go('achievements')">Achievements</a>
             <a id="nav-whatsnew" class="hidden" onclick="MACPrep.openWhatsNew()" style="position:relative;">What's New<span id="wn-dot" style="display:none;position:absolute;top:-2px;right:-9px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--panel);"></span></a>
             <span id="nav-admin-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
                 <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
@@ -816,7 +817,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <h2 class="view-title" id="dash-greeting">Welcome back</h2>
         <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
         <div class="card" id="momentum-card" style="order:-3;border-color:var(--accent);"></div>
-        <div class="card" id="studymodes-card" style="order:-2;"></div>
+        <div class="card" id="studymodes-card" style="order:-1;"></div>
         <div class="card" id="achievements-card" style="order:4;"></div>
 
         <div class="card hidden" id="resume-card" style="border-color:var(--line);"></div>
@@ -825,7 +826,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 
         <div class="card" id="readiness"></div>
         <div class="card" id="activity-card" style="order:0;"></div>
-        <div class="card hidden" id="qotd-card" style="order:2;border-color:var(--accent);"></div>
+        <div class="card hidden" id="qotd-card" style="order:-2;border-color:var(--accent);"></div>
         <div class="card hidden" id="referral-card" style="order:5;"></div>
 
         <div class="grid cols-3" style="margin-bottom:24px;order:3;">
@@ -1067,6 +1068,12 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div id="leaderboard-body"><div class="mono" style="color:var(--muted);">Loading…</div></div>
     </div>
 
+    <div class="wrap hidden" id="achievements-view">
+        <h2 class="view-title">Achievements</h2>
+        <p class="sub" style="margin:-6px 0 20px;">Badges to chase as you study — each shows exactly how close you are.</p>
+        <div id="achievements-body"><div class="mono" style="color:var(--muted);">Loading…</div></div>
+    </div>
+
     <div class="wrap hidden" id="notebook-view">
         <h2 class="view-title">My Notebook</h2>
         <p class="sub">Your notes and flagged questions, in one searchable place.</p>
@@ -1197,7 +1204,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       @media(max-width:760px){.sm-bento{grid-template-columns:1fr 1fr;grid-auto-rows:auto;}.sm-rec,.sm-mock,.sm-q10,.sm-smart,.sm-missed,.sm-flag,.sm-spec,.sm-build{grid-column:auto;grid-row:auto;}.sm-rec{grid-column:1/3;}}
       @media(max-width:340px){.sm-bento{grid-template-columns:1fr;}.sm-rec{grid-column:auto;}}
       #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
-      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
+      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#qotd-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
       @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
       /* Desktop app shell: the top header becomes a fixed LEFT SIDEBAR for signed-in
