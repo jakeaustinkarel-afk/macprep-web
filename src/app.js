@@ -120,7 +120,7 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
@@ -335,6 +335,22 @@
 
     function answeredIdSet() {
         return new Set((state.profile && state.profile.answered_ids) || []);
+    }
+
+    // Fisher-Yates in place — the one shuffle used everywhere.
+    function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+    // Order a pool so questions the user HASN'T answered yet come first (each group
+    // independently shuffled). With a 1,500+ bank this means you keep drawing fresh
+    // questions until the bank is exhausted, instead of random repeats — and because
+    // it's a fresh random shuffle every call, two people starting the same quiz still
+    // get different question sets. Falls back to a plain shuffle for brand-new users.
+    function unseenFirst(pool) {
+        const seen = answeredIdSet();
+        if (!seen.size) return shuffleArr(pool.slice());
+        const fresh = [], done = [];
+        for (const q of pool) { (seen.has(q.id) ? done : fresh).push(q); }
+        return shuffleArr(fresh).concat(shuffleArr(done));
     }
 
     function renderReadiness() {
@@ -1115,9 +1131,9 @@
     function startQuick(n) {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
-        const pool = (state.questions || []).slice();
+        let pool = (state.questions || []).slice();
         if (!pool.length) { toast('No questions loaded yet — try again in a moment.'); return; }
-        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        pool = unseenFirst(pool); // fresh questions first, freshly shuffled
         let k = Math.min(n, pool.length); if (!usage.unlimited) k = Math.min(k, usage.remaining);
         beginSession(pool.slice(0, k));
     }
@@ -1342,9 +1358,9 @@
         all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
         const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
         let pool = [];
-        Object.keys(byDom).forEach((d) => { const share = Math.max(1, Math.round(n * (byDom[d].length / all.length))); pool = pool.concat(shuffle(byDom[d].slice()).slice(0, share)); });
+        Object.keys(byDom).forEach((d) => { const share = Math.max(1, Math.round(n * (byDom[d].length / all.length))); pool = pool.concat(unseenFirst(byDom[d]).slice(0, share)); }); // fresh questions first per domain
         const seen = new Set(pool.map((q) => q.id));
-        if (pool.length < n) { pool = pool.concat(shuffle(all.slice()).filter((q) => !seen.has(q.id)).slice(0, n - pool.length)); }
+        if (pool.length < n) { pool = pool.concat(unseenFirst(all.filter((q) => !seen.has(q.id))).slice(0, n - pool.length)); }
         shuffle(pool); pool = pool.slice(0, n);
         if (!pool.length) { toast('No questions available for a mock exam yet.'); return; }
         try { track('mock_exam_start', { size: pool.length }); } catch (e) {}
@@ -1568,9 +1584,7 @@
         if (!usage.unlimited) n = Math.min(n, usage.remaining);
         n = Math.min(n, pool.length);
 
-        const shuffled = pool.slice();
-        for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
-        beginSession(shuffled.slice(0, n));
+        beginSession(unseenFirst(pool).slice(0, n)); // fresh questions first, freshly shuffled
     }
 
     // Diagnostic / readiness assessment: a balanced sample across the 6 blueprint
@@ -1904,8 +1918,48 @@
     }
     function toggleLabs() { const m = $('labs-modal'); if (m) m.classList.toggle('hidden'); }
 
+    // ---- In-quiz calculator + medical unit conversions -----------------------
+    let calcExpr = '';
+    function toggleCalc() { const m = $('calc-modal'); if (!m) return; m.classList.toggle('hidden'); if (!m.classList.contains('hidden')) calcRender(); }
+    function calcRender() { const d = $('calc-display'); if (d) d.value = calcExpr || '0'; }
+    function calc(key) {
+        if (key === 'C') { calcExpr = ''; return calcRender(); }
+        if (key === 'back') { calcExpr = (calcExpr === 'Error' ? '' : calcExpr.slice(0, -1)); return calcRender(); }
+        if (key === '=') {
+            // Evaluate a strictly math-only string. The whitelist (digits/operators/
+            // parens/space only) makes it impossible to form identifiers or calls, so
+            // Function() here can only ever do arithmetic.
+            const safe = calcExpr.replace(/×/g, '*').replace(/÷/g, '/').replace(/[^0-9.+\-*/() ]/g, '');
+            if (!safe.trim()) return calcRender();
+            try { const v = Function('"use strict";return (' + safe + ')')(); calcExpr = (v == null || !isFinite(v)) ? 'Error' : String(Math.round(v * 1e6) / 1e6); }
+            catch (e) { calcExpr = 'Error'; }
+            return calcRender();
+        }
+        if (calcExpr === 'Error') calcExpr = '';
+        calcExpr += key;
+        calcRender();
+    }
+    // Bidirectional medical conversions: editing one field updates its partner.
+    function calcConv(from) {
+        const get = (id) => { const el = $(id); const v = parseFloat(el && el.value); return isFinite(v) ? v : null; };
+        const set = (id, v) => { const el = $(id); if (el) el.value = (v == null) ? '' : String(Math.round(v * 100) / 100); };
+        const map = {
+            cm: () => set('cv-in', nz(get('cv-cm'), (v) => v / 2.54)),
+            in: () => set('cv-cm', nz(get('cv-in'), (v) => v * 2.54)),
+            kg: () => set('cv-lb', nz(get('cv-kg'), (v) => v * 2.2046226)),
+            lb: () => set('cv-kg', nz(get('cv-lb'), (v) => v / 2.2046226)),
+            c: () => set('cv-f', nz(get('cv-c'), (v) => v * 9 / 5 + 32)),
+            f: () => set('cv-c', nz(get('cv-f'), (v) => (v - 32) * 5 / 9)),
+        };
+        (map[from] || (() => {}))();
+    }
+    function nz(v, fn) { return v == null ? null : fn(v); }
+
     // Apply the graded result (highlights, rationale, explanation) — used both when
     // grading live and when re-rendering an already-answered question.
+    // Fixed correct/incorrect colors — deliberately NOT theme tokens, so "Correct"
+    // reads green and "Incorrect" reads red on every theme the user picks.
+    const GRADE_GREEN = '#16a34a', GRADE_RED = '#dc2626';
     function applyGradedView(data, selectedIndex) {
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
         const rationales = data.rationales || [];
@@ -1922,7 +1976,12 @@
             if (rationales[idx]) {
                 const r = document.createElement('div');
                 r.style.cssText = 'font-family:inherit;font-size:13px;color:var(--muted);margin:8px 0 2px;padding-left:34px;line-height:1.5;';
-                r.textContent = (idx === data.correctIndex ? '✓ ' : '✗ ') + rationales[idx];
+                const isC = idx === data.correctIndex;
+                const col = isC ? GRADE_GREEN : GRADE_RED;
+                const mark = `<span style="color:${col};font-weight:700;">${isC ? '✓' : '✗'}</span>`;
+                // color just the leading "Correct"/"Incorrect" label; keep the rest readable
+                const txt = escapeHtml(rationales[idx]).replace(/^(Correct|Incorrect)\b/i, `<span style="color:${col};font-weight:700;">$1</span>`);
+                r.innerHTML = mark + ' ' + txt;
                 anchor.insertAdjacentElement('afterend', r); anchor = r;
             }
             if (showDist && typeof dist[idx] === 'number') {
@@ -1936,8 +1995,8 @@
             }
         });
         const verdict = data.correct
-            ? '<span style="color:var(--accent);font-weight:bold;">CORRECT</span>'
-            : '<span style="color:var(--bad);font-weight:bold;">INCORRECT</span>';
+            ? `<span style="color:${GRADE_GREEN};font-weight:bold;">CORRECT</span>`
+            : `<span style="color:${GRADE_RED};font-weight:bold;">INCORRECT</span>`;
         const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
         let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
         const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
@@ -2332,9 +2391,8 @@
         closeSpecialtyPicker();
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
-        const pool = specialtyPool(cat).slice();
+        const pool = unseenFirst(specialtyPool(cat)); // fresh questions first, freshly shuffled
         if (!pool.length) { toast('No questions available for that specialty yet.'); return; }
-        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         let n = (count === 'all') ? pool.length : Math.min(count, pool.length);
         if (!usage.unlimited) n = Math.min(n, usage.remaining);
         n = Math.min(n, pool.length);
@@ -2749,6 +2807,8 @@
     function handleQuizKey(e) {
         const s = state.session;
         if (!s || $('quiz-view').classList.contains('hidden')) return;
+        // An open in-quiz modal (calculator / lab values) captures keys — don't answer behind it.
+        if (['calc-modal', 'labs-modal'].some((id) => $(id) && !$(id).classList.contains('hidden'))) return;
         const tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return; // don't hijack typing
         const k = e.key.toLowerCase();
@@ -2889,7 +2949,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
-        zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
+        zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
 
     document.addEventListener('keydown', handleQuizKey);

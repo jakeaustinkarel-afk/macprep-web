@@ -486,6 +486,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a id="nav-notebook" class="hidden nav-app" onclick="MACPrep.go('notebook')" title="Notebook"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2-1.4-4.7-1.9-8-1v13c3.3-.9 6-.4 8 1 2-1.4 4.7-1.9 8-1V5c-3.3-.9-6-.4-8 1z"></path><path d="M12 6v13"></path></svg><span class="lbl">Notebook</span></a>
             <a id="nav-leaderboard" class="hidden nav-app" onclick="MACPrep.go('leaderboard')" title="League"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5h8V8a4 4 0 0 1-8 0V4.5z"></path><path d="M8 6H5.5v1.2A2.5 2.5 0 0 0 8 9.7"></path><path d="M16 6h2.5v1.2A2.5 2.5 0 0 1 16 9.7"></path><path d="M9.5 20h5"></path><path d="M12 12.5V20"></path></svg><span class="lbl">League</span></a>
             <a id="nav-achievements" class="hidden nav-app" onclick="MACPrep.go('achievements')" title="Achievements"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5"></circle><path d="M9 13.4 7.5 21l4.5-2.7L16.5 21 15 13.4"></path></svg><span class="lbl">Achievements</span></a>
+            <a id="nav-arcade" class="hidden nav-app" onclick="MACPrep.openArcadePicker()" title="Arcade"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg><span class="lbl">Arcade</span></a>
             <a id="nav-redeem" class="hidden nav-app" onclick="MACPrep.goRedeem()" title="Redeem a class or cohort code" style="color:var(--accent);"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><rect x="2.5" y="7" width="19" height="5" rx="1"></rect><path d="M12 21V7"></path><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg><span class="lbl">Redeem code</span></a>
             <div class="nav-sec sb-only">Updates</div>
             <a id="nav-whatsnew" class="hidden nav-app" onclick="MACPrep.openWhatsNew()" title="What's New" style="position:relative;"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z"></path></svg><span class="lbl">What's New</span><span id="wn-dot" style="display:none;position:absolute;top:50%;right:12px;transform:translateY(-50%);width:7px;height:7px;border-radius:50%;background:var(--accent);"></span></a>
@@ -968,6 +969,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
                 <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">☆ Flag for review</button>
                 <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">🧪 Lab values</button>
+                <button type="button" onclick="MACPrep.toggleCalc()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">🧮 Calculator</button>
                 <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</span>
             </div>
 
@@ -1108,6 +1110,55 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
           <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Hematology</div><div style="font-size:13px;color:var(--text2);line-height:1.7;">Hgb 12–17 g/dL · Hct 36–50% · Platelets 150–400 ×10⁹/L · WBC 4–11 ×10⁹/L</div></div>
           <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Coagulation</div><div style="font-size:13px;color:var(--text2);line-height:1.7;">PT 11–13.5 s · INR 0.8–1.1 · aPTT 25–35 s · Fibrinogen 200–400 mg/dL</div></div>
           <div><div class="mono" style="color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Other</div><div style="font-size:13px;color:var(--text2);line-height:1.7;">Albumin 3.5–5.0 g/dL · Total protein 6–8 g/dL · Total Ca²⁺ correction +0.8 mg/dL per 1 g/dL albumin drop</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="calc-modal" class="hidden" onclick="if(event.target===this)MACPrep.toggleCalc()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <style>
+        .calc-key{padding:13px 0;font-size:16px;font-family:ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--text);cursor:pointer;transition:background .12s ease,transform .06s ease;}
+        .calc-key:hover{background:var(--line);}
+        .calc-key:active{transform:translateY(1px);}
+        .calc-op{color:var(--accent);font-weight:700;}
+        .calc-fn{color:var(--muted);font-size:14px;}
+        .calc-eq{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700;}
+        .calc-conv-in{width:100%;box-sizing:border-box;padding:7px 9px;background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--text);font-size:14px;font-family:ui-monospace,monospace;text-align:right;}
+        .calc-conv-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+        .calc-conv-row .u{flex:none;width:20px;}
+      </style>
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:330px;width:100%;max-height:90vh;overflow:auto;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h3 style="margin:0;font-size:17px;">Calculator</h3>
+          <button type="button" onclick="MACPrep.toggleCalc()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <input id="calc-display" type="text" value="0" readonly aria-label="Calculator display" style="width:100%;box-sizing:border-box;text-align:right;font-family:ui-monospace,monospace;font-size:23px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--text);margin-bottom:10px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
+          <button type="button" class="calc-key calc-fn" onclick="MACPrep.calc('C')">C</button>
+          <button type="button" class="calc-key calc-fn" onclick="MACPrep.calc('(')">(</button>
+          <button type="button" class="calc-key calc-fn" onclick="MACPrep.calc(')')">)</button>
+          <button type="button" class="calc-key calc-op" onclick="MACPrep.calc('/')">÷</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('7')">7</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('8')">8</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('9')">9</button>
+          <button type="button" class="calc-key calc-op" onclick="MACPrep.calc('*')">×</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('4')">4</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('5')">5</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('6')">6</button>
+          <button type="button" class="calc-key calc-op" onclick="MACPrep.calc('-')">−</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('1')">1</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('2')">2</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('3')">3</button>
+          <button type="button" class="calc-key calc-op" onclick="MACPrep.calc('+')">+</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('0')">0</button>
+          <button type="button" class="calc-key" onclick="MACPrep.calc('.')">.</button>
+          <button type="button" class="calc-key calc-fn" onclick="MACPrep.calc('back')">⌫</button>
+          <button type="button" class="calc-key calc-eq" onclick="MACPrep.calc('=')">=</button>
+        </div>
+        <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin:17px 0 9px;">Quick conversions</div>
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div class="calc-conv-row"><input id="cv-cm" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('cm')"><span class="u">cm</span><span style="flex:none;">⇄</span><input id="cv-in" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('in')"><span class="u">in</span></div>
+          <div class="calc-conv-row"><input id="cv-kg" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('kg')"><span class="u">kg</span><span style="flex:none;">⇄</span><input id="cv-lb" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('lb')"><span class="u">lb</span></div>
+          <div class="calc-conv-row"><input id="cv-c" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('c')"><span class="u">°C</span><span style="flex:none;">⇄</span><input id="cv-f" class="calc-conv-in" type="number" inputmode="decimal" placeholder="0" oninput="MACPrep.calcConv('f')"><span class="u">°F</span></div>
         </div>
       </div>
     </div>
