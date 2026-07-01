@@ -628,9 +628,11 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 4;
+    const WHATS_NEW_VERSION = 5;
     const WHATS_NEW = [
-        { tag: 'New', date: 'Jun 30', title: 'Achievements to chase', desc: 'A new Achievements page in the menu — 18 badges to unlock, each showing how close you are. And the Question of the Day now sits up top and resets at 7am ET.' },
+        { tag: 'New', date: 'Jul 1', title: '20+ more achievements', desc: 'New badges to chase across Coverage, Mastery, and Milestones — deep-dive a specialty, cover the whole bank, ace three domains, finish Mock Exams, hit peak readiness, and more.' },
+        { tag: 'New', date: 'Jul 1', title: 'Mock Exam matches the real thing', desc: 'The Mock Exam is now 180 questions in 220 minutes — the exact length and timing of the NCCAA board exam.' },
+        { tag: 'New', date: 'Jun 30', title: 'Achievements to chase', desc: 'A new Achievements page in the menu — badges to unlock, each showing how close you are. And the Question of the Day now sits up top and resets at 7am ET.' },
         { tag: 'New', date: 'Jun 30', title: 'A livelier dashboard', desc: 'Daily-goal rings, streak, achievements, and a Study Modes grid to jump into anything fast.' },
         { tag: 'New', date: 'Jun 30', title: 'Mock Exam', desc: 'Full-length, timed, weighted across all six NCCAA domains — with a per-domain score report.' },
         { tag: 'New', date: 'Jun 29', title: 'Focused quizzes by specialty', desc: 'Tap any specialty to launch a 5 / 10 / 25 / all quiz on just that area.' },
@@ -825,6 +827,45 @@
         A.push({ cat: 'Coverage', icon: 'grid', title: 'Explorer — every specialty', met: totalSpec > 0 && started >= totalSpec, pct: totalSpec ? Math.round((started / totalSpec) * 100) : 0, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` });
         A.push({ cat: 'Coverage', icon: 'grid', title: 'Specialist — 100% of a specialty', met: mastered >= 1, pct: mastered >= 1 ? 100 : 0, sub: mastered >= 1 ? 'Unlocked' : 'Fully cover any one specialty' });
         A.push({ cat: 'Coverage', icon: 'star', title: 'Daily habit — Question of the Day', met: qotdEver, pct: qotdEver ? 100 : 0, sub: qotdEver ? 'Unlocked' : 'Answer a Question of the Day' });
+
+        // --- expanded achievements (2026-07-01) ---
+        vol(25, 'Warming up — 25'); vol(50, 'Fifty in'); vol(250, 'Quarter-K — 250');
+        strk(50, 'Half-century — 50-day streak'); strk(200, 'Unstoppable — 200 days');
+        accA(95, 200, 'Marksman — 95%'); accA(80, 500, 'Locked in — 80% over 500');
+
+        // coverage extras — all derived from per-specialty seen/total (permanent, never re-locks)
+        const covByCat = {}; cov.forEach((c) => { covByCat[c.category] = c.answered || 0; });
+        const maxSeen = cov.reduce((m, c) => Math.max(m, c.answered || 0), 0);
+        const sumSeen = cov.reduce((a, c) => a + (c.answered || 0), 0);
+        const sumTot = cov.reduce((a, c) => a + (c.total || 0), 0);
+        const bankPct = sumTot ? Math.round((sumSeen / sumTot) * 100) : 0;
+        const covPush = (icon, title, met, pct, sub) => A.push({ cat: 'Coverage', icon, title, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
+        covPush('grid', 'Broad start — 4 specialties', started >= 4, Math.round((started / 4) * 100), `${started} / 4 started`);
+        covPush('grid', 'Getting around — 8 specialties', started >= 8, Math.round((started / 8) * 100), `${started} / 8 started`);
+        covPush('layers', 'Deep diver — 50 in one specialty', maxSeen >= 50, Math.round((maxSeen / 50) * 100), `best is ${maxSeen} / 50`);
+        covPush('grid', 'Double specialist — 2 at 100%', mastered >= 2, Math.round((mastered / 2) * 100), `${mastered} / 2 fully covered`);
+        covPush('grid', 'Polymath — 5 at 100%', mastered >= 5, Math.round((mastered / 5) * 100), `${mastered} / 5 fully covered`);
+        covPush('trophy', 'Grand tour — every specialty at 100%', totalSpec > 0 && mastered >= totalSpec, Math.round((mastered / (totalSpec || 16)) * 100), `${mastered} / ${totalSpec} fully covered`);
+        covPush('layers', 'Halfway through the bank', bankPct >= 50, Math.round((bankPct / 50) * 100), `${bankPct}% of the bank seen`);
+        covPush('trophy', 'Completionist — the whole bank', sumTot > 0 && sumSeen >= sumTot, bankPct, `${bankPct}% of the bank seen`);
+
+        // mastery — per-specialty accuracy, needs 20+ answered in that specialty to qualify
+        const bySpec = p.by_specialty || [];
+        const domHi = bySpec.filter((r) => (r.accuracy || 0) >= 85 && (covByCat[r.category] || 0) >= 20).length;
+        const masPush = (title, met, pct, sub) => A.push({ cat: 'Mastery', icon: 'target', title, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
+        masPush('Domain expert — 85% in a specialty', domHi >= 1, 0, '85%+ in any specialty (20+ answered)');
+        masPush('Triple threat — 85% in three', domHi >= 3, Math.round((domHi / 3) * 100), `${domHi} / 3 specialties at 85%+`);
+
+        // milestones — readiness, combos, and mock exams
+        const rdy = Math.max(0, Math.min(100, p.readiness || 0));
+        const mocks = parseInt(ls('macprep_mock_count') || '0', 10) || 0;
+        const milePush = (icon, title, met, pct, sub) => A.push({ cat: 'Milestones', icon, title, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
+        milePush('gauge', 'Exam-ready — 80% readiness', rdy >= 80, Math.round((rdy / 80) * 100), `readiness ${rdy}% / 80%`);
+        milePush('gauge', 'Peak form — 95% readiness', rdy >= 95, Math.round((rdy / 95) * 100), `readiness ${rdy}% / 95%`);
+        milePush('star', 'Scholar — 1,000 answered at 80%+', total >= 1000 && acc >= 80, Math.round(Math.min(total / 1000, acc / 80) * 100), total < 1000 ? `${(1000 - total).toLocaleString()} more answers, then 80%+` : `at ${acc}% — reach 80%`);
+        milePush('flame', 'The grind — 30-day streak + 2,500', streak >= 30 && total >= 2500, Math.round(Math.min(streak / 30, total / 2500) * 100), 'a 30-day streak and 2,500 answered');
+        milePush('clipboard', 'Dress rehearsal — finish a Mock Exam', mocks >= 1, 0, 'complete a full Mock Exam');
+        milePush('clipboard', 'Mock master — three Mock Exams', mocks >= 3, Math.round((mocks / 3) * 100), `${mocks} / 3 completed`);
         return A;
     }
     function achIcon(name, met) {
@@ -834,6 +875,10 @@
             flame: '<path d="M12 2c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .3-2 1-3-2 1-4 3-4 6a7 7 0 0 0 14 0c0-6-5-8-7-11z"/>',
             target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
             grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+            trophy: '<path d="M8 4h8v4a4 4 0 0 1-8 0V4z"/><path d="M8 5.5H5.5V7a2.5 2.5 0 0 0 2.5 2.5"/><path d="M16 5.5h2.5V7A2.5 2.5 0 0 1 16 9.5"/><path d="M9.5 20h5"/><path d="M12 12.5V20"/>',
+            layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+            gauge: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 14l4-4"/>',
+            clipboard: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9.5 4V3h5v1"/><path d="M9 11h6M9 15h4"/>',
         };
         const path = met ? (P[name] || P.star) : '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
         return `<span style="width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:${met ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${met ? 'color-mix(in srgb,var(--accent) 40%,var(--line))' : 'var(--line)'};color:${met ? 'var(--accent)' : 'var(--muted)'};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
@@ -859,7 +904,7 @@
         const C = 2 * Math.PI * 26, off = C * (1 - done / A.length);
         const ring = `<svg width="70" height="70" viewBox="0 0 70 70" style="flex:none;"><circle cx="35" cy="35" r="26" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="35" cy="35" r="26" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 35 35)"/><text x="35" y="40" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:16px;fill:var(--text);">${done}</text></svg>`;
         let html = `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;"><div><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;">${done} of ${A.length} unlocked</div><div class="sub" style="font-size:13px;margin-top:3px;">Every one shows how close you are — keep answering to chase them down.</div></div>${ring}</div>`;
-        ['Volume', 'Consistency', 'Accuracy', 'Coverage'].forEach((cat) => {
+        ['Volume', 'Consistency', 'Accuracy', 'Coverage', 'Mastery', 'Milestones'].forEach((cat) => {
             const items = A.filter((a) => a.cat === cat); if (!items.length) return;
             const d = items.filter((a) => a.met).length;
             html += `<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:22px 0 12px;">${cat} · <span style="color:var(--accent);">${d}/${items.length}</span></div>`
@@ -1694,6 +1739,8 @@
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         const allFailed = answeredIdx.length > 0 && s.answered === 0;
         $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
+        // Count completed mock exams (drives the "Dress rehearsal" / "Mock master" achievements).
+        if (s.mock && !allFailed) { try { localStorage.setItem('macprep_mock_count', String((parseInt(localStorage.getItem('macprep_mock_count') || '0', 10) || 0) + 1)); } catch (e) {} }
         if (allFailed) {
             $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
         } else {
