@@ -340,8 +340,12 @@
         const exam = (p.days_to_exam != null) ? p.days_to_exam : null;
         const trend = p.trend || [];
         const spark = trend.length
-            ? trend.map((t) => `<span title="${t.day}: ${t.accuracy}%" style="display:inline-block;width:14px;height:${Math.max(6, Math.round(t.accuracy * 0.6))}px;background:${t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)'};margin-right:4px;vertical-align:bottom;border-radius:3px;"></span>`).join('')
-            : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:46px;"><span style="font-size:18px;">📈</span> Answer a few questions — your accuracy trend shows up here.</div>';
+            ? `<div style="display:flex;align-items:flex-end;gap:7px;height:100%;">` + trend.map((t) => {
+                const h = Math.max(8, Math.round(t.accuracy * 0.44));
+                const c = t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)';
+                return `<div title="${t.day}: ${t.accuracy}%" style="flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;"><span style="width:100%;max-width:26px;height:${h}px;background:${c};border-radius:4px 4px 2px 2px;"></span></div>`;
+            }).join('') + `</div>`
+            : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:100%;"><span style="font-size:18px;">📈</span> Answer a few questions — your accuracy trend shows up here.</div>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
             ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
@@ -359,34 +363,41 @@
         } else if (answeredToday > 0) {
             goalLine = `<div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
         }
-        const examLine = exam != null
-            ? (exam >= 0 ? `<div class="stat"><div class="n">${exam}</div><div class="l">Days to exam</div></div>` : `<div class="stat"><div class="n">—</div><div class="l">Exam date passed</div></div>`)
+        const metaL = 'font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);';
+        const numS = 'font-weight:800;font-size:20px;line-height:1;';
+        const examMetric = (exam != null)
+            ? (exam >= 0
+                ? `<div style="${numS}">${exam}</div><div class="mono" style="${metaL}">Days to exam</div>`
+                : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Exam date passed</div>`)
             : (p.study_goal === 'practice'
-                ? `<div class="stat"><div class="n">${answeredToday}/10</div><div class="l">Today's goal</div></div>`
-                : `<div class="stat"><div class="n">—</div><div class="l">Add an exam date anytime</div></div>`);
-        const C = 213.6; // ring circumference, 2πr with r=34
+                ? `<div style="${numS}">${answeredToday}/10</div><div class="mono" style="${metaL}">Today's goal</div>`
+                : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Add an exam date</div>`);
+        const C = 226.2; // ring circumference, 2πr with r=36
         const ringOff = C * (1 - Math.max(0, Math.min(100, readiness)) / 100);
-        const streakHtml = streak
-            ? `<div class="n" style="color:var(--accent);">${streak} <span style="display:inline-block;animation:flamePulse 1.6s ease-in-out infinite;">🔥</span></div><div class="l">Day streak</div>`
-            : `<div class="n">0</div><div class="l">Day streak — start today!</div>`;
         el.innerHTML = `<h3>Exam readiness</h3>
-            <div class="grid cols-3" style="margin-bottom:14px;align-items:center;">
-                <div class="stat" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <svg viewBox="0 0 80 80" width="118" height="118" style="display:block;">
-                        <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line)" stroke-width="8"></circle>
-                        <circle class="ring-fill" cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 40 40)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
-                        <text x="40" y="46" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:18px;fill:var(--text);">${readiness}%</text>
-                    </svg>
-                    <div class="l">Readiness</div>
+            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:16px;">
+                <svg viewBox="0 0 84 84" width="118" height="118" style="display:block;flex:none;">
+                    <circle cx="42" cy="42" r="36" fill="none" stroke="var(--line)" stroke-width="8"></circle>
+                    <circle class="ring-fill" cx="42" cy="42" r="36" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 42 42)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
+                    <text x="42" y="45" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:21px;fill:var(--text);">${readiness}%</text>
+                    <text x="42" y="58" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1.5px;">READY</text>
+                </svg>
+                <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:16px;">
+                    <div style="display:flex;align-items:center;gap:11px;">
+                        <span style="font-size:24px;line-height:1;${streak ? 'display:inline-block;animation:flamePulse 1.6s ease-in-out infinite;' : 'filter:grayscale(1);opacity:.5;'}">🔥</span>
+                        <div><div style="${numS}color:${streak ? 'var(--accent)' : 'var(--muted)'};">${streak}</div><div class="mono" style="${metaL}">Day streak${streak ? '' : ' — start today'}</div></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:11px;">
+                        <span style="font-size:22px;line-height:1;">📅</span>
+                        <div>${examMetric}</div>
+                    </div>
                 </div>
-                <div class="stat">${streakHtml}</div>
-                ${examLine}
             </div>
             ${planLine}
             ${goalLine}
-            <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Accuracy — last 7 active days</div>
-            <div style="height:64px;">${spark}</div>
-            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:12px;font-size:13px;">📊 Take a diagnostic — get your readiness score</button>`;
+            <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Accuracy — last 7 active days</div>
+            <div style="height:52px;margin-bottom:2px;">${spark}</div>
+            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:14px;font-size:13px;width:100%;">📊 Take a diagnostic — get your readiness score</button>`;
         const ring = el.querySelector('.ring-fill');
         if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
     }
@@ -733,9 +744,12 @@
     // XP + numeric levels (v1: derived from real server stats, so it's retroactive and can't be faked).
     // XP = 4 per question answered + 8 more for each correct (an attempt = 4 XP, a correct answer = 12).
     // Cost to go from level L to L+1 = 50 + (L-1)*25, capped at 100 — fast early levels, gently steepening.
+    // Bonus XP earned from quests/chests (accumulates on top of the stats-derived XP).
+    function bonusXp() { try { return parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; } catch (e) { return 0; } }
+    function addBonusXp(n) { try { localStorage.setItem('macprep_bonus_xp', String(bonusXp() + (n || 0))); } catch (e) {} }
     function xpLevel(p) {
         const s = (p && p.stats) || {};
-        const totalXp = (s.answered || 0) * 4 + (s.correct || 0) * 8;
+        const totalXp = (s.answered || 0) * 4 + (s.correct || 0) * 8 + bonusXp();
         let lvl = 1, rem = totalXp, step = 50;
         while (lvl < 100 && rem >= step) { rem -= step; lvl++; step += 25; }
         const atMax = lvl >= 100;
@@ -797,19 +811,31 @@
         const d = getDaily();
         if (patch.answered) d.answered = (d.answered || 0) + patch.answered;
         if (patch.correct) d.correct = (d.correct || 0) + patch.correct;
+        if (patch.specialty) { d.specs = d.specs || []; if (d.specs.indexOf(patch.specialty) < 0) d.specs.push(patch.specialty); }
         saveDaily(d);
     }
     function questDayCount() { try { return (JSON.parse(localStorage.getItem('macprep_questdays') || '[]') || []).length; } catch (e) { return 0; } }
+    const QUEST_XP = 15, CHEST_XP = 50;
     function dailyQuests() {
         const p = state.profile || {}, d = getDaily();
         const answeredToday = Math.max(p.answered_today || 0, d.answered || 0);
         const quests = [
-            { icon: 'flame', label: 'Answer 10 questions', cur: Math.min(answeredToday, 10), target: 10 },
-            { icon: 'target', label: 'Get 8 correct', cur: Math.min(d.correct || 0, 8), target: 8 },
-            { icon: 'star', label: 'Answer the Question of the Day', cur: qotdDoneToday() ? 1 : 0, target: 1 },
+            { icon: 'flame', label: 'Answer 10 questions', cur: Math.min(answeredToday, 10), target: 10, xp: QUEST_XP },
+            { icon: 'star', label: 'Answer 25 questions', cur: Math.min(answeredToday, 25), target: 25, xp: QUEST_XP },
+            { icon: 'target', label: 'Get 8 correct', cur: Math.min(d.correct || 0, 8), target: 8, xp: QUEST_XP },
+            { icon: 'grid', label: 'Practice 2 specialties', cur: Math.min((d.specs || []).length, 2), target: 2, xp: QUEST_XP },
+            { icon: 'star', label: 'Answer the Question of the Day', cur: qotdDoneToday() ? 1 : 0, target: 1, xp: QUEST_XP },
         ];
         quests.forEach((q) => { q.done = q.cur >= q.target; });
         return { quests, allDone: quests.every((q) => q.done), chestOpened: !!d.chest };
+    }
+    // Grant XP for each quest the moment it completes (once each). Returns XP gained this pass.
+    function grantQuestRewards(dq) {
+        const d = getDaily(); d.rewarded = d.rewarded || [];
+        let gained = 0;
+        dq.quests.forEach((q, i) => { if (q.done && d.rewarded.indexOf(i) < 0) { d.rewarded.push(i); gained += q.xp; } });
+        if (gained) { addBonusXp(gained); saveDaily(d); }
+        return gained;
     }
     const CHEST_TIPS = [
         'Reviewing a question you missed is worth about twice as much as re-reading one you got right.',
@@ -825,16 +851,20 @@
         const dq = dailyQuests();
         if (!dq.allDone || dq.chestOpened) return;
         const d = getDaily(); d.chest = true; saveDaily(d);
+        addBonusXp(CHEST_XP);
         try {
             const days = JSON.parse(localStorage.getItem('macprep_questdays') || '[]');
             const k = qotdDayKey();
             if (days.indexOf(k) < 0) { days.push(k); localStorage.setItem('macprep_questdays', JSON.stringify(days.slice(-400))); }
         } catch (e) {}
-        renderDailyQuests();
+        try { toast('+' + CHEST_XP + ' XP — chest opened!'); } catch (e) {}
+        renderDailyQuests(); renderMomentum(); checkLevelUp();
     }
     function renderDailyQuests() {
         const el = $('dailyquests-card'); if (!el) return;
         const dq = dailyQuests();
+        const gained = grantQuestRewards(dq);
+        if (gained) { try { toast('+' + gained + ' XP earned!'); } catch (e) {} renderMomentum(); }
         const doneCount = dq.quests.filter((q) => q.done).length;
         const row = (q) => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;">
             <span style="width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${q.done ? 'var(--accent)' : 'var(--bg)'};border:1px solid ${q.done ? 'var(--accent)' : 'var(--line)'};color:${q.done ? 'var(--on-accent)' : 'var(--muted)'};font-size:14px;">${q.done ? '✓' : ''}</span>
@@ -842,16 +872,16 @@
                 <div style="font-size:13.5px;font-weight:600;color:${q.done ? 'var(--muted)' : 'var(--text)'};${q.done ? 'text-decoration:line-through;' : ''}">${q.label}</div>
                 ${q.done ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden;"><span style="display:block;height:100%;width:${Math.round((q.cur / q.target) * 100)}%;background:var(--accent);border-radius:3px;"></span></div>`}
             </div>
-            <span class="mono" style="font-size:11px;color:var(--muted);flex:none;">${q.cur}/${q.target}</span></div>`;
+            <span class="mono" style="font-size:11px;flex:none;color:${q.done ? 'var(--accent)' : 'var(--muted)'};">${q.done ? '+' + q.xp + ' XP' : q.cur + '/' + q.target}</span></div>`;
         let chest = '';
         if (dq.allDone && !dq.chestOpened) {
             chest = `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:14px;text-align:center;">
-                <div class="sub" style="font-size:13px;margin-bottom:10px;">All quests done — open your daily chest!</div>
+                <div class="sub" style="font-size:13px;margin-bottom:10px;">All 5 quests done — open your chest for <strong style="color:var(--accent);">+${CHEST_XP} XP</strong>!</div>
                 <button class="btn" type="button" onclick="MACPrep.openDailyChest()">Open chest →</button></div>`;
         } else if (dq.chestOpened) {
             const tip = CHEST_TIPS[new Date().getDate() % CHEST_TIPS.length];
             chest = `<div style="margin-top:12px;background:var(--accent-dim);border-radius:10px;padding:12px 14px;">
-                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:5px;">Today's reward · study tip</div>
+                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:5px;">Chest opened · +${CHEST_XP} XP · study tip</div>
                 <div style="font-size:13.5px;line-height:1.5;">${escapeHtml(tip)}</div>
                 <div class="sub" style="font-size:12px;margin-top:8px;">Fresh quests and a new chest at 7:00 AM ET.</div></div>`;
         }
@@ -1840,7 +1870,7 @@
                 state.profile.stats.answered++; state.profile.stats.attempts++;
                 if (data.correct) state.profile.stats.correct++;
             }
-            bumpDaily({ answered: 1, correct: data.correct ? 1 : 0 }); // daily-quest progress
+            bumpDaily({ answered: 1, correct: data.correct ? 1 : 0, specialty: currentQ.category || currentQ.domain_name }); // daily-quest progress
             s.answers[s.index] = { selectedIndex, graded: data };
             applyGradedView(data, selectedIndex);
             $('confidence-row') && ($('confidence-row').style.display = 'none');
