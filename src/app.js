@@ -122,6 +122,10 @@
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
         // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
+        // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
+        const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements' }[view];
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements'].forEach((idn) => { const a = $(idn); if (a) a.classList.toggle('nav-active', authed && idn === activeNavId); });
+        if (authed) { renderSidebarAccount(); applySidebarPref(); }
         // Marketing links + "Log in" show for logged-out visitors only.
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
@@ -632,6 +636,36 @@
     ];
     function whatsNewUnread() { try { return WHATS_NEW_VERSION > (parseInt(ls('macprep_whatsnew_seen'), 10) || 0); } catch (e) { return false; } }
     function renderWhatsNewDot() { const d = $('wn-dot'); if (d) d.style.display = whatsNewUnread() ? '' : 'none'; }
+
+    // Sidebar account block: initials avatar + name + plan.
+    function renderSidebarAccount() {
+        const p = state.profile || {};
+        const name = (p.full_name || '').trim();
+        const parts = name ? name.split(/\s+/) : [];
+        let initials = parts.length ? ((parts[0][0] || '') + (parts.length > 1 ? (parts[parts.length - 1][0] || '') : '')) : '';
+        if (!initials) initials = (p.email || 'U').charAt(0);
+        const set = (idn, txt) => { const e = $(idn); if (e) e.textContent = txt; };
+        set('nav-acct-initials', initials.toUpperCase());
+        set('nav-acct-name', name || 'Account');
+        set('nav-acct-sub', p.is_admin ? 'Admin access' : (p.premium_unlocked ? 'Full access' : 'Free plan'));
+    }
+    // Collapsible sidebar rail (desktop). Preference persists in localStorage.
+    function syncSidebarToggle() {
+        const b = $('sidebar-collapse'); if (!b) return;
+        const c = document.body.classList.contains('sidebar-collapsed');
+        b.setAttribute('aria-label', c ? 'Expand menu' : 'Collapse menu');
+        b.setAttribute('title', c ? 'Expand menu' : 'Collapse menu');
+    }
+    function applySidebarPref() {
+        let c = false; try { c = localStorage.getItem('macprep_sidebar_collapsed') === '1'; } catch (e) {}
+        document.body.classList.toggle('sidebar-collapsed', c);
+        syncSidebarToggle();
+    }
+    function toggleSidebar() {
+        const c = document.body.classList.toggle('sidebar-collapsed');
+        try { localStorage.setItem('macprep_sidebar_collapsed', c ? '1' : '0'); } catch (e) {}
+        syncSidebarToggle();
+    }
     function openWhatsNew() {
         const body = $('wn-body');
         if (body) {
@@ -2316,7 +2350,7 @@
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
-        ringFocus, ringBlur,
+        ringFocus, ringBlur, toggleSidebar,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
