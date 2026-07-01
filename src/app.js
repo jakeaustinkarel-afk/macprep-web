@@ -371,7 +371,7 @@
         const planLine = (exam != null && exam > 0 && bank > 0)
             ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
             : '';
-        const answeredToday = p.answered_today || 0;
+        const answeredToday = answeredTodayLive();
         let goalLine = '';
         if (exam != null && exam > 0 && bank > 0) {
             const target = Math.ceil((bank * 2) / exam);
@@ -391,7 +391,7 @@
                 ? `<div style="${numS}">${exam}</div><div class="mono" style="${metaL}">Days to exam</div>`
                 : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Exam date passed</div>`)
             : (p.study_goal === 'practice'
-                ? `<div style="${numS}">${answeredToday}/10</div><div class="mono" style="${metaL}">Today's goal</div>`
+                ? `<div style="${numS}">${Math.min(answeredToday, 10)}/10</div><div class="mono" style="${metaL}">Today's goal</div>`
                 : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Add an exam date</div>`);
         const C = 226.2; // ring circumference, 2πr with r=36
         const ringOff = C * (1 - Math.max(0, Math.min(100, readiness)) / 100);
@@ -838,6 +838,10 @@
     // ---- Daily Quests (reset at 7:00 AM ET, same boundary as the Question of the Day) ----
     function dailyKey() { return 'macprep_daily_' + qotdDayKey(); }
     function getDaily() { try { return JSON.parse(localStorage.getItem(dailyKey()) || '{}'); } catch (e) { return {}; } }
+    // Questions answered today, LIVE — the client daily counter (incremented on every
+    // answer) or the server's value, whichever is higher. Keeps the momentum rings and
+    // daily quests consistent and reflecting the current session, not a stale profile.
+    function answeredTodayLive() { const p = state.profile || {}; return Math.max(p.answered_today || 0, (getDaily().answered || 0)); }
     function saveDaily(d) { try { localStorage.setItem(dailyKey(), JSON.stringify(d)); } catch (e) {} }
     function bumpDaily(patch) {
         const d = getDaily();
@@ -931,7 +935,7 @@
         const sb = $('dash-subtitle'); if (sb) sb.style.display = 'none';
         const p = state.profile || {};
         const bank = (state.questions || []).length;
-        const answeredToday = p.answered_today || 0;
+        const answeredToday = answeredTodayLive();
         let goal = (p.days_to_exam > 0 && bank > 0) ? Math.ceil((bank * 2) / p.days_to_exam) : 10;
         goal = Math.max(5, Math.min(40, goal));
         const streak = p.streak || 0;
@@ -951,7 +955,7 @@
         const cGoal = 'color-mix(in srgb, var(--accent) 66%, var(--warn))';
         const cWeek = 'color-mix(in srgb, var(--accent) 60%, var(--text))';
         const ringMeta = [
-            { key: 'goal', c: cGoal, r: 66, pct: goalPct, label: "Today's goal", val: `${answeredToday} / ${goal} questions`,
+            { key: 'goal', c: cGoal, r: 66, pct: goalPct, label: "Today's goal", val: `${Math.min(answeredToday, goal)} / ${goal} questions`,
                 desc: 'Questions answered today vs. your daily target. Resets each morning — close it by practicing.' },
             { key: 'week', c: cWeek, r: 51, pct: Math.round((weekDays / 7) * 100), label: 'This week', val: `${weekDays} / 7 days`,
                 desc: 'Days you’ve practiced this week — one notch per active day, up to 7. Keeps your streak visible.' },
@@ -976,7 +980,7 @@
             + `<div id="mom-tip" role="status" aria-live="polite" style="display:none;position:absolute;left:0;top:156px;width:210px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;box-shadow:0 8px 24px rgba(0,0,0,.14);"></div>`
             + `</div>`;
         const legend = `<div style="display:flex;flex-direction:column;gap:12px;flex:none;">`
-            + momLegRow(cGoal, "Today's goal", `${answeredToday} / ${goal} questions`, 'goal')
+            + momLegRow(cGoal, "Today's goal", `${Math.min(answeredToday, goal)} / ${goal} questions`, 'goal')
             + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`, 'week')
             + momLegRow(cReady, 'Readiness', `${readiness}%`, 'readiness') + `</div>`;
         const planTitle = toGoal ? 'Close your rings.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
