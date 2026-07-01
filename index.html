@@ -98,6 +98,7 @@
         @media (max-width: 720px) { .navdrop { position: static; box-shadow: none; border: none; background: transparent; padding: 2px 0 6px 14px; min-width: 0; } }
         .sb-only{display:none;}
         .brand-row{display:flex;align-items:center;gap:10px;}
+        .nav a.nav-app{display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;}
         .nav-ico{width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
         .nav-caret{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.65;}
         .nav-kbd{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--muted);letter-spacing:0;text-transform:none;}
@@ -1234,6 +1235,27 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#qotd-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
       @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
+      /* Signed-in menu on phones + tablets (<900px): always the hamburger dropdown, never
+         a crowded horizontal bar. Logged-out landing keeps its own breakpoints (frozen). */
+      @media (max-width:899px){
+        body.app-authed .nav-toggle{display:block;}
+        body.app-authed .header-bar{position:relative;}
+        body.app-authed #main-nav{display:none;position:absolute;top:60px;right:12px;left:12px;flex-direction:column;align-items:stretch;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;z-index:900;box-shadow:0 16px 40px rgba(0,0,0,.22);}
+        body.app-authed #main-nav.nav-open{display:flex;}
+        body.app-authed #main-nav>#tier-badge{align-self:flex-start;margin:0 0 4px 4px;}
+        body.app-authed #main-nav>a.nav-app,body.app-authed #main-nav>span>a.nav-app{padding:11px 12px;border-radius:10px;font-size:15px;color:var(--text2);}
+        body.app-authed #main-nav>a.nav-app:hover,body.app-authed #main-nav>span>a.nav-app:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);}
+        body.app-authed #main-nav>a.nav-active{background:var(--accent-dim);color:var(--accent);}
+        body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>span>a.nav-app .lbl{flex:1;}
+        body.app-authed #nav-admin-wrap>a.nav-app .nav-caret{margin-left:auto;}
+        body.app-authed #main-nav>#nav-utils{order:8;display:flex;align-items:center;gap:16px;padding:6px 4px 2px;margin-top:2px;border-top:1px solid var(--line);}
+        body.app-authed #main-nav>#nav-account-wrap{order:9;width:100%;}
+        body.app-authed #main-nav>#nav-account-wrap .nav-acct{width:100%;box-sizing:border-box;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);}
+        body.app-authed #main-nav>#nav-account-wrap .nav-acct-av{width:34px;height:34px;font-size:13px;}
+        body.app-authed #main-nav>#nav-account-wrap .nav-acct-meta{flex:1;min-width:0;}
+        body.app-authed #main-nav>#nav-account-wrap .nav-acct-caret{margin-left:auto;}
+        body.app-authed #nav-account-menu,body.app-authed #nav-admin-menu{position:static;box-shadow:none;border:none;background:transparent;padding:2px 0 4px 14px;min-width:0;}
+      }
       /* Desktop app shell: the top header becomes a fixed LEFT SIDEBAR for signed-in
          users on wide screens (>=900px). Mobile/tablet (<900px) and logged-out visitors
          keep the existing top bar untouched, so the live cohort on phones is unaffected. */
