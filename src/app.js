@@ -1022,10 +1022,6 @@
 
         renderSpecialtyPerformance();
         renderCalibration();
-        const cmBtn = $('confident-miss-btn');
-        if (cmBtn) cmBtn.style.display = ((p.confident_missed_ids || []).length) ? '' : 'none';
-        const dueBtn = $('due-review-btn');
-        if (dueBtn) { const dueN = (p.due_ids || []).length; dueBtn.style.display = dueN ? '' : 'none'; dueBtn.textContent = `Review due (${dueN})`; }
 
         // Count chips (preserve the user's prior selection across re-renders)
         const chips = $('count-chips');
@@ -2375,6 +2371,7 @@
         { icon: '↩', label: 'Redo my missed questions', run: () => redoMissed(), auth: true },
         { icon: '☆', label: 'Review my flagged questions', run: () => startFlagged(), auth: true },
         { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true },
+        { icon: '❗', label: 'Review my confident misses', hint: 'sure but wrong', run: () => reviewConfidentMisses(), auth: true },
         { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
         { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
         { icon: '🏆', label: 'Study League — weekly leaderboard', run: () => go('leaderboard'), auth: true },
