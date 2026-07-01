@@ -660,8 +660,10 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 10;
+    const WHATS_NEW_VERSION = 11;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Achievements now reward XP', desc: 'Every achievement grants XP toward your level when you unlock it — bigger achievements, bigger rewards. The Achievements page now shows each one’s XP and any title it unlocks, so you can chase the ones you want.' },
+        { tag: 'New', date: 'Jul 1', title: 'Titles', desc: 'Unlock titles from achievements (Boss Slayer, The Scholar, Grandmaster, and the ultimate “The Legend” for unlocking everything). Pick one in Account → Title ★ to show by your name and on the League board.' },
         { tag: 'New', date: 'Jul 1', title: 'Fresh questions every time', desc: 'Practice sets, specialty quizzes, and mock exams now serve questions you haven’t seen yet first — so you keep drawing new questions from the full bank instead of repeats, and no two people get the same quiz.' },
         { tag: 'New', date: 'Jul 1', title: 'In-quiz calculator', desc: 'A calculator now sits next to Lab values in every question — basic math plus quick medical conversions (cm↔in, kg↔lb, °C↔°F) for when a stem gives height in centimeters.' },
         { tag: 'New', date: 'Jul 1', title: 'Arcade modes', desc: 'Two fast, score-chasing modes in Study Modes (and now in the menu): Survival (endless — 3 lives, one miss costs a life) and Time Attack (a five-minute sprint). Each keeps your personal best.' },
@@ -1086,6 +1088,18 @@
         const doneCount = A.filter((a) => a.met).length;
         const allMet = doneCount >= A.length;
         A.push({ cat: 'Milestones', icon: 'trophy', title: 'The Grand Slam — every achievement', desc: 'Unlock every other achievement. The ultimate flex — earns the title “The Legend.”', met: allMet, pct: allMet ? 100 : Math.max(0, Math.min(99, Math.round((doneCount / A.length) * 100))), sub: allMet ? 'Unlocked' : `${doneCount} / ${A.length} unlocked` });
+
+        // XP reward per achievement — a satisfying but not overwhelming bump on unlock,
+        // scaled by difficulty. Granted once via grantAchievementXp() (localStorage-tracked).
+        A.forEach((a) => {
+            const t = a.title;
+            let xp = ({ Volume: 60, Consistency: 90, Accuracy: 110, Coverage: 80, Mastery: 130, Milestones: 100 })[a.cat] || 75;
+            if (/every achievement/i.test(t)) xp = 1000;
+            else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000/i.test(t)) xp = 500;
+            else if (/Level 50|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Half-century — 50/i.test(t)) xp = 300;
+            else if (/Off the mark/i.test(t)) xp = 30;
+            a.xp = xp;
+        });
         return A;
     }
 
@@ -1154,6 +1168,31 @@
         document.body.appendChild(wrap);
     }
     function closeTitlePicker() { const o = $('title-overlay'); if (o) o.remove(); }
+    // Cosmetic rewards shown on each achievement so users can target them.
+    // AVATAR_MAP is populated when avatars ship; TITLE_MAP already maps titles.
+    const AVATAR_MAP = {};
+    function achReward(a) {
+        const title = TITLE_MAP[a.title];
+        if (title) return `🎁 Unlocks title <strong style="color:var(--accent);">${escapeHtml(title)}</strong>`;
+        const av = AVATAR_MAP[a.title];
+        if (av) return `🎁 Unlocks avatar <strong style="color:var(--accent);">${escapeHtml(av)}</strong>`;
+        return '';
+    }
+    // Grant each newly-unlocked achievement's XP once (tracked in localStorage), with a toast.
+    function grantAchievementXp() {
+        if (!state.profile) return;
+        const A = computeAchievements();
+        let claimed; try { claimed = new Set(JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]')); } catch (e) { claimed = new Set(); }
+        let gained = 0, n = 0;
+        A.forEach((a) => { if (a.met && !claimed.has(a.title)) { claimed.add(a.title); gained += (a.xp || 0); n++; } });
+        if (gained > 0) {
+            try { localStorage.setItem('macprep_ach_claimed', JSON.stringify(Array.from(claimed))); } catch (e) {}
+            addBonusXp(gained);
+            toast(`+${gained} XP — ${n} achievement${n === 1 ? '' : 's'} unlocked!`, 'ok');
+            if ($('momentum-card')) renderMomentum();
+            try { checkLevelUp(); } catch (e) {}
+        }
+    }
     function achIcon(name, met) {
         const P = {
             star: '<path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z"/>',
@@ -1171,8 +1210,10 @@
     }
     function achChip(a) {
         const bar = a.met ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:7px;overflow:hidden;"><span style="display:block;height:100%;width:${a.pct || 0}%;background:var(--accent);border-radius:3px;"></span></div>`;
-        const tip = escapeHtml((a.desc || a.title) + (a.met ? '' : '') + (a.sub && a.sub !== 'Unlocked' ? ' — ' + a.sub : ''));
-        return `<div title="${tip}" style="display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);cursor:default;${a.met ? '' : 'opacity:.95;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span>${bar}</span></div>`;
+        const reward = achReward(a);
+        const tip = escapeHtml((a.desc || a.title) + (a.sub && a.sub !== 'Unlocked' ? ' — ' + a.sub : '') + (a.xp ? ` · +${a.xp} XP` : ''));
+        const xpBadge = a.xp ? `<span class="mono" style="flex:none;font-size:10px;font-weight:700;color:${a.met ? 'var(--accent)' : 'var(--muted)'};background:${a.met ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${a.met ? 'color-mix(in srgb,var(--accent) 35%,var(--line))' : 'var(--line)'};border-radius:20px;padding:1px 7px;white-space:nowrap;">+${a.xp} XP</span>` : '';
+        return `<div title="${tip}" style="display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);cursor:default;${a.met ? '' : 'opacity:.95;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25;"><span style="display:flex;align-items:center;gap:6px;justify-content:space-between;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span>${xpBadge}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span>${reward ? `<span style="font-size:11px;color:var(--muted);margin-top:3px;">${reward}</span>` : ''}${bar}</span></div>`;
     }
     function renderAchievements() {
         const el = $('achievements-card'); if (!el) return;
@@ -1187,6 +1228,7 @@
     }
     function renderAchievementsView() {
         const el = $('achievements-body'); if (!el) return;
+        grantAchievementXp(); // catch any newly-unlocked achievements when viewing the page
         const A = computeAchievements(); const done = A.filter((a) => a.met).length;
         const C = 2 * Math.PI * 26, off = C * (1 - done / A.length);
         const ring = `<svg width="70" height="70" viewBox="0 0 70 70" style="flex:none;"><circle cx="35" cy="35" r="26" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="35" cy="35" r="26" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 35 35)"/><text x="35" y="40" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:16px;fill:var(--text);">${done}</text></svg>`;
@@ -1479,6 +1521,7 @@
 
     function renderDashboard() {
         const p = state.profile || {};
+        grantAchievementXp(); // award XP for any newly-unlocked achievements (once each)
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
         renderMomentum();
         renderStudyModes();
