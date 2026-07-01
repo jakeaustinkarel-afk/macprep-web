@@ -732,8 +732,8 @@
         const p = state.profile || {}, s = p.stats || {};
         const total = s.answered || 0, streak = p.streak || 0, att = s.attempts || 0, corr = s.correct || 0;
         const acc = att ? Math.round((corr / att) * 100) : 0;
-        const cov = p.coverage || []; const started = cov.filter((c) => (c.seen || 0) > 0).length; const totalSpec = cov.length || 16;
-        const mastered = cov.filter((c) => c.total && (c.seen || 0) >= c.total).length;
+        const cov = p.coverage || []; const started = cov.filter((c) => (c.answered || 0) > 0).length; const totalSpec = cov.length || 16;
+        const mastered = cov.filter((c) => c.total && (c.answered || 0) >= c.total).length;
         const qotdEver = !!ls('macprep_qotd_done');
         const A = [];
         const vol = (n, title) => A.push({ cat: 'Volume', icon: 'star', title, met: total >= n, pct: Math.min(100, Math.round((total / n) * 100)), sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
