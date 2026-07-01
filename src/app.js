@@ -660,8 +660,10 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 11;
+    const WHATS_NEW_VERSION = 12;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Two more Arcade modes', desc: 'Arcade now has four modes: Survival, Time Attack, plus new Sudden Death (one wrong answer ends the run) and Blitz (a countdown that every correct answer extends). Each keeps its own high score.' },
+        { tag: 'New', date: 'Jul 1', title: 'More achievements', desc: 'New badges to chase — an Arcade set (play modes, hit a 20-run, go flawless in Sudden Death), plus more streak, volume, level, and mock-exam milestones, each with its own XP and a few new titles (Arcade Ace, Virtuoso, The Devoted).' },
         { tag: 'New', date: 'Jul 1', title: 'Achievements now reward XP', desc: 'Every achievement grants XP toward your level when you unlock it — bigger achievements, bigger rewards. The Achievements page now shows each one’s XP and any title it unlocks, so you can chase the ones you want.' },
         { tag: 'New', date: 'Jul 1', title: 'Titles', desc: 'Unlock titles from achievements (Boss Slayer, The Scholar, Grandmaster, and the ultimate “The Legend” for unlocking everything). Pick one in Account → Title ★ to show by your name and on the League board.' },
         { tag: 'New', date: 'Jul 1', title: 'Fresh questions every time', desc: 'Practice sets, specialty quizzes, and mock exams now serve questions you haven’t seen yet first — so you keep drawing new questions from the full bank instead of repeats, and no two people get the same quiz.' },
@@ -1088,6 +1090,23 @@
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss hunter — beat your first domain', desc: 'Defeat any Domain Boss (80%+ on its challenge).', met: bossN >= 1, pct: bossN >= 1 ? 100 : 0, sub: bossN >= 1 ? 'Unlocked' : 'Beat any Domain Boss' });
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss slayer — every domain', desc: 'Defeat every Domain Boss.', met: bossN >= domTotal, pct: bossN >= domTotal ? 100 : Math.max(0, Math.min(99, Math.round((bossN / domTotal) * 100))), sub: bossN >= domTotal ? 'Unlocked' : `${bossN} / ${domTotal} domains defeated` });
 
+        // arcade — score-chasing modes (localStorage bests + play counts)
+        const arcPlays = Object.keys(ARCADE_META).reduce((n, t) => n + (parseInt(ls('macprep_arcade_' + t + '_plays') || '0', 10) || 0), 0);
+        const arcTopScore = Math.max(0, ...Object.keys(ARCADE_META).map((t) => arcadeBest(t)));
+        const sdBest = arcadeBest('suddendeath');
+        const arcPush = (title, desc, met, pct, sub) => A.push({ cat: 'Arcade', icon: 'star', title, desc, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
+        arcPush('Arcade debut', 'Play any Arcade mode once.', arcPlays >= 1, 0, 'Play any Arcade mode');
+        arcPush('Arcade regular — 25 runs', 'Play 25 Arcade runs across any modes.', arcPlays >= 25, Math.round((arcPlays / 25) * 100), `${arcPlays} / 25 runs`);
+        arcPush('High scorer — 20 in a run', 'Score 20+ correct in a single Arcade run.', arcTopScore >= 20, Math.round((arcTopScore / 20) * 100), `best run is ${arcTopScore} / 20`);
+        arcPush('Untouchable — 15 in Sudden Death', 'Reach a 15-answer flawless streak in Sudden Death.', sdBest >= 15, Math.round((sdBest / 15) * 100), `best is ${sdBest} / 15`);
+
+        // more volume / accuracy / consistency / levels / mocks
+        vol(750, 'Three-quarter-K — 750'); vol(7500, '7,500 club');
+        accA(85, 100, 'Crack shot — 85%');
+        strk(3, 'Three-peat'); strk(21, 'Three weeks'); strk(60, 'Two months'); strk(365, 'Year of prep — 365 days');
+        lvlA(15, 'Level 15'); lvlA(75, 'Level 75');
+        milePush('clipboard', 'Mock veteran — ten Mock Exams', mocks >= 10, Math.round((mocks / 10) * 100), `${mocks} / 10 completed`);
+
         // meta — unlock every other achievement (grants the rarest title: The Legend)
         const doneCount = A.filter((a) => a.met).length;
         const allMet = doneCount >= A.length;
@@ -1099,8 +1118,8 @@
             const t = a.title;
             let xp = ({ Volume: 60, Consistency: 90, Accuracy: 110, Coverage: 80, Mastery: 130, Milestones: 100 })[a.cat] || 75;
             if (/every achievement/i.test(t)) xp = 1000;
-            else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000/i.test(t)) xp = 500;
-            else if (/Level 50|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Half-century — 50/i.test(t)) xp = 300;
+            else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000|Year of prep/i.test(t)) xp = 500;
+            else if (/Level 50|Level 75|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Mock veteran|Half-century — 50|Untouchable|7,500 club/i.test(t)) xp = 300;
             else if (/Off the mark/i.test(t)) xp = 30;
             a.xp = xp;
         });
@@ -1122,6 +1141,10 @@
         'Max level — 100': 'Grandmaster',
         'Peak form — 95% readiness': 'Peak Form',
         'Mock master — three Mock Exams': 'Battle-Tested',
+        'Year of prep — 365 days': 'The Devoted',
+        'Level 75': 'Virtuoso',
+        'Untouchable — 15 in Sudden Death': 'Untouchable',
+        'High scorer — 20 in a run': 'Arcade Ace',
         'The Grand Slam — every achievement': 'The Legend',
     };
     const BASE_TITLES = ['Rookie']; // always available so the picker is never empty
@@ -1318,8 +1341,10 @@
     // the session is intentionally NOT persisted (a score run is ephemeral, no resume).
     const ARCADE_LIVES = 3, ARCADE_SECONDS = 300;
     const ARCADE_META = {
-        survival:   { label: 'Survival',    tagline: 'Endless questions, 3 lives. One miss costs a life — how far can you go?' },
-        timeattack: { label: 'Time Attack', tagline: 'Five-minute sprint. Answer as many correctly as you can before the clock runs out.' },
+        survival:    { label: 'Survival',     icon: '❤', tagline: 'Endless questions, 3 lives. One miss costs a life — how far can you go?', lives: 3 },
+        suddendeath: { label: 'Sudden Death', icon: '💀', tagline: 'One life. A single wrong answer ends the run — how long can you stay flawless?', lives: 1 },
+        timeattack:  { label: 'Time Attack',  icon: '⏱', tagline: 'Five-minute sprint. Answer as many correctly as you can before the clock runs out.', seconds: 300 },
+        blitz:       { label: 'Blitz',        icon: '⚡', tagline: 'Beat the countdown. Start with 45 seconds — every correct answer buys you 4 more.', seconds: 45, bonus: 4 },
     };
     let arcadeTimerId = null, arcadeAdvanceId = null;
     function stopArcadeTimer() { if (arcadeTimerId) { clearInterval(arcadeTimerId); arcadeTimerId = null; } }
@@ -1334,7 +1359,7 @@
             const m = ARCADE_META[type], best = arcadeBest(type);
             return `<button type="button" onclick="MACPrep.startArcade('${type}')" style="display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-top:11px;cursor:pointer;transition:border-color .15s ease,transform .15s ease;" onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--line)';this.style.transform='none';">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                    <div style="font-weight:700;font-size:15px;color:var(--text);">${type === 'survival' ? '❤ ' : '⏱ '}${m.label}</div>
+                    <div style="font-weight:700;font-size:15px;color:var(--text);">${m.icon} ${m.label}</div>
                     <div class="mono" style="font-size:11px;color:var(--accent);flex:none;">BEST ${best}</div>
                 </div>
                 <div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.45;">${m.tagline}</div>
@@ -1349,7 +1374,7 @@
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Arcade</div>
                 <button onclick="MACPrep.closeArcadePicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
             </div>
-            <div class="sub" style="font-size:13px;margin-bottom:6px;">Two fast, score-chasing modes. Same board-quality questions — just against the clock (and your own best).</div>
+            <div class="sub" style="font-size:13px;margin-bottom:6px;">Four fast, score-chasing modes. Same board-quality questions — against the clock, your lives, and your own best.</div>
             ${rows}</div>`;
         document.body.appendChild(wrap);
     }
@@ -1370,15 +1395,16 @@
         const s = state.session; if (!s) return;
         const prevBest = arcadeBest(type);
         s.arcade = { type, score: 0, streak: 0, best: prevBest, prevBest, over: false };
-        if (type === 'survival') { s.arcade.lives = ARCADE_LIVES; s.arcade.maxLives = ARCADE_LIVES; }
-        if (type === 'timeattack') { s.arcade.timeLeft = ARCADE_SECONDS; startArcadeTimer(); }
+        const m = ARCADE_META[type];
+        if (m.lives) { s.arcade.lives = m.lives; s.arcade.maxLives = m.lives; }
+        if (m.seconds) { s.arcade.timeLeft = m.seconds; s.arcade.bonus = m.bonus || 0; startArcadeTimer(); }
         renderQuestion(); // repaint with arcade chrome (HUD in, tutor extras out)
         renderArcadeHud();
     }
 
     function startArcadeTimer() {
         stopArcadeTimer();
-        const s = state.session; if (!s || !s.arcade || s.arcade.type !== 'timeattack') return;
+        const s = state.session; if (!s || !s.arcade || s.arcade.timeLeft == null) return; // timed modes only (timeattack, blitz)
         arcadeTimerId = setInterval(() => {
             const ss = state.session;
             if (!ss || !ss.arcade || ss.arcade.over) { stopArcadeTimer(); return; }
@@ -1395,7 +1421,7 @@
         if (!s || !s.arcade || s.arcade.over) { el.style.display = 'none'; el.innerHTML = ''; return; }
         const a = s.arcade;
         let left;
-        if (a.type === 'survival') {
+        if (a.maxLives) {
             const hearts = Array.from({ length: a.maxLives }, (_, i) => `<span style="font-size:18px;line-height:1;color:${i < a.lives ? 'var(--bad)' : 'var(--line)'};">♥</span>`).join('');
             left = `<div style="display:flex;align-items:center;gap:4px;">${hearts}</div>`;
         } else {
@@ -1415,11 +1441,11 @@
     function arcadeAnswerHook(correct) {
         const s = state.session; if (!s || !s.arcade || s.arcade.over) return;
         const a = s.arcade;
-        if (correct) { a.score++; a.streak++; if (a.score > a.best) { a.best = a.score; setArcadeBest(a.type, a.best); } }
-        else { a.streak = 0; if (a.type === 'survival') a.lives = Math.max(0, a.lives - 1); }
+        if (correct) { a.score++; a.streak++; if (a.bonus) a.timeLeft = (a.timeLeft || 0) + a.bonus; if (a.score > a.best) { a.best = a.score; setArcadeBest(a.type, a.best); } }
+        else { a.streak = 0; if (a.maxLives) a.lives = Math.max(0, a.lives - 1); }
         renderArcadeHud();
         clearArcadeAdvance();
-        if (a.type === 'survival' && a.lives <= 0) { arcadeAdvanceId = setTimeout(() => arcadeGameOver('dead'), 1600); return; }
+        if (a.maxLives && a.lives <= 0) { arcadeAdvanceId = setTimeout(() => arcadeGameOver('dead'), 1600); return; }
         arcadeAdvanceId = setTimeout(arcadeNext, correct ? 850 : 1650); // linger a beat longer on a miss so the answer registers
     }
 
@@ -1447,10 +1473,11 @@
         $('quiz-progress-wrap') && ($('quiz-progress-wrap').style.display = 'none');
         $('quiz-actions') && ($('quiz-actions').style.display = 'none');
         document.querySelectorAll('.quiz-extra').forEach((e) => { e.style.display = 'none'; });
-        $('question-meta').textContent = a.type === 'survival' ? '❤ SURVIVAL · GAME OVER' : "⏱ TIME ATTACK · TIME'S UP";
-        const line = a.type === 'survival'
+        const m = ARCADE_META[a.type] || {};
+        $('question-meta').textContent = `${m.icon || ''} ${(m.label || 'Arcade').toUpperCase()} · ${a.maxLives ? 'GAME OVER' : "TIME'S UP"}`;
+        const line = a.maxLives
             ? `You answered <strong>${a.score}</strong> correct before running out of lives.`
-            : `You got <strong>${a.score}</strong> correct in five minutes.`;
+            : `You got <strong>${a.score}</strong> correct before the clock ran out.`;
         $('question-stem').innerHTML = `
             <div style="text-align:center;padding:10px 0 2px;">
                 <div style="font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:600;line-height:1;color:var(--accent);">${a.score}</div>
@@ -1512,8 +1539,8 @@
         t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
         t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
         t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
-        const arcTop = Math.max(arcadeBest('survival'), arcadeBest('timeattack'));
-        t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Survival & Time Attack — chase a high score.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
+        const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((t) => arcadeBest(t)));
+        t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
