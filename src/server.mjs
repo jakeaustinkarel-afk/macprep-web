@@ -1088,7 +1088,7 @@ app.get('/api/leaderboard', async (req, res) => {
         const weekStart = lbWeekStartUTC();
         const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
         const { data: players } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, leaderboard_handle')
+            .select('user_id, leaderboard_handle, selected_title, selected_avatar')
             .eq('leaderboard_opt_in', true).not('leaderboard_handle', 'is', null);
         const playerList = players || [];
         const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 1000);
@@ -1104,6 +1104,8 @@ app.get('/api/leaderboard', async (req, res) => {
         }
         const rows = playerList.map((p) => ({
             handle: p.leaderboard_handle,
+            title: p.selected_title || '',
+            avatar: p.selected_avatar || '',
             weekly: weekCount[p.user_id] || 0,
             streak: lbStreak(daysByUser[p.user_id] || new Set()),
             is_me: p.user_id === user.id,
@@ -1452,6 +1454,28 @@ app.post('/api/grade', async (req, res) => {
     }
 });
 
+// User cosmetics — active title / avatar, shown on the dashboard, sidebar, and
+// leaderboard. Unlock-gating is enforced client-side (low-stakes flair earned
+// from achievements); the server stores the selection and echoes it back.
+app.post('/api/user/cosmetics', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const b = req.body || {};
+    const upd = {};
+    if ('title' in b) upd.selected_title = String(b.title || '').trim().slice(0, 40) || null;
+    if ('avatar' in b) upd.selected_avatar = String(b.avatar || '').trim().slice(0, 40) || null;
+    if (!Object.keys(upd).length) return res.status(400).json({ error: 'Nothing to update.' });
+    try {
+        const { error } = await supabase.from(PROFILE_TABLE).update(upd).eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ success: true, ...upd });
+    } catch (err) {
+        console.error('Cosmetics update failure:', err.message);
+        return res.status(500).json({ error: 'Could not save.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Profile — identity is derived from the verified token, never from a
 // client-supplied email (AUDIT.md §2.1).
@@ -1464,7 +1488,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, selected_avatar')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1592,6 +1616,8 @@ app.get('/api/user/profile', async (req, res) => {
                 font: profile?.font || null,
                 leaderboard_handle: profile?.leaderboard_handle || null,
                 leaderboard_opt_in: !!profile?.leaderboard_opt_in,
+                selected_title: profile?.selected_title || null,
+                selected_avatar: profile?.selected_avatar || null,
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },

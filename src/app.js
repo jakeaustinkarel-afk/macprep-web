@@ -690,7 +690,13 @@
         const set = (idn, txt) => { const e = $(idn); if (e) e.textContent = txt; };
         set('nav-acct-initials', initials.toUpperCase());
         set('nav-acct-name', name || 'Account');
-        set('nav-acct-sub', p.is_admin ? 'Admin access' : (p.premium_unlocked ? 'Full access' : 'Free plan'));
+        // Sub line shows your active title (accent) if you've picked one, else your plan.
+        const title = activeTitle();
+        const subEl = $('nav-acct-sub');
+        if (subEl) {
+            if (title) { subEl.textContent = title; subEl.style.color = 'var(--accent)'; subEl.style.fontWeight = '700'; }
+            else { subEl.textContent = p.is_admin ? 'Admin access' : (p.premium_unlocked ? 'Full access' : 'Free plan'); subEl.style.color = ''; subEl.style.fontWeight = ''; }
+        }
     }
     // Collapsible sidebar rail (desktop). Preference persists in localStorage.
     function syncSidebarToggle() {
@@ -979,7 +985,7 @@
         const ctaLabel = saved ? 'Continue session' : 'Start today\'s set';
         const ctaFn = saved ? 'MACPrep.resumeSession()' : 'MACPrep.startRecommended()';
         el.innerHTML = `
-            <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;line-height:1.1;">${greet}, ${escapeHtml(first)}.</div>
+            <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;"><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;line-height:1.1;">${greet}, ${escapeHtml(first)}.</div>${titleChip(activeTitle())}</div>
             <div class="sub" style="margin:4px 0 20px;font-size:14px;">${toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — don't break the chain.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`}</div>
             <div style="display:flex;flex-wrap:wrap;gap:24px 30px;align-items:center;">
                 ${rings}${legend}
@@ -1075,8 +1081,79 @@
         const domTotal = (function () { const set = new Set(); (state.questions || []).forEach((q) => { const d = q.domain_name || q.category; if (d) set.add(d); }); return set.size || 6; })();
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss hunter — beat your first domain', desc: 'Defeat any Domain Boss (80%+ on its challenge).', met: bossN >= 1, pct: bossN >= 1 ? 100 : 0, sub: bossN >= 1 ? 'Unlocked' : 'Beat any Domain Boss' });
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss slayer — every domain', desc: 'Defeat every Domain Boss.', met: bossN >= domTotal, pct: bossN >= domTotal ? 100 : Math.max(0, Math.min(99, Math.round((bossN / domTotal) * 100))), sub: bossN >= domTotal ? 'Unlocked' : `${bossN} / ${domTotal} domains defeated` });
+
+        // meta — unlock every other achievement (grants the rarest title: The Legend)
+        const doneCount = A.filter((a) => a.met).length;
+        const allMet = doneCount >= A.length;
+        A.push({ cat: 'Milestones', icon: 'trophy', title: 'The Grand Slam — every achievement', desc: 'Unlock every other achievement. The ultimate flex — earns the title “The Legend.”', met: allMet, pct: allMet ? 100 : Math.max(0, Math.min(99, Math.round((doneCount / A.length) * 100))), sub: allMet ? 'Unlocked' : `${doneCount} / ${A.length} unlocked` });
         return A;
     }
+
+    // ---- Titles: unlocked by achievements, one active title shown by your name ----
+    // Keyed by achievement title. Picking a title persists server-side so it also
+    // shows on the League board. Unlock-gating is client-side (low-stakes flair).
+    const TITLE_MAP = {
+        'One week strong': 'The Consistent',
+        'Centurion streak': 'The Relentless',
+        'Elite — 90%': 'Sharpshooter',
+        'Five figures — 10,000': 'The Machine',
+        'Scholar — 1,000 answered at 80%+': 'The Scholar',
+        'Grand tour — every specialty at 100%': 'The Cartographer',
+        'Completionist — the whole bank': 'The Encyclopedia',
+        'Boss slayer — every domain': 'Boss Slayer',
+        'Max level — 100': 'Grandmaster',
+        'Peak form — 95% readiness': 'Peak Form',
+        'Mock master — three Mock Exams': 'Battle-Tested',
+        'The Grand Slam — every achievement': 'The Legend',
+    };
+    const BASE_TITLES = ['Rookie']; // always available so the picker is never empty
+    function unlockedTitles() {
+        const earned = computeAchievements().filter((a) => a.met && TITLE_MAP[a.title]).map((a) => TITLE_MAP[a.title]);
+        return [...BASE_TITLES, ...earned];
+    }
+    function activeTitle() {
+        const t = state.profile && state.profile.selected_title;
+        return t && unlockedTitles().includes(t) ? t : '';
+    }
+    function titleChip(t, small) {
+        if (!t) return '';
+        return `<span style="display:inline-flex;align-items:center;font-family:ui-monospace,monospace;font-size:${small ? '10px' : '11px'};font-weight:700;letter-spacing:.3px;color:var(--accent);background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:20px;padding:${small ? '1px 7px' : '2px 10px'};white-space:nowrap;">${escapeHtml(t)}</span>`;
+    }
+    async function saveTitle(t) {
+        closeTitlePicker();
+        try {
+            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: t || '' }) });
+            if (state.profile) state.profile.selected_title = t || null;
+            renderSidebarAccount(); if ($('momentum-card')) renderMomentum();
+            toast(t ? `Title set: ${t}` : 'Title cleared.', 'ok');
+        } catch (e) { toast('Could not save title: ' + e.message); }
+    }
+    function openTitlePicker() {
+        closeNavMenus();
+        const titles = unlockedTitles();
+        const cur = (state.profile && state.profile.selected_title) || '';
+        const A = computeAchievements();
+        const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const rows = titles.map((t) => `<button type="button" onclick="MACPrep.saveTitle('${esc(t)}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:${t === cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${t === cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;"><span style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(t)}</span>${t === cur ? '<span class="mono" style="font-size:10px;color:var(--accent);">ACTIVE</span>' : ''}</button>`).join('');
+        const lockedRows = Object.keys(TITLE_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
+            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);opacity:.55;"><span style="font-weight:600;font-size:13px;">🔒 ${escapeHtml(TITLE_MAP[ach])}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;text-align:right;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : a.title)}</span></div>`; }).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'title-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeTitlePicker(); };
+        wrap.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your title</div>
+                <button onclick="MACPrep.closeTitlePicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
+            </div>
+            <div class="sub" style="font-size:13px;margin-bottom:6px;">Titles you unlock from achievements. Pick one to show by your name and on the League board.</div>
+            <button type="button" onclick="MACPrep.saveTitle('')" style="display:block;width:100%;text-align:left;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:10px 13px;margin-top:8px;cursor:pointer;color:var(--muted);font-size:13px;">No title${!cur ? ' · ACTIVE' : ''}</button>
+            ${rows}
+            ${lockedRows ? `<div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 2px;">Locked — earn these</div>${lockedRows}` : ''}
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeTitlePicker() { const o = $('title-overlay'); if (o) o.remove(); }
     function achIcon(name, met) {
         const P = {
             star: '<path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z"/>',
@@ -1834,7 +1911,7 @@
             const trs = rows.map((r) =>
                 '<tr style="' + (r.is_me ? 'background:var(--accent-dim);' : '') + '">'
                 + '<td style="padding:9px 10px;font-family:ui-monospace,monospace;' + (r.rank <= 3 ? 'font-weight:700;color:var(--accent);' : 'color:var(--text2);') + '">' + r.rank + '</td>'
-                + '<td style="padding:9px 10px;">' + escapeHtml(r.handle) + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
+                + '<td style="padding:9px 10px;">' + escapeHtml(r.handle) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
                 + '<td style="padding:9px 10px;text-align:right;color:var(--text2);">' + r.streak + ' 🔥</td>'
                 + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + r.weekly + '</td></tr>').join('');
             board = '<div class="card" style="padding:6px;"><table style="width:100%;font-size:14px;border-collapse:collapse;">'
@@ -3044,6 +3121,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
+        saveTitle, openTitlePicker, closeTitlePicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
 
