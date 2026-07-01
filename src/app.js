@@ -660,8 +660,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 12;
+    const WHATS_NEW_VERSION = 13;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the League board.' },
         { tag: 'New', date: 'Jul 1', title: 'Two more Arcade modes', desc: 'Arcade now has four modes: Survival, Time Attack, plus new Sudden Death (one wrong answer ends the run) and Blitz (a countdown that every correct answer extends). Each keeps its own high score.' },
         { tag: 'New', date: 'Jul 1', title: 'More achievements', desc: 'New badges to chase — an Arcade set (play modes, hit a 20-run, go flawless in Sudden Death), plus more streak, volume, level, and mock-exam milestones, each with its own XP and a few new titles (Arcade Ace, Virtuoso, The Devoted).' },
         { tag: 'New', date: 'Jul 1', title: 'Achievements now reward XP', desc: 'Every achievement grants XP toward your level when you unlock it — bigger achievements, bigger rewards. The Achievements page now shows each one’s XP and any title it unlocks, so you can chase the ones you want.' },
@@ -692,7 +693,9 @@
         let initials = parts.length ? ((parts[0][0] || '') + (parts.length > 1 ? (parts[parts.length - 1][0] || '') : '')) : '';
         if (!initials) initials = (p.email || 'U').charAt(0);
         const set = (idn, txt) => { const e = $(idn); if (e) e.textContent = txt; };
-        set('nav-acct-initials', initials.toUpperCase());
+        const av = activeAvatar();
+        const initEl = $('nav-acct-initials');
+        if (initEl) { initEl.textContent = av || initials.toUpperCase(); initEl.style.fontSize = av ? '20px' : ''; }
         set('nav-acct-name', name || 'Account');
         // Sub line shows your active title (accent) if you've picked one, else your plan.
         const title = activeTitle();
@@ -1195,9 +1198,58 @@
         document.body.appendChild(wrap);
     }
     function closeTitlePicker() { const o = $('title-overlay'); if (o) o.remove(); }
-    // Cosmetic rewards shown on each achievement so users can target them.
-    // AVATAR_MAP is populated when avatars ship; TITLE_MAP already maps titles.
-    const AVATAR_MAP = {};
+
+    // ---- Avatars: emoji profile pictures unlocked by achievements (server-stored
+    // as selected_avatar, so they also show on the League board). Default = initials.
+    const AVATAR_MAP = {
+        'Century — 100 questions': '📚', 'Fortnight': '🔥', 'A month deep': '🦁',
+        'Sharpshooter — 80%': '🎯', 'High five — 5,000': '🐉', 'Explorer — every specialty': '🧭',
+        'Specialist — 100% of a specialty': '🔬', 'Boss hunter — beat your first domain': '⚔️',
+        'Domain expert — 85% in a specialty': '🧠', 'Dress rehearsal — finish a Mock Exam': '📝',
+        'Level 10': '🚀', 'Level 25': '⭐', 'Level 50 — halfway to max': '🏅',
+        'Arcade debut': '🕹️', 'Arcade regular — 25 runs': '👾', 'Exam-ready — 80% readiness': '🩺',
+        'The grind — 30-day streak + 2,500': '💪', 'Quest master — 30 days': '📅',
+    };
+    function unlockedAvatars() { return computeAchievements().filter((a) => a.met && AVATAR_MAP[a.title]).map((a) => AVATAR_MAP[a.title]); }
+    function activeAvatar() { const av = state.profile && state.profile.selected_avatar; return av && unlockedAvatars().includes(av) ? av : ''; }
+    async function saveAvatar(av) {
+        closeAvatarPicker();
+        try {
+            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ avatar: av || '' }) });
+            if (state.profile) state.profile.selected_avatar = av || null;
+            renderSidebarAccount();
+            toast(av ? `Avatar set: ${av}` : 'Avatar cleared — back to initials.', 'ok');
+        } catch (e) { toast('Could not save avatar: ' + e.message); }
+    }
+    function openAvatarPicker() {
+        closeNavMenus();
+        const owned = unlockedAvatars();
+        const cur = (state.profile && state.profile.selected_avatar) || '';
+        const A = computeAchievements();
+        const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const tile = (av, active) => `<button type="button" onclick="MACPrep.saveAvatar('${esc(av)}')" title="${escapeHtml(av)}" style="font-size:26px;line-height:1;width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:${active ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${active ? 'var(--accent)' : 'var(--line)'};border-radius:12px;cursor:pointer;">${av}</button>`;
+        const ownedGrid = owned.length ? owned.map((av) => tile(av, av === cur)).join('') : '<div class="mono" style="font-size:12px;color:var(--muted);padding:6px 0;">None yet — unlock avatars from the achievements below.</div>';
+        const lockedRows = Object.keys(AVATAR_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
+            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line);opacity:.6;"><span style="font-size:22px;filter:grayscale(1);">${AVATAR_MAP[ach]}</span><span style="flex:1;font-size:12.5px;">🔒 ${escapeHtml(ach)}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : '')}</span></div>`; }).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'avatar-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeAvatarPicker(); };
+        wrap.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your avatar</div>
+                <button onclick="MACPrep.closeAvatarPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
+            </div>
+            <div class="sub" style="font-size:13px;margin-bottom:10px;">Emoji profile pictures you unlock from achievements. Shows in your sidebar and on the League board.</div>
+            <div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;">
+                <button type="button" onclick="MACPrep.saveAvatar('')" style="font-size:12px;height:52px;padding:0 14px;display:flex;align-items:center;justify-content:center;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:12px;cursor:pointer;color:var(--muted);">Initials</button>
+                ${ownedGrid}
+            </div>
+            ${lockedRows ? `<div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 2px;">Locked — earn these</div>${lockedRows}` : ''}
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeAvatarPicker() { const o = $('avatar-overlay'); if (o) o.remove(); }
     function achReward(a) {
         const title = TITLE_MAP[a.title];
         if (title) return `🎁 Unlocks title <strong style="color:var(--accent);">${escapeHtml(title)}</strong>`;
@@ -1985,7 +2037,7 @@
             const trs = rows.map((r) =>
                 '<tr style="' + (r.is_me ? 'background:var(--accent-dim);' : '') + '">'
                 + '<td style="padding:9px 10px;font-family:ui-monospace,monospace;' + (r.rank <= 3 ? 'font-weight:700;color:var(--accent);' : 'color:var(--text2);') + '">' + r.rank + '</td>'
-                + '<td style="padding:9px 10px;">' + escapeHtml(r.handle) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
+                + '<td style="padding:9px 10px;">' + (r.avatar ? '<span style="font-size:16px;margin-right:5px;vertical-align:-1px;">' + escapeHtml(r.avatar) + '</span>' : '') + escapeHtml(r.handle) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
                 + '<td style="padding:9px 10px;text-align:right;color:var(--text2);">' + r.streak + ' 🔥</td>'
                 + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + r.weekly + '</td></tr>').join('');
             board = '<div class="card" style="padding:6px;"><table style="width:100%;font-size:14px;border-collapse:collapse;">'
@@ -3191,6 +3243,7 @@
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
         saveTitle, openTitlePicker, closeTitlePicker,
+        saveAvatar, openAvatarPicker, closeAvatarPicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
 
