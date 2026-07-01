@@ -133,7 +133,7 @@
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         closeNavMenus();
-        if (view === 'dashboard') { renderDashboard(); checkLevelUp(); }
+        if (view === 'dashboard') { renderDashboard(); renderDailyQuests(); checkLevelUp(); }
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
         if (view === 'leaderboard') loadLeaderboard();
@@ -628,8 +628,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 6;
+    const WHATS_NEW_VERSION = 7;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Daily Quests', desc: 'A fresh set of daily goals on your dashboard that resets at 7 AM ET. Finish all three to open a daily chest, and rack up quest days for new achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'XP + Levels', desc: 'Every question you answer now earns XP and levels you up — see your level and progress bar right on the dashboard. Levels come fast early on, and there are new Level achievements to chase. (First of several game modes on the way.)' },
         { tag: 'New', date: 'Jul 1', title: '20+ more achievements', desc: 'New badges to chase across Coverage, Mastery, and Milestones — deep-dive a specialty, cover the whole bank, ace three domains, finish Mock Exams, hit peak readiness, and more.' },
         { tag: 'New', date: 'Jul 1', title: 'Mock Exam matches the real thing', desc: 'The Mock Exam is now 180 questions in 220 minutes — the exact length and timing of the NCCAA board exam.' },
@@ -787,6 +788,79 @@
     }
     function closeLevelUp() { const o = $('levelup-overlay'); if (o) o.remove(); }
 
+    // ---- Daily Quests (reset at 7:00 AM ET, same boundary as the Question of the Day) ----
+    function dailyKey() { return 'macprep_daily_' + qotdDayKey(); }
+    function getDaily() { try { return JSON.parse(localStorage.getItem(dailyKey()) || '{}'); } catch (e) { return {}; } }
+    function saveDaily(d) { try { localStorage.setItem(dailyKey(), JSON.stringify(d)); } catch (e) {} }
+    function bumpDaily(patch) {
+        const d = getDaily();
+        if (patch.answered) d.answered = (d.answered || 0) + patch.answered;
+        if (patch.correct) d.correct = (d.correct || 0) + patch.correct;
+        saveDaily(d);
+    }
+    function questDayCount() { try { return (JSON.parse(localStorage.getItem('macprep_questdays') || '[]') || []).length; } catch (e) { return 0; } }
+    function dailyQuests() {
+        const p = state.profile || {}, d = getDaily();
+        const answeredToday = Math.max(p.answered_today || 0, d.answered || 0);
+        const quests = [
+            { icon: 'flame', label: 'Answer 10 questions', cur: Math.min(answeredToday, 10), target: 10 },
+            { icon: 'target', label: 'Get 8 correct', cur: Math.min(d.correct || 0, 8), target: 8 },
+            { icon: 'star', label: 'Answer the Question of the Day', cur: qotdDoneToday() ? 1 : 0, target: 1 },
+        ];
+        quests.forEach((q) => { q.done = q.cur >= q.target; });
+        return { quests, allDone: quests.every((q) => q.done), chestOpened: !!d.chest };
+    }
+    const CHEST_TIPS = [
+        'Reviewing a question you missed is worth about twice as much as re-reading one you got right.',
+        'Short daily sessions beat marathon cram days — spacing is what makes it stick.',
+        'Teach a concept out loud, even to no one. If you can explain it, you own it.',
+        'When you guess, flag it — your "confident misses" are the highest-yield thing to review.',
+        'Cover the choices, predict the answer, then look. Active recall beats recognition.',
+        'Rotate specialties. Interleaving topics beats blocking one for hours.',
+        'Missed it? Read the rationale for every wrong choice, not just the right one.',
+        'A little each day keeps the streak — and your recall — alive.',
+    ];
+    function openDailyChest() {
+        const dq = dailyQuests();
+        if (!dq.allDone || dq.chestOpened) return;
+        const d = getDaily(); d.chest = true; saveDaily(d);
+        try {
+            const days = JSON.parse(localStorage.getItem('macprep_questdays') || '[]');
+            const k = qotdDayKey();
+            if (days.indexOf(k) < 0) { days.push(k); localStorage.setItem('macprep_questdays', JSON.stringify(days.slice(-400))); }
+        } catch (e) {}
+        renderDailyQuests();
+    }
+    function renderDailyQuests() {
+        const el = $('dailyquests-card'); if (!el) return;
+        const dq = dailyQuests();
+        const doneCount = dq.quests.filter((q) => q.done).length;
+        const row = (q) => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;">
+            <span style="width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${q.done ? 'var(--accent)' : 'var(--bg)'};border:1px solid ${q.done ? 'var(--accent)' : 'var(--line)'};color:${q.done ? 'var(--on-accent)' : 'var(--muted)'};font-size:14px;">${q.done ? '✓' : ''}</span>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:13.5px;font-weight:600;color:${q.done ? 'var(--muted)' : 'var(--text)'};${q.done ? 'text-decoration:line-through;' : ''}">${q.label}</div>
+                ${q.done ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden;"><span style="display:block;height:100%;width:${Math.round((q.cur / q.target) * 100)}%;background:var(--accent);border-radius:3px;"></span></div>`}
+            </div>
+            <span class="mono" style="font-size:11px;color:var(--muted);flex:none;">${q.cur}/${q.target}</span></div>`;
+        let chest = '';
+        if (dq.allDone && !dq.chestOpened) {
+            chest = `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:14px;text-align:center;">
+                <div class="sub" style="font-size:13px;margin-bottom:10px;">All quests done — open your daily chest!</div>
+                <button class="btn" type="button" onclick="MACPrep.openDailyChest()">Open chest →</button></div>`;
+        } else if (dq.chestOpened) {
+            const tip = CHEST_TIPS[new Date().getDate() % CHEST_TIPS.length];
+            chest = `<div style="margin-top:12px;background:var(--accent-dim);border-radius:10px;padding:12px 14px;">
+                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:5px;">Today's reward · study tip</div>
+                <div style="font-size:13.5px;line-height:1.5;">${escapeHtml(tip)}</div>
+                <div class="sub" style="font-size:12px;margin-top:8px;">Fresh quests and a new chest at 7:00 AM ET.</div></div>`;
+        }
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Daily quests · ${doneCount}/${dq.quests.length}</div>
+                <div class="mono" style="font-size:11px;color:var(--muted);">resets 7:00 AM ET</div>
+            </div>${dq.quests.map(row).join('')}${chest}`;
+        el.classList.remove('hidden');
+    }
+
     function renderMomentum() {
         const el = $('momentum-card'); if (!el) return;
         // the momentum card carries its own greeting — hide the plain one
@@ -935,6 +1009,11 @@
         const Lv = xpLevel(p);
         const lvlA = (n, title, icon) => A.push({ cat: 'Milestones', icon: icon || 'star', title, desc: `Reach Level ${n} by earning XP from answering questions.`, met: Lv.level >= n, pct: Lv.level >= n ? 100 : Math.max(0, Math.min(99, Math.round((Lv.level / n) * 100))), sub: Lv.level >= n ? 'Unlocked' : `Level ${Lv.level} / ${n}` });
         lvlA(5, 'Level 5'); lvlA(10, 'Level 10'); lvlA(25, 'Level 25'); lvlA(50, 'Level 50 — halfway to max'); lvlA(100, 'Max level — 100', 'trophy');
+
+        // daily quests — complete all of a day's quests to bank a "quest day"
+        const qDays = questDayCount();
+        const qA = (n, title) => A.push({ cat: 'Milestones', icon: 'flame', title, desc: `Complete all your daily quests on ${n} separate day${n === 1 ? '' : 's'}.`, met: qDays >= n, pct: qDays >= n ? 100 : Math.max(0, Math.min(99, Math.round((qDays / n) * 100))), sub: qDays >= n ? 'Unlocked' : `${qDays} / ${n} quest days` });
+        qA(1, 'Quest complete — first daily set'); qA(7, 'Quest week — 7 days'); qA(30, 'Quest master — 30 days');
         return A;
     }
     function achIcon(name, met) {
@@ -1707,6 +1786,7 @@
                 state.profile.stats.answered++; state.profile.stats.attempts++;
                 if (data.correct) state.profile.stats.correct++;
             }
+            bumpDaily({ answered: 1, correct: data.correct ? 1 : 0 }); // daily-quest progress
             s.answers[s.index] = { selectedIndex, graded: data };
             applyGradedView(data, selectedIndex);
             $('confidence-row') && ($('confidence-row').style.display = 'none');
@@ -2540,7 +2620,7 @@
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
-        ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp,
+        ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
