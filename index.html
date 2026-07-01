@@ -1304,6 +1304,16 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed.sidebar-collapsed #sidebar-collapse .sb-caret{transform:rotate(180deg);transform-origin:12px 12px;transform-box:view-box;}
       }
       #question-stem:focus{outline:none;}
+      /* level-up celebration */
+      #levelup-overlay{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:luFade .25s ease both;}
+      #levelup-overlay .lu-card{position:relative;overflow:hidden;box-sizing:border-box;width:100%;max-width:400px;text-align:center;background:var(--panel);border:1px solid var(--accent);border-radius:20px;padding:34px 36px;box-shadow:0 24px 70px rgba(0,0,0,.45);}
+      #levelup-overlay .lu-num{font-family:ui-monospace,monospace;font-weight:800;font-size:72px;line-height:1;color:var(--accent);margin:8px 0 6px;animation:luPop .55s cubic-bezier(.2,.9,.3,1.5) both;}
+      #levelup-overlay .lu-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+      #levelup-overlay .lu-confetti i{position:absolute;top:-16px;width:8px;height:13px;border-radius:2px;opacity:.9;animation-name:luFall;animation-timing-function:ease-in;animation-fill-mode:forwards;}
+      @keyframes luFade{from{opacity:0}to{opacity:1}}
+      @keyframes luPop{0%{transform:scale(.3);opacity:0}55%{transform:scale(1.18);opacity:1}100%{transform:scale(1)}}
+      @keyframes luFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(360px) rotate(var(--luRot,360deg));opacity:0}}
+      @media(prefers-reduced-motion:reduce){#levelup-overlay{animation:none;}#levelup-overlay .lu-num{animation:none;}#levelup-overlay .lu-confetti{display:none;}}
     </style>
     <script src="/src/app.js"></script>
     <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>

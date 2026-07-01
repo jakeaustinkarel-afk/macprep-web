@@ -133,7 +133,7 @@
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         closeNavMenus();
-        if (view === 'dashboard') renderDashboard();
+        if (view === 'dashboard') { renderDashboard(); checkLevelUp(); }
         if (view === 'profile') renderProfile();
         if (view === 'notebook') loadNotebook();
         if (view === 'leaderboard') loadLeaderboard();
@@ -740,6 +740,53 @@
         return { level: lvl, xpInto: atMax ? 0 : rem, xpNeed: atMax ? 0 : step, totalXp, atMax, pct: atMax ? 100 : Math.round((rem / step) * 100) };
     }
 
+    // Milestone levels get a unique celebration; every other level-up gets the standard one.
+    const LEVEL_MILESTONES = {
+        5: { title: 'Getting rolling', msg: "Level 5 — you're building real momentum. Don't break the chain." },
+        10: { title: 'Double digits', msg: "Level 10! You've got a genuine study habit going now." },
+        25: { title: 'Quarter century', msg: "Level 25 — rare air. Your command of the material is really showing." },
+        50: { title: 'Halfway to the top', msg: "Level 50! Halfway to the summit — few students ever make it here." },
+        75: { title: 'Elite', msg: "Level 75 — elite territory. You're studying like a future board-crusher." },
+        100: { title: 'Legend — max level', msg: "LEVEL 100. You've maxed out. Absolutely legendary work." },
+    };
+    // Fires when the user's level increased since we last checked. First run after ship = baseline only.
+    function checkLevelUp() {
+        if (!state.token) return;
+        const cur = xpLevel(state.profile || {}).level;
+        const prev = parseInt(ls('macprep_last_level') || '', 10);
+        try { localStorage.setItem('macprep_last_level', String(cur)); } catch (e) {}
+        if (isNaN(prev)) return;           // baseline the existing level silently — no spurious celebration
+        if (cur > prev) showLevelUp(cur, prev);
+    }
+    function showLevelUp(cur, prev) {
+        if ($('levelup-overlay')) return;
+        let ms = 0;                        // celebrate the highest milestone crossed, else the new level
+        Object.keys(LEVEL_MILESTONES).forEach((k) => { const m = +k; if (m > prev && m <= cur) ms = Math.max(ms, m); });
+        const info = ms ? LEVEL_MILESTONES[ms] : null;
+        const shown = ms || cur;
+        const cols = ['var(--accent)', 'var(--good)', 'var(--warn)', 'var(--info)', 'var(--bad)'];
+        let confetti = '';
+        for (let i = 0; i < 22; i++) {
+            const left = Math.round((i * 4.7 + (i % 3) * 5) % 100);
+            const delay = (i % 7) * 0.08, dur = 1.3 + (i % 5) * 0.18, rot = (i % 2 ? 1 : -1) * (200 + (i % 4) * 80);
+            confetti += `<i style="left:${left}%;background:${cols[i % cols.length]};animation-delay:${delay}s;animation-duration:${dur}s;--luRot:${rot}deg;"></i>`;
+        }
+        const wrap = document.createElement('div');
+        wrap.id = 'levelup-overlay';
+        wrap.setAttribute('role', 'dialog');
+        wrap.onclick = (e) => { if (e.target === wrap) closeLevelUp(); };
+        wrap.innerHTML = `<div class="lu-card">
+            <div class="lu-confetti" aria-hidden="true">${confetti}</div>
+            <div class="mono" style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);">${ms ? 'Milestone reached' : 'Level up'}</div>
+            <div class="lu-num">${shown}</div>
+            <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;line-height:1.15;">${info ? info.title : 'Level ' + shown + '!'}</div>
+            <div class="sub" style="margin:9px 0 22px;font-size:14px;">${info ? info.msg : "Nice work — you leveled up. Keep answering to climb higher."}</div>
+            <button class="btn" type="button" onclick="MACPrep.closeLevelUp()">${ms ? 'Onward' : 'Keep it up'} →</button>
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeLevelUp() { const o = $('levelup-overlay'); if (o) o.remove(); }
+
     function renderMomentum() {
         const el = $('momentum-card'); if (!el) return;
         // the momentum card carries its own greeting — hide the plain one
@@ -833,17 +880,17 @@
         const mastered = cov.filter((c) => c.total && (c.answered || 0) >= c.total).length;
         const qotdEver = !!ls('macprep_qotd_done');
         const A = [];
-        const vol = (n, title) => A.push({ cat: 'Volume', icon: 'star', title, met: total >= n, pct: Math.min(100, Math.round((total / n) * 100)), sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
-        A.push({ cat: 'Volume', icon: 'flag', title: 'Off the mark', met: total >= 1, pct: total >= 1 ? 100 : 0, sub: total >= 1 ? 'Unlocked' : 'Answer your first question' });
+        const vol = (n, title) => A.push({ cat: 'Volume', icon: 'star', title, desc: `Answer ${n.toLocaleString()} questions total (across every session).`, met: total >= n, pct: Math.min(100, Math.round((total / n) * 100)), sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
+        A.push({ cat: 'Volume', icon: 'flag', title: 'Off the mark', desc: 'Answer your very first question.', met: total >= 1, pct: total >= 1 ? 100 : 0, sub: total >= 1 ? 'Unlocked' : 'Answer your first question' });
         vol(100, 'Century — 100 questions'); vol(500, '500 club'); vol(1000, 'Four figures — 1,000');
         vol(2500, 'Halfway hero — 2,500'); vol(5000, 'High five — 5,000'); vol(10000, 'Five figures — 10,000');
-        const strk = (n, title) => A.push({ cat: 'Consistency', icon: 'flame', title, met: streak >= n, pct: Math.min(100, Math.round((streak / n) * 100)), sub: streak >= n ? 'Unlocked' : `${n - streak} day${n - streak === 1 ? '' : 's'} to go` });
+        const strk = (n, title) => A.push({ cat: 'Consistency', icon: 'flame', title, desc: `Practice ${n} day${n === 1 ? '' : 's'} in a row without missing a day.`, met: streak >= n, pct: Math.min(100, Math.round((streak / n) * 100)), sub: streak >= n ? 'Unlocked' : `${n - streak} day${n - streak === 1 ? '' : 's'} to go` });
         strk(2, 'Two in a row'); strk(7, 'One week strong'); strk(14, 'Fortnight'); strk(30, 'A month deep'); strk(100, 'Centurion streak');
-        const accA = (t, minAtt, title) => A.push({ cat: 'Accuracy', icon: 'target', title, met: att >= minAtt && acc >= t, pct: att < minAtt ? Math.round((att / minAtt) * 100) : Math.min(100, Math.round((acc / t) * 100)), sub: (att >= minAtt && acc >= t) ? 'Unlocked' : (att < minAtt ? `${minAtt - att} more answers to qualify` : `at ${acc}% — reach ${t}%`) });
+        const accA = (t, minAtt, title) => A.push({ cat: 'Accuracy', icon: 'target', title, desc: `Reach ${t}% overall accuracy after answering at least ${minAtt} questions.`, met: att >= minAtt && acc >= t, pct: att < minAtt ? Math.round((att / minAtt) * 100) : Math.min(100, Math.round((acc / t) * 100)), sub: (att >= minAtt && acc >= t) ? 'Unlocked' : (att < minAtt ? `${minAtt - att} more answers to qualify` : `at ${acc}% — reach ${t}%`) });
         accA(70, 50, 'On target — 70%'); accA(80, 50, 'Sharpshooter — 80%'); accA(90, 100, 'Elite — 90%');
-        A.push({ cat: 'Coverage', icon: 'grid', title: 'Explorer — every specialty', met: totalSpec > 0 && started >= totalSpec, pct: totalSpec ? Math.round((started / totalSpec) * 100) : 0, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` });
-        A.push({ cat: 'Coverage', icon: 'grid', title: 'Specialist — 100% of a specialty', met: mastered >= 1, pct: mastered >= 1 ? 100 : 0, sub: mastered >= 1 ? 'Unlocked' : 'Fully cover any one specialty' });
-        A.push({ cat: 'Coverage', icon: 'star', title: 'Daily habit — Question of the Day', met: qotdEver, pct: qotdEver ? 100 : 0, sub: qotdEver ? 'Unlocked' : 'Answer a Question of the Day' });
+        A.push({ cat: 'Coverage', icon: 'grid', title: 'Explorer — every specialty', desc: 'Answer at least one question in every specialty.', met: totalSpec > 0 && started >= totalSpec, pct: totalSpec ? Math.round((started / totalSpec) * 100) : 0, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` });
+        A.push({ cat: 'Coverage', icon: 'grid', title: 'Specialist — 100% of a specialty', desc: 'See every question in any one specialty.', met: mastered >= 1, pct: mastered >= 1 ? 100 : 0, sub: mastered >= 1 ? 'Unlocked' : 'Fully cover any one specialty' });
+        A.push({ cat: 'Coverage', icon: 'star', title: 'Daily habit — Question of the Day', desc: 'Answer a Question of the Day at least once.', met: qotdEver, pct: qotdEver ? 100 : 0, sub: qotdEver ? 'Unlocked' : 'Answer a Question of the Day' });
 
         // --- expanded achievements (2026-07-01) ---
         vol(25, 'Warming up — 25'); vol(50, 'Fifty in'); vol(250, 'Quarter-K — 250');
@@ -886,7 +933,7 @@
 
         // levels — XP progression (derived from your real stats)
         const Lv = xpLevel(p);
-        const lvlA = (n, title, icon) => A.push({ cat: 'Milestones', icon: icon || 'star', title, met: Lv.level >= n, pct: Lv.level >= n ? 100 : Math.max(0, Math.min(99, Math.round((Lv.level / n) * 100))), sub: Lv.level >= n ? 'Unlocked' : `Level ${Lv.level} / ${n}` });
+        const lvlA = (n, title, icon) => A.push({ cat: 'Milestones', icon: icon || 'star', title, desc: `Reach Level ${n} by earning XP from answering questions.`, met: Lv.level >= n, pct: Lv.level >= n ? 100 : Math.max(0, Math.min(99, Math.round((Lv.level / n) * 100))), sub: Lv.level >= n ? 'Unlocked' : `Level ${Lv.level} / ${n}` });
         lvlA(5, 'Level 5'); lvlA(10, 'Level 10'); lvlA(25, 'Level 25'); lvlA(50, 'Level 50 — halfway to max'); lvlA(100, 'Max level — 100', 'trophy');
         return A;
     }
@@ -907,7 +954,8 @@
     }
     function achChip(a) {
         const bar = a.met ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:7px;overflow:hidden;"><span style="display:block;height:100%;width:${a.pct || 0}%;background:var(--accent);border-radius:3px;"></span></div>`;
-        return `<div style="display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);${a.met ? '' : 'opacity:.95;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span>${bar}</span></div>`;
+        const tip = escapeHtml((a.desc || a.title) + (a.met ? '' : '') + (a.sub && a.sub !== 'Unlocked' ? ' — ' + a.sub : ''));
+        return `<div title="${tip}" style="display:flex;align-items:flex-start;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);cursor:default;${a.met ? '' : 'opacity:.95;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span>${bar}</span></div>`;
     }
     function renderAchievements() {
         const el = $('achievements-card'); if (!el) return;
@@ -2492,7 +2540,7 @@
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
-        ringFocus, ringBlur, toggleSidebar, resetProgress,
+        ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
