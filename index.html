@@ -257,7 +257,7 @@ body:not(.app-authed) .nav-market{display:none;}
 .lp-steps>.reveal:nth-child(4){transition-delay:.18s;}
 /* mobile: designed for phone, not a shrunk desktop */
 @media(max-width:600px){
-  .lp-hero-grid{padding:22px 0 38px;}
+  .lp-hero-grid{padding-top:22px;padding-bottom:38px;}
   #login-view .lp-ctarow{flex-direction:column;align-items:stretch;gap:10px;}
   #login-view .lp-ctarow .lp-btn{width:100%;}
   #login-view input{font-size:16px;}            /* stops iOS focus-zoom */
@@ -267,7 +267,7 @@ body:not(.app-authed) .nav-market{display:none;}
   .lp-joinpad{padding:26px 22px;}
   .lp-band{min-height:300px;}
   .lp-band .inner{padding:42px 22px;}
-  .lp-statband .lp-stats{padding:30px 0;}
+  .lp-statband .lp-stats{padding-top:30px;padding-bottom:30px;}
   .lp-section{padding:54px 0;}
 }
 /* mobile: keep the theme/font dropdowns fully on-screen. In the hamburger nav the
@@ -320,8 +320,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 .lp-blob.a{width:560px;height:560px;top:-220px;right:-120px;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 55%,transparent),transparent 70%);}
 .lp-blob.b{width:420px;height:420px;bottom:-200px;left:-140px;background:radial-gradient(circle,color-mix(in srgb,var(--info) 38%,transparent),transparent 70%);opacity:.35;}
 .lp-dots{position:absolute;inset:0;background-image:radial-gradient(color-mix(in srgb,var(--muted) 45%,transparent) 1px,transparent 1.4px);background-size:26px 26px;-webkit-mask-image:radial-gradient(ellipse 80% 60% at 60% 30%,#000,transparent 75%);mask-image:radial-gradient(ellipse 80% 60% at 60% 30%,#000,transparent 75%);opacity:.5;}
-.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.04fr .96fr;gap:54px;align-items:center;padding:64px 0 84px;}
-@media(max-width:900px){.lp-hero-grid{grid-template-columns:1fr;gap:42px;padding:36px 0 52px;}}
+.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.04fr .96fr;gap:54px;align-items:center;padding-top:64px;padding-bottom:84px;}
+@media(max-width:900px){.lp-hero-grid{grid-template-columns:1fr;gap:42px;padding-top:36px;padding-bottom:52px;}}
 .lp-ctarow{display:flex;gap:14px;flex-wrap:wrap;margin:28px 0 22px;}
 .lp-foundercred{display:flex;flex-wrap:wrap;align-items:center;gap:7px 11px;color:var(--text2);font-size:14px;}
 .lp-avatar{position:relative;width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--accent-dim);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-weight:700;font-size:12px;color:var(--accent);flex:none;}
@@ -354,7 +354,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 
 /* stat band */
 .lp-statband{background:color-mix(in srgb,var(--accent) 11%,var(--panel));border-top:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));border-bottom:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));}
-.lp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding:38px 0;}
+.lp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding-top:38px;padding-bottom:38px;}
 @media(max-width:680px){.lp-stats{grid-template-columns:repeat(2,1fr);gap:28px 16px;}}
 .lp-stat{text-align:center;}
 .lp-stat .n{font-size:clamp(30px,4vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--text);}
