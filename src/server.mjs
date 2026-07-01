@@ -921,11 +921,12 @@ app.post('/api/admin/vouchers', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 0, 1), 200);
+    const label = String(req.body?.label || '').trim().slice(0, 80) || null;
     try {
-        const rows = Array.from({ length: count }, () => ({ owner_director_id: admin.id, voucher_key: newVoucherCode(), is_claimed: false }));
+        const rows = Array.from({ length: count }, () => ({ owner_director_id: admin.id, voucher_key: newVoucherCode(), is_claimed: false, label }));
         const { data, error } = await supabase.from('program_vouchers').insert(rows).select('voucher_key');
         if (error) throw error;
-        return res.json({ success: true, codes: (data || []).map((d) => d.voucher_key) });
+        return res.json({ success: true, codes: (data || []).map((d) => d.voucher_key), label });
     } catch (err) {
         console.error('Voucher generate failure:', err.message);
         return res.status(500).json({ error: 'Could not generate vouchers.' });
@@ -937,7 +938,7 @@ app.get('/api/admin/vouchers', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
         const { data } = await supabase.from('program_vouchers')
-            .select('voucher_key, is_claimed, claimed_by_email, claimed_at, created_at')
+            .select('voucher_key, is_claimed, claimed_by_email, claimed_at, created_at, label')
             .eq('owner_director_id', admin.id).order('created_at', { ascending: false }).limit(500);
         const list = data || [];
         return res.json({ vouchers: list, total: list.length, claimed: list.filter((v) => v.is_claimed).length });

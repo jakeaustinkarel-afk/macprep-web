@@ -2191,37 +2191,77 @@
             const { resp, data } = await apiJSON('/api/admin/vouchers', { headers: authHeaders() });
             if (!resp.ok) return;
             const fmtDate = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
-            const header = `<tr style="text-align:left;border-bottom:1px solid var(--line);">
-                <th style="padding:2px 10px 8px 0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Code</th>
-                <th style="padding:2px 10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Status</th>
-                <th style="padding:2px 10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Generated</th>
-                <th style="padding:2px 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;">Claimed by</th></tr>`;
-            const rows = (data.vouchers || []).map((v) => `<tr>
-                <td style="font-family:ui-monospace,monospace;padding:4px 10px 4px 0;">${escapeHtml(v.voucher_key)}</td>
-                <td style="padding:4px 10px;color:${v.is_claimed ? 'var(--muted)' : 'var(--accent)'};">${v.is_claimed ? 'claimed' : 'available'}</td>
-                <td style="padding:4px 10px;color:var(--muted);font-size:12px;white-space:nowrap;">${fmtDate(v.created_at)}</td>
-                <td style="padding:4px 0;color:var(--muted);font-size:12px;">${v.claimed_by_email ? escapeHtml(v.claimed_by_email) : ''}</td></tr>`).join('');
+            const vs = data.vouchers || [];
+            // group by cohort label so two cohorts never get intermixed (unlabeled sorts last)
+            const groups = {};
+            vs.forEach((v) => { const k = (v.label && v.label.trim()) || '— Unlabeled'; (groups[k] = groups[k] || []).push(v); });
+            const keys = Object.keys(groups).sort((a, b) => (a.startsWith('—') ? 1 : b.startsWith('—') ? -1 : a.localeCompare(b)));
+            const thc = 'padding:2px 10px 8px 0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;';
+            const header = `<tr style="text-align:left;border-bottom:1px solid var(--line);"><th style="${thc}">Code</th><th style="${thc}">Status</th><th style="${thc}">Generated</th><th style="${thc}">Claimed by</th></tr>`;
+            const groupHtml = keys.map((k) => {
+                const rows = groups[k];
+                const avail = rows.filter((v) => !v.is_claimed).map((v) => v.voucher_key);
+                const claimed = rows.length - avail.length;
+                const body = rows.map((v) => `<tr>
+                    <td style="font-family:ui-monospace,monospace;padding:4px 10px 4px 0;">${escapeHtml(v.voucher_key)}</td>
+                    <td style="padding:4px 10px;color:${v.is_claimed ? 'var(--muted)' : 'var(--accent)'};">${v.is_claimed ? 'claimed' : 'available'}</td>
+                    <td style="padding:4px 10px;color:var(--muted);font-size:12px;white-space:nowrap;">${fmtDate(v.created_at)}</td>
+                    <td style="padding:4px 0;color:var(--muted);font-size:12px;">${v.claimed_by_email ? escapeHtml(v.claimed_by_email) : ''}</td></tr>`).join('');
+                const copyBtn = avail.length ? `<button class="btn ghost" style="font-size:11px;padding:5px 10px;" data-codes="${avail.join(' ')}" onclick="MACPrep.copyCodes(this)">Copy ${avail.length} available</button>` : '';
+                return `<div style="margin-top:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap;">
+                        <span style="font-weight:700;font-size:13.5px;">${escapeHtml(k)} <span class="mono" style="color:var(--muted);font-weight:400;font-size:11px;">${claimed}/${rows.length} claimed</span></span>
+                        ${copyBtn}
+                    </div>
+                    <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:8px 10px;"><table style="width:100%;font-size:13px;border-collapse:collapse;">${header}${body}</table></div>
+                </div>`;
+            }).join('');
             el.innerHTML = `<h3>Cohort vouchers</h3>
-                <p class="sub" style="margin:0 0 10px;">Generate codes to hand to a class or cohort — each grants one premium unlock. <span class="mono" style="color:var(--muted);">${data.claimed}/${data.total} claimed</span></p>
-                <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-                    <input id="voucher-count" type="number" min="1" max="200" value="10" style="width:90px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);">
+                <p class="sub" style="margin:0 0 12px;">Generate codes for a class or cohort — <strong>label each batch</strong> so you never send the same code to two cohorts. Each code grants one premium unlock. <span class="mono" style="color:var(--muted);">${data.claimed}/${data.total} claimed</span></p>
+                <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                    <input id="voucher-count" type="number" min="1" max="200" value="10" title="How many codes" style="width:82px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);">
+                    <input id="voucher-label" type="text" maxlength="80" placeholder="Cohort / label — e.g. Emory Class of 2027" style="flex:1;min-width:200px;box-sizing:border-box;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
                     <button class="btn" onclick="MACPrep.generateVouchers()">Generate codes</button>
                     <span id="voucher-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
                 </div>
-                ${rows ? `<div style="max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:10px;"><table style="width:100%;font-size:13px;border-collapse:collapse;">${header}${rows}</table></div>` : '<div class="mono" style="color:var(--muted);font-size:13px;">No codes yet.</div>'}`;
+                <div id="voucher-fresh"></div>
+                ${vs.length ? groupHtml : '<div class="mono" style="color:var(--muted);font-size:13px;margin-top:10px;">No codes yet.</div>'}`;
             el.classList.remove('hidden');
         } catch (e) { /* ignore */ }
     }
 
     async function generateVouchers() {
         const count = parseInt($('voucher-count').value, 10) || 10;
-        const msg = $('voucher-msg'); if (msg) msg.textContent = 'Generating…';
+        const label = (($('voucher-label') && $('voucher-label').value) || '').trim();
+        const msg = $('voucher-msg'); if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Generating…'; }
         try {
-            const { resp, data } = await apiJSON('/api/admin/vouchers', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ count }) });
+            const { resp, data } = await apiJSON('/api/admin/vouchers', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ count, label }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
-            await loadVouchers();
-            if (msg) { msg.textContent = `Generated ${data.codes.length}. Copy them from the list below.`; }
+            const codes = data.codes || [];
+            await loadVouchers(); // re-renders the card (creates an empty #voucher-fresh)
+            const box = $('voucher-fresh');
+            if (box) {
+                box.innerHTML = `<div style="border:1px solid var(--accent);border-radius:8px;padding:12px;margin:4px 0 6px;background:var(--accent-dim);">
+                    <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${codes.length} new code${codes.length === 1 ? '' : 's'}${data.label ? ' for ' + escapeHtml(data.label) : ' (unlabeled)'} — copy all for this cohort now:</div>
+                    <textarea readonly onclick="this.select()" style="width:100%;box-sizing:border-box;height:92px;font-family:ui-monospace,monospace;font-size:12px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);">${escapeHtml(codes.join('\n'))}</textarea>
+                    <button class="btn ghost" style="margin-top:8px;font-size:12px;" data-codes="${codes.join(' ')}" onclick="MACPrep.copyCodes(this)">Copy codes</button>
+                </div>`;
+            }
+            if (msg) msg.textContent = `Generated ${codes.length}${data.label ? ' for ' + data.label : ''}.`;
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
+    // Copy a space-separated batch of codes (from a data-codes attr) to the clipboard, one per line.
+    function copyCodes(btn) {
+        const codes = ((btn && btn.dataset.codes) || '').trim().split(/\s+/).filter(Boolean).join('\n');
+        const done = () => { if (btn) { const p = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = p; }, 1500); } };
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(codes).then(done, () => fallbackCopy(codes, done)); }
+            else fallbackCopy(codes, done);
+        } catch (e) { fallbackCopy(codes, done); }
+    }
+    function fallbackCopy(text, cb) {
+        try { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); if (cb) cb(); } catch (e) {}
     }
 
     // ---- checkout ---------------------------------------------------------
@@ -2425,7 +2465,7 @@
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, loadLeaderboard, saveLeaderboardSettings, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
