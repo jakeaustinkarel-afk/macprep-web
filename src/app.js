@@ -110,6 +110,7 @@
             // Arcade runs are ephemeral (not saved) — leaving just ends the run, no confirm.
             stopArcadeTimer(); clearArcadeAdvance();
             state.session.arcade.over = true; state.session.complete = true;
+            if ($('arcade-hud')) { $('arcade-hud').style.display = 'none'; $('arcade-hud').innerHTML = ''; }
         } else if (state.session && !state.session.complete && view !== 'quiz'
             && $('quiz-view') && !$('quiz-view').classList.contains('hidden')) {
             if (!confirm('Leave this session? Your progress is saved — you can resume it from the dashboard.')) return;
@@ -643,8 +644,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 8;
+    const WHATS_NEW_VERSION = 9;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Arcade modes', desc: 'Two fast, score-chasing modes in Study Modes: Survival (endless — 3 lives, one miss costs a life) and Time Attack (a five-minute sprint). Each keeps your personal best.' },
         { tag: 'New', date: 'Jul 1', title: 'Domain Bosses', desc: 'Take on a Domain Boss from Study Modes — score 80%+ on a short mastery challenge to "defeat" a domain. Clear all six to become a Boss Slayer.' },
         { tag: 'New', date: 'Jul 1', title: 'Daily Quests', desc: 'A fresh set of daily goals on your dashboard that resets at 7 AM ET. Finish all three to open a daily chest, and rack up quest days for new achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'XP + Levels', desc: 'Every question you answer now earns XP and levels you up — see your level and progress bar right on the dashboard. Levels come fast early on, and there are new Level achievements to chase. (First of several game modes on the way.)' },
@@ -1370,7 +1372,7 @@
         t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
         t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
         const arcTop = Math.max(arcadeBest('survival'), arcadeBest('timeattack'));
-        t.push(smTile('sm-arcade', 'Arcade', 'Arcade', 'Survival & Time Attack — chase a high score.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
+        t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Survival & Time Attack — chase a high score.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
