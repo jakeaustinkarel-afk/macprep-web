@@ -467,6 +467,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a id="nav-dashboard" class="hidden" onclick="MACPrep.go('dashboard')">Dashboard</a>
             <a id="nav-notebook" class="hidden" onclick="MACPrep.go('notebook')">Notebook</a>
             <a id="nav-leaderboard" class="hidden" onclick="MACPrep.go('leaderboard')">League</a>
+            <a id="nav-whatsnew" class="hidden" onclick="MACPrep.openWhatsNew()" style="position:relative;">What's New<span id="wn-dot" style="display:none;position:absolute;top:-2px;right:-9px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--panel);"></span></a>
             <span id="nav-admin-wrap" class="hidden" style="position:relative;display:inline-flex;align-items:center;">
                 <a role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" style="color:var(--info);">Admin <span aria-hidden="true" style="font-size:9px;">▼</span></a>
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
@@ -814,6 +815,9 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <div class="wrap hidden" id="dashboard-view">
         <h2 class="view-title" id="dash-greeting">Welcome back</h2>
         <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
+        <div class="card" id="momentum-card" style="order:-3;border-color:var(--accent);"></div>
+        <div class="card" id="studymodes-card" style="order:-2;"></div>
+        <div class="card" id="achievements-card" style="order:4;"></div>
 
         <div class="card hidden" id="resume-card" style="border-color:var(--line);"></div>
         <div class="card hidden" id="onboarding" style="border-color:var(--line);"></div>
@@ -849,7 +853,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div class="card" style="order:6;grid-column:1/-1;"><div id="specialty-perf"></div></div>
         <div class="card hidden" id="calibration-card" style="order:6;"></div>
 
-        <div class="card" style="order:2;">
+        <div class="card hidden" style="order:2;">
             <h3>Quick sessions</h3>
             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <button class="btn ghost" type="button" onclick="MACPrep.smartReview()">Smart review (weak + missed)</button>
@@ -860,7 +864,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
         </div>
 
-        <div class="card" id="recommended-card" style="order:1;border-color:var(--accent);">
+        <div class="card hidden" id="recommended-card" style="order:1;border-color:var(--accent);">
             <h2 style="margin-top:0;">Ready to study?</h2>
             <p class="sub" id="recommended-sub">A focused ~20-question set from your due reviews, missed questions, and weakest areas.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -1087,6 +1091,32 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         </div>
       </div>
     </div>
+    <div id="whatsnew-panel" class="hidden" onclick="if(event.target===this)MACPrep.closeWhatsNew()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:20px;">
+      <div role="dialog" aria-modal="true" aria-label="What's new" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:460px;width:100%;margin-top:6vh;max-height:80vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">What's new</div>
+          <button type="button" onclick="MACPrep.closeWhatsNew()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <div id="wn-body"></div>
+        <div style="text-align:center;margin-top:14px;"><a href="/updates.html" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--accent);text-decoration:none;">See full changelog →</a></div>
+      </div>
+    </div>
+    <div id="mock-picker" class="hidden" onclick="if(event.target===this)MACPrep.closeMockPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div role="dialog" aria-modal="true" aria-labelledby="mock-title" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:440px;width:100%;padding:26px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px;">
+          <div>
+            <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">Mock exam</div>
+            <h3 id="mock-title" style="margin:5px 0 0;font-size:19px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:700;">Simulate the real thing</h3>
+          </div>
+          <button type="button" onclick="MACPrep.closeMockPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+        </div>
+        <p class="sub" style="font-size:13px;margin:8px 0 16px;">Full-length and timed, sampled across all six NCCAA domains in proportion to the bank. Ends with a per-domain score breakdown.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button type="button" class="sp-opt" onclick="MACPrep.startMockExam(100)">100 questions</button>
+          <button type="button" class="sp-opt" onclick="MACPrep.startMockExam(150)">150 questions</button>
+        </div>
+      </div>
+    </div>
     <div id="specialty-picker" class="hidden" onclick="if(event.target===this)MACPrep.closeSpecialtyPicker()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div role="dialog" aria-modal="true" aria-labelledby="sp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:430px;width:100%;padding:26px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px;">
@@ -1150,8 +1180,24 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .sp-opt:hover{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
       .sp-opt:active{transform:translateY(1px);}
       @media (prefers-reduced-motion: reduce){.spec-tile,.sp-opt{transition:none;}.spec-tile:hover{transform:none;}}
+      /* Study Modes bento */
+      .sm-bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:12px;}
+      .sm-tile{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--panel);cursor:pointer;color:var(--text);font-family:inherit;transition:transform .16s ease,border-color .16s ease,box-shadow .2s ease;}
+      .sm-tile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 12px 26px -18px rgba(0,0,0,.5);}
+      .sm-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+      .sm-cat{font-family:ui-monospace,monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+      .sm-title{font-weight:700;font-size:16px;color:var(--text);}
+      .sm-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+      .sm-count{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--accent);font-weight:700;margin-top:auto;padding-top:10px;}
+      .sm-tag{display:inline-block;font-family:ui-monospace,monospace;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--on-accent,#fff);background:var(--accent);padding:2px 6px;border-radius:5px;vertical-align:middle;margin-left:5px;}
+      .sm-rec{grid-column:1/3;grid-row:1/3;background:linear-gradient(160deg,var(--accent-dim),var(--panel));border-color:var(--accent);}
+      .sm-mock{grid-column:3/5;grid-row:1;}
+      .sm-q10{grid-column:3;grid-row:2;}.sm-smart{grid-column:4;grid-row:2;}
+      .sm-missed{grid-column:1;grid-row:3;}.sm-flag{grid-column:2;grid-row:3;}.sm-spec{grid-column:3;grid-row:3;}.sm-build{grid-column:4;grid-row:3;}
+      @media(max-width:760px){.sm-bento{grid-template-columns:1fr 1fr;grid-auto-rows:auto;}.sm-rec,.sm-mock,.sm-q10,.sm-smart,.sm-missed,.sm-flag,.sm-spec,.sm-build{grid-column:auto;grid-row:auto;}.sm-rec{grid-column:1/3;}}
+      @media(max-width:340px){.sm-bento{grid-template-columns:1fr;}.sm-rec{grid-column:auto;}}
       #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
-      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
+      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
       @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
       /* Desktop app shell: the top header becomes a fixed LEFT SIDEBAR for signed-in

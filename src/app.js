@@ -115,8 +115,9 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
+        if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
         // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
@@ -606,9 +607,215 @@
             + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">' + cells + '</div>';
     }
 
+    // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
+    const WHATS_NEW_VERSION = 3;
+    const WHATS_NEW = [
+        { tag: 'New', date: 'Jun 30', title: 'A livelier dashboard', desc: 'Daily-goal rings, streak, achievements, and a Study Modes grid to jump into anything fast.' },
+        { tag: 'New', date: 'Jun 30', title: 'Mock Exam', desc: 'Full-length, timed, weighted across all six NCCAA domains — with a per-domain score report.' },
+        { tag: 'New', date: 'Jun 29', title: 'Focused quizzes by specialty', desc: 'Tap any specialty to launch a 5 / 10 / 25 / all quiz on just that area.' },
+        { tag: 'New', date: 'Jun 29', title: 'Community partner: Bag Mask', desc: 'Anesthesia jobs & careers, now linked in the footer.' },
+        { tag: 'Fix', date: 'Jun 29', title: 'Cleaner mobile home page', desc: 'Cards no longer run to the screen edge on phones.' },
+    ];
+    function whatsNewUnread() { try { return WHATS_NEW_VERSION > (parseInt(ls('macprep_whatsnew_seen'), 10) || 0); } catch (e) { return false; } }
+    function renderWhatsNewDot() { const d = $('wn-dot'); if (d) d.style.display = whatsNewUnread() ? '' : 'none'; }
+    function openWhatsNew() {
+        const body = $('wn-body');
+        if (body) {
+            body.innerHTML = WHATS_NEW.map((e) => {
+                const isFix = e.tag === 'Fix';
+                const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
+                const pillBg = isFix ? 'color-mix(in srgb,var(--warn) 16%,transparent)' : 'var(--accent-dim)';
+                return `<div style="display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);">`
+                    + `<div class="mono" style="font-size:10.5px;color:var(--muted);min-width:46px;padding-top:3px;">${e.date}</div>`
+                    + `<div style="min-width:0;"><div style="font-weight:700;font-size:14.5px;color:var(--text);line-height:1.3;">${escapeHtml(e.title)} <span class="mono" style="font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${pillColor};background:${pillBg};padding:2px 6px;border-radius:5px;margin-left:3px;">${e.tag}</span></div>`
+                    + `<div style="font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5;">${escapeHtml(e.desc)}</div></div></div>`;
+            }).join('');
+        }
+        const m = $('whatsnew-panel'); if (m) m.classList.remove('hidden');
+        try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {}
+        renderWhatsNewDot();
+    }
+    function closeWhatsNew() { const m = $('whatsnew-panel'); if (m) m.classList.add('hidden'); }
+
+    // ---- Momentum hero (Concept B): today's-goal / weekly-streak / readiness rings,
+    // a "close your rings" plan, and the next-milestone counter. All from existing data.
+    function nextMilestone(total) {
+        const M = [50, 100, 250, 500, 1000, 1500, 2000, 3000, 5000, 7500, 10000, 15000];
+        for (let i = 0; i < M.length; i++) { if (M[i] > total) return M[i]; }
+        return Math.ceil((total + 1) / 5000) * 5000;
+    }
+    function momLegRow(color, label, val) {
+        return `<div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:3px;background:${color};flex:none;"></span>`
+            + `<span style="display:flex;flex-direction:column;line-height:1.2;"><span class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">${label}</span>`
+            + `<span style="font-weight:700;font-size:15px;color:var(--text);">${val}</span></span></div>`;
+    }
+    function renderMomentum() {
+        const el = $('momentum-card'); if (!el) return;
+        // the momentum card carries its own greeting — hide the plain one
+        const g = $('dash-greeting'); if (g) g.style.display = 'none';
+        const sb = $('dash-subtitle'); if (sb) sb.style.display = 'none';
+        const p = state.profile || {};
+        const bank = (state.questions || []).length;
+        const answeredToday = p.answered_today || 0;
+        let goal = (p.days_to_exam > 0 && bank > 0) ? Math.ceil((bank * 2) / p.days_to_exam) : 10;
+        goal = Math.max(5, Math.min(40, goal));
+        const streak = p.streak || 0;
+        const weekDays = Math.min(streak, 7);
+        const readiness = Math.max(0, Math.min(100, p.readiness || 0));
+        const total = (p.stats || {}).answered || 0;
+        const goalPct = Math.min(100, Math.round((answeredToday / goal) * 100));
+        const toGoal = Math.max(0, goal - answeredToday);
+        const nm = nextMilestone(total), toGo = nm - total;
+        const first = (p.full_name || '').split(' ')[0] || 'there';
+        const hour = new Date().getHours();
+        const greet = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+        // ring colors are all derived from the theme accent so they recolor with any theme:
+        // pure accent (readiness), a warm-leaning accent (goal), and a deeper tonal accent (week).
+        const cReady = 'var(--accent)';
+        const cGoal = 'color-mix(in srgb, var(--accent) 66%, var(--warn))';
+        const cWeek = 'color-mix(in srgb, var(--accent) 60%, var(--text))';
+        const ring = (pct, r, sw, c) => {
+            const C = 2 * Math.PI * r, off = C * (1 - Math.max(0, Math.min(100, pct)) / 100);
+            return `<circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}"/>`
+                + `<circle cx="75" cy="75" r="${r}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 75 75)" style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1);"/>`;
+        };
+        const rings = `<svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true" style="flex:none;">`
+            + ring(goalPct, 66, 10, cGoal) + ring(Math.round((weekDays / 7) * 100), 51, 10, cWeek) + ring(readiness, 36, 10, cReady)
+            + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);">${toGoal || '✓'}</text>`
+            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;">${toGoal ? 'TO GOAL' : 'DONE'}</text></svg>`;
+        const legend = `<div style="display:flex;flex-direction:column;gap:12px;flex:none;">`
+            + momLegRow(cGoal, "Today's goal", `${answeredToday} / ${goal} questions`)
+            + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`)
+            + momLegRow(cReady, 'Readiness', `${readiness}%`) + `</div>`;
+        const planTitle = toGoal ? 'Close your rings.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
+        const planSub = toGoal
+            ? `${toGoal} more question${toGoal === 1 ? '' : 's'} to hit today's goal${streak ? ` and keep your ${streak}-day streak alive` : ''}.`
+            : `You've hit today's goal${streak ? ` — ${streak}-day streak and counting` : ''}. Keep the momentum going.`;
+        const saved = getSavedSession();
+        const ctaLabel = saved ? 'Continue session' : 'Start today\'s set';
+        const ctaFn = saved ? 'MACPrep.resumeSession()' : 'MACPrep.startRecommended()';
+        el.innerHTML = `
+            <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;line-height:1.1;">${greet}, ${escapeHtml(first)}.</div>
+            <div class="sub" style="margin:4px 0 20px;font-size:14px;">${toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — don't break the chain.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:24px 30px;align-items:center;">
+                ${rings}${legend}
+                <div style="flex:1;min-width:230px;display:flex;flex-direction:column;gap:14px;">
+                    <div>
+                        <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;">${planTitle}</div>
+                        <div class="sub" style="margin:3px 0 12px;font-size:13.5px;">${planSub}</div>
+                        <button class="btn" type="button" onclick="${ctaFn}" style="font-size:13.5px;">${ctaLabel} →</button>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+                        <div><div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Next milestone</div><div style="font-weight:700;font-size:15px;">${nm.toLocaleString()} questions</div></div>
+                        <div style="text-align:right;"><div style="font-family:ui-monospace,monospace;font-weight:800;font-size:22px;color:var(--accent);">${toGo.toLocaleString()}</div><div class="mono" style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">to go</div></div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // ---- Achievements: unlocked vs locked-with-a-goal, computed from live profile data.
+    function computeAchievements() {
+        const p = state.profile || {}, s = p.stats || {};
+        const total = s.answered || 0, streak = p.streak || 0, att = s.attempts || 0, corr = s.correct || 0;
+        const acc = att ? Math.round((corr / att) * 100) : 0;
+        const cov = p.coverage || []; const started = cov.filter((c) => (c.seen || 0) > 0).length; const totalSpec = cov.length || 16;
+        const qtier = (n, title) => ({ icon: 'star', title, met: total >= n, sub: total >= n ? 'Unlocked' : `${(n - total).toLocaleString()} to go` });
+        return [
+            { icon: 'flag', title: 'Off the mark', met: total >= 1, sub: total >= 1 ? 'Unlocked' : 'Answer your first question' },
+            qtier(100, 'Century — 100 questions'),
+            qtier(500, '500 club'),
+            qtier(1000, 'Four figures — 1,000'),
+            { icon: 'flame', title: 'One week strong', met: streak >= 7, sub: streak >= 7 ? 'Unlocked' : `${7 - streak} day${7 - streak === 1 ? '' : 's'} to go` },
+            { icon: 'target', title: 'Sharpshooter — 80% accuracy', met: att >= 50 && acc >= 80, sub: (att >= 50 && acc >= 80) ? 'Unlocked' : (att < 50 ? `${50 - att} more to qualify` : `at ${acc}% — reach 80%`) },
+            { icon: 'grid', title: 'Full coverage', met: totalSpec > 0 && started >= totalSpec, sub: (totalSpec > 0 && started >= totalSpec) ? 'Unlocked' : `${started} / ${totalSpec} specialties started` },
+        ];
+    }
+    function achIcon(name, met) {
+        const P = {
+            star: '<path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z"/>',
+            flag: '<path d="M4 22V3m0 1h13l-2.5 4L17 12H4"/>',
+            flame: '<path d="M12 2c1 3 4 4 4 8a4 4 0 0 1-8 0c0-1 .3-2 1-3-2 1-4 3-4 6a7 7 0 0 0 14 0c0-6-5-8-7-11z"/>',
+            target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+            grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+        };
+        const path = met ? (P[name] || P.star) : '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
+        return `<span style="width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:${met ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${met ? 'color-mix(in srgb,var(--accent) 40%,var(--line))' : 'var(--line)'};color:${met ? 'var(--accent)' : 'var(--muted)'};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+    }
+    function renderAchievements() {
+        const el = $('achievements-card'); if (!el) return;
+        const A = computeAchievements(); const done = A.filter((a) => a.met).length;
+        const chips = A.map((a) => `<div style="display:flex;align-items:center;gap:11px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);${a.met ? '' : 'opacity:.9;'}">${achIcon(a.icon, a.met)}<span style="display:flex;flex-direction:column;min-width:0;line-height:1.25;"><span style="font-weight:700;font-size:13.5px;color:var(--text);">${a.title}</span><span style="font-size:12px;color:${a.met ? 'var(--accent)' : 'var(--muted)'};">${a.sub}</span></span></div>`).join('');
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Achievements</span><span class="mono" style="font-size:12px;color:var(--accent);font-weight:700;">${done} / ${A.length} unlocked</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px;">${chips}</div>`;
+    }
+
+    // ---- Study Modes bento + Mock Exam ----
+    function jumpToCard(id) {
+        const el = document.getElementById(id); if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow .3s ease'; el.style.boxShadow = '0 0 0 3px var(--accent-dim)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1300);
+    }
+    function startQuick(n) {
+        const usage = freeUsage();
+        if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
+        const pool = (state.questions || []).slice();
+        if (!pool.length) { toast('No questions loaded yet — try again in a moment.'); return; }
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        let k = Math.min(n, pool.length); if (!usage.unlimited) k = Math.min(k, usage.remaining);
+        beginSession(pool.slice(0, k));
+    }
+    function openMockPicker() { const m = $('mock-picker'); if (m) m.classList.remove('hidden'); }
+    function closeMockPicker() { const m = $('mock-picker'); if (m) m.classList.add('hidden'); }
+    // Full-length exam, sampled proportionally to the bank's real domain distribution
+    // (honest weighting — not a fabricated official blueprint), run as a timed exam.
+    function startMockExam(count) {
+        closeMockPicker();
+        const all = state.questions || [];
+        if (all.length < 20) { toast('Not enough questions loaded yet for a mock exam.'); return; }
+        const usage = freeUsage();
+        const n = Math.min(count || 100, all.length);
+        if (!usage.unlimited && usage.remaining < n) { toast('Full-length mock exams are part of full access — unlock everything for a one-time $50.'); return startCheckout(); }
+        const byDom = {};
+        all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
+        const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+        let pool = [];
+        Object.keys(byDom).forEach((d) => { const share = Math.max(1, Math.round(n * (byDom[d].length / all.length))); pool = pool.concat(shuffle(byDom[d].slice()).slice(0, share)); });
+        const seen = new Set(pool.map((q) => q.id));
+        if (pool.length < n) { pool = pool.concat(shuffle(all.slice()).filter((q) => !seen.has(q.id)).slice(0, n - pool.length)); }
+        shuffle(pool); pool = pool.slice(0, n);
+        if (!pool.length) { toast('No questions available for a mock exam yet.'); return; }
+        try { track('mock_exam_start', { size: pool.length }); } catch (e) {}
+        beginSession(pool, 'exam');
+        if (state.session) { state.session.mock = true; saveSession(); }
+    }
+    function smTile(cls, cat, title, desc, count, onclick, tag) {
+        return `<button type="button" class="sm-tile ${cls}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag">${tag}</span>` : ''}</div>`
+            + `<div class="sm-title">${title}</div>${desc ? `<div class="sm-desc">${desc}</div>` : ''}${count ? `<div class="sm-count">${count}</div>` : ''}</button>`;
+    }
+    function renderStudyModes() {
+        const el = $('studymodes-card'); if (!el) return;
+        const p = state.profile || {};
+        const due = (p.due_ids || []).length, missed = (p.missed_ids || []).length, flagged = (p.flagged_ids || []).length;
+        const recParts = [due ? `${due} due` : '', missed ? `${missed} missed` : ''].filter(Boolean);
+        const recCount = recParts.length ? recParts.join(' · ') : 'a smart mix for you';
+        const t = [];
+        t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
+        t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Full-length, timed, blueprint-weighted.', '100 or 150 · timed', 'MACPrep.openMockPicker()', 'New'));
+        t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
+        t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
+        t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
+        t.push(smTile('sm-flag', 'Targeted', 'Flagged', '', flagged ? `${flagged} saved` : 'none flagged', 'MACPrep.startFlagged()'));
+        t.push(smTile('sm-spec', 'By specialty', 'Focused quiz', 'Pick any specialty.', '', "MACPrep.jumpToCard('specialty-perf')"));
+        t.push(smTile('sm-build', 'Custom', 'Build Your Own', 'Domain · count · difficulty.', '', 'MACPrep.toggleCustomize()'));
+        el.innerHTML = `<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:15px;">Study modes</div><div class="sm-bento">${t.join('')}</div>`;
+    }
+
     function renderDashboard() {
         const p = state.profile || {};
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
+        renderMomentum();
+        renderStudyModes();
+        renderAchievements();
         renderResumeCard();
         renderExamPrompt();
         const stats = p.stats || { answered: 0, correct: 0, attempts: 0 };
@@ -1342,13 +1549,15 @@
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         const allFailed = answeredIdx.length > 0 && s.answered === 0;
-        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
+        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
         if (allFailed) {
             $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
         } else {
             const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
             const hype = pct >= 90 ? '🎉 Outstanding — ' : pct >= 75 ? '🎉 Great work — ' : '';
-            $('question-stem').innerHTML = s.diagnostic
+            $('question-stem').innerHTML = s.mock
+                ? `${hype}Mock exam complete — you scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}). Weighted across all six NCCAA domains — the breakdown below shows where to focus.${failWarn}`
+                : s.diagnostic
                 ? `Your predicted readiness is <strong>${pct}%</strong> — across ${s.answered} questions spanning all six blueprint domains.${failWarn} The breakdown below shows exactly where to focus first.`
                 : `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
             if (pct >= 70 && s.answered >= 3) celebrate();
@@ -2023,6 +2232,7 @@
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
+        startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
