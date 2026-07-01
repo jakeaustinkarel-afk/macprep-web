@@ -495,7 +495,6 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" title="Admin"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4-3 6.9-7 8.5C8 18.9 5 16 5 12V6l7-3z"></path></svg><span class="lbl">Admin</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.reviewQueue()">Review queue</a>
-                    <a onclick="MACPrep.reviewEdits()">Length edits</a>
                     <a href="/metrics.html">Metrics</a>
                 </div>
             </span>

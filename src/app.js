@@ -2633,14 +2633,23 @@
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
         go('admin');
         const t = $('admin-review-title'); if (t) t.textContent = 'Content review';
-        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
-        loadAnalytics();
+        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'One queue for everything awaiting review — new AI-authored questions and proposed answer edits. Publish / Approve applies to the live bank; the original is untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
+        const an = $('admin-analytics'); if (an) an.classList.add('hidden'); // analytics lives under Metrics only
         loadVouchers();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
         try {
-            const { resp, data } = await apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() });
-            if (!resp.ok) throw new Error(data.error || 'Could not load.');
-            state.review = { list: data.questions || [], index: 0, counts: data.counts || {} };
+            const [qr, er] = await Promise.all([
+                apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() }).catch(() => ({ data: {} })),
+                apiJSON('/api/admin/edits', { headers: authHeaders() }).catch(() => ({ data: {} })),
+            ]);
+            const questions = (qr.data && qr.data.questions) || [];
+            const edits = (er.data && er.data.edits) || [];
+            const qc = (qr.data && qr.data.counts) || {}, ec = (er.data && er.data.counts) || {};
+            state.review = {
+                list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e }))],
+                index: 0,
+                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0 },
+            };
             renderReview();
         } catch (e) {
             if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`;
@@ -2650,12 +2659,18 @@
     function renderReview() {
         const r = state.review; const wrap = $('admin-body'); if (!r || !wrap) return;
         const c = r.counts || {};
-        $('admin-counts').textContent = `${c.sme_review || 0} awaiting review · ${c.published || 0} published · ${c.rejected || 0} rejected`;
+        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.sme_review || 0} new · ${c.editsPending || 0} edits · ${c.published || 0} published · ${c.rejected || 0} rejected`;
         if (!r.list.length || r.index >= r.list.length) {
-            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">No more questions awaiting review.</div></div>';
+            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">Nothing awaiting review — new questions and proposed edits both land here.</div></div>';
             return;
         }
-        const q = r.list[r.index];
+        const item = r.list[r.index];
+        if (item.kind === 'edit') { renderEditCard(item.e); return; }
+        renderQuestionCard(item.q);
+    }
+
+    function renderQuestionCard(q) {
+        const r = state.review; const wrap = $('admin-body');
         const choices = (q.choices || []).map((ch, i) => {
             const letter = String.fromCharCode(65 + i);
             const correct = (q.correct_answer || '').toUpperCase() === letter || ch.correct === true;
@@ -2667,7 +2682,7 @@
         }).join('');
         const refs = (q.references || []).map((rf) => rf.url ? `<a href="${escapeHtml(rf.url)}" target="_blank" rel="noopener">${escapeHtml(rf.title || rf.source || rf.url)}</a>` : escapeHtml(rf.source || '')).join('<br>');
         wrap.innerHTML = `
-            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Reviewing ${r.index + 1} of ${r.list.length} · ${escapeHtml(q.id)} · ${escapeHtml((q.category || '') + ' · ' + (q.subtopic || '') + ' · ' + (q.difficulty || ''))}</div>
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">New question · ${r.index + 1} of ${r.list.length} · ${escapeHtml(q.id)} · ${escapeHtml((q.category || '') + ' · ' + (q.subtopic || '') + ' · ' + (q.difficulty || ''))}</div>
             <div class="card">
                 <label>Stem</label>
                 <textarea data-edit="stem" rows="4" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:14px;margin-bottom:14px;">${escapeHtml(q.stem || '')}</textarea>
@@ -2689,7 +2704,7 @@
     }
 
     function collectReviewEdits() {
-        const r = state.review; const q = r.list[r.index];
+        const r = state.review; const q = r.list[r.index].q;
         const get = (sel) => { const el = $('admin-body').querySelector(`[data-edit="${sel}"]`); return el ? el.value : undefined; };
         const choices = (q.choices || []).map((ch, i) => ({
             ...ch,
@@ -2722,32 +2737,13 @@
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
     }
 
-    // ---- Answer-length edit review (proposed choice rewrites) --------------
-    async function reviewEdits() {
-        if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
-        go('admin');
-        ['admin-analytics', 'admin-vouchers'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
-        const t = $('admin-review-title'); if (t) t.textContent = 'Answer-length edits';
-        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Rebalanced answer choices so the correct option is no longer the longest. <strong>Approve</strong> applies the edit to the live question; the original stays untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
-        const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading length-balance edits…</div>';
-        try {
-            const { resp, data } = await apiJSON('/api/admin/edits', { headers: authHeaders() });
-            if (!resp.ok) throw new Error(data.error || 'Could not load.');
-            state.edits = { list: data.edits || [], index: 0, counts: data.counts || {} };
-            renderEditReview();
-        } catch (e) { if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`; }
-    }
-
-    function renderEditReview() {
-        const r = state.edits; const wrap = $('admin-body'); if (!r || !wrap) return;
-        const c = r.counts || {};
-        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.pending || 0} pending · ${c.approved || 0} approved · ${c.rejected || 0} rejected`;
-        if (!r.list.length || r.index >= r.list.length) {
-            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">No pending length edits.</div></div>';
-            return;
-        }
+    // ---- Answer-length edit card — rendered inline in the unified review queue
+    // above (no separate tab). Approve applies the proposed choices to the live
+    // question; the original is untouched until then.
+    function renderEditCard(e) {
+        const r = state.review; const wrap = $('admin-body'); if (!wrap) return;
         const GREEN = '#16a34a';
-        const e = r.list[r.index]; const q = e.question || {};
+        const q = e.question || {};
         const orig = e.original_choices || [], prop = e.proposed_choices || [];
         const byLabel = {}; orig.forEach((o, i) => { byLabel[o.label || i] = o; });
         const rows = prop.map((p, i) => {
@@ -2766,7 +2762,7 @@
         const maxOther = Math.max(0, ...prop.filter((p) => !p.correct).map((p) => (p.text || '').length));
         const fixed = correctLen > 0 && correctLen <= maxOther;
         wrap.innerHTML = `
-            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Edit ${r.index + 1} of ${r.list.length} · ${escapeHtml(e.question_id)} · ${escapeHtml((q.category || '') + (q.subtopic ? ' · ' + q.subtopic : ''))}</div>
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Proposed edit · ${r.index + 1} of ${r.list.length} · ${escapeHtml(e.question_id)} · ${escapeHtml((q.category || '') + (q.subtopic ? ' · ' + q.subtopic : ''))}</div>
             <div class="card">
                 <div style="font-size:14px;line-height:1.55;margin-bottom:8px;">${escapeHtml(q.stem || '')}</div>
                 <div class="mono" style="font-size:11px;color:${fixed ? GREEN : 'var(--warn)'};margin-bottom:4px;">${fixed ? '✓ correct is no longer the longest choice' : '⚠ correct is still the longest — trim it or lengthen a distractor before approving'}</div>
@@ -2788,7 +2784,7 @@
     }
 
     function collectEditChoices() {
-        const r = state.edits; const e = r.list[r.index]; const prop = e.proposed_choices || [];
+        const r = state.review; const e = r.list[r.index].e; const prop = e.proposed_choices || [];
         return prop.map((p, i) => {
             const t = $('admin-body').querySelector(`[data-ptext="${i}"]`);
             const ra = $('admin-body').querySelector(`[data-prat="${i}"]`);
@@ -2797,19 +2793,18 @@
     }
 
     async function editAction(action) {
-        const r = state.edits; if (!r) return;
-        const e = r.list[r.index]; const msg = $('edit-msg');
-        if (action === 'skip') { r.index++; renderEditReview(); return; }
+        const r = state.review; if (!r) return;
+        const e = r.list[r.index].e; const msg = $('edit-msg');
+        if (action === 'skip') { r.index++; renderReview(); return; }
         const body = { id: e.id, action };
         if (action === 'approve') body.choices = collectEditChoices();
         try {
             const { resp, data } = await apiJSON('/api/admin/edit', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
-            if (action === 'approve') r.counts.approved = (r.counts.approved || 0) + 1;
-            if (action === 'reject') r.counts.rejected = (r.counts.rejected || 0) + 1;
-            r.counts.pending = Math.max(0, (r.counts.pending || 1) - 1);
+            if (action === 'approve') r.counts.editsApproved = (r.counts.editsApproved || 0) + 1;
+            r.counts.editsPending = Math.max(0, (r.counts.editsPending || 1) - 1);
             r.index++;
-            renderEditReview();
+            renderReview();
         } catch (err) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; } }
     }
 
@@ -3112,7 +3107,7 @@
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
-        smartReview, startSample, saveNote, reviewQueue, adminAction, reviewEdits, editAction, _editLen,
+        smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
