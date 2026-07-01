@@ -628,8 +628,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 5;
+    const WHATS_NEW_VERSION = 6;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'XP + Levels', desc: 'Every question you answer now earns XP and levels you up — see your level and progress bar right on the dashboard. Levels come fast early on, and there are new Level achievements to chase. (First of several game modes on the way.)' },
         { tag: 'New', date: 'Jul 1', title: '20+ more achievements', desc: 'New badges to chase across Coverage, Mastery, and Milestones — deep-dive a specialty, cover the whole bank, ace three domains, finish Mock Exams, hit peak readiness, and more.' },
         { tag: 'New', date: 'Jul 1', title: 'Mock Exam matches the real thing', desc: 'The Mock Exam is now 180 questions in 220 minutes — the exact length and timing of the NCCAA board exam.' },
         { tag: 'New', date: 'Jun 30', title: 'Achievements to chase', desc: 'A new Achievements page in the menu — badges to unlock, each showing how close you are. And the Question of the Day now sits up top and resets at 7am ET.' },
@@ -727,6 +728,18 @@
         if (card) card.querySelectorAll('.mleg').forEach((r) => r.classList.remove('mleg-on'));
         const tip = $('mom-tip'); if (tip) tip.style.display = 'none';
     }
+    // XP + numeric levels (v1: derived from real server stats, so it's retroactive and can't be faked).
+    // XP = 4 per question answered + 8 more for each correct (an attempt = 4 XP, a correct answer = 12).
+    // Cost to go from level L to L+1 = 50 + (L-1)*25, capped at 100 — fast early levels, gently steepening.
+    function xpLevel(p) {
+        const s = (p && p.stats) || {};
+        const totalXp = (s.answered || 0) * 4 + (s.correct || 0) * 8;
+        let lvl = 1, rem = totalXp, step = 50;
+        while (lvl < 100 && rem >= step) { rem -= step; lvl++; step += 25; }
+        const atMax = lvl >= 100;
+        return { level: lvl, xpInto: atMax ? 0 : rem, xpNeed: atMax ? 0 : step, totalXp, atMax, pct: atMax ? 100 : Math.round((rem / step) * 100) };
+    }
+
     function renderMomentum() {
         const el = $('momentum-card'); if (!el) return;
         // the momentum card carries its own greeting — hide the plain one
@@ -744,6 +757,7 @@
         const goalPct = Math.min(100, Math.round((answeredToday / goal) * 100));
         const toGoal = Math.max(0, goal - answeredToday);
         const nm = nextMilestone(total), toGo = nm - total;
+        const lvl = xpLevel(p);
         const first = (p.full_name || '').split(' ')[0] || 'there';
         const hour = new Date().getHours();
         const greet = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
@@ -799,9 +813,12 @@
                         <div class="sub" style="margin:3px 0 12px;font-size:13.5px;">${planSub}</div>
                         <button class="btn" type="button" onclick="${ctaFn}" style="font-size:13.5px;">${ctaLabel} →</button>
                     </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
-                        <div><div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Next milestone</div><div style="font-weight:700;font-size:15px;">${nm.toLocaleString()} questions</div></div>
-                        <div style="text-align:right;"><div style="font-family:ui-monospace,monospace;font-weight:800;font-size:22px;color:var(--accent);">${toGo.toLocaleString()}</div><div class="mono" style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">to go</div></div>
+                    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                            <div style="display:flex;align-items:center;gap:9px;"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 7px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-family:ui-monospace,monospace;font-weight:800;font-size:15px;">${lvl.level}</span><div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Level${lvl.atMax ? ' · MAX' : ''}</div></div>
+                            <div class="mono" style="font-size:10px;color:var(--muted);">${lvl.atMax ? `${lvl.totalXp.toLocaleString()} XP` : `${lvl.xpInto} / ${lvl.xpNeed} XP → ${lvl.level + 1}`}</div>
+                        </div>
+                        <div style="height:6px;background:var(--line);border-radius:3px;margin-top:9px;overflow:hidden;"><span style="display:block;height:100%;width:${lvl.pct}%;background:var(--accent);border-radius:3px;transition:width .6s ease;"></span></div>
                     </div>
                 </div>
             </div>`;
@@ -866,6 +883,11 @@
         milePush('flame', 'The grind — 30-day streak + 2,500', streak >= 30 && total >= 2500, Math.round(Math.min(streak / 30, total / 2500) * 100), 'a 30-day streak and 2,500 answered');
         milePush('clipboard', 'Dress rehearsal — finish a Mock Exam', mocks >= 1, 0, 'complete a full Mock Exam');
         milePush('clipboard', 'Mock master — three Mock Exams', mocks >= 3, Math.round((mocks / 3) * 100), `${mocks} / 3 completed`);
+
+        // levels — XP progression (derived from your real stats)
+        const Lv = xpLevel(p);
+        const lvlA = (n, title, icon) => A.push({ cat: 'Milestones', icon: icon || 'star', title, met: Lv.level >= n, pct: Lv.level >= n ? 100 : Math.max(0, Math.min(99, Math.round((Lv.level / n) * 100))), sub: Lv.level >= n ? 'Unlocked' : `Level ${Lv.level} / ${n}` });
+        lvlA(5, 'Level 5'); lvlA(10, 'Level 10'); lvlA(25, 'Level 25'); lvlA(50, 'Level 50 — halfway to max'); lvlA(100, 'Max level — 100', 'trophy');
         return A;
     }
     function achIcon(name, met) {
