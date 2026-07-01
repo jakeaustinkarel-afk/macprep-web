@@ -658,10 +658,35 @@
         for (let i = 0; i < M.length; i++) { if (M[i] > total) return M[i]; }
         return Math.ceil((total + 1) / 5000) * 5000;
     }
-    function momLegRow(color, label, val) {
-        return `<div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:3px;background:${color};flex:none;"></span>`
+    function momLegRow(color, label, val, key) {
+        const h = key ? ` class="mleg" data-ring="${key}" tabindex="0" role="button" onmouseenter="MACPrep.ringFocus('${key}')" onmouseleave="MACPrep.ringBlur()" onfocus="MACPrep.ringFocus('${key}')" onblur="MACPrep.ringBlur()"` : '';
+        return `<div${h} style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:3px;background:${color};flex:none;"></span>`
             + `<span style="display:flex;flex-direction:column;line-height:1.2;"><span class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">${label}</span>`
             + `<span style="font-weight:700;font-size:15px;color:var(--text);">${val}</span></span></div>`;
+    }
+
+    // current momentum-ring descriptors, keyed for hover/focus tooltips (repopulated each render)
+    let momRingMeta = {};
+    function ringFocus(key) {
+        const svg = $('mom-rings'); const m = momRingMeta[key]; if (!svg || !m) return;
+        svg.classList.add('focusing');
+        svg.querySelectorAll('.mrg').forEach((g) => g.classList.toggle('mrg-on', g.dataset.ring === key));
+        const card = $('momentum-card');
+        if (card) card.querySelectorAll('.mleg').forEach((r) => r.classList.toggle('mleg-on', r.dataset.ring === key));
+        const tip = $('mom-tip');
+        if (tip) {
+            tip.innerHTML = `<div class="mono" style="font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">${m.label}</div>`
+                + `<div style="font-weight:700;font-size:14px;margin-bottom:4px;">${m.val}</div>`
+                + `<div class="sub" style="font-size:12px;line-height:1.45;">${m.desc}</div>`;
+            tip.style.display = 'block';
+        }
+    }
+    function ringBlur() {
+        const svg = $('mom-rings');
+        if (svg) { svg.classList.remove('focusing'); svg.querySelectorAll('.mrg').forEach((g) => g.classList.remove('mrg-on')); }
+        const card = $('momentum-card');
+        if (card) card.querySelectorAll('.mleg').forEach((r) => r.classList.remove('mleg-on'));
+        const tip = $('mom-tip'); if (tip) tip.style.display = 'none';
     }
     function renderMomentum() {
         const el = $('momentum-card'); if (!el) return;
@@ -688,19 +713,35 @@
         const cReady = 'var(--accent)';
         const cGoal = 'color-mix(in srgb, var(--accent) 66%, var(--warn))';
         const cWeek = 'color-mix(in srgb, var(--accent) 60%, var(--text))';
-        const ring = (pct, r, sw, c) => {
-            const C = 2 * Math.PI * r, off = C * (1 - Math.max(0, Math.min(100, pct)) / 100);
-            return `<circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}"/>`
-                + `<circle cx="75" cy="75" r="${r}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 75 75)" style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1);"/>`;
+        const ringMeta = [
+            { key: 'goal', c: cGoal, r: 66, pct: goalPct, label: "Today's goal", val: `${answeredToday} / ${goal} questions`,
+                desc: 'Questions answered today vs. your daily target. Resets each morning — close it by practicing.' },
+            { key: 'week', c: cWeek, r: 51, pct: Math.round((weekDays / 7) * 100), label: 'This week', val: `${weekDays} / 7 days`,
+                desc: 'Days you’ve practiced this week — one notch per active day, up to 7. Keeps your streak visible.' },
+            { key: 'readiness', c: cReady, r: 36, pct: readiness, label: 'Readiness', val: `${readiness}%`,
+                desc: 'Your overall exam-readiness score, blended from accuracy and how much of the bank you’ve covered. Moves slowly as you master more.' },
+        ];
+        momRingMeta = {}; ringMeta.forEach((m) => { momRingMeta[m.key] = m; });
+        const ringGroup = (m) => {
+            const C = 2 * Math.PI * m.r, off = C * (1 - Math.max(0, Math.min(100, m.pct)) / 100);
+            return `<g class="mrg" data-ring="${m.key}" tabindex="0" role="button" aria-label="${m.label}: ${m.val}. ${m.desc}"`
+                + ` onmouseenter="MACPrep.ringFocus('${m.key}')" onmouseleave="MACPrep.ringBlur()" onfocus="MACPrep.ringFocus('${m.key}')" onblur="MACPrep.ringBlur()">`
+                + `<circle class="mrg-track" cx="75" cy="75" r="${m.r}" fill="none" stroke="var(--line)" stroke-width="10"/>`
+                + `<circle class="mrg-fill" cx="75" cy="75" r="${m.r}" fill="none" stroke="${m.c}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 75 75)" style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1),stroke-width .16s ease;"/>`
+                + `<circle class="mrg-hit" cx="75" cy="75" r="${m.r}" fill="none" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer;"/>`
+                + `</g>`;
         };
-        const rings = `<svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true" style="flex:none;">`
-            + ring(goalPct, 66, 10, cGoal) + ring(Math.round((weekDays / 7) * 100), 51, 10, cWeek) + ring(readiness, 36, 10, cReady)
-            + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);">${toGoal || '✓'}</text>`
-            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;">${toGoal ? 'TO GOAL' : 'DONE'}</text></svg>`;
+        const rings = `<div style="position:relative;flex:none;">`
+            + `<svg id="mom-rings" width="150" height="150" viewBox="0 0 150 150" role="group" aria-label="Momentum rings — hover a ring for detail" style="display:block;overflow:visible;">`
+            + ringMeta.map(ringGroup).join('')
+            + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);pointer-events:none;">${toGoal || '✓'}</text>`
+            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">${toGoal ? 'TO GOAL' : 'DONE'}</text></svg>`
+            + `<div id="mom-tip" role="status" aria-live="polite" style="display:none;position:absolute;left:0;top:156px;width:210px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;box-shadow:0 8px 24px rgba(0,0,0,.14);"></div>`
+            + `</div>`;
         const legend = `<div style="display:flex;flex-direction:column;gap:12px;flex:none;">`
-            + momLegRow(cGoal, "Today's goal", `${answeredToday} / ${goal} questions`)
-            + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`)
-            + momLegRow(cReady, 'Readiness', `${readiness}%`) + `</div>`;
+            + momLegRow(cGoal, "Today's goal", `${answeredToday} / ${goal} questions`, 'goal')
+            + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`, 'week')
+            + momLegRow(cReady, 'Readiness', `${readiness}%`, 'readiness') + `</div>`;
         const planTitle = toGoal ? 'Close your rings.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
         const planSub = toGoal
             ? `${toGoal} more question${toGoal === 1 ? '' : 's'} to hit today's goal${streak ? ` and keep your ${streak}-day streak alive` : ''}.`
@@ -2275,6 +2316,7 @@
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
+        ringFocus, ringBlur,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 

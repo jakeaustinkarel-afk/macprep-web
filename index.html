@@ -1203,6 +1203,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .sm-missed{grid-column:1;grid-row:3;}.sm-flag{grid-column:2;grid-row:3;}.sm-spec{grid-column:3;grid-row:3;}.sm-build{grid-column:4;grid-row:3;}
       @media(max-width:760px){.sm-bento{grid-template-columns:1fr 1fr;grid-auto-rows:auto;}.sm-rec,.sm-mock,.sm-q10,.sm-smart,.sm-missed,.sm-flag,.sm-spec,.sm-build{grid-column:auto;grid-row:auto;}.sm-rec{grid-column:1/3;}}
       @media(max-width:340px){.sm-bento{grid-template-columns:1fr;}.sm-rec{grid-column:auto;}}
+      /* momentum-ring hover/focus highlight */
+      #mom-rings .mrg{outline:none;}
+      #mom-rings .mrg-fill{transition:stroke-width .16s ease,opacity .16s ease;}
+      #mom-rings.focusing .mrg:not(.mrg-on) .mrg-fill,#mom-rings.focusing .mrg:not(.mrg-on) .mrg-track{opacity:.22;transition:opacity .16s ease;}
+      #mom-rings .mrg-on .mrg-fill{stroke-width:13;}
+      #mom-rings .mrg:focus-visible .mrg-hit{stroke:color-mix(in srgb,var(--accent) 35%,transparent);}
+      .mleg{border-radius:8px;padding:4px 7px;margin:-4px -7px;cursor:default;transition:background .15s ease;outline:none;}
+      .mleg:hover,.mleg.mleg-on{background:color-mix(in srgb,var(--accent) 12%,transparent);}
+      .mleg:focus-visible{background:color-mix(in srgb,var(--accent) 12%,transparent);box-shadow:0 0 0 2px var(--accent);}
       #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
       #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#qotd-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
