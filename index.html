@@ -944,10 +944,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
             <span id="exam-timer" class="mono" role="timer" aria-live="off" aria-label="Time remaining" style="display:none;font-size:14px;font-weight:bold;color:var(--muted);"></span>
         </div>
-        <div style="position:sticky;top:0;z-index:40;background:var(--bg);padding:10px 0 11px;margin-bottom:14px;border-bottom:1px solid var(--line);">
+        <div id="quiz-progress-wrap" style="position:sticky;top:0;z-index:40;background:var(--bg);padding:10px 0 11px;margin-bottom:14px;border-bottom:1px solid var(--line);">
             <div class="mono" id="session-progress-counter" style="color:var(--muted);font-size:12px;margin-bottom:7px;">QUESTION — / —</div>
             <div class="progress-bar"><span id="quiz-progress-bar" style="width:0%"></span></div>
         </div>
+        <div id="arcade-hud" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;margin-bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;"></div>
         <div id="quiz-palette" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;"></div>
 
         <div class="card">
@@ -961,7 +962,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
             <div id="choices-container"></div>
             <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:4px;font-size:14px;line-height:1.6;"></div>
-            <div style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div id="quiz-actions" style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                 <button class="btn ghost" id="prev-btn" type="button" onclick="MACPrep.prevQuestion()" style="display:none;">&laquo; Previous</button>
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
@@ -970,13 +971,13 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</span>
             </div>
 
-            <details style="margin-top:16px;">
+            <details class="quiz-extra" style="margin-top:16px;">
                 <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">My notes</summary>
                 <textarea id="note-text" rows="3" placeholder="Private notes on this question (saved automatically)…" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
                 <span id="note-msg" class="mono" style="font-size:11px;color:var(--accent);"></span>
             </details>
 
-            <details style="margin-top:10px;">
+            <details class="quiz-extra" style="margin-top:10px;">
                 <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">⚐ Report a problem with this question</summary>
                 <textarea id="report-text" rows="2" placeholder="What's wrong? (e.g. the answer key looks off, a typo, outdated guidance)" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
                 <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">

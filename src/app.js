@@ -106,7 +106,11 @@
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
         // so this is a soft confirm rather than a hard block).
-        if (state.session && !state.session.complete && view !== 'quiz'
+        if (state.session && state.session.arcade && !state.session.arcade.over && view !== 'quiz') {
+            // Arcade runs are ephemeral (not saved) — leaving just ends the run, no confirm.
+            stopArcadeTimer(); clearArcadeAdvance();
+            state.session.arcade.over = true; state.session.complete = true;
+        } else if (state.session && !state.session.complete && view !== 'quiz'
             && $('quiz-view') && !$('quiz-view').classList.contains('hidden')) {
             if (!confirm('Leave this session? Your progress is saved — you can resume it from the dashboard.')) return;
         }
@@ -1163,6 +1167,166 @@
         beginSession(pool, 'exam');
         if (state.session) { state.session.boss = domain; saveSession(); }
     }
+
+    // ---- Arcade modes: fast, score-chasing runs with a personal best -------------
+    //  Survival    = endless questions, 3 lives, one miss costs a life; score = correct.
+    //  Time Attack = 5-minute sprint; answer as many correctly as possible.
+    // Both reuse tutor grading (immediate right/wrong) but auto-advance for pace, and
+    // the session is intentionally NOT persisted (a score run is ephemeral, no resume).
+    const ARCADE_LIVES = 3, ARCADE_SECONDS = 300;
+    const ARCADE_META = {
+        survival:   { label: 'Survival',    tagline: 'Endless questions, 3 lives. One miss costs a life — how far can you go?' },
+        timeattack: { label: 'Time Attack', tagline: 'Five-minute sprint. Answer as many correctly as you can before the clock runs out.' },
+    };
+    let arcadeTimerId = null, arcadeAdvanceId = null;
+    function stopArcadeTimer() { if (arcadeTimerId) { clearInterval(arcadeTimerId); arcadeTimerId = null; } }
+    function clearArcadeAdvance() { if (arcadeAdvanceId) { clearTimeout(arcadeAdvanceId); arcadeAdvanceId = null; } }
+    function arcadeBest(type) { try { return parseInt(localStorage.getItem('macprep_arcade_' + type) || '0', 10) || 0; } catch (e) { return 0; } }
+    function setArcadeBest(type, v) { try { localStorage.setItem('macprep_arcade_' + type, String(v)); } catch (e) {} }
+    function bumpArcadePlays(type) { try { const k = 'macprep_arcade_' + type + '_plays'; localStorage.setItem(k, String((parseInt(localStorage.getItem(k) || '0', 10) || 0) + 1)); } catch (e) {} }
+    function arcadeShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+    function openArcadePicker() {
+        const rows = Object.keys(ARCADE_META).map((type) => {
+            const m = ARCADE_META[type], best = arcadeBest(type);
+            return `<button type="button" onclick="MACPrep.startArcade('${type}')" style="display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-top:11px;cursor:pointer;transition:border-color .15s ease,transform .15s ease;" onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--line)';this.style.transform='none';">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <div style="font-weight:700;font-size:15px;color:var(--text);">${type === 'survival' ? '❤ ' : '⏱ '}${m.label}</div>
+                    <div class="mono" style="font-size:11px;color:var(--accent);flex:none;">BEST ${best}</div>
+                </div>
+                <div style="font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.45;">${m.tagline}</div>
+            </button>`;
+        }).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'arcade-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2500;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeArcadePicker(); };
+        wrap.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Arcade</div>
+                <button onclick="MACPrep.closeArcadePicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
+            </div>
+            <div class="sub" style="font-size:13px;margin-bottom:6px;">Two fast, score-chasing modes. Same board-quality questions — just against the clock (and your own best).</div>
+            ${rows}</div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeArcadePicker() { const o = $('arcade-overlay'); if (o) o.remove(); }
+
+    function startArcade(type) {
+        closeArcadePicker();
+        if (!ARCADE_META[type]) return;
+        const all = state.questions || [];
+        if (all.length < 8) { toast('Questions are still loading — try again in a moment.'); return; }
+        // Arcade burns through fresh questions fast, so it's part of full access (like the
+        // mock exam). Free users hit the upsell rather than blowing their 10% on a score run.
+        const usage = freeUsage();
+        if (!usage.unlimited) { toast('Arcade modes are part of full access — unlock everything for a one-time $50.'); return startCheckout(); }
+        const pool = arcadeShuffle(all.slice());
+        try { track('arcade_start', { type }); } catch (e) {}
+        beginSession(pool, 'tutor');
+        const s = state.session; if (!s) return;
+        const prevBest = arcadeBest(type);
+        s.arcade = { type, score: 0, streak: 0, best: prevBest, prevBest, over: false };
+        if (type === 'survival') { s.arcade.lives = ARCADE_LIVES; s.arcade.maxLives = ARCADE_LIVES; }
+        if (type === 'timeattack') { s.arcade.timeLeft = ARCADE_SECONDS; startArcadeTimer(); }
+        renderQuestion(); // repaint with arcade chrome (HUD in, tutor extras out)
+        renderArcadeHud();
+    }
+
+    function startArcadeTimer() {
+        stopArcadeTimer();
+        const s = state.session; if (!s || !s.arcade || s.arcade.type !== 'timeattack') return;
+        arcadeTimerId = setInterval(() => {
+            const ss = state.session;
+            if (!ss || !ss.arcade || ss.arcade.over) { stopArcadeTimer(); return; }
+            ss.arcade.timeLeft = (ss.arcade.timeLeft || 0) - 1;
+            renderArcadeHud();
+            if (ss.arcade.timeLeft === 60) announce('One minute left.');
+            else if (ss.arcade.timeLeft === 10) announce('Ten seconds left.');
+            if (ss.arcade.timeLeft <= 0) { stopArcadeTimer(); arcadeGameOver('time'); }
+        }, 1000);
+    }
+
+    function renderArcadeHud() {
+        const el = $('arcade-hud'), s = state.session; if (!el) return;
+        if (!s || !s.arcade || s.arcade.over) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const a = s.arcade;
+        let left;
+        if (a.type === 'survival') {
+            const hearts = Array.from({ length: a.maxLives }, (_, i) => `<span style="font-size:18px;line-height:1;color:${i < a.lives ? 'var(--bad)' : 'var(--line)'};">♥</span>`).join('');
+            left = `<div style="display:flex;align-items:center;gap:4px;">${hearts}</div>`;
+        } else {
+            const t = Math.max(0, a.timeLeft || 0), low = t <= 30;
+            left = `<div class="mono" style="font-size:20px;font-weight:800;color:${low ? 'var(--bad)' : 'var(--text)'};letter-spacing:.5px;">⏱ ${fmtClock(t)}</div>`;
+        }
+        el.style.display = 'flex';
+        el.innerHTML = `${left}
+            <div style="display:flex;align-items:baseline;gap:18px;">
+                ${a.streak >= 3 ? `<div class="mono" style="font-size:12px;color:var(--warn);font-weight:700;">🔥 ${a.streak}</div>` : ''}
+                <div style="text-align:right;"><span class="mono" style="font-size:10px;letter-spacing:1px;color:var(--muted);">SCORE</span> <strong style="font-size:21px;">${a.score}</strong></div>
+                <div style="text-align:right;"><span class="mono" style="font-size:10px;letter-spacing:1px;color:var(--muted);">BEST</span> <strong style="font-size:16px;color:var(--accent);">${Math.max(a.best, a.score)}</strong></div>
+            </div>`;
+    }
+
+    // Called from tutor answer() after a grade when a run is active.
+    function arcadeAnswerHook(correct) {
+        const s = state.session; if (!s || !s.arcade || s.arcade.over) return;
+        const a = s.arcade;
+        if (correct) { a.score++; a.streak++; if (a.score > a.best) { a.best = a.score; setArcadeBest(a.type, a.best); } }
+        else { a.streak = 0; if (a.type === 'survival') a.lives = Math.max(0, a.lives - 1); }
+        renderArcadeHud();
+        clearArcadeAdvance();
+        if (a.type === 'survival' && a.lives <= 0) { arcadeAdvanceId = setTimeout(() => arcadeGameOver('dead'), 1600); return; }
+        arcadeAdvanceId = setTimeout(arcadeNext, correct ? 850 : 1650); // linger a beat longer on a miss so the answer registers
+    }
+
+    function arcadeNext() {
+        clearArcadeAdvance();
+        const s = state.session; if (!s || !s.arcade || s.arcade.over) return;
+        // Endless: extend the pool with a fresh reshuffle of the whole bank when we reach the end.
+        if (s.index >= s.pool.length - 1) { s.pool = s.pool.concat(arcadeShuffle((state.questions || []).slice())); s.size = s.pool.length; }
+        s.index++;
+        delete s.answers[s.index]; s.locked = false;
+        renderQuestion();
+        scrollQuizToTop();
+    }
+
+    function arcadeGameOver(reason) {
+        const s = state.session; if (!s || !s.arcade || s.arcade.over) return;
+        const a = s.arcade; a.over = true; s.complete = true;
+        stopArcadeTimer(); clearArcadeAdvance();
+        bumpArcadePlays(a.type);
+        try { track('arcade_over', { type: a.type, score: a.score, reason }); } catch (e) {}
+        const newRecord = a.score > (a.prevBest || 0);
+        const bestShown = Math.max(a.best, a.prevBest || 0, a.score);
+        $('arcade-hud') && ($('arcade-hud').style.display = 'none');
+        $('quiz-palette') && ($('quiz-palette').innerHTML = '');
+        $('quiz-progress-wrap') && ($('quiz-progress-wrap').style.display = 'none');
+        $('quiz-actions') && ($('quiz-actions').style.display = 'none');
+        document.querySelectorAll('.quiz-extra').forEach((e) => { e.style.display = 'none'; });
+        $('question-meta').textContent = a.type === 'survival' ? '❤ SURVIVAL · GAME OVER' : "⏱ TIME ATTACK · TIME'S UP";
+        const line = a.type === 'survival'
+            ? `You answered <strong>${a.score}</strong> correct before running out of lives.`
+            : `You got <strong>${a.score}</strong> correct in five minutes.`;
+        $('question-stem').innerHTML = `
+            <div style="text-align:center;padding:10px 0 2px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:600;line-height:1;color:var(--accent);">${a.score}</div>
+                <div class="mono" style="font-size:11px;letter-spacing:1.5px;color:var(--muted);margin-top:6px;">CORRECT</div>
+                ${newRecord
+                    ? '<div style="margin-top:14px;font-weight:800;color:var(--accent);font-size:15px;">🏆 New personal best!</div>'
+                    : `<div class="mono" style="margin-top:14px;font-size:12px;color:var(--muted);">Personal best: ${bestShown}</div>`}
+                <div style="font-size:14px;color:var(--muted);margin-top:14px;line-height:1.55;max-width:360px;margin-left:auto;margin-right:auto;">${line}</div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+                <button class="btn" type="button" onclick="MACPrep.startArcade('${a.type}')">Play again</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.go('dashboard')">Back to dashboard</button>
+            </div>`;
+        $('choices-container').innerHTML = '';
+        $('explanation-pane').classList.add('hidden');
+        try { checkLevelUp(); } catch (e) {} // arcade answers earn XP — a run can push you over a level
+        if (newRecord && a.score > 0) celebrate();
+    }
+
     // Full-length exam, sampled proportionally to the bank's real domain distribution
     // (honest weighting — not a fabricated official blueprint), run as a timed exam.
     function startMockExam(count) {
@@ -1205,6 +1369,8 @@
         t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
         t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
         t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
+        const arcTop = Math.max(arcadeBest('survival'), arcadeBest('timeattack'));
+        t.push(smTile('sm-arcade', 'Arcade', 'Arcade', 'Survival & Time Attack — chase a high score.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
@@ -1430,7 +1596,7 @@
     // recovered instead of silently wiping the user's work.
     function saveSession() {
         try {
-            if (state.session && !state.session.complete) ls('macprep_session', JSON.stringify(state.session));
+            if (state.session && !state.session.complete && !state.session.arcade) ls('macprep_session', JSON.stringify(state.session));
             else ls('macprep_session', null);
         } catch (e) { try { ls('macprep_session', null); } catch (_) {} }
     }
@@ -1827,7 +1993,7 @@
         // Confidence control (tutor, pre-grade) + reset the per-question report box.
         if (!graded) state.pendingConfidence = null;
         const confRow = $('confidence-row');
-        if (confRow) confRow.style.display = (s.mode === 'tutor' && !graded && choices.length) ? 'flex' : 'none';
+        if (confRow) confRow.style.display = (s.mode === 'tutor' && !graded && choices.length && !s.arcade) ? 'flex' : 'none';
         renderConfidenceRow();
         $('report-text') && ($('report-text').value = '');
         $('report-msg') && ($('report-msg').textContent = '');
@@ -1838,6 +2004,13 @@
         renderQuizNav();
         updateQuizProgress();
         renderExamTimer();
+        // Arcade chrome: HUD in, tutor extras (palette / progress / actions / notes) out.
+        const arc = !!s.arcade && !s.arcade.over;
+        if ($('arcade-hud')) { if (arc) renderArcadeHud(); else { $('arcade-hud').style.display = 'none'; } }
+        $('quiz-progress-wrap') && ($('quiz-progress-wrap').style.display = arc ? 'none' : '');
+        $('quiz-palette') && ($('quiz-palette').style.display = arc ? 'none' : 'flex');
+        $('quiz-actions') && ($('quiz-actions').style.display = arc ? 'none' : '');
+        document.querySelectorAll('.quiz-extra').forEach((e) => { e.style.display = arc ? 'none' : ''; });
         saveSession();
     }
 
@@ -1886,6 +2059,7 @@
             });
             renderPalette();
             updateQuizProgress();
+            if (s.arcade) arcadeAnswerHook(!!data.correct); // arcade: score/lives + auto-advance
         } catch (err) {
             s.locked = false;
             buttons.forEach((b) => { b.disabled = false; b.style.cursor = 'pointer'; });
@@ -2712,6 +2886,7 @@
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
+        openArcadePicker, closeArcadePicker, startArcade,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
