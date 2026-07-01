@@ -910,6 +910,7 @@
             state.session.mock = true;
             // Match the real NCCAA exam pace: 110 minutes per 90-item block (so a full 180 → 220 minutes).
             state.session.timeLeft = Math.round((pool.length / 90) * 110 * 60);
+            renderExamTimer(); // repaint immediately so the clock never flashes the pre-override default
             saveSession();
         }
     }
