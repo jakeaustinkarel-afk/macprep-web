@@ -126,6 +126,9 @@
         const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements' }[view];
         ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements'].forEach((idn) => { const a = $(idn); if (a) a.classList.toggle('nav-active', authed && idn === activeNavId); });
         if (authed) { renderSidebarAccount(); applySidebarPref(); }
+        // "Redeem code" is only useful to free users (premium/admin already have full access).
+        const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
+        $('nav-redeem') && $('nav-redeem').classList.toggle('hidden', !(authed && state.profile && !isPremium));
         // Marketing links + "Log in" show for logged-out visitors only.
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
