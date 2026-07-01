@@ -628,8 +628,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 7;
+    const WHATS_NEW_VERSION = 8;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 1', title: 'Domain Bosses', desc: 'Take on a Domain Boss from Study Modes — score 80%+ on a short mastery challenge to "defeat" a domain. Clear all six to become a Boss Slayer.' },
         { tag: 'New', date: 'Jul 1', title: 'Daily Quests', desc: 'A fresh set of daily goals on your dashboard that resets at 7 AM ET. Finish all three to open a daily chest, and rack up quest days for new achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'XP + Levels', desc: 'Every question you answer now earns XP and levels you up — see your level and progress bar right on the dashboard. Levels come fast early on, and there are new Level achievements to chase. (First of several game modes on the way.)' },
         { tag: 'New', date: 'Jul 1', title: '20+ more achievements', desc: 'New badges to chase across Coverage, Mastery, and Milestones — deep-dive a specialty, cover the whole bank, ace three domains, finish Mock Exams, hit peak readiness, and more.' },
@@ -1014,6 +1015,12 @@
         const qDays = questDayCount();
         const qA = (n, title) => A.push({ cat: 'Milestones', icon: 'flame', title, desc: `Complete all your daily quests on ${n} separate day${n === 1 ? '' : 's'}.`, met: qDays >= n, pct: qDays >= n ? 100 : Math.max(0, Math.min(99, Math.round((qDays / n) * 100))), sub: qDays >= n ? 'Unlocked' : `${qDays} / ${n} quest days` });
         qA(1, 'Quest complete — first daily set'); qA(7, 'Quest week — 7 days'); qA(30, 'Quest master — 30 days');
+
+        // domain bosses — clear a domain by scoring 80%+ on its mastery challenge
+        const bossN = bossesCleared().length;
+        const domTotal = (function () { const set = new Set(); (state.questions || []).forEach((q) => { const d = q.domain_name || q.category; if (d) set.add(d); }); return set.size || 6; })();
+        A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss hunter — beat your first domain', desc: 'Defeat any Domain Boss (80%+ on its challenge).', met: bossN >= 1, pct: bossN >= 1 ? 100 : 0, sub: bossN >= 1 ? 'Unlocked' : 'Beat any Domain Boss' });
+        A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss slayer — every domain', desc: 'Defeat every Domain Boss.', met: bossN >= domTotal, pct: bossN >= domTotal ? 100 : Math.max(0, Math.min(99, Math.round((bossN / domTotal) * 100))), sub: bossN >= domTotal ? 'Unlocked' : `${bossN} / ${domTotal} domains defeated` });
         return A;
     }
     function achIcon(name, met) {
@@ -1080,6 +1087,52 @@
     }
     function openMockPicker() { const m = $('mock-picker'); if (m) m.classList.remove('hidden'); }
     function closeMockPicker() { const m = $('mock-picker'); if (m) m.classList.add('hidden'); }
+
+    // ---- Domain Bosses: score 80%+ on a short mastery challenge to "clear" a domain ----
+    const BOSS_THRESHOLD = 80, BOSS_SIZE = 8;
+    function uniqueDomains() {
+        const m = {}; (state.questions || []).forEach((q) => { const d = q.domain_name || q.category; if (d) m[d] = (m[d] || 0) + 1; });
+        return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    }
+    function bossesCleared() { try { return JSON.parse(localStorage.getItem('macprep_bosses') || '[]') || []; } catch (e) { return []; } }
+    function markBossCleared(domain) { try { const a = bossesCleared(); if (a.indexOf(domain) < 0) { a.push(domain); localStorage.setItem('macprep_bosses', JSON.stringify(a)); } } catch (e) {} }
+    function openBossPicker() {
+        const doms = uniqueDomains(), cleared = bossesCleared();
+        if (!doms.length) { toast('Questions are still loading — try again in a moment.'); return; }
+        const rows = doms.map(([name]) => {
+            const done = cleared.indexOf(name) >= 0;
+            const icon = done ? '<path d="M20 6 9 17l-5-5"/>' : '<path d="M12 3l7 3v6c0 4-3 6.9-7 8.5C8 18.9 5 16 5 12V6l7-3z"/>';
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 2px;border-top:1px solid var(--line);">
+                <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+                    <span style="width:30px;height:30px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${done ? 'var(--accent)' : 'var(--bg)'};border:1px solid ${done ? 'var(--accent)' : 'var(--line)'};color:${done ? 'var(--on-accent)' : 'var(--muted)'};"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></span>
+                    <span style="font-weight:600;font-size:13.5px;line-height:1.2;">${escapeHtml(name)}</span>
+                </div>
+                ${done ? '<span class="mono" style="color:var(--accent);font-size:11px;flex:none;">Defeated</span>' : `<button class="btn" style="font-size:12px;padding:8px 15px;flex:none;" data-boss="${escapeHtml(name)}" onclick="MACPrep.startBossFight(this.dataset.boss)">Challenge</button>`}</div>`;
+        }).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'boss-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2500;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeBossPicker(); };
+        wrap.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:460px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Domain Bosses</div>
+                <button onclick="MACPrep.closeBossPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
+            </div>
+            <div class="sub" style="font-size:13px;margin-bottom:8px;">Score <strong>${BOSS_THRESHOLD}%+</strong> on a short ${BOSS_SIZE}-question mastery challenge to defeat a domain's boss. Clear all ${doms.length} to become a Boss Slayer. <span class="mono" style="color:var(--accent);">${cleared.length}/${doms.length} defeated</span></div>
+            ${rows}</div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeBossPicker() { const o = $('boss-overlay'); if (o) o.remove(); }
+    function startBossFight(domain) {
+        closeBossPicker();
+        const all = (state.questions || []).filter((q) => (q.domain_name || q.category) === domain);
+        if (all.length < 5) { toast('Not enough questions in this domain yet.'); return; }
+        const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+        const pool = shuffle(all.slice()).slice(0, Math.min(BOSS_SIZE, all.length));
+        try { track('boss_start', { domain }); } catch (e) {}
+        beginSession(pool, 'exam');
+        if (state.session) { state.session.boss = domain; saveSession(); }
+    }
     // Full-length exam, sampled proportionally to the bank's real domain distribution
     // (honest weighting — not a fabricated official blueprint), run as a timed exam.
     function startMockExam(count) {
@@ -1121,6 +1174,7 @@
         const t = [];
         t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
         t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
+        t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
@@ -1884,7 +1938,9 @@
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
         const allFailed = answeredIdx.length > 0 && s.answered === 0;
-        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
+        const bossWon = !!s.boss && !allFailed && pct >= BOSS_THRESHOLD;
+        if (bossWon) markBossCleared(s.boss);
+        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.boss ? (bossWon ? '⚔ BOSS DEFEATED' : 'BOSS SURVIVED') : s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
         // Count completed mock exams (drives the "Dress rehearsal" / "Mock master" achievements).
         if (s.mock && !allFailed) { try { localStorage.setItem('macprep_mock_count', String((parseInt(localStorage.getItem('macprep_mock_count') || '0', 10) || 0) + 1)); } catch (e) {} }
         if (allFailed) {
@@ -1892,12 +1948,16 @@
         } else {
             const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
             const hype = pct >= 90 ? '🎉 Outstanding — ' : pct >= 75 ? '🎉 Great work — ' : '';
-            $('question-stem').innerHTML = s.mock
+            $('question-stem').innerHTML = s.boss
+                ? (bossWon
+                    ? `⚔ You defeated the <strong>${escapeHtml(s.boss)}</strong> boss with <strong>${pct}%</strong> — this domain is cleared!${failWarn}`
+                    : `The <strong>${escapeHtml(s.boss)}</strong> boss survived — you scored <strong>${pct}%</strong> (need ${BOSS_THRESHOLD}%+). Study the breakdown below and challenge it again.${failWarn}`)
+                : s.mock
                 ? `${hype}Mock exam complete — you scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}). Weighted across all six NCCAA domains — the breakdown below shows where to focus.${failWarn}`
                 : s.diagnostic
                 ? `Your predicted readiness is <strong>${pct}%</strong> — across ${s.answered} questions spanning all six blueprint domains.${failWarn} The breakdown below shows exactly where to focus first.`
                 : `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
-            if (pct >= 70 && s.answered >= 3) celebrate();
+            if (bossWon || (pct >= 70 && s.answered >= 3)) celebrate();
         }
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
@@ -2621,6 +2681,7 @@
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
+        openBossPicker, closeBossPicker, startBossFight,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
