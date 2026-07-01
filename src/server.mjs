@@ -787,6 +787,26 @@ app.post('/api/user/delete', async (req, res) => {
     }
 });
 
+// Reset a user's practice progress (coverage / accuracy / answered stats), keeping
+// the account, saved notes, and flags. PREMIUM-ONLY on purpose: the free-tier ceiling
+// counts distinct answered questions from user_progress, so letting a free user wipe it
+// would hand back their free allowance repeatedly (a paywall bypass).
+app.post('/api/user/reset-progress', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const admin = await getAdminUser(req);
+    const allowed = admin ? true : await isUserPremium(user.id);
+    if (!allowed) return res.status(403).json({ error: 'Progress reset is available with full access.' });
+    try {
+        const { error } = await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Progress reset failure:', err.message);
+        return res.status(500).json({ error: 'Could not reset progress.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Admin content review queue (program directors / SMEs only). Returns full
 // questions INCLUDING correct flags so a clinician can vet and publish them.

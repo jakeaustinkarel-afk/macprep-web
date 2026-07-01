@@ -1033,8 +1033,26 @@
                 <div class="mono" style="font-size:10px;color:var(--muted);">${c.answered}/${c.total} seen${started ? '' : ' · not started'}</div>
             </div>`;
         }).join('');
+        const resetRow = freeUsage().unlimited
+            ? `<div style="display:flex;justify-content:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);">
+                 <button type="button" onclick="MACPrep.resetProgress()" class="mono" style="background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px 14px;font-size:11px;letter-spacing:.5px;cursor:pointer;">↻ Reset my progress</button>
+               </div>`
+            : '';
         el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;"><h3 style="margin:0;">By specialty</h3><span class="mono" style="font-size:11px;color:var(--muted);">all · least-covered first</span></div>
-            <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:13px;">${tiles}</div>`;
+            <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:13px;">${tiles}</div>${resetRow}`;
+    }
+
+    // Wipe practice progress so a full-access user can start fresh (premium-only server-side).
+    async function resetProgress() {
+        if (!confirm('Reset all your practice progress?\n\nThis permanently clears your coverage, accuracy, and answered-question stats so you can start over. Your account, saved notebook, and flags are kept. This can’t be undone.')) return;
+        try {
+            const { resp, data } = await apiJSON('/api/user/reset-progress', { method: 'POST', headers: authHeaders() });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not reset your progress.');
+            try { track('progress_reset'); } catch (e) {}
+            toast('Progress reset — you’re starting fresh.', 'ok');
+            await loadProfile();
+            if (!$('dashboard-view').classList.contains('hidden')) renderDashboard();
+        } catch (e) { toast(e.message || 'Could not reset your progress.', 'bad'); }
     }
 
     function renderCalibration() {
@@ -2368,7 +2386,7 @@
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
-        ringFocus, ringBlur, toggleSidebar,
+        ringFocus, ringBlur, toggleSidebar, resetProgress,
         zoomImage, toggleLabs, renderNotebook, practiceOne, downloadExam,
     };
 
