@@ -74,17 +74,25 @@ Personalize `[First name]`. The goal of every reply: make the next step effortle
 
 ## Code redemption steps — ONE universal method
 
-**The dashboard box takes BOTH premium AND class/cohort codes** (confirmed by Jake, 2026-06-28). Use this
-for everyone — partners, influencers, PDs, students:
+**Simplified 2026-07-01: there's now a "Redeem code" item right in the left menu** (it shows for free
+accounts). It jumps to — and is the same thing as — the dashboard code box, which takes BOTH premium
+AND class/cohort codes. Use this for everyone — partners, influencers, PDs, students:
 > 1. Go to **macprep.org**, sign up for a free account (no card) or log in.
-> 2. On your **dashboard**, find the **"Free Tier Usage"** card.
-> 3. In the **"Have a class or cohort code?"** box, paste your code **[CODE]** and hit **Redeem**.
+> 2. In the left menu, click **Redeem code** — or on your **Dashboard**, find the
+>    **"Have a class or cohort code?"** box.
+> 3. Paste your code **[CODE]** and hit **Redeem**.
 > 4. Done — full access unlocks instantly, for life.
 >
-> _(The box says "class or cohort code," but it takes premium codes too — just drop it right in.)_
+> _(The box says "class or cohort code," but it takes premium codes too — just drop it right in. On
+> phone, open the ☰ menu → **Redeem code**. Once it upgrades, the menu item disappears — that's how you
+> know it worked.)_
 
 _Alternative for premium codes only:_ Pricing → Get full access → Stripe checkout "Add promotion code"
-field → total drops to $0 → confirm. Works, but the dashboard box above is simpler — prefer it.
+field → total drops to $0 → confirm. Works, but the Redeem box above is simpler — prefer it.
+
+_Generating the codes (you, admin):_ left menu → **Admin → Review queue** → the **Cohort vouchers** card
+→ enter how many → **Generate codes**. Each `MACP-XXXX` code is single-use; the card lists which are
+claimed and by whom, so you can track redemptions.
 
 _Shout if anything's clunky and I'll hop on a quick screen-share!_
 

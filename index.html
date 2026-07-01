@@ -58,9 +58,6 @@
         html[data-theme="ember"]{--bg:#1A1214;--panel:#241719;--line:#3A2529;--text:#FBECEE;--text2:#e6cace;--muted:#b38f94;--accent:#F87171;--on-accent:#2a0a0a;--accent-dim:#331619;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#60a5fa;}
         html[data-theme="amber"]{--bg:#19150A;--panel:#231E0F;--line:#3C3318;--text:#FBF4E1;--text2:#e8dcb8;--muted:#b2a176;--accent:#F5B73C;--on-accent:#231903;--accent-dim:#31270b;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
         html[data-theme="espresso"]{--bg:#1A1410;--panel:#241C16;--line:#3A2E23;--text:#F5EBDD;--text2:#ddcab2;--muted:#a8927a;--accent:#D6A06A;--on-accent:#241803;--accent-dim:#332518;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
-        /* Brand wordmark colors — theme-aware: MAC = ink (light) / paper (dark); Prep = brand green (light) / mint (dark). The pulse tile stays brand green on every theme. */
-        :root{--logo-mac:#0E1512;--logo-prep:#146A4A;}
-        html[data-theme="slate"],html[data-theme="nord"],html[data-theme="ocean"],html[data-theme="indigo"],html[data-theme="contrast"],html[data-theme="graphite"],html[data-theme="ember"],html[data-theme="amber"],html[data-theme="espresso"],html[data-theme="dark"]{--logo-mac:#F5F7F5;--logo-prep:#4FCC8E;}
 
 
 
@@ -470,10 +467,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div class="brand-row">
         <div class="brand-logo" onclick="if(window.MACPrep)MACPrep.go('dashboard')" style="display:flex;align-items:center;gap:9px;">
             <svg width="26" height="26" viewBox="0 0 512 512" style="display:block;flex:none;" aria-hidden="true">
-                <rect width="512" height="512" rx="112" fill="#146A4A"/>
-                <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect width="512" height="512" rx="112" fill="var(--accent)"/>
+                <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span><span style="color:var(--logo-mac);">MAC</span><span style="color:var(--logo-prep);">Prep</span></span>
+            <span><span style="color:var(--text);">MAC</span><span style="color:var(--accent);">Prep</span></span>
         </div>
         <button id="sidebar-collapse" class="sb-only" type="button" onclick="MACPrep.toggleSidebar()" aria-label="Collapse menu" title="Collapse menu"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path><path d="M15.5 9.5 13 12l2.5 2.5" class="sb-caret"></path></svg></button>
         </div>
@@ -1162,7 +1159,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       <img id="lightbox-img" alt="Enlarged figure" style="max-width:95%;max-height:95%;border-radius:6px;">
     </div>
     <footer style="border-top:1px solid var(--line,#1F2937);margin-top:48px;padding:34px 24px 28px;text-align:center;">
-  <a href="/index.html" style="font-family:ui-monospace,monospace;font-weight:800;font-size:22px;letter-spacing:-1px;color:var(--text,#F9FAFB);text-decoration:none;">MAC<span style="color:var(--accent,#00A86B);">Prep</span></a>
+  <a href="/index.html" style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:22px;letter-spacing:-1px;color:var(--text,#F9FAFB);text-decoration:none;">MAC<span style="color:var(--accent,#00A86B);">Prep</span></a>
   <div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted,#828b9a);margin-top:8px;">NCCAA board review for SAAs (certification) &amp; CAAs (recertification).</div>
   <div style="font-family:ui-monospace,monospace;font-size:12px;margin-top:18px;line-height:2.1;">
     <a href="/#about" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">About</a>·<a href="/updates.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Updates</a>·<a href="/faq.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">FAQ</a>·<a href="/guides/" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Guides</a>·<a href="/why-trust-us.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Why trust us</a><br>
