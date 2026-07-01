@@ -867,8 +867,21 @@ app.get('/api/admin/analytics', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
         const since = new Date(Date.now() - 30 * 86400000).toISOString();
-        const { data } = await supabase.from('analytics_events').select('name, user_id, created_at').gte('created_at', since);
-        const rows = data || [];
+        // PostgREST caps a request at ~1000 rows, so page through the full 30-day
+        // window instead of silently seeing only the oldest 1000 events (which made
+        // every "last 7 days" count read ~0).
+        const PAGE = 1000;
+        let rows = [];
+        for (let from = 0; ; from += PAGE) {
+            const { data, error } = await supabase.from('analytics_events')
+                .select('name, user_id, created_at')
+                .gte('created_at', since)
+                .order('created_at', { ascending: false })
+                .range(from, from + PAGE - 1);
+            if (error) throw error;
+            rows = rows.concat(data || []);
+            if (!data || data.length < PAGE) break;
+        }
         const total = {}; const last7 = {};
         const weekAgo = Date.now() - 7 * 86400000;
         rows.forEach((r) => {
