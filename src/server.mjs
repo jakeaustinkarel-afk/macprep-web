@@ -1812,6 +1812,108 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Reviews / testimonials. The public /reviews page shows APPROVED reviews;
+// logged-in users can submit (→ pending); the founder moderates in admin. Kept
+// separate from anonymous feedback, since reviews are public and attributed.
+// ---------------------------------------------------------------------------
+app.get('/api/reviews', async (req, res) => {
+    if (!supabase) return res.json({ reviews: [] });
+    try {
+        const { data, error } = await supabase.from('reviews')
+            .select('author_name, credential, rating, body, created_at, featured')
+            .eq('status', 'approved')
+            .order('featured', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+        return res.json({ reviews: data || [] });
+    } catch (err) {
+        console.error('Reviews list failure:', err.message);
+        return res.status(500).json({ error: 'Could not load reviews.', reviews: [] });
+    }
+});
+
+app.post('/api/reviews', feedbackLimiter, async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in to leave a review.' });
+    const b = req.body || {};
+    const author_name = String(b.author_name || '').trim().slice(0, 80);
+    const credential = String(b.credential || '').trim().slice(0, 80) || null;
+    const rating = Math.min(5, Math.max(1, parseInt(b.rating, 10) || 5));
+    const body = String(b.body || '').trim().slice(0, 2000);
+    if (!author_name || !body) return res.status(400).json({ error: 'Name and review text are required.' });
+    try {
+        const { error } = await supabase.from('reviews').insert({ user_id: user.id, author_name, credential, rating, body, status: 'pending' });
+        if (error) throw error;
+        sendEmail({
+            to: 'support@macprep.org',
+            subject: `New MACPrep review (pending) — ${author_name}`,
+            html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p><p style="font-size:12px;color:#9ca3af;">Approve it in the admin Review queue.</p>`,
+        }).then(() => {}, () => {});
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Review submit failure:', err.message);
+        return res.status(500).json({ error: 'Could not submit your review.' });
+    }
+});
+
+app.get('/api/admin/reviews', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    try {
+        const { data, error } = await supabase.from('reviews')
+            .select('id, author_name, credential, rating, body, status, featured, created_at')
+            .eq('status', 'pending').order('created_at', { ascending: true }).limit(200);
+        if (error) throw error;
+        const STATUSES = ['pending', 'approved', 'rejected'];
+        const cr = await Promise.all(STATUSES.map((s) => supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('status', s)));
+        const counts = {}; STATUSES.forEach((s, i) => { counts[s] = cr[i].count || 0; });
+        return res.json({ reviews: data || [], counts });
+    } catch (err) {
+        console.error('Admin reviews failure:', err.message);
+        return res.status(500).json({ error: 'Could not load reviews.' });
+    }
+});
+
+app.post('/api/admin/review', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const b = req.body || {};
+    try {
+        // Admin can CREATE a curated testimonial (published straight to approved) —
+        // e.g. paste in one a classmate texted over.
+        if (b.create) {
+            const author_name = String(b.author_name || '').trim().slice(0, 80);
+            const body = String(b.body || '').trim().slice(0, 2000);
+            if (!author_name || !body) return res.status(400).json({ error: 'Name and text required.' });
+            const { error } = await supabase.from('reviews').insert({
+                author_name, credential: String(b.credential || '').trim().slice(0, 80) || null,
+                rating: Math.min(5, Math.max(1, parseInt(b.rating, 10) || 5)),
+                body, status: 'approved', featured: !!b.featured, reviewed_at: new Date().toISOString(),
+            });
+            if (error) throw error;
+            return res.json({ success: true });
+        }
+        const id = parseInt(b.id, 10);
+        const action = String(b.action || '');
+        if (!id || !['approve', 'reject', 'feature', 'unfeature', 'delete'].includes(action)) return res.status(400).json({ error: 'Bad request.' });
+        if (action === 'delete') { const { error } = await supabase.from('reviews').delete().eq('id', id); if (error) throw error; return res.json({ success: true }); }
+        const upd = { reviewed_at: new Date().toISOString() };
+        if (action === 'approve') upd.status = 'approved';
+        else if (action === 'reject') upd.status = 'rejected';
+        else if (action === 'feature') upd.featured = true;
+        else if (action === 'unfeature') upd.featured = false;
+        const { error } = await supabase.from('reviews').update(upd).eq('id', id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Admin review action failure:', err.message);
+        return res.status(500).json({ error: 'Could not update review.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
 // Stripe checkout session. Prefers the authenticated user's email so the
 // webhook can match the resulting payment back to their profile.
 // ---------------------------------------------------------------------------
