@@ -1844,12 +1844,18 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
     const body = String(b.body || '').trim().slice(0, 2000);
     if (!author_name || !body) return res.status(400).json({ error: 'Name and review text are required.' });
     try {
-        const { error } = await supabase.from('reviews').insert({ user_id: user.id, author_name, credential, rating, body, status: 'pending' });
+        // Reviews are public and post live. One review per account: re-submitting UPDATES
+        // the account's existing review (upsert on the unique user_id index). Admin can
+        // remove any review from the Reviews panel.
+        const { error } = await supabase.from('reviews').upsert(
+            { user_id: user.id, author_name, credential, rating, body, status: 'approved' },
+            { onConflict: 'user_id' }
+        );
         if (error) throw error;
         sendEmail({
             to: 'support@macprep.org',
-            subject: `New MACPrep review (pending) — ${author_name}`,
-            html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p><p style="font-size:12px;color:#9ca3af;">Approve it in the admin Review queue.</p>`,
+            subject: `New MACPrep review (live) — ${author_name}`,
+            html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p><p style="font-size:12px;color:#9ca3af;">This is live on the Reviews page. Remove it from the admin Reviews panel if needed.</p>`,
         }).then(() => {}, () => {});
         return res.json({ success: true });
     } catch (err) {
@@ -1862,9 +1868,11 @@ app.get('/api/admin/reviews', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
+        // Reviews auto-publish now, so show ALL of them (newest first) — admin moderates
+        // by removing/rejecting anything abusive rather than approving up front.
         const { data, error } = await supabase.from('reviews')
             .select('id, author_name, credential, rating, body, status, featured, created_at')
-            .eq('status', 'pending').order('created_at', { ascending: true }).limit(200);
+            .neq('status', 'rejected').order('created_at', { ascending: false }).limit(300);
         if (error) throw error;
         const STATUSES = ['pending', 'approved', 'rejected'];
         const cr = await Promise.all(STATUSES.map((s) => supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('status', s)));

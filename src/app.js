@@ -663,11 +663,11 @@
     const WHATS_NEW = [
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
         { tag: 'New', date: 'Jul 2', title: 'More avatars & titles to unlock', desc: 'Added new unlockable avatars (🌱 Level 5, ⚡ Level 15, 🤿 Deep Diver, and more) and titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
-        { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the League board.' },
+        { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the leaderboard.' },
         { tag: 'New', date: 'Jul 1', title: 'Two more Arcade modes', desc: 'Arcade now has four modes: Survival, Time Attack, plus new Sudden Death (one wrong answer ends the run) and Blitz (a countdown that every correct answer extends). Each keeps its own high score.' },
         { tag: 'New', date: 'Jul 1', title: 'More achievements', desc: 'New badges to chase — an Arcade set (play modes, hit a 20-run, go flawless in Sudden Death), plus more streak, volume, level, and mock-exam milestones, each with its own XP and a few new titles (Arcade Ace, Virtuoso, The Devoted).' },
         { tag: 'New', date: 'Jul 1', title: 'Achievements now reward XP', desc: 'Every achievement grants XP toward your level when you unlock it — bigger achievements, bigger rewards. The Achievements page now shows each one’s XP and any title it unlocks, so you can chase the ones you want.' },
-        { tag: 'New', date: 'Jul 1', title: 'Titles', desc: 'Unlock titles from achievements (Boss Slayer, The Scholar, Grandmaster, and the ultimate “The Legend” for unlocking everything). Pick one in Account → Title ★ to show by your name and on the League board.' },
+        { tag: 'New', date: 'Jul 1', title: 'Titles', desc: 'Unlock titles from achievements (Boss Slayer, The Scholar, Grandmaster, and the ultimate “The Legend” for unlocking everything). Pick one in Account → Title ★ to show by your name and on the leaderboard.' },
         { tag: 'New', date: 'Jul 1', title: 'Fresh questions every time', desc: 'Practice sets, specialty quizzes, and mock exams now serve questions you haven’t seen yet first — so you keep drawing new questions from the full bank instead of repeats, and no two people get the same quiz.' },
         { tag: 'New', date: 'Jul 1', title: 'In-quiz calculator', desc: 'A calculator now sits next to Lab values in every question — basic math plus quick medical conversions (cm↔in, kg↔lb, °C↔°F) for when a stem gives height in centimeters.' },
         { tag: 'New', date: 'Jul 1', title: 'Arcade modes', desc: 'Two fast, score-chasing modes in Study Modes (and now in the menu): Survival (endless — 3 lives, one miss costs a life) and Time Attack (a five-minute sprint). Each keeps your personal best.' },
@@ -1132,7 +1132,7 @@
 
     // ---- Titles: unlocked by achievements, one active title shown by your name ----
     // Keyed by achievement title. Picking a title persists server-side so it also
-    // shows on the League board. Unlock-gating is client-side (low-stakes flair).
+    // shows on the leaderboard. Unlock-gating is client-side (low-stakes flair).
     const TITLE_MAP = {
         'One week strong': 'The Consistent',
         'Centurion streak': 'The Relentless',
@@ -1197,7 +1197,7 @@
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your title</div>
                 <button onclick="MACPrep.closeTitlePicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
             </div>
-            <div class="sub" style="font-size:13px;margin-bottom:6px;">Titles you unlock from achievements. Pick one to show by your name and on the League board.</div>
+            <div class="sub" style="font-size:13px;margin-bottom:6px;">Titles you unlock from achievements. Pick one to show by your name and on the leaderboard.</div>
             <button type="button" onclick="MACPrep.saveTitle('')" style="display:block;width:100%;text-align:left;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:10px 13px;margin-top:8px;cursor:pointer;color:var(--muted);font-size:13px;">No title${!cur ? ' · ACTIVE' : ''}</button>
             ${rows}
             ${lockedRows ? `<div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 2px;">Locked — earn these</div>${lockedRows}` : ''}
@@ -1207,7 +1207,7 @@
     function closeTitlePicker() { const o = $('title-overlay'); if (o) o.remove(); }
 
     // ---- Avatars: emoji profile pictures unlocked by achievements (server-stored
-    // as selected_avatar, so they also show on the League board). Default = initials.
+    // as selected_avatar, so they also show on the leaderboard). Default = initials.
     const AVATAR_MAP = {
         'Century — 100 questions': '📚', 'Fortnight': '🔥', 'A month deep': '🦁',
         'Sharpshooter — 80%': '🎯', 'High five — 5,000': '🐉', 'Explorer — every specialty': '🧭',
@@ -1250,7 +1250,7 @@
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your avatar</div>
                 <button onclick="MACPrep.closeAvatarPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
             </div>
-            <div class="sub" style="font-size:13px;margin-bottom:10px;">Emoji profile pictures you unlock from achievements. Shows in your sidebar and on the League board.</div>
+            <div class="sub" style="font-size:13px;margin-bottom:10px;">Emoji profile pictures you unlock from achievements. Shows in your sidebar and on the leaderboard.</div>
             <div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;">
                 <button type="button" onclick="MACPrep.saveAvatar('')" style="font-size:12px;height:52px;padding:0 14px;display:flex;align-items:center;justify-content:center;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:12px;cursor:pointer;color:var(--muted);">Initials</button>
                 ${ownedGrid}
@@ -3240,7 +3240,7 @@
         { icon: '❗', label: 'Review my confident misses', hint: 'sure but wrong', run: () => reviewConfidentMisses(), auth: true },
         { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
         { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
-        { icon: '🏆', label: 'Study League — weekly leaderboard', run: () => go('leaderboard'), auth: true },
+        { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
         { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
         { icon: '⭐', label: 'Upgrade to full access — $50', run: () => startCheckout(), auth: true, hidePremium: true },
