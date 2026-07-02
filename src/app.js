@@ -660,8 +660,10 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 13;
+    const WHATS_NEW_VERSION = 14;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
+        { tag: 'New', date: 'Jul 2', title: 'More avatars & titles to unlock', desc: 'Added new unlockable avatars (🌱 Level 5, ⚡ Level 15, 🤿 Deep Diver, and more) and titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the League board.' },
         { tag: 'New', date: 'Jul 1', title: 'Two more Arcade modes', desc: 'Arcade now has four modes: Survival, Time Attack, plus new Sudden Death (one wrong answer ends the run) and Blitz (a countdown that every correct answer extends). Each keeps its own high score.' },
         { tag: 'New', date: 'Jul 1', title: 'More achievements', desc: 'New badges to chase — an Arcade set (play modes, hit a 20-run, go flawless in Sudden Death), plus more streak, volume, level, and mock-exam milestones, each with its own XP and a few new titles (Arcade Ace, Virtuoso, The Devoted).' },
@@ -1148,6 +1150,12 @@
         'Level 75': 'Virtuoso',
         'Untouchable — 15 in Sudden Death': 'Untouchable',
         'High scorer — 20 in a run': 'Arcade Ace',
+        'Halfway hero — 2,500': 'Halfway Hero',
+        'Marksman — 95%': 'The Marksman',
+        'Locked in — 80% over 500': 'Locked In',
+        'Polymath — 5 at 100%': 'The Polymath',
+        'Unstoppable — 200 days': 'The Unstoppable',
+        'Mock veteran — ten Mock Exams': 'The Veteran',
         'The Grand Slam — every achievement': 'The Legend',
     };
     const BASE_TITLES = ['Rookie']; // always available so the picker is never empty
@@ -1209,6 +1217,9 @@
         'Level 10': '🚀', 'Level 25': '⭐', 'Level 50 — halfway to max': '🏅',
         'Arcade debut': '🕹️', 'Arcade regular — 25 runs': '👾', 'Exam-ready — 80% readiness': '🩺',
         'The grind — 30-day streak + 2,500': '💪', 'Quest master — 30 days': '📅',
+        'Level 5': '🌱', 'Level 15': '⚡', '500 club': '🎖️', 'Quarter-K — 250': '🥉',
+        'On target — 70%': '👍', 'Deep diver — 50 in one specialty': '🤿',
+        'Getting around — 8 specialties': '🗺️', 'Two months': '🏔️',
     };
     function unlockedAvatars() { return computeAchievements().filter((a) => a.met && AVATAR_MAP[a.title]).map((a) => AVATAR_MAP[a.title]); }
     function activeAvatar() { const av = state.profile && state.profile.selected_avatar; return av && unlockedAvatars().includes(av) ? av : ''; }
