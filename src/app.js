@@ -2945,6 +2945,53 @@
         } catch (err) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; } }
     }
 
+    // ---- Reviews moderation (admin): approve/reject submissions + add curated ----
+    async function reviewMod() {
+        if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
+        go('admin');
+        const t = $('admin-review-title'); if (t) t.textContent = 'Reviews';
+        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Approve or reject submitted reviews, or paste in a testimonial someone sent you. Approved reviews show on the public <a href="/reviews" target="_blank" rel="noopener">Reviews page</a>. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
+        ['admin-analytics', 'admin-vouchers'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
+        const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading reviews…</div>';
+        try {
+            const { resp, data } = await apiJSON('/api/admin/reviews', { headers: authHeaders() });
+            if (!resp.ok) throw new Error(data.error || 'Could not load.');
+            state.reviewMod = { list: data.reviews || [], counts: data.counts || {} };
+            renderReviewMod();
+        } catch (e) { if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`; }
+    }
+    function renderReviewMod() {
+        const r = state.reviewMod; const wrap = $('admin-body'); if (!r || !wrap) return;
+        const c = r.counts || {};
+        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.pending || 0} pending · ${c.approved || 0} approved · ${c.rejected || 0} rejected`;
+        const inp = 'width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:13px;';
+        const add = `<div class="card" style="margin-bottom:18px;">
+            <label>Add a testimonial (someone texted you one?)</label>
+            <input id="rvm-name" placeholder="Name" maxlength="80" style="${inp}">
+            <input id="rvm-cred" placeholder="Credential — e.g. SAA, Class of 2026 · or CAA" maxlength="80" style="${inp}">
+            <select id="rvm-rating" style="${inp}"><option value="5">★★★★★ — 5</option><option value="4">★★★★ — 4</option><option value="3">★★★ — 3</option><option value="2">★★ — 2</option><option value="1">★ — 1</option></select>
+            <textarea id="rvm-body" placeholder="Their words" rows="3" maxlength="2000" style="${inp}"></textarea>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;font-size:13px;margin-bottom:10px;"><input type="checkbox" id="rvm-feat"> Feature (pin near the top)</label>
+            <div><button class="btn" onclick="MACPrep.reviewModAdd()">Add — publishes live</button> <span id="rvm-msg" class="mono" style="font-size:12px;color:var(--accent);"></span></div>
+        </div>`;
+        const pending = r.list.length ? r.list.map((rv) => `<div class="card" style="margin-bottom:10px;">
+            <div style="color:#f5b73c;letter-spacing:2px;">${'★'.repeat(rv.rating || 5)}${'☆'.repeat(5 - (rv.rating || 5))}</div>
+            <div style="font-size:14px;line-height:1.5;margin:6px 0;">“${escapeHtml(rv.body || '')}”</div>
+            <div class="mono" style="font-size:12px;color:var(--muted);">${escapeHtml(rv.author_name || '')}${rv.credential ? ' · ' + escapeHtml(rv.credential) : ''}</div>
+            <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn" onclick="MACPrep.reviewModAct(${rv.id},'approve')">✓ Approve</button><button class="btn ghost" onclick="MACPrep.reviewModAct(${rv.id},'reject')">✗ Reject</button></div>
+        </div>`).join('') : '<div class="card"><div class="mono" style="color:var(--muted);">No pending reviews right now.</div></div>';
+        wrap.innerHTML = add + '<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:4px 0 8px;">Pending submissions</div>' + pending;
+    }
+    async function reviewModAct(id, action) {
+        try { const { resp, data } = await apiJSON('/api/admin/review', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ id, action }) }); if (!resp.ok || !data.success) throw new Error(data.error || 'Failed'); reviewMod(); } catch (e) { toast(e.message); }
+    }
+    async function reviewModAdd() {
+        const g = (id) => (($(id) || {}).value || '').trim(); const msg = $('rvm-msg');
+        const body = { create: true, author_name: g('rvm-name'), credential: g('rvm-cred'), rating: g('rvm-rating'), body: g('rvm-body'), featured: !!($('rvm-feat') && $('rvm-feat').checked) };
+        if (!body.author_name || !body.body) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Name and text required.'; } return; }
+        try { const { resp, data } = await apiJSON('/api/admin/review', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) }); if (!resp.ok || !data.success) throw new Error(data.error || 'Failed'); reviewMod(); } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
     // ---- vouchers / codes -------------------------------------------------
     async function redeemCode() {
         const inp = $('redeem-code'); const msg = $('redeem-msg'); if (!inp) return;
@@ -3245,6 +3292,7 @@
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
+        reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
