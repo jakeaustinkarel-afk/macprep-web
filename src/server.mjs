@@ -316,6 +316,24 @@ app.use((req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
+// Clean URLs — 301 /foo.html → /foo (canonical, shareable, SEO-friendly) and
+// serve /foo from foo.html. Old .html links keep working via the redirect, so
+// no traffic is lost. Query strings are preserved; #hash is client-side only.
+// ---------------------------------------------------------------------------
+app.get(/\.html$/i, (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    const clean = req.path.replace(/\/index\.html$/i, '/').replace(/\.html$/i, '') || '/';
+    const qs = req.originalUrl.slice(req.path.length);
+    res.redirect(301, clean + qs);
+});
+app.use((req, res, next) => {
+    if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path === '/' || req.path.startsWith('/api/') || path.extname(req.path)) return next();
+    const file = path.join(__dirname, '../', decodeURIComponent(req.path).replace(/\/+$/, '') + '.html');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(file, (err) => { if (err) { res.removeHeader('Cache-Control'); next(); } });
+});
+
+// ---------------------------------------------------------------------------
 // JSON parsing + static assets for all normal routes
 // ---------------------------------------------------------------------------
 app.use(express.json());
