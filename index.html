@@ -502,11 +502,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <a href="/metrics.html">Metrics</a>
                 </div>
             </span>
-            <a class="nav-landing" href="#try" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Try a question</a>
             <a class="nav-landing" href="#features" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Features</a>
-            <a class="nav-landing" href="#how" onclick="document.getElementById('main-nav').classList.remove('nav-open')">How it works</a>
-            <a class="nav-landing" href="#about" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Who writes these</a>
             <a class="nav-landing" href="#pricing" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Pricing</a>
+            <a class="nav-landing" href="/guides/" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Guides</a>
+            <a class="nav-landing" href="/faq" onclick="document.getElementById('main-nav').classList.remove('nav-open')">FAQ</a>
             <a class="nav-market" href="/pricing.html">Pricing</a>
             <a class="nav-market" href="/faq.html">FAQ</a>
             <a class="nav-market" href="/guides/">Guides</a>
@@ -514,6 +513,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a class="nav-market" href="/updates.html">Updates</a>
             <a class="nav-market" href="/#about">About</a>
             <a id="nav-login" href="/login.html" onclick="event.preventDefault(); MACPrep.showSignin(); var c=document.getElementById('login-form-container'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});">Log in</a>
+            <a class="nav-landing nav-cta" href="#signup-pane" onclick="document.getElementById('main-nav').classList.remove('nav-open'); if(window.MACPrep&&MACPrep.showSignup){event.preventDefault();MACPrep.showSignup();var c=document.getElementById('login-form-container'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});}" style="background:var(--accent);color:var(--on-accent);padding:7px 15px;border-radius:8px;font-weight:700;white-space:nowrap;">Start Free →</a>
             <span id="nav-account-wrap" class="hidden" style="position:relative;">
                 <a class="nav-acct" role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('account', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('account', event);}"><span class="nav-acct-av" id="nav-acct-initials">·</span><span class="nav-acct-meta"><span class="nav-acct-name" id="nav-acct-name">Account</span><span class="nav-acct-sub" id="nav-acct-sub">View menu</span></span><svg class="nav-acct-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M8 15l4 4 4-4"></path></svg></a>
                 <div id="nav-account-menu" class="navdrop hidden" role="menu">

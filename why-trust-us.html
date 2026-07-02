@@ -131,14 +131,12 @@
         <a href="/index.html" class="brand-logo" style="display:inline-flex;align-items:center;gap:9px;"><svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg><span>MAC<span class="accent">Prep</span></span></a>
         <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
         <nav class="nav" id="site-nav">
-            <a href="/index.html">Home</a>
-            <a href="/pricing.html">Pricing</a>
-            <a href="/faq.html">FAQ</a>
+            <a href="/index.html#features">Features</a>
+            <a href="/pricing">Pricing</a>
             <a href="/guides/">Guides</a>
-            <a href="/updates.html">Updates</a>
-            <a href="/login.html">Log in</a>
-            <a href="/index.html#signup-pane">Sign up</a>
-            
+            <a href="/faq">FAQ</a>
+            <a href="/login">Log in</a>
+            <a href="/index.html#signup-pane" class="nav-cta" style="background:var(--accent);color:var(--on-accent);padding:7px 15px;border-radius:8px;font-weight:700;white-space:nowrap;">Start Free →</a>
         </nav>
     </div>
 
@@ -190,6 +188,6 @@
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
 
-<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if(h==="/login.html"){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
 </body>
 </html>
