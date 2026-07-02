@@ -266,19 +266,18 @@
         const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         state.profile = data.profile || null;
-        // Theme & font: this device's saved choice (localStorage, applied instantly by the
-        // <head> script) ALWAYS wins on refresh. The account value only SEEDS a device that
-        // has no local choice yet — so a refresh can never reset your actual last pick, even
-        // if the account value is stale or a save hiccupped.
-        let lsTheme = null, lsFont = null;
-        try { lsTheme = localStorage.getItem('macprep_theme'); lsFont = localStorage.getItem('macprep_font'); } catch (e) {}
+        // Theme & font follow your ACCOUNT across devices: the saved profile value is the
+        // source of truth and is applied on load. setTheme/setFont also update this device's
+        // localStorage to match, and any change saves back to the account (onThemeChange), so
+        // a switch on one device shows up on the others. The <head> script still applies this
+        // device's localStorage first so there's no flash before the account value loads.
         if (state.profile && state.profile.theme && !state._themeApplied && typeof window.setTheme === 'function') {
             state._themeApplied = true;
-            if (!lsTheme && state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
+            if (state.profile.theme !== document.documentElement.getAttribute('data-theme')) window.setTheme(state.profile.theme);
         }
         if (state.profile && state.profile.font && !state._fontApplied && typeof window.setFont === 'function') {
             state._fontApplied = true;
-            if (!lsFont && state.profile.font !== document.documentElement.getAttribute('data-font')) window.setFont(state.profile.font);
+            if (state.profile.font !== document.documentElement.getAttribute('data-font')) window.setFont(state.profile.font);
         }
         return state.profile;
     }

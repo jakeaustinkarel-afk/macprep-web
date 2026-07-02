@@ -1681,12 +1681,12 @@ app.post('/api/user/profile', async (req, res) => {
         update.study_goal = b.study_goal;
         if (b.study_goal !== 'exam') update.target_exam_date = null; // practice/none → no exam countdown
     }
-    if (typeof b.theme === 'string' && ['light', 'dark', 'midnight', 'warm', 'slate', 'forest', 'rose', 'contrast', 'ocean', 'indigo', 'nord', 'sky', 'lavender', 'sandstone'].includes(b.theme)) {
-        update.theme = b.theme;
-    }
-    if (typeof b.font === 'string' && ['modern', 'serif', 'mono', 'rounded', 'charter', 'times', 'grotesk', 'reader'].includes(b.font)) {
-        update.font = b.font;
-    }
+    // Accept any well-formed theme/font id — they only set a CSS data-attribute, and an
+    // unknown value harmlessly falls back to defaults. Regex-validated (not a hardcoded
+    // list) so it never goes stale as themes/fonts are added, which was silently rejecting
+    // newer themes and breaking cross-device sync.
+    if (typeof b.theme === 'string' && /^[a-z0-9_-]{1,24}$/.test(b.theme)) update.theme = b.theme;
+    if (typeof b.font === 'string' && /^[a-z0-9_-]{1,24}$/.test(b.font)) update.font = b.font;
     update.updated_at = new Date().toISOString();
 
     try {
