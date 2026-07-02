@@ -1840,7 +1840,7 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
     const b = req.body || {};
     const author_name = String(b.author_name || '').trim().slice(0, 80);
     const credential = String(b.credential || '').trim().slice(0, 80) || null;
-    const rating = Math.min(5, Math.max(1, parseInt(b.rating, 10) || 5));
+    const rating = Math.min(5, Math.max(1, Math.round((parseFloat(b.rating) || 5) * 2) / 2)); // half-star steps
     const body = String(b.body || '').trim().slice(0, 2000);
     if (!author_name || !body) return res.status(400).json({ error: 'Name and review text are required.' });
     try {
@@ -1897,7 +1897,7 @@ app.post('/api/admin/review', async (req, res) => {
             if (!author_name || !body) return res.status(400).json({ error: 'Name and text required.' });
             const { error } = await supabase.from('reviews').insert({
                 author_name, credential: String(b.credential || '').trim().slice(0, 80) || null,
-                rating: Math.min(5, Math.max(1, parseInt(b.rating, 10) || 5)),
+                rating: Math.min(5, Math.max(1, Math.round((parseFloat(b.rating) || 5) * 2) / 2)),
                 body, status: 'approved', featured: !!b.featured, reviewed_at: new Date().toISOString(),
             });
             if (error) throw error;

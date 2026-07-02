@@ -156,7 +156,7 @@
                 <div style="font-weight:700;margin-bottom:12px;">Share your experience</div>
                 <input id="rv-name" placeholder="Your name" maxlength="80" style="width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
                 <input id="rv-cred" placeholder="Credential (e.g. SAA, Class of 2026 · or CAA)" maxlength="80" style="width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
-                <select id="rv-rating" style="width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"><option value="5">★★★★★ — 5</option><option value="4">★★★★ — 4</option><option value="3">★★★ — 3</option><option value="2">★★ — 2</option><option value="1">★ — 1</option></select>
+                <select id="rv-rating" style="width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"><option value="5">★★★★★ · 5</option><option value="4.5">★★★★½ · 4.5</option><option value="4">★★★★ · 4</option><option value="3.5">★★★½ · 3.5</option><option value="3">★★★ · 3</option><option value="2.5">★★½ · 2.5</option><option value="2">★★ · 2</option><option value="1.5">★½ · 1.5</option><option value="1">★ · 1</option></select>
                 <textarea id="rv-body" placeholder="How did MACPrep help you prepare for the boards?" rows="4" maxlength="2000" style="width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"></textarea>
                 <button type="button" class="btn" onclick="rvSubmit()">Submit review</button>
                 <div id="rv-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div>
@@ -167,7 +167,7 @@
                 <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:10px;">For quotes someone sent you (no account needed). Publishes live. You can remove any review with the ✕ on its card.</div>
                 <input id="rva-name" placeholder="Name" maxlength="80" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
                 <input id="rva-cred" placeholder="Credential (e.g. SAA, Class of 2026)" maxlength="80" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
-                <select id="rva-rating" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"><option value="5">★★★★★ — 5</option><option value="4">★★★★ — 4</option><option value="3">★★★ — 3</option></select>
+                <select id="rva-rating" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"><option value="5">★★★★★ · 5</option><option value="4.5">★★★★½ · 4.5</option><option value="4">★★★★ · 4</option><option value="3.5">★★★½ · 3.5</option><option value="3">★★★ · 3</option><option value="2.5">★★½ · 2.5</option><option value="2">★★ · 2</option><option value="1.5">★½ · 1.5</option><option value="1">★ · 1</option></select>
                 <textarea id="rva-body" placeholder="Testimonial text" rows="3" maxlength="2000" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"></textarea>
                 <button type="button" class="btn" onclick="rvAdminAdd()">Add testimonial</button>
                 <span id="rv-admin-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:8px;"></span>
@@ -177,14 +177,14 @@
 
     <script>/*reviews*/(function(){
       function esc(s){return String(s||'').replace(/[<>&"]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
-      function stars(n){var s='';n=n||5;for(var i=0;i<5;i++)s+=(i<n?'★':'☆');return s;}
+      function stars(n){n=Math.round((n||5)*2)/2;var out='';for(var i=1;i<=5;i++){if(n>=i){out+='<span style="color:#f5b73c;">★</span>';}else if(n>=i-0.5){out+='<span style="position:relative;display:inline-block;width:1em;"><span style="color:var(--line,#555);">★</span><span style="position:absolute;left:0;top:0;width:.5em;overflow:hidden;color:#f5b73c;">★</span></span>';}else{out+='<span style="color:var(--line,#555);">★</span>';}}return out;}
       var list=document.getElementById('rv-list');
       var tok;try{tok=localStorage.getItem('macprep_token');}catch(e){}
       var isAdmin=false, reviews=[];
       function render(){
         if(!reviews.length){list.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:34px 0;">No reviews yet — be the first to share your experience.</div>';return;}
         list.innerHTML=reviews.map(function(r){var rm=isAdmin?'<button onclick="rvRemove('+r.id+')" title="Remove review" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--bad,#f87171);cursor:pointer;font-size:15px;line-height:1;">✕</button>':'';return '<div style="position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;">'+rm+'<div style="color:#f5b73c;font-size:15px;letter-spacing:2px;margin-bottom:8px;">'+stars(r.rating)+'</div><div style="font-size:15px;line-height:1.55;color:var(--text2);flex:1;">“'+esc(r.body)+'”</div><div style="margin-top:14px;font-weight:700;font-size:14px;color:var(--text);">'+esc(r.author_name)+(r.credential?' <span style="font-weight:400;color:var(--muted);font-size:12px;">· '+esc(r.credential)+'</span>':'')+'</div></div>';}).join('');
-        var avg=reviews.reduce(function(a,r){return a+(r.rating||5);},0)/reviews.length;
+        var avg=reviews.reduce(function(a,r){return a+(parseFloat(r.rating)||5);},0)/reviews.length;
         var sum=document.getElementById('rv-summary');if(sum)sum.textContent='— '+reviews.length+' review'+(reviews.length===1?'':'s')+', '+avg.toFixed(1)+'★ average';
       }
       function load(){return fetch('/api/reviews').then(function(r){return r.json();}).then(function(d){reviews=(d&&d.reviews)||[];render();}).catch(function(){list.innerHTML='<div style="grid-column:1/-1;color:var(--bad,#f87171);">Could not load reviews right now.</div>';});}
