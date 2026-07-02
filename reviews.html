@@ -162,6 +162,16 @@
                 <div id="rv-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div>
                 <div class="mono" style="font-size:11px;color:var(--muted);margin-top:6px;">One review per account — it posts right away, and you can edit it anytime by submitting again.</div>
             </div>
+            <div id="rv-admin" class="hidden" style="max-width:440px;margin:16px auto 0;text-align:left;background:var(--panel);border:1px dashed var(--accent);border-radius:14px;padding:16px;">
+                <div style="font-weight:700;font-size:14px;margin-bottom:3px;">Admin · add a testimonial</div>
+                <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:10px;">For quotes someone sent you (no account needed). Publishes live. You can remove any review with the ✕ on its card.</div>
+                <input id="rva-name" placeholder="Name" maxlength="80" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
+                <input id="rva-cred" placeholder="Credential (e.g. SAA, Class of 2026)" maxlength="80" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);">
+                <select id="rva-rating" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:7px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"><option value="5">★★★★★ — 5</option><option value="4">★★★★ — 4</option><option value="3">★★★ — 3</option></select>
+                <textarea id="rva-body" placeholder="Testimonial text" rows="3" maxlength="2000" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);"></textarea>
+                <button type="button" class="btn" onclick="rvAdminAdd()">Add testimonial</button>
+                <span id="rv-admin-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:8px;"></span>
+            </div>
         </div>
     </div>
 
@@ -169,14 +179,20 @@
       function esc(s){return String(s||'').replace(/[<>&"]/g,function(c){return{'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
       function stars(n){var s='';n=n||5;for(var i=0;i<5;i++)s+=(i<n?'★':'☆');return s;}
       var list=document.getElementById('rv-list');
-      fetch('/api/reviews').then(function(r){return r.json();}).then(function(d){
-        var revs=(d&&d.reviews)||[];
-        if(!revs.length){list.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:34px 0;">No reviews yet — be the first to share your experience.</div>';return;}
-        list.innerHTML=revs.map(function(r){return '<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;"><div style="color:#f5b73c;font-size:15px;letter-spacing:2px;margin-bottom:8px;">'+stars(r.rating)+'</div><div style="font-size:15px;line-height:1.55;color:var(--text2);flex:1;">“'+esc(r.body)+'”</div><div style="margin-top:14px;font-weight:700;font-size:14px;color:var(--text);">'+esc(r.author_name)+(r.credential?' <span style="font-weight:400;color:var(--muted);font-size:12px;">· '+esc(r.credential)+'</span>':'')+'</div></div>';}).join('');
-        var avg=revs.reduce(function(a,r){return a+(r.rating||5);},0)/revs.length;
-        var sum=document.getElementById('rv-summary');if(sum)sum.textContent='— '+revs.length+' review'+(revs.length===1?'':'s')+', '+avg.toFixed(1)+'★ average';
-      }).catch(function(){list.innerHTML='<div style="grid-column:1/-1;color:var(--bad,#f87171);">Could not load reviews right now.</div>';});
-      window.rvLeave=function(){var tok;try{tok=localStorage.getItem('macprep_token');}catch(e){}if(!tok){location.href='/index.html#signup-pane';return;}var f=document.getElementById('rv-form');if(f)f.classList.toggle('hidden');};
+      var tok;try{tok=localStorage.getItem('macprep_token');}catch(e){}
+      var isAdmin=false, reviews=[];
+      function render(){
+        if(!reviews.length){list.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:34px 0;">No reviews yet — be the first to share your experience.</div>';return;}
+        list.innerHTML=reviews.map(function(r){var rm=isAdmin?'<button onclick="rvRemove('+r.id+')" title="Remove review" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--bad,#f87171);cursor:pointer;font-size:15px;line-height:1;">✕</button>':'';return '<div style="position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;">'+rm+'<div style="color:#f5b73c;font-size:15px;letter-spacing:2px;margin-bottom:8px;">'+stars(r.rating)+'</div><div style="font-size:15px;line-height:1.55;color:var(--text2);flex:1;">“'+esc(r.body)+'”</div><div style="margin-top:14px;font-weight:700;font-size:14px;color:var(--text);">'+esc(r.author_name)+(r.credential?' <span style="font-weight:400;color:var(--muted);font-size:12px;">· '+esc(r.credential)+'</span>':'')+'</div></div>';}).join('');
+        var avg=reviews.reduce(function(a,r){return a+(r.rating||5);},0)/reviews.length;
+        var sum=document.getElementById('rv-summary');if(sum)sum.textContent='— '+reviews.length+' review'+(reviews.length===1?'':'s')+', '+avg.toFixed(1)+'★ average';
+      }
+      function load(){return fetch('/api/reviews').then(function(r){return r.json();}).then(function(d){reviews=(d&&d.reviews)||[];render();}).catch(function(){list.innerHTML='<div style="grid-column:1/-1;color:var(--bad,#f87171);">Could not load reviews right now.</div>';});}
+      if(tok){fetch('/api/user/profile',{headers:{Authorization:'Bearer '+tok}}).then(function(r){return r.json();}).then(function(d){isAdmin=!!(d&&d.profile&&d.profile.is_admin);if(isAdmin){var af=document.getElementById('rv-admin');if(af)af.classList.remove('hidden');render();}}).catch(function(){});}
+      load();
+      window.rvRemove=function(id){if(!confirm('Remove this review?'))return;fetch('/api/admin/review',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({id:id,action:'delete'})}).then(function(r){return r.json();}).then(function(){load();}).catch(function(){});};
+      window.rvAdminAdd=function(){var m=document.getElementById('rv-admin-msg');var b={create:true,author_name:(document.getElementById('rva-name')||{}).value,credential:(document.getElementById('rva-cred')||{}).value,rating:(document.getElementById('rva-rating')||{}).value,body:(document.getElementById('rva-body')||{}).value};if(!b.author_name||!b.body){if(m){m.style.color='var(--bad,#f87171)';m.textContent='Name and text required.';}return;}fetch('/api/admin/review',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(b)}).then(function(r){return r.json();}).then(function(x){if(x&&x.success){if(m){m.style.color='var(--accent)';m.textContent='Added ✓';}var t=document.getElementById('rva-body');if(t)t.value='';load();}else if(m){m.style.color='var(--bad,#f87171)';m.textContent=(x&&x.error)||'Failed';}}).catch(function(e){if(m){m.style.color='var(--bad,#f87171)';m.textContent=e.message;}});};
+      window.rvLeave=function(){if(!tok){location.href='/index.html#signup-pane';return;}var f=document.getElementById('rv-form');if(f)f.classList.toggle('hidden');};
       window.rvSubmit=function(){var msg=document.getElementById('rv-msg');var tok;try{tok=localStorage.getItem('macprep_token');}catch(e){}if(!tok){location.href='/index.html#signup-pane';return;}var b={author_name:(document.getElementById('rv-name')||{}).value,credential:(document.getElementById('rv-cred')||{}).value,rating:(document.getElementById('rv-rating')||{}).value,body:(document.getElementById('rv-body')||{}).value};if(!b.author_name||!b.body){if(msg){msg.style.color='var(--bad,#f87171)';msg.textContent='Please add your name and a review.';}return;}if(msg){msg.style.color='var(--accent)';msg.textContent='Submitting…';}fetch('/api/reviews',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});}).then(function(x){if(!x.ok||!x.d.success)throw new Error(x.d.error||'Failed');if(msg){msg.style.color='var(--accent)';msg.textContent='Thanks! Your review is live. 🎉';}setTimeout(function(){location.reload();},1300);}).catch(function(e){if(msg){msg.style.color='var(--bad,#f87171)';msg.textContent=e.message;}});};
     })();</script>
 

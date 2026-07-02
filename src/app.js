@@ -120,7 +120,7 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;

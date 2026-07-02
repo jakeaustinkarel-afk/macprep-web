@@ -1820,7 +1820,7 @@ app.get('/api/reviews', async (req, res) => {
     if (!supabase) return res.json({ reviews: [] });
     try {
         const { data, error } = await supabase.from('reviews')
-            .select('author_name, credential, rating, body, created_at, featured')
+            .select('id, author_name, credential, rating, body, created_at, featured')
             .eq('status', 'approved')
             .order('featured', { ascending: false })
             .order('created_at', { ascending: false })
