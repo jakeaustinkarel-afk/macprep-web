@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@500;800&family=JetBrains+Mono:wght@500&display=swap');
+html,body{margin:0;padding:0}
+.wall{position:relative;width:1440px;height:900px;overflow:hidden;font-family:'Figtree',sans-serif;
+  background:linear-gradient(158deg,#12402F 0%,#0C271D 46%,#070F0C 100%)}
+.glow{position:absolute;inset:0;background:radial-gradient(46% 40% at 50% 44%, rgba(47,163,107,.30), transparent 62%)}
+.grid{position:absolute;inset:0;opacity:.5;
+  background-image:linear-gradient(rgba(143,227,187,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(143,227,187,.055) 1px,transparent 1px);
+  background-size:48px 48px}
+.vig{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(4,8,6,.65) 100%)}
+.pulse{position:absolute;left:0;top:52%;width:100%;filter:drop-shadow(0 0 16px rgba(79,204,142,.55))}
+.center{position:absolute;left:0;top:31%;width:100%;display:flex;flex-direction:column;align-items:center}
+.mark{width:132px;height:132px;border-radius:32px;background:#146A4A;display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px rgba(20,106,74,.7),0 18px 50px rgba(0,0,0,.45)}
+.wm{font-weight:800;font-size:76px;letter-spacing:-2px;margin-top:30px}
+.wm .a{color:#F3F7F5}.wm .b{color:#4FCC8E}
+.tag{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:19px;letter-spacing:3px;color:#8FE3BB;margin-top:118px;text-transform:uppercase;opacity:.9}
+</style></head><body>
+<div class="wall">
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <svg class="pulse" viewBox="0 0 1440 220" preserveAspectRatio="none" aria-hidden="true"><path d="M0 110 H470 L512 34 L556 186 L590 74 L612 110 H900 L942 34 L986 186 L1020 74 L1042 110 H1440" fill="none" stroke="#4FCC8E" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></svg>
+  <div class="center">
+    <div class="mark"><svg width="82" height="82" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 25 H16 L19.5 16 L25 34 L28.5 21 L31.5 25 H40" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="wm"><span class="a">MAC</span><span class="b">Prep</span></div>
+  </div>
+  <div class="center" style="top:auto;bottom:15%"><div class="tag">The board prep that shows its work</div></div>
+</div>
+</body></html>
