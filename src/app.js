@@ -2036,7 +2036,7 @@
         return 'resets in ' + d + 'd ' + h + 'h';
     }
     const LB_TABS = [
-        { key: 'weekly', label: 'This Week', metric: 'Questions', note: 'Most questions answered since Monday 7 AM ET.' },
+        { key: 'weekly', label: 'Questions Answered', metric: 'Questions', note: 'Most questions answered since Monday 7 AM ET.' },
         { key: 'streak', label: 'Streak', metric: 'Day streak', note: 'Longest current daily study streak.' },
         { key: 'accuracy', label: 'Sharpshooter', metric: 'Accuracy', note: 'Highest accuracy this week (minimum 20 questions to qualify).' },
     ];
