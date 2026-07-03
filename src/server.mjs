@@ -1079,13 +1079,44 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
 // this week (resets Monday 00:00 UTC) and shows each player's study streak.
 // Privacy: opt-in only, shown by a chosen handle — never email or real name.
 // ---------------------------------------------------------------------------
+function lbNyParts(d) {
+    const f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, weekday: 'short' });
+    const p = {}; f.formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+    return p;
+}
+// UTC ms for a given America/New_York wall-clock time (DST-correct via convergence).
+function lbEtWallToUTC(y, mo, da, hh, mm, ss) {
+    const target = Date.UTC(y, mo - 1, da, hh, mm, ss);
+    let ts = target;
+    for (let i = 0; i < 3; i++) {
+        const p = lbNyParts(new Date(ts));
+        const diff = target - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+        if (diff === 0) break;
+        ts += diff;
+    }
+    return ts;
+}
+// Most recent Monday 07:00 America/New_York — the weekly reset boundary — as a UTC Date.
 function lbWeekStartUTC() {
     const now = new Date();
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // back to Monday
-    return d;
+    const p = lbNyParts(now);
+    const wd = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday];
+    const sinceMon = (wd + 6) % 7;
+    const mon = new Date(Date.UTC(+p.year, +p.month - 1, +p.day) - sinceMon * 86400000);
+    let ts = lbEtWallToUTC(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate(), 7, 0, 0);
+    if (now.getTime() < ts) { const prev = new Date(mon.getTime() - 7 * 86400000); ts = lbEtWallToUTC(prev.getUTCFullYear(), prev.getUTCMonth() + 1, prev.getUTCDate(), 7, 0, 0); }
+    return new Date(ts);
 }
-function lbDayKey(d) { return new Date(d).toISOString().slice(0, 10); }
+// Day key in ET calendar days, so streaks track the user's own days, not UTC.
+function lbDayKey(d) { const p = lbNyParts(new Date(d)); return `${p.year}-${p.month}-${p.day}`; }
+// "First name + last initial" — the only identity shown on the board (never full name/email).
+function lbShortName(full) {
+    const parts = String(full || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+    if (!parts.length) return '';
+    const first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    return parts.length === 1 ? first : `${first} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
+const LB_MIN_ACCURACY_QS = 20; // minimum questions this week to qualify for the accuracy board
 function lbStreak(daySet) {
     let s = 0;
     const now = Date.now();
@@ -1101,45 +1132,64 @@ function lbStreak(daySet) {
 app.get('/api/leaderboard', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!supabase) return res.json({ leaderboard: [], me: null });
+    if (!supabase) return res.json({ boards: { streak: [], weekly: [], accuracy: [] }, me: null });
     try {
         const weekStart = lbWeekStartUTC();
         const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
+        // Board = opted-in players who have added a real name (a "First L." to show).
         const { data: players } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, leaderboard_handle, selected_title, selected_avatar')
-            .eq('leaderboard_opt_in', true).not('leaderboard_handle', 'is', null);
-        const playerList = players || [];
-        const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 1000);
-        const weekCount = {}, daysByUser = {};
+            .select('user_id, full_name, selected_title, selected_avatar')
+            .eq('leaderboard_opt_in', true).not('full_name', 'is', null);
+        const playerList = (players || []).filter((p) => lbShortName(p.full_name));
+        const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 2000);
+        const weekAtt = {}, weekCorrect = {}, daysByUser = {};
         if (allIds.length) {
             const { data: wp } = await supabase.from(PROGRESS_TABLE)
-                .select('user_id').in('user_id', allIds).gte('created_at', weekStart.toISOString());
-            (wp || []).forEach((r) => { weekCount[r.user_id] = (weekCount[r.user_id] || 0) + 1; });
+                .select('user_id, is_correct').in('user_id', allIds).gte('created_at', weekStart.toISOString());
+            (wp || []).forEach((r) => { weekAtt[r.user_id] = (weekAtt[r.user_id] || 0) + 1; if (r.is_correct) weekCorrect[r.user_id] = (weekCorrect[r.user_id] || 0) + 1; });
             const since = new Date(Date.now() - 120 * 86400000).toISOString();
             const { data: ap } = await supabase.from(PROGRESS_TABLE)
                 .select('user_id, created_at').in('user_id', allIds).gte('created_at', since);
             (ap || []).forEach((r) => { (daysByUser[r.user_id] = daysByUser[r.user_id] || new Set()).add(lbDayKey(r.created_at)); });
         }
-        const rows = playerList.map((p) => ({
-            handle: p.leaderboard_handle,
-            title: p.selected_title || '',
-            avatar: p.selected_avatar || '',
-            weekly: weekCount[p.user_id] || 0,
-            streak: lbStreak(daysByUser[p.user_id] || new Set()),
-            is_me: p.user_id === user.id,
-        })).sort((a, b) => b.weekly - a.weekly || b.streak - a.streak || a.handle.localeCompare(b.handle));
-        rows.forEach((r, i) => { r.rank = i + 1; });
-        const mineRow = rows.find((r) => r.is_me);
-        const myProfile = playerList.find((p) => p.user_id === user.id);
-        const me = {
-            opted_in: !!myProfile,
-            handle: myProfile ? myProfile.leaderboard_handle : null,
-            weekly: weekCount[user.id] || 0,
-            streak: lbStreak(daysByUser[user.id] || new Set()),
-            rank: mineRow ? mineRow.rank : null,
-            players: rows.length,
+        const stat = (uid) => {
+            const attempts = weekAtt[uid] || 0, correct = weekCorrect[uid] || 0;
+            return { weekly: attempts, correct, attempts, accuracy: attempts ? Math.round((correct / attempts) * 1000) / 10 : 0, streak: lbStreak(daysByUser[uid] || new Set()) };
         };
-        return res.json({ week_resets_at: weekResetsAt, leaderboard: rows.slice(0, 50), me });
+        const enriched = playerList.map((p) => ({ user_id: p.user_id, name: lbShortName(p.full_name), title: p.selected_title || '', avatar: p.selected_avatar || '', is_me: p.user_id === user.id, ...stat(p.user_id) }));
+        const rankBoard = (metric, tiebreak, filterFn) => enriched
+            .filter(filterFn || (() => true))
+            .sort((a, b) => (b[metric] - a[metric]) || (b[tiebreak] - a[tiebreak]) || a.name.localeCompare(b.name))
+            .map((p, i) => ({ rank: i + 1, name: p.name, title: p.title, avatar: p.avatar, streak: p.streak, weekly: p.weekly, accuracy: p.accuracy, attempts: p.attempts, is_me: p.is_me }))
+            .slice(0, 50);
+        const boards = {
+            streak: rankBoard('streak', 'weekly'),
+            weekly: rankBoard('weekly', 'streak'),
+            accuracy: rankBoard('accuracy', 'attempts', (p) => p.attempts >= LB_MIN_ACCURACY_QS),
+        };
+        const rankIn = (b) => { const r = boards[b].find((x) => x.is_me); return r ? r.rank : null; };
+        // My own opt-in + name, even if I haven't made the board (e.g. no name yet).
+        let myOptIn = true, myName = null;
+        const mine = playerList.find((p) => p.user_id === user.id);
+        if (mine) { myOptIn = true; myName = lbShortName(mine.full_name); }
+        else {
+            const { data: mp } = await supabase.from(PROFILE_TABLE).select('leaderboard_opt_in, full_name').eq('user_id', user.id).maybeSingle();
+            myOptIn = mp ? !!mp.leaderboard_opt_in : true;
+            myName = mp && lbShortName(mp.full_name) ? lbShortName(mp.full_name) : null;
+        }
+        const mv = stat(user.id);
+        return res.json({
+            week_resets_at: weekResetsAt,
+            min_accuracy_qs: LB_MIN_ACCURACY_QS,
+            boards,
+            me: {
+                opted_in: myOptIn, has_name: !!myName, name: myName,
+                weekly: mv.weekly, streak: mv.streak, accuracy: mv.accuracy, attempts: mv.attempts,
+                rank_streak: rankIn('streak'), rank_weekly: rankIn('weekly'), rank_accuracy: rankIn('accuracy'),
+                qualifies_accuracy: (mv.attempts || 0) >= LB_MIN_ACCURACY_QS,
+                players: enriched.length,
+            },
+        });
     } catch (err) {
         console.error('Leaderboard failure:', err.message);
         return res.status(500).json({ error: 'Could not load the leaderboard.' });
@@ -1151,32 +1201,14 @@ app.post('/api/leaderboard/settings', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const optIn = !!(req.body && req.body.opt_in);
-    const handle = ((req.body && req.body.handle) || '').toString().trim();
-    if (handle && !/^[A-Za-z0-9_]{3,20}$/.test(handle)) {
-        return res.status(400).json({ error: 'Handle must be 3-20 letters, numbers, or underscores.' });
-    }
     try {
-        if (optIn && !handle) {
-            const { data: cur } = await supabase.from(PROFILE_TABLE).select('leaderboard_handle').eq('user_id', user.id).maybeSingle();
-            if (!cur || !cur.leaderboard_handle) return res.status(400).json({ error: 'Choose a handle to appear on the leaderboard.' });
-        }
-        const upd = { leaderboard_opt_in: optIn };
-        if (handle) upd.leaderboard_handle = handle;
-        const { data, error } = await supabase.from(PROFILE_TABLE).update(upd).eq('user_id', user.id).select('user_id');
-        if (error) {
-            if (error.code === '23505' || String(error.message || '').toLowerCase().includes('duplicate')) {
-                return res.status(409).json({ error: 'That handle is already taken - pick another.' });
-            }
-            throw error;
-        }
+        const { data, error } = await supabase.from(PROFILE_TABLE).update({ leaderboard_opt_in: optIn }).eq('user_id', user.id).select('user_id');
+        if (error) throw error;
         if (!data || !data.length) {
-            const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert({ user_id: user.id, email: user.email, ...upd }, { onConflict: 'user_id' });
-            if (insErr) {
-                if (insErr.code === '23505') return res.status(409).json({ error: 'That handle is already taken - pick another.' });
-                throw insErr;
-            }
+            const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert({ user_id: user.id, email: user.email, leaderboard_opt_in: optIn }, { onConflict: 'user_id' });
+            if (insErr) throw insErr;
         }
-        return res.json({ success: true, opt_in: optIn, handle: handle || null });
+        return res.json({ success: true, opt_in: optIn });
     } catch (err) {
         console.error('Leaderboard settings failure:', err.message);
         return res.status(500).json({ error: 'Could not save your leaderboard settings.' });

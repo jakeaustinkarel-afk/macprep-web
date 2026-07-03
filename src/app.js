@@ -1643,6 +1643,7 @@
         renderOnboarding();
         renderReferral();
         renderRecommendedSub();
+        renderDashLeaderboard();
 
         const usage = freeUsage();
         const card = $('free-allowance-card');
@@ -2029,56 +2030,136 @@
         const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
         return 'resets in ' + d + 'd ' + h + 'h';
     }
+    const LB_TABS = [
+        { key: 'weekly', label: 'This Week', metric: 'Questions', note: 'Most questions answered since Monday 7 AM ET.' },
+        { key: 'streak', label: 'Streak', metric: 'Day streak', note: 'Longest current daily study streak.' },
+        { key: 'accuracy', label: 'Sharpshooter', metric: 'Accuracy', note: 'Highest accuracy this week (minimum 20 questions to qualify).' },
+    ];
+    function lbSetTab(k) { state.lbTab = k; renderLeaderboard(); }
+    function lbMetricCell(r, tab) {
+        if (tab === 'streak') return r.streak + ' 🔥';
+        if (tab === 'accuracy') return r.accuracy.toFixed(1) + '% <span class="mono" style="font-size:10px;color:var(--muted);">/ ' + r.attempts + '</span>';
+        return String(r.weekly);
+    }
     function renderLeaderboard() {
         const el = $('leaderboard-body'); const data = state.leaderboard; if (!el || !data) return;
-        const me = data.me || {}; const rows = data.leaderboard || [];
-        const handleVal = me.handle || (state.profile && state.profile.leaderboard_handle) || '';
-        const optedIn = !!me.opted_in;
-        const settings =
-            '<div class="card" style="margin-bottom:18px;">'
-            + '<h3 style="margin:0 0 4px;">' + (optedIn ? 'Your league profile' : 'Join the league') + '</h3>'
-            + '<p class="sub" style="margin:0 0 12px;font-size:13px;">' + (optedIn ? 'You appear on the board under your handle. Change it or leave anytime — your name and email are never shown.' : 'Pick a handle and opt in to appear on the global board. Your name and email are never shown.') + '</p>'
-            + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
-            + '<input id="lb-handle" type="text" maxlength="20" value="' + escapeHtml(handleVal) + '" placeholder="Your handle (e.g. GasPasser22)" style="flex:1;min-width:180px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);">'
-            + (optedIn
-                ? '<button class="btn" onclick="MACPrep.saveLeaderboardSettings(true)">Update</button><button class="btn ghost" onclick="MACPrep.saveLeaderboardSettings(false)">Leave board</button>'
-                : '<button class="btn" onclick="MACPrep.saveLeaderboardSettings(true)">Join the board</button>')
-            + '</div><div id="lb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div></div>';
-        const standing =
-            '<div class="card" style="margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;align-items:center;">'
-            + '<div><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">This week — ' + escapeHtml(lbCountdown(data.week_resets_at)) + '</div>'
-            + '<div style="font-size:15px;margin-top:4px;">' + (optedIn && me.rank ? 'You are <strong style="color:var(--accent);">#' + me.rank + '</strong> of ' + me.players : 'Join above to claim your spot') + '</div></div>'
+        const me = data.me || {}; const tab = state.lbTab || 'weekly';
+        const tabDef = LB_TABS.find((t) => t.key === tab) || LB_TABS[0];
+        const rows = (data.boards && data.boards[tab]) || [];
+        const optedIn = !!me.opted_in, hasName = !!me.has_name;
+        const minQ = data.min_accuracy_qs || 20;
+        const msgLine = '<div id="lb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div>';
+
+        // ---- identity / opt-in control ----
+        let settings;
+        if (!optedIn) {
+            settings = '<div class="card" style="margin-bottom:18px;"><h3 style="margin:0 0 4px;">You\'re hidden from the leaderboard</h3>'
+                + '<p class="sub" style="margin:0 0 12px;font-size:13px;">Opt back in to appear and see where you rank. You\'re shown only as your first name + last initial — never your full name or email.</p>'
+                + '<button class="btn" onclick="MACPrep.saveLeaderboardSettings(true)">Show me on the leaderboard</button>' + msgLine + '</div>';
+        } else if (!hasName) {
+            settings = '<div class="card" style="margin-bottom:18px;"><h3 style="margin:0 0 4px;">Add your name to appear</h3>'
+                + '<p class="sub" style="margin:0 0 12px;font-size:13px;">You\'re on the leaderboard, but it shows people by name. Add yours — everyone sees just your <strong>first name + last initial</strong> (e.g. &ldquo;Jake K.&rdquo;).</p>'
+                + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
+                + '<input id="lb-name" type="text" maxlength="60" placeholder="First and last name" style="flex:1;min-width:180px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);">'
+                + '<button class="btn" onclick="MACPrep.saveLeaderboardName()">Save &amp; appear</button>'
+                + '<button class="btn ghost" onclick="MACPrep.saveLeaderboardSettings(false)">Stay hidden</button></div>' + msgLine + '</div>';
+        } else {
+            settings = '<div class="card" style="margin-bottom:18px;display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center;">'
+                + '<div><h3 style="margin:0 0 2px;">You appear as <span style="color:var(--accent);">' + escapeHtml(me.name) + '</span></h3>'
+                + '<p class="sub" style="margin:0;font-size:12.5px;">First name + last initial only. Opt out anytime.</p></div>'
+                + '<button class="btn ghost" onclick="MACPrep.saveLeaderboardSettings(false)">Hide me</button>' + msgLine + '</div>';
+        }
+
+        // ---- my standing on the active board ----
+        const myRank = tab === 'streak' ? me.rank_streak : tab === 'accuracy' ? me.rank_accuracy : me.rank_weekly;
+        const myStandingVal = tab === 'streak' ? (me.streak || 0) + ' 🔥' : tab === 'accuracy' ? (me.accuracy || 0).toFixed(1) + '%' : (me.weekly || 0);
+        let standingLine;
+        if (!optedIn || !hasName) standingLine = 'Add your name above to claim your spot';
+        else if (tab === 'accuracy' && !me.qualifies_accuracy) standingLine = 'Answer <strong>' + Math.max(0, minQ - (me.attempts || 0)) + '</strong> more this week to qualify for this board';
+        else if (myRank) standingLine = 'You are <strong style="color:var(--accent);">#' + myRank + '</strong> of ' + (rows.length || me.players);
+        else standingLine = 'Answer some questions to join this board';
+        const standing = '<div class="card" style="margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;align-items:center;">'
+            + '<div><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">' + escapeHtml(tabDef.label) + ' — ' + escapeHtml(lbCountdown(data.week_resets_at)) + '</div>'
+            + '<div style="font-size:15px;margin-top:4px;">' + standingLine + '</div></div>'
             + '<div style="display:flex;gap:22px;">'
             + '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;">' + (me.weekly || 0) + '</div><div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;">this week</div></div>'
-            + '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent);">' + (me.streak || 0) + ' 🔥</div><div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;">day streak</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--accent);">' + (me.streak || 0) + ' 🔥</div><div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;">streak</div></div>'
             + '</div></div>';
+
+        // ---- tabs ----
+        const tabs = '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">' + LB_TABS.map((t) =>
+            '<button onclick="MACPrep.lbSetTab(\'' + t.key + '\')" style="padding:8px 15px;border-radius:999px;border:1px solid ' + (t.key === tab ? 'var(--accent)' : 'var(--line)') + ';background:' + (t.key === tab ? 'var(--accent-dim)' : 'transparent') + ';color:var(--text);cursor:pointer;font-size:13px;font-weight:' + (t.key === tab ? '700' : '500') + ';">' + t.label + '</button>').join('')
+            + '</div><div class="sub" style="font-size:12.5px;margin:-6px 0 12px;">' + escapeHtml(tabDef.note) + '</div>';
+
+        // ---- board table ----
         let board;
         if (!rows.length) {
-            board = '<div class="card"><div class="mono" style="color:var(--muted);">No one is on the board yet this week — answer some questions and be the first.</div></div>';
+            board = '<div class="card"><div class="mono" style="color:var(--muted);">'
+                + (tab === 'accuracy' ? 'No one has answered ' + minQ + '+ questions this week yet — be the first to qualify.' : 'No one\'s on this board yet — answer some questions and be the first.') + '</div></div>';
         } else {
             const trs = rows.map((r) =>
                 '<tr style="' + (r.is_me ? 'background:var(--accent-dim);' : '') + '">'
                 + '<td style="padding:9px 10px;font-family:ui-monospace,monospace;' + (r.rank <= 3 ? 'font-weight:700;color:var(--accent);' : 'color:var(--text2);') + '">' + r.rank + '</td>'
-                + '<td style="padding:9px 10px;">' + (r.avatar ? '<span style="font-size:16px;margin-right:5px;vertical-align:-1px;">' + escapeHtml(r.avatar) + '</span>' : '') + escapeHtml(r.handle) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
-                + '<td style="padding:9px 10px;text-align:right;color:var(--text2);">' + r.streak + ' 🔥</td>'
-                + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + r.weekly + '</td></tr>').join('');
+                + '<td style="padding:9px 10px;">' + (r.avatar ? '<span style="font-size:16px;margin-right:5px;vertical-align:-1px;">' + escapeHtml(r.avatar) + '</span>' : '') + escapeHtml(r.name) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
+                + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + lbMetricCell(r, tab) + '</td></tr>').join('');
             board = '<div class="card" style="padding:6px;"><table style="width:100%;font-size:14px;border-collapse:collapse;">'
-                + '<tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">#</th><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Player</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Streak</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">This week</th></tr>'
+                + '<tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">#</th><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Player</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">' + escapeHtml(tabDef.metric) + '</th></tr>'
                 + trs + '</table></div>';
         }
-        el.innerHTML = settings + standing + board;
+        el.innerHTML = settings + standing + tabs + board;
     }
     async function saveLeaderboardSettings(optIn) {
-        const inp = $('lb-handle'); const msg = $('lb-msg');
-        const handle = inp ? inp.value.trim() : '';
-        if (optIn && !handle) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Choose a handle first.'; } return; }
+        const msg = $('lb-msg');
         if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Saving…'; }
         try {
-            const { resp, data } = await apiJSON('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ handle: handle, opt_in: optIn }) });
+            const { resp, data } = await apiJSON('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ opt_in: optIn }) });
             if (!resp.ok) throw new Error(data.error || 'Could not save.');
             await loadProfile();
             await loadLeaderboard();
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+    async function saveLeaderboardName() {
+        const inp = $('lb-name'); const msg = $('lb-msg');
+        const full_name = inp ? inp.value.trim().replace(/\s+/g, ' ') : '';
+        if (!full_name) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Enter your name first.'; } return; }
+        if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Saving…'; }
+        try {
+            const r1 = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ full_name }) });
+            if (!r1.resp.ok) throw new Error((r1.data && r1.data.error) || 'Could not save.');
+            await apiJSON('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ opt_in: true }) });
+            await loadProfile();
+            await loadLeaderboard();
+        } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
+    // Dashboard top-10 widget — visible only when you're opted in AND have a name.
+    // Disappears entirely if you opt out (per Jake's spec).
+    async function renderDashLeaderboard() {
+        const card = $('dash-leaderboard-card'); if (!card) return;
+        const paint = () => {
+            const data = state.leaderboard;
+            if (!data || !data.me || !data.me.opted_in || !data.me.has_name) { card.classList.add('hidden'); return; }
+            const me = data.me;
+            const top = ((data.boards && data.boards.weekly) || []).slice(0, 10);
+            if (!top.length) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            const row = (r, showYou) => '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13.5px;">'
+                + '<span class="mono" style="width:20px;text-align:right;' + (r.rank <= 3 ? 'color:var(--accent);font-weight:700;' : 'color:var(--muted);') + '">' + r.rank + '</span>'
+                + (r.avatar ? '<span style="font-size:15px;">' + escapeHtml(r.avatar) + '</span>' : '')
+                + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (r.is_me ? 'font-weight:700;color:var(--accent);' : '') + '">' + escapeHtml(r.name) + (r.is_me && showYou ? ' <span class="mono" style="font-size:9px;">YOU</span>' : '') + '</span>'
+                + '<span style="font-weight:600;">' + r.weekly + '</span></div>';
+            const meOutside = me.rank_weekly && me.rank_weekly > 10;
+            card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+                + '<h3 style="margin:0;">🏆 Leaderboard <span class="mono" style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;">this week</span></h3>'
+                + '<a onclick="MACPrep.go(\'leaderboard\')" style="font-size:12px;color:var(--accent);cursor:pointer;">All boards →</a></div>'
+                + top.map((r) => row(r, true)).join('')
+                + (meOutside ? '<div style="border-top:1px dashed var(--line);margin-top:5px;padding-top:5px;">' + row({ rank: me.rank_weekly, name: me.name, weekly: me.weekly, is_me: true, avatar: '' }, true) + '</div>' : '');
+        };
+        if (state.leaderboard) paint();
+        const stale = !state._lbAt || (Date.now() - state._lbAt) > 60000;
+        if (stale) {
+            try { const { resp, data } = await apiJSON('/api/leaderboard', { headers: authHeaders() }); if (resp.ok) { state.leaderboard = data; state._lbAt = Date.now(); paint(); } } catch (e) {}
+        }
     }
 
     async function loadNotebook() {
@@ -3511,7 +3592,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
