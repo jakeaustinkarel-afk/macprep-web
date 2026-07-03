@@ -2992,6 +2992,31 @@
         jump.addEventListener('change', () => { const el = jump.value ? root.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(jump.value) : jump.value)) : null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     }
 
+    // Print / Save-as-PDF a single Critical Event card. Renders just that card into
+    // a hidden, light-themed iframe and calls print() — the browser's print dialog
+    // offers both "Save as PDF" (download) and paper printing from the same place.
+    function cePrintCard(cardId) {
+        const card = document.getElementById(cardId); if (!card) return;
+        const title = ((card.querySelector('.ce-title') || {}).textContent || 'Critical Event').trim();
+        const cardCss = (($('ce-inject-css') || {}).textContent) || '';
+        const clone = card.cloneNode(true);
+        const pb = clone.querySelector('.ce-print'); if (pb) pb.remove();
+        const lightVars = ":root{--bg:#fff;--panel:#fff;--panel2:#f5f7f9;--line:#d5dbe2;--line2:#c3ccd6;--text:#14181d;--text2:#3a424c;--muted:#6b7280;--accent:#146A4A;--accent-2:#146A4A;--accent-dim:#e9f4ee;--danger:#b42318;--danger-dim:#fbe9e7;--good:#146A4A;--warn:#8a5a12;--warn-dim:#f4ecdb;--serif:'Fraunces',Georgia,serif;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;}";
+        const printCss = "*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{margin:0;padding:26px;background:#fff;color:var(--text);font-family:var(--sans);}.ce-brand{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}.ce-card{border:1px solid #d5dbe2 !important;border-radius:14px;padding:22px 24px;background:#fff;margin:0;}.ce-photo img{max-height:300px;}a{color:var(--accent);}";
+        const html = "<!doctype html><html><head><meta charset='utf-8'><title>" + title + " — MACPrep Critical Events</title><style>" + lightVars + cardCss + printCss + "</style></head><body><div class='ce-brand'>MACPrep · Critical Events</div>" + clone.outerHTML + "</body></html>";
+        const frame = document.createElement('iframe');
+        frame.setAttribute('aria-hidden', 'true');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        let printed = false;
+        const go = () => { if (printed) return; printed = true; try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) {} setTimeout(() => frame.remove(), 1500); };
+        const img = doc.querySelector('img');
+        if (img && !img.complete) { img.addEventListener('load', go); img.addEventListener('error', go); setTimeout(go, 2500); }
+        else { setTimeout(go, 300); }
+    }
+
     // ---- flashcard mode (premium active-recall) ---------------------------
     // Hide the choices, type your answer from memory, flip to reveal the correct
     // answer + rationale + source. Self-graded — no MCQ attempt is recorded
@@ -3757,7 +3782,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
-        premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents,
+        premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
         saveTitle, openTitlePicker, closeTitlePicker,
         saveAvatar, openAvatarPicker, closeAvatarPicker,
