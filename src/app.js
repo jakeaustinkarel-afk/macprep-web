@@ -3027,6 +3027,7 @@
     }
 
     function ceInit(bundle) {
+        const hm = (location.hash || "").match(/ce=([a-z0-9-]+)/i); // capture before close clears the hash
         closeCriticalEvents();
         if (!$('ce-inject-css')) { const st = document.createElement('style'); st.id = 'ce-inject-css'; st.textContent = bundle.css || ''; document.head.appendChild(st); }
         if (!$('ce-app-css')) { const st = document.createElement('style'); st.id = 'ce-app-css'; st.textContent = CE_APP_CSS; document.head.appendChild(st); }
@@ -3049,9 +3050,8 @@
         document.body.appendChild(wrap);
         document.documentElement.style.overflow = 'hidden';
         document.addEventListener('keydown', ceKey);
-        const m = (location.hash || '').match(/ce=([a-z0-9-]+)/i);
-        const wantId = m ? ('ce-' + m[1].replace(/^ce-/, '')) : null;
-        if (wantId && byId[wantId]) ceOpen(wantId, true);
+        const wantId = hm ? ('ce-' + hm[1].replace(/^ce-/, '')) : null;
+        if (wantId && byId[wantId]) ceOpen(wantId);
         else ceRenderIndex();
     }
 
