@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Critical Events — preview (clinician review)</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171b21; --panel2:#1c212a; --line:#2a313b; --line2:#374050;
+    --text:#eceef2; --text2:#aab2be; --muted:#79818d;
+    --accent:#2ea567; --accent-dim:rgba(46,165,103,.14); --accent-2:#7fd6a6;
+    --warn:#d9a441; --warn-dim:rgba(217,164,65,.15);
+    --danger:#e5574c; --danger-dim:rgba(229,87,76,.13); --good:#37c07a;
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-2);}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 22px 90px;}
+
+  .ce-topbar{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .ce-kicker{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--warn);}
+  .ce-h1{font-family:var(--serif);font-weight:600;font-size:34px;line-height:1.1;margin:6px 0 8px;letter-spacing:-.01em;}
+  .ce-lead{color:var(--text2);font-size:15.5px;margin:0 0 4px;max-width:60ch;}
+  .ce-review-note{margin:18px 0 26px;padding:12px 15px;border:1px solid var(--warn);background:var(--warn-dim);border-radius:12px;font-size:13.5px;color:var(--text);display:flex;gap:10px;align-items:flex-start;}
+  .ce-review-note b{color:var(--warn);}
+
+  .ce-controls{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 72%,transparent);padding:14px 0 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+  .ce-search{flex:1;min-width:200px;display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;}
+  .ce-search svg{width:17px;height:17px;color:var(--muted);flex:none;}
+  .ce-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14.5px;font-family:var(--sans);}
+  .ce-jump{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;color:var(--text);font-size:14px;font-family:var(--sans);cursor:pointer;min-width:190px;}
+  .ce-count{font-family:var(--mono);font-size:11.5px;color:var(--muted);}
+
+  .ce-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 28px;margin:0 0 26px;scroll-margin-top:84px;overflow:hidden;}
+  .ce-head{display:flex;align-items:flex-start;gap:16px;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--line);}
+  .ce-emblem{flex:none;width:54px;height:54px;border-radius:14px;background:var(--accent-dim);color:var(--accent-2);display:flex;align-items:center;justify-content:center;}
+  .ce-emblem svg{width:30px;height:30px;}
+  .ce-title{font-family:var(--serif);font-weight:600;font-size:23px;margin:2px 0 3px;line-height:1.15;}
+  .ce-def{margin:0;color:var(--text2);font-size:13.5px;}
+  .ce-pill{margin-left:auto;flex:none;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:4px 9px;border-radius:6px;background:var(--warn-dim);color:var(--warn);}
+
+  .ce-sec{margin:0 0 20px;}
+  .ce-sec:last-child{margin-bottom:0;}
+  .ce-label{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent-2);margin:0 0 10px;font-weight:600;}
+
+  .ce-suspect,.ce-pitfalls{list-style:none;margin:0;padding:0;}
+  .ce-suspect li,.ce-pitfalls li{position:relative;padding:3px 0 3px 22px;font-size:14.5px;color:var(--text);}
+  .ce-suspect li::before{content:"";position:absolute;left:2px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .ce-pitfalls li::before{content:"!";position:absolute;left:0;top:2px;width:15px;height:15px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .ce-late{font-family:var(--mono);font-size:10.5px;color:var(--warn);background:var(--warn-dim);padding:1px 6px;border-radius:4px;margin-left:4px;}
+
+  ol.ce-actions{list-style:none;counter-reset:a;margin:0;padding:0;}
+  ol.ce-actions li{counter-increment:a;position:relative;padding:5px 0 5px 38px;font-size:14.5px;min-height:26px;}
+  ol.ce-actions li::before{content:counter(a);position:absolute;left:0;top:4px;width:24px;height:24px;border-radius:50%;background:var(--accent-dim);color:var(--accent-2);font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+
+  table.ce-drugs{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.ce-drugs th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 12px 8px 0;border-bottom:1px solid var(--line);}
+  table.ce-drugs td{padding:9px 12px 9px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);vertical-align:top;}
+  table.ce-drugs td:first-child{font-weight:600;white-space:nowrap;}
+  table.ce-drugs td:nth-child(2){font-family:var(--mono);font-size:12.5px;color:var(--accent-2);white-space:nowrap;}
+  table.ce-drugs td:last-child{color:var(--text2);}
+
+  .ce-flow{display:flex;flex-direction:column;gap:0;}
+  .ce-node{position:relative;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:11px 15px;font-size:13.5px;max-width:440px;}
+  .ce-node:not(:last-child){margin-bottom:26px;}
+  .ce-node:not(:last-child)::after{content:"";position:absolute;left:24px;bottom:-22px;width:2px;height:18px;background:var(--line2);}
+  .ce-node:not(:last-child)::before{content:"";position:absolute;left:20px;bottom:-24px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--line2);}
+  .ce-node.accent{border-color:var(--accent);background:var(--accent-dim);color:var(--text);font-weight:600;}
+
+  ul.ce-sources{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+  ul.ce-sources li{font-size:12.5px;color:var(--text2);padding-left:16px;position:relative;}
+  ul.ce-sources li::before{content:"→";position:absolute;left:0;color:var(--muted);}
+  .ce-after{font-size:14px;color:var(--text2);margin:0;}
+
+  .ce-foot{margin-top:40px;text-align:center;color:var(--muted);font-size:12.5px;font-family:var(--mono);}
+  .no-match{display:none;}
+
+  @media print{
+    body{background:#fff;color:#111;}
+    .ce-controls,.ce-review-note,.ce-kicker{display:none;}
+    .ce-card{border:1px solid #ccc;background:#fff;color:#111;page-break-inside:avoid;box-shadow:none;}
+    .ce-title,.ce-h1{color:#111;} .ce-def,.ce-after,table.ce-drugs td:last-child{color:#333;}
+    .ce-emblem{background:#eef7f1;color:#146A4A;} .ce-label{color:#146A4A;} table.ce-drugs td:nth-child(2){color:#146A4A;}
+    .ce-node{background:#f6f8fa;border-color:#ccc;} .ce-node.accent{background:#eef7f1;border-color:#146A4A;}
+    .wrap{max-width:none;}
+  }
+  @media (max-width:560px){ .wrap{padding:26px 15px 70px;} .ce-card{padding:20px 18px;} .ce-h1{font-size:27px;} }
+  @media (hover:none){ a:hover{text-decoration:none;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="ce-topbar"><span class="ce-kicker">MACPrep · Premium</span></div>
+  <h1 class="ce-h1">Critical Events</h1>
+  <p class="ce-lead">Clinician-reviewed rapid-reference cards for the anesthesia crises that matter most — built by MACPrep from primary sources, cross-checked, and printable for your OR.</p>
+  <div class="ce-review-note"><span>📋</span><span><b>Preview for sign-off.</b> This is a review draft — not yet published. Doses and steps are cross-checked against MHAUS, ASRA, ASA/AHA and the Stanford Emergency Manual, but nothing goes live until you (a practicing CAA) sign off on every card.</span></div>
+
+  <div class="ce-controls">
+    <label class="ce-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+      <input id="ce-q" type="search" placeholder="Search critical events…" aria-label="Search critical events">
+    </label>
+    <select class="ce-jump" id="ce-jump" aria-label="Jump to an event"><option value="">Jump to an event…</option></select>
+    <span class="ce-count" id="ce-count"></span>
+  </div>
+
+  <main id="ce-cards">
+<article class="ce-card" id="ce-malignant-hyperthermia">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z"/><path d="M18.5 4.5c1 1.5.5 3-1 4"/><path d="M20.5 8.5c1 1.5.5 3-1 4"/></svg></span>
+    <div>
+      <h2 class="ce-title">Malignant Hyperthermia</h2>
+      <p class="ce-def">A hypermetabolic skeletal-muscle crisis triggered by volatile anesthetics and/or succinylcholine in susceptible patients (usually RYR1/CACNA1S), driven by uncontrolled myoplasmic calcium release · MH crisis, malignant hyperpyrexia</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Unexplained rising ETCO2 despite increased minute ventilation — earliest, most sensitive sign</li>
+      <li>Unexplained tachycardia or other dysrhythmias</li>
+      <li>Masseter spasm / trismus after succinylcholine (may herald MH)</li>
+      <li>Generalized muscle rigidity (can occur even after a non-depolarizing relaxant)</li>
+      <li>Tachypnea; CO2 absorbent hot or exhausted early; mixed respiratory and metabolic acidosis on ABG</li>
+      <li>Hyperkalemia, rising CK, cola-colored urine <span class="ce-late">(late)</span></li>
+      <li>Rapidly rising core temperature <span class="ce-late">(late)</span> — do not wait for it to act</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Call for help, declare an MH emergency, and send a runner for the MH cart and dantrolene.</li>
+      <li>Stop all triggering agents — discontinue volatile anesthetics and succinylcholine at once.</li>
+      <li>Hyperventilate with 100% oxygen at fresh-gas flows of at least 10 L/min; increase minute ventilation.</li>
+      <li>Convert to a non-triggering anesthetic (propofol/TIVA); do not delay dantrolene to swap the circuit or absorbent.</li>
+      <li>Give dantrolene 2.5 mg/kg IV by rapid push through a large-bore line; repeat until ETCO2, rigidity, and heart rate fall. More than 10 mg/kg may be needed.</li>
+      <li>Call the MHAUS 24-hour Hotline at 1-800-644-9737 (outside North America +1-209-417-3722) for real-time guidance.</li>
+      <li>Treat hyperkalemia (calcium, insulin plus glucose, bicarbonate) and send a potassium with the first labs.</li>
+      <li>Cool actively if core temperature is above 39 &deg;C or rising fast; reassess and repeat cooling measures every ~5 min as needed, and stop at below 38 &deg;C to avoid overshoot.</li>
+      <li>Treat dysrhythmias with standard agents — avoid calcium channel blockers, which can cause hyperkalemia or arrest with dantrolene.</li>
+      <li>Support diuresis to more than 1 mL/kg/hr, place a Foley, watch for myoglobinuria, and draw serial labs.</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Dantrolene sodium (initial)</td><td>2.5 mg/kg IV rapid push, large-bore line</td><td>Repeat until ETCO2, rigidity, and HR fall; more than 10 mg/kg may be required</td></tr>
+      <tr><td>Ryanodex reconstitution</td><td>250 mg vial + 5 mL sterile water for injection (no bacteriostatic agent); shake to an orange, uniform suspension</td><td>Fewer vials and less mixing time than Dantrium/Revonto</td></tr>
+      <tr><td>Dantrium / Revonto reconstitution</td><td>20 mg vial + 60 mL sterile water for injection (no bacteriostatic agent); shake until clear</td><td>Many vials per full dose — assign help to mix</td></tr>
+      <tr><td>Calcium chloride</td><td>10 mg/kg IV (max 2,000 mg)</td><td>For life-threatening hyperkalemia</td></tr>
+      <tr><td>Calcium gluconate</td><td>10&ndash;50 mg/kg IV (max 3,000 mg)</td><td>Alternative to calcium chloride</td></tr>
+      <tr><td>Insulin + dextrose (adult)</td><td>10 units regular insulin IV + 50 mL of 50% dextrose IV</td><td>Shifts potassium intracellularly; monitor glucose</td></tr>
+      <tr><td>Insulin + dextrose (pediatric)</td><td>0.1 units/kg regular insulin IV + 2 mL/kg of 25% dextrose IV</td><td>Monitor glucose closely</td></tr>
+      <tr><td>Sodium bicarbonate</td><td>1&ndash;2 mEq/kg IV</td><td>For acidosis / hyperkalemia</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Suspect MH: rising ETCO2 + tachycardia, &plusmn; rigidity</div>
+      <div class="ce-node">Call for help + MH cart; call MHAUS 1-800-644-9737</div>
+      <div class="ce-node">Stop triggers; hyperventilate 100% O2 &ge;10 L/min; convert to TIVA</div>
+      <div class="ce-node accent">Dantrolene 2.5 mg/kg IV rapid push</div>
+      <div class="ce-node">Reassess ETCO2 / rigidity / HR; repeat dantrolene if needed</div>
+      <div class="ce-node">Treat hyperkalemia + dysrhythmias (no calcium channel blockers)</div>
+      <div class="ce-node">Cool if &gt;39 &deg;C, stop at &lt;38 &deg;C; diuresis &gt;1 mL/kg/hr</div>
+      <div class="ce-node">Admit ICU &ge;24 h; watch recrudescence; report to NAMHR</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>Temperature is a late sign — the ETCO2 rise comes first. Waiting for the patient to be hot costs critical minutes.</li>
+      <li>Do not give calcium channel blockers with dantrolene — risk of hyperkalemia and cardiovascular collapse.</li>
+      <li>Do not stop dantrolene too early; repeat until ETCO2, rigidity, and HR normalize, and remember MH can recrudesce for 24&ndash;48 h.</li>
+      <li>Do not delay dantrolene to swap the anesthesia machine or CO2 absorbent — flush with high-flow 100% O2 and dose the drug.</li>
+      <li>Isolated masseter rigidity after succinylcholine can be the only early warning — stay vigilant even if the rest of the exam is normal.</li>
+      <li>Do not overshoot cooling — stop at core temperature below 38 &deg;C to avoid hypothermia.</li>
+      <li>Reconstitution differs by product — Ryanodex uses 5 mL per 250 mg vial; Dantrium/Revonto use 60 mL per 20 mg vial. Grabbing the wrong instructions wastes time.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Admit to the ICU for at least 24 hours; because MH can recrudesce, continue dantrolene per hotline guidance — commonly 1 mg/kg IV every 4&ndash;6 hours (or an infusion) for at least 24&ndash;48 hours. Monitor HR, core temperature, ETCO2, minute ventilation, ABGs, potassium, CK, urine myoglobin, and coagulation studies (watch for DIC), and keep urine output above 1 mL/kg/hr. Watch for rhabdomyolysis and renal failure, hyperkalemia, DIC, compartment syndrome, and recrudescence. Call the MHAUS Hotline at 1-800-644-9737 during the event; afterward report to the North American MH Registry (NAMHR), counsel the patient and family on susceptibility, and refer for muscle-biopsy contracture testing and/or genetic testing. Document the triggers and provide a written summary for future anesthetics. Doses cross-checked against MHAUS and the Stanford Emergency Manual.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://www.mhaus.org/healthcare-professionals/managing-a-crisis/" target="_blank" rel="noopener">MHAUS — Managing an MH Crisis (Emergency Treatment Protocol)</a></li>
+      <li><a href="https://www.mhaus.org/faqs/how-is-mh-treated/" target="_blank" rel="noopener">MHAUS — How Is MH Treated?</a></li>
+      <li><a href="https://www.mhaus.org/cfw/index.cfm?controller=kb&amp;action=view-article&amp;key=E5BBAFD7-5056-A852-6B69-8A0630F7148E&amp;seoTitle=personnel-to-call-mh-hotline" target="_blank" rel="noopener">MHAUS — Personnel to Call the MH Hotline (1-800-644-9737)</a></li>
+      <li><a href="https://www.mhaus.org/healthcare-professionals/" target="_blank" rel="noopener">MHAUS — Healthcare Professionals</a></li>
+    </ul>
+  </section>
+</article>
+
+<article class="ce-card" id="ce-last">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 4h-4z"/><path d="M10 7v3l-3.5 8a2 2 0 0 0 1.9 2.8h7.2A2 2 0 0 0 17.5 18L14 10V7"/><path d="M8 15h8"/></svg></span>
+    <div>
+      <h2 class="ce-title">Local Anesthetic Systemic Toxicity (LAST)</h2>
+      <p class="ce-def">Life-threatening reaction to excessive plasma local-anesthetic levels causing progressive CNS excitation then cardiovascular collapse &middot; LA toxicity, bupivacaine cardiotoxicity</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Perioral numbness, metallic taste, tinnitus, or lightheadedness during or shortly after a block (earliest, most sensitive &mdash; often the only warning)</li>
+      <li>Agitation, confusion, slurred speech, or a sense of impending doom</li>
+      <li>Muscle twitching progressing to a generalized seizure (classic CNS sign)</li>
+      <li>Any block using a large local-anesthetic dose, a highly vascular site (intercostal, paravertebral, caudal, interscalene), or an unintended intravascular injection</li>
+      <li>Onset is frequently delayed (minutes after injection, occasionally beyond 30 min) and presentation is often atypical &mdash; cardiovascular signs can occur without a preceding seizure, especially with bupivacaine</li>
+      <li>Early hypertension and tachycardia, then bradycardia, conduction block, wide QRS, ventricular arrhythmia, hypotension, asystole <span class="ce-late">(late)</span></li>
+      <li>CNS depression: drowsiness, obtundation, coma, respiratory arrest <span class="ce-late">(late)</span></li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Stop injecting the local anesthetic immediately.</li>
+      <li>Call for help and get the LAST rescue kit (20% lipid emulsion) to the room now.</li>
+      <li>Alert the nearest facility with cardiopulmonary bypass / ECMO capability early, before arrest if possible.</li>
+      <li>Ventilate with 100% oxygen and secure the airway; avoid hypoxia, hypercarbia, and acidosis, which all worsen toxicity.</li>
+      <li>Suppress seizures with a benzodiazepine (drug of choice); if only propofol is available, give small increments (about 20 mg) and never large-dose propofol.</li>
+      <li>Give 20% lipid emulsion early &mdash; do not wait for arrest if toxicity is progressing.</li>
+      <li>For arrhythmia, hypotension, or arrest, start ACLS but modify it: use reduced epinephrine (start at 1 mcg/kg or less) and avoid vasopressin, calcium channel blockers, beta blockers, and any further local anesthetic.</li>
+      <li>Manage refractory arrest with prolonged effort and continued lipid; escalate to cardiopulmonary bypass / ECMO if unresponsive.</li>
+      <li>Continue the lipid infusion and monitor after stability.</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>20% lipid emulsion &mdash; bolus</td><td>1.5 mL/kg IV over 2&ndash;3 min (about 100 mL in a &gt;70 kg adult)</td><td>Cornerstone therapy. Order of bolus vs. infusion and method (manual, roller clamp, pump) are not critical; consider a pump if under 40 kg.</td></tr>
+      <tr><td>20% lipid emulsion &mdash; infusion</td><td>0.25 mL/kg/min IV (about 250 mL over 15&ndash;20 min in a &gt;70 kg adult)</td><td>Start immediately with or after the bolus.</td></tr>
+      <tr><td>20% lipid emulsion &mdash; persistent instability</td><td>Re-bolus 1.5 mL/kg (once or twice) AND double the infusion to 0.5 mL/kg/min</td><td>For continued cardiovascular instability.</td></tr>
+      <tr><td>20% lipid emulsion &mdash; limits</td><td>Continue at least 15 min after hemodynamic stability; maximum about 12 mL/kg lean body weight</td><td>Upper dose ceiling is roughly 12 mL/kg lean body weight.</td></tr>
+      <tr><td>Epinephrine</td><td>1 mcg/kg IV or less (reduced dose)</td><td>Smaller than standard ACLS dosing; high-dose epinephrine impairs lipid resuscitation and worsens outcome.</td></tr>
+      <tr><td>Benzodiazepine (e.g., midazolam)</td><td>Titrate IV to stop the seizure</td><td>First-line for seizure suppression.</td></tr>
+      <tr><td>Propofol</td><td>Low increments only (about 20 mg), only if no benzodiazepine is available</td><td>Not a substitute for lipid emulsion; large doses depress the myocardium.</td></tr>
+      <tr><td>Avoid</td><td>Vasopressin; calcium channel blockers; beta blockers; further local anesthetic</td><td>Contraindicated in LAST resuscitation.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Suspect LAST &rarr; stop LA injection</div>
+      <div class="ce-node">Call for help + LAST kit &rarr; alert CPB/ECMO</div>
+      <div class="ce-node">100% O&#8322;, ventilate; treat hypoxia/acidosis</div>
+      <div class="ce-node accent">20% lipid: 1.5 mL/kg bolus &rarr; 0.25 mL/kg/min</div>
+      <div class="ce-node">Seizure &rarr; benzodiazepine (avoid large-dose propofol)</div>
+      <div class="ce-node">Arrhythmia &rarr; epi &le;1 mcg/kg; no vasopressin/CCB/BB/LA</div>
+      <div class="ce-node">Persistent instability &rarr; re-bolus AND double infusion (max ~12 mL/kg)</div>
+      <div class="ce-node">Stable &rarr; continue lipid &ge;15 min &rarr; observe &rarr; report</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>Onset can be delayed &mdash; keep monitoring after the block; do not leave or discharge the patient early.</li>
+      <li>No seizure does not rule out LAST &mdash; cardiovascular collapse can be the first sign, particularly with bupivacaine.</li>
+      <li>This is not standard ACLS &mdash; reduce epinephrine to 1 mcg/kg or less and avoid vasopressin, calcium channel blockers, and beta blockers.</li>
+      <li>Propofol is not lipid rescue &mdash; its lipid vehicle is far too dilute, and the volume needed to treat toxicity would cause profound hypotension.</li>
+      <li>Do not stop lipid too soon &mdash; continue at least 15 min after stability, since re-toxicity can occur as tissue-bound drug redistributes.</li>
+      <li>Treat the milieu &mdash; hypoxia, hypercarbia, and acidosis potentiate cardiotoxicity, so secure the airway early.</li>
+      <li>Bupivacaine arrest is prolonged &mdash; do not abandon resuscitation early; bridge to CPB/ECMO if refractory.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Observe in a monitored setting after stabilization: at least 2 hours after a seizure, 4&ndash;6 hours after cardiovascular instability, and as appropriate (typically ICU) after cardiac arrest, watching for recurrence of CNS or cardiovascular signs. Report the event to the ASRA lipid-emulsion / LAST adverse-event registry at asra.com, and call US Poison Control (1-800-222-1222) for overdose consultation. Complete institutional incident reporting and debrief the team, reviewing dosing, injection technique, and monitoring. Management above is cross-checked against the Stanford Emergency Manual.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://asra.com/news-publications/asra-updates/blog-landing/guidelines/2020/11/01/checklist-for-treatment-of-local-anesthetic-systemic-toxicity" target="_blank" rel="noopener">ASRA &mdash; Checklist for Treatment of Local Anesthetic Systemic Toxicity (2020, v1.1)</a></li>
+      <li><a href="https://asra.com/docs/default-source/guidelines-articles/local-anesthetic-systemic-toxicity-rgb.pdf?sfvrsn=33b348e_2" target="_blank" rel="noopener">ASRA &mdash; Local Anesthetic Systemic Toxicity Checklist (printable PDF, 2020 v1.1)</a></li>
+      <li><a href="https://pubmed.ncbi.nlm.nih.gov/29280782/" target="_blank" rel="noopener">Neal et al. &mdash; ASRA Practice Advisory on Local Anesthetic Systemic Toxicity, 2017/2018 update (Reg Anesth Pain Med)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK549897/" target="_blank" rel="noopener">StatPearls &mdash; Lipid Emulsion Therapy (NCBI Bookshelf)</a></li>
+    </ul>
+  </section>
+</article>
+
+<article class="ce-card" id="ce-anaphylaxis">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6"/><path d="M9 9h6l1.5 6a4.5 4.5 0 0 1-9 0z"/><circle cx="6" cy="6" r="1.4"/><circle cx="18" cy="7" r="1.4"/><circle cx="5" cy="12" r="1.2"/></svg></span>
+    <div>
+      <h2 class="ce-title">Perioperative Anaphylaxis</h2>
+      <p class="ce-def">Rapid-onset systemic hypersensitivity to an agent given under anaesthesia, causing cardiovascular collapse, bronchospasm, and/or angioedema — often without skin signs · anaesthetic anaphylaxis, intraoperative anaphylactic shock, perioperative hypersensitivity (grade III&ndash;IV)</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Sudden, unexplained hypotension or cardiovascular collapse after induction or any new agent &mdash; the most common and often the first sign under anaesthesia</li>
+      <li>Rising airway pressures, bronchospasm, or difficulty ventilating</li>
+      <li>Tachycardia (occasionally bradycardia) with weak or absent pulse, out of proportion to blood loss or anaesthetic depth</li>
+      <li>Rapid desaturation not explained by a ventilation problem</li>
+      <li>Flushing, urticaria, or angioedema &mdash; helpful when present, but frequently absent or hidden under drapes; do not wait for them</li>
+      <li>Timing clue: onset within minutes of IV induction agents, NMBA, or antibiotic; chlorhexidine and latex may appear later (10&ndash;60+ min) as surgery proceeds</li>
+      <li>Falling EtCO&#8322; progressing to loss of trace = impending arrest <span class="ce-late">(late)</span></li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Call for help; declare &ldquo;anaphylaxis&rdquo; and summon senior anaesthesia help plus the crash cart / anaphylaxis kit.</li>
+      <li>Stop the likely trigger &mdash; halt the IV antibiotic, colloid, chlorhexidine prep, latex exposure, or any drug just given; remove suspect items from the field.</li>
+      <li>Give high-flow 100% oxygen, secure the airway, and confirm ventilation; hand-ventilate if airway pressures are high.</li>
+      <li>Turn off or minimize volatile and other vasodilating agents once amnesia is otherwise ensured; tell the surgeon to pause.</li>
+      <li>Give epinephrine early &mdash; IV if a line is available, titrated to severity (see table); if no IV access, IM epinephrine 0.3&ndash;0.5 mg (1 mg/mL) into the anterolateral thigh, repeat q5min.</li>
+      <li>Bolus IV crystalloid wide open and elevate the legs; large volumes are typical.</li>
+      <li>If refractory, repeat and escalate epinephrine, then start an infusion; add vasopressin, glucagon (if &beta;-blocked), or norepinephrine as needed.</li>
+      <li>If cardiac arrest, start CPR / ACLS now with epinephrine 1 mg IV q3&ndash;5min and aggressive fluids.</li>
+      <li>Once stabilized, draw the first timed serum tryptase &mdash; do not let it delay resuscitation.</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Epinephrine &mdash; IV, titrated (IV access)</td><td>10&ndash;100 mcg IV boluses, titrated to severity, repeated q1&ndash;2min; escalate to an infusion for collapse</td><td>Draw from 1:10,000 (0.1 mg/mL). Typical initial adult dose ~50 mcg = 0.5 mL of 1:10,000; some respond to 10&ndash;50 mcg. Never push the 1 mg arrest dose into a perfusing patient.</td></tr>
+      <tr><td>Epinephrine &mdash; infusion (refractory)</td><td>Start 0.05 mcg/kg/min, titrate to 0.1&ndash;0.5 mcg/kg/min (or ~1&ndash;10 mcg/min)</td><td>Begin after repeated boluses or when re-dosing is needed. Central access preferred once available.</td></tr>
+      <tr><td>Epinephrine &mdash; IM (no IV access)</td><td>0.3&ndash;0.5 mg IM = 0.3&ndash;0.5 mL of 1:1000 (1 mg/mL), anterolateral thigh; repeat q5&ndash;10min</td><td>Thigh preferred over deltoid. Peds 0.01 mg/kg (max ~0.5 mg). Bridge until IV access, then switch to titrated IV.</td></tr>
+      <tr><td>Epinephrine &mdash; cardiac arrest</td><td>1 mg IV q3&ndash;5min until ROSC (standard ACLS)</td><td>Confirmed arrest only.</td></tr>
+      <tr><td>IV crystalloid</td><td>10&ndash;20 mL/kg rapid bolus (1&ndash;2 L adult), repeat; up to ~30 mL/kg may be needed</td><td>Massive capillary leak &mdash; a large share of blood volume can extravasate within minutes.</td></tr>
+      <tr><td>Vasopressin (refractory / catecholamine-resistant)</td><td>1&ndash;2 units IV bolus, then infusion ~2 units/hr</td><td>For epinephrine-resistant vasoplegic collapse.</td></tr>
+      <tr><td>Glucagon (&beta;-blocked, epi-resistant)</td><td>1&ndash;5 mg IV over ~5 min, then 5&ndash;15 mcg/min titrated</td><td>For &beta;-blocked patients not responding to epinephrine; expect vomiting &mdash; protect the airway.</td></tr>
+      <tr><td>Norepinephrine (2nd-line pressor)</td><td>Infusion 0.05&ndash;0.5 mcg/kg/min titrated</td><td>Adjunct for persistent vasoplegia.</td></tr>
+      <tr><td>Salbutamol / albuterol (bronchospasm)</td><td>Inhaled or nebulized; IV per local protocol for severe refractory bronchospasm</td><td>For persistent bronchospasm after epinephrine.</td></tr>
+      <tr><td>Diphenhydramine (H1, adjunct)</td><td>25&ndash;50 mg IV</td><td>Symptom relief (urticaria / itch) only &mdash; does not treat shock, not a substitute for epinephrine.</td></tr>
+      <tr><td>Famotidine (H2, adjunct)</td><td>20 mg IV over ~2 min</td><td>Low-priority adjunct to the H1 blocker.</td></tr>
+      <tr><td>Hydrocortisone (corticosteroid, adjunct)</td><td>100 mg IV</td><td>Adjunct for bronchospasm and protracted or biphasic reactions; onset is delayed hours &mdash; not a rescue drug.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Sudden collapse / bronchospasm after a new agent &rarr; suspect anaphylaxis</div>
+      <div class="ce-node">Call for help + stop trigger + 100% O&#8322;, secure airway</div>
+      <div class="ce-node accent">Epinephrine: IV 10&ndash;100 mcg titrated (IM 0.3&ndash;0.5 mg if no IV)</div>
+      <div class="ce-node">Crystalloid wide open, legs up, repeat</div>
+      <div class="ce-node">Refractory &rarr; epi infusion &rarr; vasopressin / glucagon / norepinephrine</div>
+      <div class="ce-node">Arrest &rarr; CPR / ACLS, epinephrine 1 mg IV q3&ndash;5min</div>
+      <div class="ce-node">Stable &rarr; timed tryptase, ICU, watch for biphasic reaction</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>Do not wait for skin signs &mdash; urticaria and flushing are absent or hidden under drapes in many cases; unexplained collapse or bronchospasm is the presentation.</li>
+      <li>Antihistamines and steroids are not first-line and do not treat shock &mdash; epinephrine and fluids are the life-saving interventions.</li>
+      <li>Wrong epinephrine dose or concentration &mdash; in a perfusing patient give micrograms (10&ndash;100 mcg), not the 1 mg arrest dose; confirm 1:10,000 for IV boluses and 1:1000 for IM.</li>
+      <li>Hypotension is not light anaesthesia &mdash; do not reflexively deepen or add volatile, which worsens vasodilation.</li>
+      <li>Underestimating fluid needs &mdash; massive third-spacing means &ldquo;normal&rdquo; boluses are often inadequate; give large volumes and elevate the legs.</li>
+      <li>Chlorhexidine, latex, and dyes are easy to miss &mdash; reactions can start later in the case; consider skin prep, gloves and catheters, and patent blue / methylene blue.</li>
+      <li>Sugammadex and colloids (gelatins) are recognized triggers &mdash; keep them in the differential.</li>
+      <li>Tryptase timing errors &mdash; a single level is far less useful than the timed set; skipping the baseline undermines later workup.</li>
+      <li>Do not re-expose &mdash; never re-administer the suspected agent; flag it clearly before any further anaesthetic.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Transfer to ICU or PACU for continued monitoring and anticipate a biphasic reaction; observe at least 4&ndash;6 hours after full resolution, longer or overnight if severe or refractory. Draw a timed serum tryptase set: sample 1 as soon as feasible after resuscitation (within ~1&ndash;2 h, no later than ~4 h), sample 2 near the peak ~1&ndash;2 h after onset, and a baseline sample &ge;24 h later or at follow-up, labelling each tube with the exact time relative to the reaction. Document the timeline, all agents and timing, grade (Ring &amp; Messmer), and treatment; update the chart and wristband with the suspected allergen and inform the patient, family, and surgical team, and give the patient written documentation to carry forward. Refer to a drug-allergy / immunology clinic for skin testing (and specific IgE where available) about 4&ndash;6 weeks after the event to identify the culprit and safe alternatives before future anaesthesia. In the US, report the suspected drug reaction to FDA MedWatch (1-800-FDA-1088 / medwatch.fda.gov). Doses and management above are cross-checked against Stanford Emergency Manual guidance but written independently.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://associationofanaesthetists-publications.onlinelibrary.wiley.com/doi/10.1111/anae.16206" target="_blank" rel="noopener">Emergency treatment of peri-operative anaphylaxis: Resuscitation Council UK algorithm for anaesthetists (Anaesthesia, 2024; endorsed by the Association of Anaesthetists / RCoA)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7807982/" target="_blank" rel="noopener">Perioperative anaphylaxis: pathophysiology, clinical presentation and management (BJA Education, 2020)</a></li>
+      <li><a href="https://www.bjanaesthesia.org.uk/article/S0007-0912(18)30401-X/fulltext" target="_blank" rel="noopener">Perioperative anaphylaxis: management and outcomes in NAP6 (British Journal of Anaesthesia)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK482124/" target="_blank" rel="noopener">Anaphylaxis &mdash; StatPearls (NCBI Bookshelf)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK482160/" target="_blank" rel="noopener">Epinephrine &mdash; StatPearls (NCBI Bookshelf)</a></li>
+      <li><a href="https://www.openanesthesia.org/keywords/perioperative-allergies-and-anaphylaxis/" target="_blank" rel="noopener">Perioperative Allergies and Anaphylaxis &mdash; OpenAnesthesia</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11439156/" target="_blank" rel="noopener">Management of Refractory Anaphylaxis: An Overview of Current Guidelines (2024)</a></li>
+    </ul>
+  </section>
+</article>
+
+<article class="ce-card" id="ce-laryngospasm">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4c1.5 3 1.5 5 0 8-1 2-1 5 0 8"/><path d="M17 4c-1.5 3-1.5 5 0 8 1 2 1 5 0 8"/><path d="M11 10l2 2-2 2"/></svg></span>
+    <div>
+      <h2 class="ce-title">Laryngospasm</h2>
+      <p class="ce-def">Sustained reflex closure of the vocal cords that partially or completely obstructs the upper airway · glottic spasm, laryngeal spasm</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Inspiratory stridor — high-pitched crowing on inspiration (partial closure); earliest audible cue</li>
+      <li>Sudden respiratory silence with visible effort but no air movement — complete closure; quieter is worse, not better</li>
+      <li>Tracheal tug with suprasternal and supraclavicular retractions</li>
+      <li>Paradoxical see-saw chest and abdominal movement against a closed glottis</li>
+      <li>Rising airway pressures, no chest rise, flat capnograph on positive-pressure attempts</li>
+      <li>Classic timing: light plane during induction, at LMA/ETT removal, or emergence; triggered by secretions, blood, or airway stimulus</li>
+      <li>Desaturation <span class="ce-late">(late)</span> — a downstream consequence; do not wait for it to act</li>
+      <li>Bradycardia <span class="ce-late">(late)</span> — especially in children; signals hypoxia and impending arrest</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Call for help and tell the surgeon to stop stimulation.</li>
+      <li>Remove the offending stimulus — suction blood and secretions, stop airway instrumentation.</li>
+      <li>Apply 100% oxygen at high flow.</li>
+      <li>Perform a vigorous jaw thrust and hold firm continuous CPAP (about 15–20 cmH2O) via a tight-sealing mask.</li>
+      <li>Apply Larson's maneuver — firm bilateral pressure in the laryngospasm notch behind the earlobe while pushing the jaw anteriorly.</li>
+      <li>Deepen anesthesia with propofol 0.25–0.8 mg/kg IV (about 0.5 mg/kg typical) if the patient is stable.</li>
+      <li>If spasm persists or SpO2 falls, give succinylcholine 0.1–0.5 mg/kg IV (up to 1–2 mg/kg if refractory); with no IV access give 4 mg/kg IM.</li>
+      <li>Give atropine 0.02 mg/kg IV for bradycardia, especially in children and before any repeat succinylcholine dose.</li>
+      <li>Ventilate and intubate once the cords relax; secure the airway.</li>
+      <li>After it breaks, watch closely for negative-pressure pulmonary edema.</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Oxygen</td><td>100% FiO2, high flow</td><td>Deliver with CPAP and jaw thrust as first-line.</td></tr>
+      <tr><td>Propofol</td><td>0.25–0.8 mg/kg IV (about 0.5 mg/kg typical)</td><td>First-line drug once maneuvers fail; deepens plane and relaxes cords. Watch for hypotension and apnea.</td></tr>
+      <tr><td>Succinylcholine (IV)</td><td>0.1–0.5 mg/kg IV low-dose (up to 1–2 mg/kg if refractory)</td><td>Definitive for refractory spasm; low dose preserves some spontaneous ventilation. Avoid in hyperkalemia, major burns, denervation/prolonged immobility, crush/rhabdo, known/suspected MH, pseudocholinesterase deficiency.</td></tr>
+      <tr><td>Succinylcholine (IM)</td><td>4 mg/kg IM (no IV access)</td><td>Onset about 1 min for full effect; deltoid or, in children, submental route.</td></tr>
+      <tr><td>Atropine</td><td>0.02 mg/kg IV (min 0.1 mg, max about 1 mg)</td><td>For succinylcholine- or hypoxia-related bradycardia; give with or before sux in children and before any second dose.</td></tr>
+      <tr><td>Rocuronium</td><td>about 1–1.2 mg/kg IV (if sux contraindicated)</td><td>Longer duration; ensure you can ventilate/intubate. IM rocuronium is slow and unreliable.</td></tr>
+      <tr><td>Lidocaine</td><td>1–1.5 mg/kg IV (adjunct/prevention)</td><td>May blunt the reflex; more preventive than rescue.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Suspect: stridor or silent obstruction at a light plane</div>
+      <div class="ce-node">Call for help, stop stimulus, suction airway</div>
+      <div class="ce-node">100% O2 + jaw thrust + CPAP + Larson's maneuver</div>
+      <div class="ce-node">Persists: propofol 0.25–0.8 mg/kg IV to deepen</div>
+      <div class="ce-node accent">Still spasm or desaturating: succinylcholine 0.1–0.5 mg/kg IV (4 mg/kg IM if no IV)</div>
+      <div class="ce-node">Bradycardic: atropine 0.02 mg/kg IV</div>
+      <div class="ce-node">Ventilate and intubate once cords relax</div>
+      <div class="ce-node">Post-event: monitor for negative-pressure pulmonary edema</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>Silence is not safety — stridor stopping can mean complete closure; confirm actual ventilation, not a quieter sound.</li>
+      <li>Do not wait for desaturation or bradycardia; those are late signs, and hypoxic bradycardia in a child is a pre-arrest warning.</li>
+      <li>Incomplete treatment that leaves the airway obstructed kills faster than over-sedation — escalate to succinylcholine early when propofol and maneuvers fail.</li>
+      <li>CPAP done wrong worsens it — excessive pressure distends the stomach and pushes the epiglottis down; ensure a good mask seal plus jaw thrust.</li>
+      <li>Extubate awake or deep, not in between — the light emergence plane (stage 2) is peak risk.</li>
+      <li>Negative-pressure pulmonary edema appears minutes to about 1 hour after the spasm breaks — pink frothy sputum, desaturation, bilateral infiltrates; do not blame new hypoxia on residual spasm.</li>
+      <li>Screen for succinylcholine contraindications even in a crisis, especially pseudocholinesterase deficiency.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Continue 100% oxygen and monitor SpO2 and EtCO2; confirm bilateral breath sounds and adequate tidal volumes. Watch for negative-pressure (post-obstructive) pulmonary edema for at least 1–2 hours — treat supportively with oxygen, PEEP/CPAP or positive-pressure ventilation, and short-term reintubation if needed; reserve diuretics for volume overload, and expect resolution in 12–48 hours. Extend PACU observation and consider admission if NPPE, aspiration, or repeated spasm occurred. If succinylcholine was given, monitor for prolonged block, myalgias, transient hyperkalemia, and bradyarrhythmias. Document and debrief the trigger and event per institutional critical-event policy, and reassess the extubation strategy for future cases. Management above was cross-checked against the Stanford Emergency Manual.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://www.openanesthesia.org/keywords/laryngospasm/" target="_blank" rel="noopener">Laryngospasm — OpenAnesthesia</a></li>
+      <li><a href="https://www.bjaed.org/article/S1743-1816(17)30105-1/fulltext" target="_blank" rel="noopener">Laryngospasm in anaesthesia — BJA Education (CEACCP)</a></li>
+      <li><a href="https://resources.wfsahq.org/wp-content/uploads/New-Update-35-Laryngospasm.pdf" target="_blank" rel="noopener">Laryngospasm — WFSA Update in Anaesthesia (No. 35)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK499984/" target="_blank" rel="noopener">Succinylcholine Chloride — StatPearls (NCBI Bookshelf)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK470551/" target="_blank" rel="noopener">Atropine — StatPearls (NCBI Bookshelf)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3919040/" target="_blank" rel="noopener">Negative Pressure Pulmonary Edema after Laryngospasm — Case Report (PMC)</a></li>
+    </ul>
+  </section>
+</article>
+
+<article class="ce-card" id="ce-bronchospasm">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6"/><path d="M12 9c0 4-2 4-2 8a3 3 0 0 1-6 0c0-5 3-8 4-9"/><path d="M12 9c0 4 2 4 2 8a3 3 0 0 0 6 0c0-5-3-8-4-9"/></svg></span>
+    <div>
+      <h2 class="ce-title">Intraoperative Bronchospasm</h2>
+      <p class="ce-def">Acute reversible small-airway constriction during anesthesia, raising airway pressure and impairing ventilation &middot; perioperative bronchospasm, reactive airway event</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Rising peak inspiratory pressure on a volume-controlled breath &mdash; often the earliest objective sign in a paralyzed, intubated patient</li>
+      <li>Upsloping "shark-fin" ETCO&#8322; waveform: slanted phase II, loss of the flat phase III plateau &mdash; a sensitive early cue</li>
+      <li>Expiratory wheeze; prolonged expiratory phase and breath-stacking (auto-PEEP)</li>
+      <li>Falling tidal volume in pressure-controlled modes, or a stiff bag on hand-ventilation</li>
+      <li>Recent trigger: airway instrumentation or light anesthesia, endobronchial tube tip, aspiration, a new drug or blood product, asthma/COPD/recent URI, smoker</li>
+      <li>Decreased or absent breath sounds &mdash; a "silent chest" means airflow too low to make sound <span class="ce-late">(late)</span></li>
+      <li>Falling SpO&#8322; with rising ETCO&#8322; &mdash; gas exchange already failing <span class="ce-late">(late)</span></li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Call for help; announce "bronchospasm &mdash; rising airway pressures."</li>
+      <li>Switch to 100% O&#8322; at high fresh-gas flow.</li>
+      <li>Hand-ventilate to feel compliance and confirm the problem is the patient, not the machine.</li>
+      <li>Rule out mechanical mimics fast: pass a suction catheter down the ETT (mucus plug/kink), confirm tube depth, exclude pneumothorax.</li>
+      <li>Deepen anesthetic depth: increase volatile agent (sevoflurane/isoflurane) and/or give propofol; use ketamine if hypotensive or refractory.</li>
+      <li>Give albuterol 8&ndash;10 puffs via inline adapter into the circuit/ETT; repeat every 10 min.</li>
+      <li>Ventilate for air-trapping: slow the rate, prolong expiratory time, accept permissive hypercapnia; watch for auto-PEEP and hypotension.</li>
+      <li>If severe/refractory or SpO&#8322; falling below ~80%, give titrated IV epinephrine; escalate to an infusion if needed.</li>
+      <li>Add adjuncts: magnesium sulfate 2 g IV; hydrocortisone 100 mg IV for the late/recurrent phase.</li>
+      <li>Treat the cause: withdraw an endobronchial tube, suction aspiration, deepen for light anesthesia. If anaphylaxis is suspected, treat as anaphylaxis (epinephrine first, stop the trigger).</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Albuterol (salbutamol) MDI</td><td>8&ndash;10 puffs via inline adapter into circuit/ETT; repeat q10min</td><td>First-line. ETT deposition wastes most of the dose, so give generously. Add ipratropium if nebulizing.</td></tr>
+      <tr><td>Volatile anesthetic</td><td>Increase inspired sevoflurane / isoflurane</td><td>Potent bronchodilators; deepen to break the spasm. Desflurane is airway-irritant &mdash; avoid escalating it.</td></tr>
+      <tr><td>Propofol</td><td>0.5&ndash;1 mg/kg IV bolus</td><td>Deepens anesthetic depth and blunts airway reflexes (not a bronchodilator). Watch for hypotension.</td></tr>
+      <tr><td>Ketamine</td><td>0.5&ndash;1 mg/kg IV bolus (or 10&ndash;20 mg increments); infusion 0.5&ndash;1 mg/kg/hr</td><td>Direct bronchodilator; preserves BP and drive &mdash; favored if hypotensive or refractory. Causes tachycardia; increases secretions.</td></tr>
+      <tr><td>Epinephrine (IV) &mdash; severe/refractory</td><td>10&ndash;20 mcg IV titrated boluses, repeat to effect; 1&ndash;2 mcg/kg IV if SpO&#8322; &lt;80%; infusion 0.02&ndash;0.1 mcg/kg/min</td><td>Dilute 1 mg/mL to 10 mcg/mL (1 mL into 100 mL); 1 mL = 10 mcg. Give small aliquots, titrate to airway pressure/SpO&#8322;/BP. First-line if anaphylaxis.</td></tr>
+      <tr><td>Magnesium sulfate</td><td>2 g IV over ~20 min; infusion 10&ndash;20 mg/kg/hr if it helps</td><td>Smooth-muscle relaxant adjunct. Watch for hypotension; potentiates neuromuscular blockade.</td></tr>
+      <tr><td>Hydrocortisone</td><td>100 mg IV (alt: methylprednisolone 125 mg IV, or dexamethasone 8 mg IV)</td><td>Steroid, onset ~1&ndash;6 hr &mdash; no acute effect. Give to blunt the late/recurrent inflammatory phase.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Recognize: rising PIP + shark-fin ETCO&#8322; + wheeze / stiff bag</div>
+      <div class="ce-node">100% O&#8322; + call for help + hand-ventilate</div>
+      <div class="ce-node">Rule out mechanical cause: plug, kink, mainstem, pneumothorax</div>
+      <div class="ce-node accent">Deepen (volatile/propofol/ketamine) + albuterol 8&ndash;10 puffs</div>
+      <div class="ce-node">Severe or SpO&#8322; &lt;80%: IV epinephrine 10&ndash;20 mcg titrated</div>
+      <div class="ce-node">Adjuncts: magnesium 2 g IV, steroid, prolong expiration</div>
+      <div class="ce-node">Crashing BP: disconnect circuit, deflate chest, exclude pneumothorax/anaphylaxis</div>
+      <div class="ce-node">Resolved: don't extubate into active spasm; disposition PACU/ICU</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>Confirm it's the patient, not the equipment &mdash; a kinked ETT, mucus plug, mainstem intubation, cuff herniation, or circuit obstruction mimics bronchospasm. Hand-ventilate and pass a suction catheter first.</li>
+      <li>A "silent chest" is worse, not better &mdash; absent breath sounds can mean airflow too low to generate any sound.</li>
+      <li>Don't miss anaphylaxis: bronchospasm with hypotension or rash/angioedema after a drug, latex, chlorhexidine, or blood product means epinephrine first and stop the trigger. Bronchospasm may be the only early sign.</li>
+      <li>Air-trapping causes hypotension &mdash; if BP crashes, disconnect the circuit and let the chest fully deflate, then resume with longer expiratory time. Also rule out tension pneumothorax.</li>
+      <li>Steroids are not a rescue drug &mdash; hydrocortisone does nothing in the first minutes.</li>
+      <li>Light anesthesia plus airway stimulation is a common trigger &mdash; deepening is often the fix; don't reach only for drugs.</li>
+      <li>Wheeze that won't respond to &beta;&#8322;-agonists &mdash; reconsider the diagnosis (fixed obstruction/mass, pulmonary edema, aspiration).</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Do not extubate into an active bronchospasm; emergence commonly triggers recurrence once volatile is off, so keep albuterol and IV bronchodilators ready. Monitor SpO&#8322;, the ETCO&#8322; waveform (a returning square shape signals improvement), PIP/compliance, and an ABG if severe; anticipate a biphasic or recurrent course, especially if steroids were given late. Disposition to PACU with close respiratory monitoring, or ICU if refractory, if an epinephrine infusion was needed, or after severe hypoxemia. Document the trigger, timeline, drugs, doses, and response; if a drug, latex, or blood product is implicated, send serial tryptase levels and refer for allergy/immunology work-up and label the chart. Report through the institutional adverse-event pathway and update the allergy list. Doses cross-checked against the Stanford Emergency Manual.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://www.openanesthesia.org/keywords/anesthesia-for-patients-with-asthma/" target="_blank" rel="noopener">OpenAnesthesia &mdash; Anesthesia for Patients with Asthma (bronchospasm recognition, DDx, algorithm)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11702345/" target="_blank" rel="noopener">A Contemporary Approach to the Treatment of Perioperative Bronchospasm (PMC11702345)</a></li>
+      <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10295469/" target="_blank" rel="noopener">Perioperative Care of the Pediatric Patient and an Algorithm for Intraoperative Bronchospasm (PMC10295469)</a></li>
+      <li><a href="https://e-safe-anaesthesia.org/e_library/05/Bronchospasm_during_anaesthesia_Update_2011.pdf" target="_blank" rel="noopener">Management of bronchospasm during general anaesthesia &mdash; WFSA/Update in Anaesthesia (Looseley)</a></li>
+      <li><a href="https://www.bjaed.org/article/S2058-5349(22)00092-0/fulltext" target="_blank" rel="noopener">Perioperative management of the child with asthma &mdash; BJA Education</a></li>
+    </ul>
+  </section>
+</article>
+
+<article class="ce-card" id="ce-cico">
+  <header class="ce-head">
+    <span class="ce-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5a4 4 0 0 0 4 4 4 4 0 0 1 4 4v4"/><path d="M8 21h8"/><line x1="5" y1="12" x2="11" y2="12"/></svg></span>
+    <div>
+      <h2 class="ce-title">Can't Intubate, Can't Oxygenate (CICO)</h2>
+      <p class="ce-def">Oxygenation fails by mask, tracheal tube, and supraglottic airway at once — the final airway pathway that mandates emergency front-of-neck access · CICO · CICV · failed airway</p>
+    </div>
+    <span class="ce-pill">Premium</span>
+  </header>
+
+  <section class="ce-sec">
+    <div class="ce-label">When to suspect</div>
+    <ul class="ce-suspect">
+      <li>Falling SpO&#8322; that will not recover despite optimized attempts — this is the defining trigger, not the intubation failure itself.</li>
+      <li>Loss or flat-lining of the capnography waveform — the most objective early sign that no gas is moving.</li>
+      <li>Failed tracheal intubation after optimized attempts (repositioning, video laryngoscopy, best operator, adequate paralysis).</li>
+      <li>Failed face-mask ventilation: no chest rise, no capnography trace, rising resistance despite two-hand technique plus oral and nasal airways.</li>
+      <li>Failed supraglottic airway: no ETCO&#8322; trace after best-attempt placement of a 2nd-generation SGA.</li>
+      <li>Bradycardia, cyanosis, hemodynamic collapse <span class="ce-late">(late)</span> — do not wait for these to act.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Immediate actions</div>
+    <ol class="ce-actions">
+      <li>Declare it out loud: "This is a CICO situation." Assign a leader and a timekeeper.</li>
+      <li>Call for the difficult-airway cart and cric-capable help now — extra anesthesia plus the most-skilled airway operator or surgeon (ENT); activate your institution's difficult-airway pathway.</li>
+      <li>Optimize oxygenation on the current device: 100% FiO&#8322;, two-person mask technique, oral and nasal airways, jaw thrust; keep apneic or high-flow nasal oxygen running throughout.</li>
+      <li>Limit and count attempts. Cap tracheal intubation at 3 (plus 1 more only if a more skilled clinician arrives). Change something each time — blade, operator, adjunct — or move on; never repeat a failing technique.</li>
+      <li>Confirm paralysis is adequate — inadequate relaxation is a reversible cause of "can't intubate, can't ventilate." Do not rely on succinylcholine wearing off to rescue the patient.</li>
+      <li>Attempt SGA rescue: insert a 2nd-generation supraglottic airway (i-gel, LMA ProSeal or Supreme). Limit to 3 or fewer insertion attempts; confirm ventilation with capnography.</li>
+      <li>Decision point: if oxygenation is restored by mask or SGA, stop, oxygenate, and think — wake the patient if feasible, or secure the airway by a controlled route.</li>
+      <li>If you still cannot oxygenate, declare CICO and go to emergency front-of-neck access now. Open the cric kit and perform a scalpel–bougie–tube cricothyrotomy; do not delay for repeat oral attempts.</li>
+      <li>Front-of-neck technique: extend the neck, laryngeal handshake to find the cricothyroid membrane, transverse stab through the membrane with the scalpel, rotate the blade, railroad a bougie into the trachea, advance a cuffed 6.0 mm tube over it, inflate the cuff, confirm with capnography, secure.</li>
+      <li>Confirm and stabilize placement with continuous ETCO&#8322;; hand over to a definitive surgical airway (formal tracheostomy / ENT) as appropriate.</li>
+    </ol>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Drugs &amp; doses</div>
+    <table class="ce-drugs"><thead><tr><th>Drug</th><th>Dose (route)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Succinylcholine</td><td>1–1.5 mg/kg IV (RSI dose)</td><td>Ensures full paralysis to optimize laryngoscopy and mask ventilation. Does not reliably self-rescue CICO: a 1 mg/kg dose gives roughly 6–10 min of apnea — longer than the time to critical desaturation.</td></tr>
+      <tr><td>Rocuronium</td><td>1.2 mg/kg IV (RSI dose)</td><td>If used for induction, ensure adequate depth before front-of-neck access; reversible with sugammadex (below).</td></tr>
+      <tr><td>Sugammadex</td><td>16 mg/kg IV (immediate reversal)</td><td>Reverses rocuronium or vecuronium, but reversal does not guarantee a rescued airway — once CICO is declared, proceed to front-of-neck access regardless. Does not reverse succinylcholine.</td></tr>
+      <tr><td>Oxygen</td><td>100% FiO&#8322;; apneic / high-flow nasal O&#8322; throughout</td><td>Continuous oxygenation is the priority at every step.</td></tr>
+      <tr><td>Cric kit</td><td>Scalpel (#10 blade) + bougie + cuffed 6.0 mm tube</td><td>Scalpel–bougie–tube setup; keep it pre-assembled and immediately reachable.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Algorithm</div>
+    <div class="ce-flow">
+      <div class="ce-node">Failed intubation + falling SpO&#8322; &#8594; call for help, 100% O&#8322;</div>
+      <div class="ce-node">Intubate: optimize, max 3 (+1) attempts</div>
+      <div class="ce-node">SGA rescue: 2nd-gen SGA, 3 or fewer attempts</div>
+      <div class="ce-node">Face-mask: final attempt, ensure full paralysis</div>
+      <div class="ce-node">Oxygenating? &#8594; stop &amp; think: wake vs controlled airway</div>
+      <div class="ce-node">Mask + SGA + intubation all fail &#8594; declare CICO</div>
+      <div class="ce-node accent">Scalpel–bougie–tube cricothyrotomy</div>
+      <div class="ce-node">Confirm with capnography &#8594; secure &#8594; definitive surgical airway / ICU</div>
+    </div>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Pitfalls</div>
+    <ul class="ce-pitfalls">
+      <li>CICO is defined by oxygenation, not intubation. Repeated intubation attempts while SpO&#8322; falls is the classic fatal trap — an airway you can't secure but can still oxygenate is not CICO.</li>
+      <li>Do not wait for succinylcholine to wear off. Spontaneous ventilation after 1 mg/kg returns far too late to prevent hypoxic injury, and reversal is not a substitute for front-of-neck access once CICO is declared.</li>
+      <li>Falling SpO&#8322; is a late, lagging number. By the time the oximeter drops steeply, desaturation is already advanced — act on the failed-oxygenation state, not the plummeting number.</li>
+      <li>"Just one more look" kills. Uncounted, repeated laryngoscopy causes trauma and bleeding and delays rescue — assign someone to count and enforce the attempt limit.</li>
+      <li>Don't skip the SGA. A 2nd-generation SGA rescues many failed-mask-plus-failed-intubation cases before front-of-neck access is needed.</li>
+      <li>Locating the cricothyroid membrane is the hard part — use the laryngeal handshake early; a scalpel technique is superior to needle or cannula methods for reliable oxygenation in adults.</li>
+      <li>Task fixation with no leader. Declare the emergency out loud and hand off the airway attempt so a fresh operator can proceed to front-of-neck access.</li>
+    </ul>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">After the crisis</div>
+    <p class="ce-after">Disposition to the ICU with a secured, capnography-confirmed airway; arrange a definitive surgical airway (formal tracheostomy) with ENT or surgery. Monitor with continuous ETCO&#8322; and SpO&#8322;, and watch for hypoxic sequelae (serial neuro checks), aspiration, airway bleeding, subcutaneous emphysema, pneumothorax, and cric-site injury. Run a structured team debrief and document the airway-failure sequence, devices, and attempt count. Issue the patient a difficult-airway alert letter and register the event (MedicAlert or a national difficult-airway registry) so future providers are warned, and consider anesthesia consult-clinic referral. File the institutional critical-incident report per local policy. There is no national CICO hotline — escalation is to your institution's difficult-airway and ENT service. Cross-checked against the Stanford Emergency Manual.</p>
+  </section>
+
+  <section class="ce-sec">
+    <div class="ce-label">Sources</div>
+    <ul class="ce-sources">
+      <li><a href="https://pubs.asahq.org/anesthesiology/article/136/1/31/117915/2022-American-Society-of-Anesthesiologists" target="_blank" rel="noopener">2022 ASA Practice Guidelines for Management of the Difficult Airway (Anesthesiology 2022;136:31–81)</a></li>
+      <li><a href="https://www.apsf.org/article/anesthesia-patient-safety-foundation-update-2022-american-society-of-anesthesiologists-practice-guidelines-for-management-of-the-difficult-airway/" target="_blank" rel="noopener">APSF Update: 2022 ASA Practice Guidelines for Management of the Difficult Airway</a></li>
+      <li><a href="https://das.uk.com/guidelines/das_intubation_guidelines/" target="_blank" rel="noopener">Difficult Airway Society (DAS) — Guidelines for management of unanticipated difficult intubation in adults</a></li>
+      <li><a href="https://www.bjanaesthesia.org/article/S0007-0912(25)00693-2/fulltext" target="_blank" rel="noopener">DAS 2025 guidelines for management of unanticipated difficult tracheal intubation in adults (British Journal of Anaesthesia)</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK537350/" target="_blank" rel="noopener">Cricothyroidotomy — StatPearls, NCBI Bookshelf</a></li>
+      <li><a href="https://www.ncbi.nlm.nih.gov/books/NBK499984/" target="_blank" rel="noopener">Succinylcholine Chloride — StatPearls, NCBI Bookshelf</a></li>
+    </ul>
+  </section>
+</article>
+  </main>
+
+  <div class="ce-foot">MACPrep Critical Events · preview build · original content, cross-checked · not for distribution</div>
+</div>
+<script>
+  (function(){
+    var cards=[].slice.call(document.querySelectorAll('.ce-card'));
+    var jump=document.getElementById('ce-jump'), q=document.getElementById('ce-q'), count=document.getElementById('ce-count');
+    cards.forEach(function(c){var t=(c.querySelector('.ce-title')||{}).textContent||'';var o=document.createElement('option');o.value=c.id;o.textContent=t;jump.appendChild(o);});
+    function tally(){var n=cards.filter(function(c){return !c.classList.contains('no-match');}).length;count.textContent=n+' of '+cards.length;}
+    tally();
+    q.addEventListener('input',function(){var s=q.value.trim().toLowerCase();cards.forEach(function(c){c.classList.toggle('no-match',!!s&&c.textContent.toLowerCase().indexOf(s)<0);});tally();});
+    jump.addEventListener('change',function(){var el=document.getElementById(jump.value);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
+  })();
+</script>
+</body>
+</html>
