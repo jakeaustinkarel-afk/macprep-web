@@ -1414,6 +1414,9 @@
     function arcadeBest(type) { try { return parseInt(localStorage.getItem('macprep_arcade_' + type) || '0', 10) || 0; } catch (e) { return 0; } }
     function setArcadeBest(type, v) { try { localStorage.setItem('macprep_arcade_' + type, String(v)); } catch (e) {} }
     function bumpArcadePlays(type) { try { const k = 'macprep_arcade_' + type + '_plays'; localStorage.setItem(k, String((parseInt(localStorage.getItem(k) || '0', 10) || 0) + 1)); } catch (e) {} }
+    // Free users get ONE taste run of Arcade, then it's part of full access.
+    function arcadeFreeUsed() { try { return !!localStorage.getItem('macprep_arcade_free_used'); } catch (e) { return false; } }
+    function markArcadeFreeUsed() { try { localStorage.setItem('macprep_arcade_free_used', '1'); } catch (e) {} }
     function arcadeShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
     function openArcadePicker() {
@@ -1447,10 +1450,13 @@
         if (!ARCADE_META[type]) return;
         const all = state.questions || [];
         if (all.length < 8) { toast('Questions are still loading — try again in a moment.'); return; }
-        // Arcade burns through fresh questions fast, so it's part of full access (like the
-        // mock exam). Free users hit the upsell rather than blowing their 10% on a score run.
+        // Free users get ONE taste run of Arcade; after that it's part of full access.
         const usage = freeUsage();
-        if (!usage.unlimited) { toast('Arcade modes are part of full access — unlock everything for a one-time $50.'); return startCheckout(); }
+        if (!usage.unlimited) {
+            if (arcadeFreeUsed()) { toast('That was your free Arcade run. Unlock unlimited Arcade — plus the full question bank and full-length mock exams — for a one-time $50.'); return startCheckout(); }
+            markArcadeFreeUsed();
+            toast('Your free Arcade run — have fun! Unlimited Arcade is part of full access.', 'ok');
+        }
         const pool = arcadeShuffle(all.slice());
         try { track('arcade_start', { type }); } catch (e) {}
         beginSession(pool, 'tutor');
@@ -1567,7 +1573,8 @@
         if (all.length < 20) { toast('Not enough questions loaded yet for a mock exam.'); return; }
         const usage = freeUsage();
         const n = Math.min(count || 100, all.length);
-        if (!usage.unlimited && usage.remaining < n) { toast('Full-length mock exams are part of full access — unlock everything for a one-time $50.'); return startCheckout(); }
+        // Full-length mock exams are premium, period — the board simulation is the hero unlock.
+        if (!usage.unlimited) { toast('Full-length mock exams are premium — a board-length, timed simulation of the real NCCAA exam. Unlock everything for a one-time $50.'); return startCheckout(); }
         const byDom = {};
         all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
         const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -1598,11 +1605,13 @@
         const recParts = [due ? `${due} due` : '', missed ? `${missed} missed` : ''].filter(Boolean);
         const recCount = recParts.length ? recParts.join(' · ') : 'a smart mix for you';
         const t = [];
+        const free = !freeUsage().unlimited;
         t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
-        t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Board-length & timed like the real NCCAA exam.', '180 Q · timed', 'MACPrep.openMockPicker()', 'New'));
+        t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? '🔒 Premium' : 'New'));
         t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
-        const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((t) => arcadeBest(t)));
-        t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', (arcTop ? `Best ${arcTop}` : 'Set a high score'), 'MACPrep.openArcadePicker()', 'New'));
+        const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
+        const arcCount = free ? (arcadeFreeUsed() ? '🔒 Premium' : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
+        t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', arcCount, 'MACPrep.openArcadePicker()', 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
