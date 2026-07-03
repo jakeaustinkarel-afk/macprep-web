@@ -1648,8 +1648,16 @@ app.get('/api/user/profile', async (req, res) => {
             .map(([category, v]) => ({ category, attempts: v.n, accuracy: Math.round((v.correct / v.n) * 100) }))
             .sort((a, b) => a.accuracy - b.accuracy);
 
-        // Coverage: distinct answered vs total served per category.
-        const { data: bankRows } = await applyServedFilter(supabase.from('questions').select('category'));
+        // Coverage: distinct answered vs total served per category. Paginate the bank —
+        // a plain .select() is capped at 1000 rows, so once the bank grew past 1000 every
+        // category was undercounted (totals summed to 1000 instead of the real bank size).
+        const bankRows = [];
+        for (let from = 0; from < 50000; from += 1000) {
+            const { data: chunk } = await applyServedFilter(supabase.from('questions').select('category')).range(from, from + 999);
+            if (!chunk || !chunk.length) break;
+            bankRows.push(...chunk);
+            if (chunk.length < 1000) break;
+        }
         const bankTotal = {};
         (bankRows || []).forEach((r) => { const c = r.category || 'Uncategorized'; bankTotal[c] = (bankTotal[c] || 0) + 1; });
         const answeredByCat = {};
