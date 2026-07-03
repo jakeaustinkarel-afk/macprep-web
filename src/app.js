@@ -2916,11 +2916,98 @@
     function closeUpgradeModal() { const o = $('upgrade-overlay'); if (o) o.remove(); }
 
     // ---- Critical Events (premium) ----------------------------------------
-    // Clinician-reviewed rapid-reference cards for anesthesia crises. Card HTML +
-    // scoped .ce-* CSS come from the premium-gated /api/critical-events endpoint
-    // (the bundle is never served statically), so free users hit the upgrade
-    // screen instead of the paid content. Rendered as a full-screen searchable
-    // overlay with a jump-to-event dropdown, mirroring the standalone preview.
+    // Browse-first emergency reference: an index of the 26 events (grouped by
+    // clinical category, filterable by chips) that opens ONE focused card at a
+    // time — the way a paper emergency manual is actually used in a crisis. Each
+    // focused card leads with a "First moves" key-dose strip + Immediate actions,
+    // demotes the photo to a thumbnail, and collapses Sources. Content (card HTML
+    // + scoped CSS) comes from the premium-gated /api/critical-events endpoint;
+    // free users get the upgrade screen.
+    const ceEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const CE_CATS = [
+        { key: 'cardiac', label: 'Cardiac & Rhythm', color: '#e5574c' },
+        { key: 'airway', label: 'Airway & Respiratory', color: '#38bdf8' },
+        { key: 'anaphylaxis', label: 'Anaphylaxis & Metabolic', color: '#e0a53a' },
+        { key: 'obstetric', label: 'Obstetric & Hemorrhage', color: '#d060c8' },
+        { key: 'equipment', label: 'Equipment & Environment', color: '#46b58a' },
+        { key: 'neuro', label: 'Neuro & Embolism', color: '#a78bfa' },
+    ];
+    const CE_META = {
+        'ce-asystole': { cat: 'cardiac', trigger: 'Flatline, no pulse', moves: ['Epinephrine 1 mg IV q3–5 min', 'High-quality CPR; treat H’s & T’s'] },
+        'ce-bradycardia': { cat: 'cardiac', trigger: 'Slow rate, poor perfusion', moves: ['Atropine 0.5–1 mg IV (max 3 mg)', 'Epi infusion 2–10 mcg/min · pace'] },
+        'ce-pea': { cat: 'cardiac', trigger: 'Organized rhythm, no pulse', moves: ['Epinephrine 1 mg IV q3–5 min', 'CPR; find & treat the cause'] },
+        'ce-vfvt': { cat: 'cardiac', trigger: 'Shockable rhythm, no pulse', moves: ['Defibrillate 120–200 J', 'Epi 1 mg + amiodarone 300 mg'] },
+        'ce-svt-stable': { cat: 'cardiac', trigger: 'Fast narrow rhythm, stable', moves: ['Vagal maneuvers', 'Adenosine 6 mg → 12 mg IV push'] },
+        'ce-svt-unstable': { cat: 'cardiac', trigger: 'Fast rhythm + instability', moves: ['Synchronized cardioversion', 'Adenosine 6→12 mg if narrow-regular'] },
+        'ce-mi': { cat: 'cardiac', trigger: 'New ST changes / ischemia', moves: ['Treat hypotension, then nitroglycerin', 'Aspirin 160–325 mg · call cardiology'] },
+        'ce-hypotension': { cat: 'cardiac', trigger: 'MAP <65 or >20–25% drop', moves: ['Phenylephrine 50–100 mcg / ephedrine 5–10 mg', 'Fluids; epi 10–100 mcg if refractory'] },
+        'ce-hypoxemia': { cat: 'airway', trigger: 'Falling SpO₂', moves: ['100% O₂, high flow', 'Hand-ventilate; confirm tube & compliance'] },
+        'ce-bronchospasm': { cat: 'airway', trigger: '↑Airway pressure, wheeze', moves: ['Deepen anesthetic', 'Albuterol 8–10 puffs; epi if severe'] },
+        'ce-laryngospasm': { cat: 'airway', trigger: 'Stridor or silent closed glottis', moves: ['100% O₂ + jaw thrust + CPAP', 'Propofol; succinylcholine if it persists'] },
+        'ce-cico': { cat: 'airway', trigger: 'Can’t intubate, can’t oxygenate', moves: ['Declare CICO', 'Scalpel–bougie front-of-neck access NOW'] },
+        'ce-pneumothorax': { cat: 'airway', trigger: '↑Pressure, ↓SpO₂, ↓BP, absent sounds', moves: ['Stop N₂O; 100% O₂', 'Needle decompress → chest tube'] },
+        'ce-fire-airway': { cat: 'airway', trigger: 'Flash/pop in the airway', moves: ['Remove tube; stop O₂; disconnect circuit', 'Saline into airway; reintubate'] },
+        'ce-anaphylaxis': { cat: 'anaphylaxis', trigger: 'Collapse ± bronchospasm/rash after a trigger', moves: ['Epinephrine 10–100 mcg IV (0.5 mg IM)', 'Stop trigger; fluids; 100% O₂'] },
+        'ce-mh': { cat: 'anaphylaxis', trigger: 'Rising ETCO₂ + tachycardia + rigidity', moves: ['Dantrolene 2.5 mg/kg IV (repeat to effect)', 'Stop trigger; cool; call MH hotline'] },
+        'ce-last': { cat: 'anaphylaxis', trigger: 'CNS/cardiac signs after local anesthetic', moves: ['Stop injecting; 100% O₂', 'Lipid 20% 1.5 mL/kg bolus + infusion'] },
+        'ce-transfusion-reaction': { cat: 'anaphylaxis', trigger: 'Fever/hypotension during a unit', moves: ['STOP the transfusion', 'Support ABCs; recheck the unit'] },
+        'ce-amniotic-fluid-embolism': { cat: 'obstetric', trigger: 'Sudden collapse + hypoxia in labor', moves: ['100% O₂; support circulation', 'Anticipate arrest, C-section, DIC'] },
+        'ce-total-spinal': { cat: 'obstetric', trigger: 'Rapid high block, apnea, hypotension', moves: ['Secure airway; 100% O₂', 'Epi 10–100 mcg; fluids; LUD'] },
+        'ce-hemorrhage': { cat: 'obstetric', trigger: 'Rapid large-volume blood loss', moves: ['Activate MTP (1:1 FFP:PRBC)', 'TXA 1 g; call for help & blood'] },
+        'ce-oxygen-failure': { cat: 'equipment', trigger: 'Loss of pipeline/cylinder O₂', moves: ['Go off-machine: Ambu on room air/cylinder', 'Open backup tank; switch to TIVA'] },
+        'ce-power-failure': { cat: 'equipment', trigger: 'OR power loss', moves: ['Get light; confirm ventilation (Ambu)', 'Switch to TIVA; manual monitors'] },
+        'ce-fire-patient': { cat: 'equipment', trigger: 'Fire on/around the patient', moves: ['Stop gases; remove drapes/material', 'Extinguish (CO₂ if electrical)'] },
+        'ce-delayed-emergence': { cat: 'neuro', trigger: 'No wake-up past expected time', moves: ['Confirm O₂/ventilation; 100% O₂', 'Reverse opioids/benzos; check glucose, temp, CO₂'] },
+        'ce-vae': { cat: 'neuro', trigger: '↓ETCO₂ + hypotension in at-risk surgery', moves: ['Flood field; lower site; 100% O₂', 'Aspirate central line; epi 10–100 mcg'] },
+    };
+    const CE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 4.3 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+    const CE_APP_CSS = `
+#ce-overlay .ce-topbar{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line);}
+#ce-overlay .ce-brandlink{display:inline-flex;align-items:center;gap:9px;text-decoration:none;flex:none;}
+#ce-overlay .ce-brandwm{font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:20px;letter-spacing:-1px;color:var(--text);}
+#ce-overlay .ce-topright{display:flex;align-items:center;gap:13px;min-width:0;}
+#ce-overlay .ce-secname{display:inline-flex;align-items:center;gap:7px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:var(--text2);white-space:nowrap;}
+#ce-overlay .ce-secname svg{width:17px;height:17px;color:var(--danger);}
+#ce-overlay .ce-exit{background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;flex:none;}
+#ce-overlay .ce-exit:hover{border-color:var(--accent);color:var(--text);}
+#ce-overlay .ce-wrap{max-width:860px;margin:0 auto;padding:22px 22px 90px;}
+#ce-overlay .ce-lead{margin-bottom:14px;}
+#ce-overlay .ce-h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;margin:0 0 5px;letter-spacing:-.01em;}
+#ce-overlay .ce-sub{color:var(--text2);font-size:14px;margin:0;}
+#ce-overlay .ce-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;position:sticky;top:0;background:linear-gradient(var(--bg) 78%,transparent);padding:8px 0 12px;z-index:2;}
+#ce-overlay .ce-chip{--chip:var(--accent);display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);color:var(--text2);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}
+#ce-overlay .ce-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--chip);flex:none;}
+#ce-overlay .ce-chip:hover{color:var(--text);border-color:var(--chip);}
+#ce-overlay .ce-chip.on{background:color-mix(in srgb,var(--chip) 16%,transparent);border-color:var(--chip);color:var(--text);}
+#ce-overlay .ce-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:12px;}
+#ce-overlay .ce-tile{--cat:var(--muted);display:flex;align-items:flex-start;gap:13px;text-align:left;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--cat);border-radius:13px;padding:15px 16px;cursor:pointer;transition:transform .14s,border-color .14s,box-shadow .2s;}
+#ce-overlay .ce-tile:hover{transform:translateY(-2px);border-color:var(--cat);box-shadow:0 14px 30px -20px rgba(0,0,0,.6);}
+#ce-overlay .ce-tile-em{flex:none;width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--cat) 16%,transparent);color:var(--cat);display:flex;align-items:center;justify-content:center;}
+#ce-overlay .ce-tile-em svg{width:23px;height:23px;}
+#ce-overlay .ce-tile-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
+#ce-overlay .ce-tile-nm{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15.5px;line-height:1.15;color:var(--text);}
+#ce-overlay .ce-tile-tg{font-size:12.5px;color:var(--muted);line-height:1.3;}
+#ce-overlay .ce-empty{color:var(--muted);padding:30px 0;text-align:center;}
+#ce-overlay .ce-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--accent-2);font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:16px;}
+#ce-overlay .ce-back svg{width:17px;height:17px;}
+#ce-overlay .ce-focus{border-left:3px solid var(--cat,var(--accent));}
+#ce-overlay .ce-focus .ce-emblem{background:color-mix(in srgb,var(--cat,var(--accent)) 16%,transparent);color:var(--cat,var(--accent-2));}
+#ce-overlay .ce-keys{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 20px;padding:13px 15px;border:1px solid var(--cat,var(--accent));background:color-mix(in srgb,var(--cat,var(--accent)) 9%,transparent);border-radius:12px;}
+#ce-overlay .ce-keys-lbl{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--cat,var(--accent-2));font-weight:700;flex:none;}
+#ce-overlay .ce-key{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 10px;}
+#ce-overlay .ce-focus .ce-photo-sec{max-width:440px;}
+#ce-overlay .ce-focus .ce-photo-sec .ce-photo img{max-height:210px;}
+#ce-overlay .ce-focus ol.ce-actions li{font-size:15px;}
+#ce-overlay .ce-focus ol.ce-actions li::before{font-size:13px;font-weight:800;width:26px;height:26px;top:2px;}
+#ce-overlay .ce-src-det>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;}
+#ce-overlay .ce-src-det>summary::-webkit-details-marker{display:none;}
+#ce-overlay .ce-src-det>summary::after{content:"\\25b8";color:var(--muted);font-size:11px;}
+#ce-overlay .ce-src-det[open]>summary::after{content:"\\25be";}
+#ce-overlay .ce-src-det .ce-src-count{font-family:var(--mono);font-size:11px;color:var(--muted);}
+#ce-overlay .ce-src-det ul.ce-sources{margin-top:12px;}
+@media (max-width:560px){#ce-overlay .ce-wrap{padding:16px 15px 80px;}#ce-overlay .ce-grid{grid-template-columns:1fr;}}
+`;
+
     async function startCriticalEvents() {
         if (!premiumGate('critical')) return;
         closeNavMenus();
@@ -2931,88 +3018,149 @@
             if (resp.status === 402) { openUpgradeModal('critical'); return; }
             if (!resp.ok || !data || !data.html) throw new Error((data && data.error) || 'Unavailable.');
             try { track('critical_events_open', { count: data.count || 0 }); } catch (e) {}
-            renderCriticalEvents(data);
+            ceInit(data);
         } catch (err) {
             toast('Could not open Critical Events: ' + err.message);
         }
     }
 
-    function closeCriticalEvents() {
-        const o = $('ce-overlay'); if (o) o.remove();
-        document.documentElement.style.overflow = '';   // restore page scroll
-        document.removeEventListener('keydown', ceKey);
-    }
-    function ceKey(e) { if (e.key === 'Escape' && $('ce-overlay')) { e.preventDefault(); closeCriticalEvents(); } }
-
-    function renderCriticalEvents(bundle) {
+    function ceInit(bundle) {
         closeCriticalEvents();
-        if (!$('ce-inject-css')) {
-            const st = document.createElement('style'); st.id = 'ce-inject-css'; st.textContent = bundle.css || ''; document.head.appendChild(st);
-        }
+        if (!$('ce-inject-css')) { const st = document.createElement('style'); st.id = 'ce-inject-css'; st.textContent = bundle.css || ''; document.head.appendChild(st); }
+        if (!$('ce-app-css')) { const st = document.createElement('style'); st.id = 'ce-app-css'; st.textContent = CE_APP_CSS; document.head.appendChild(st); }
+        const holder = document.createElement('div'); holder.innerHTML = bundle.html;
+        const byId = {};
+        [].slice.call(holder.querySelectorAll('.ce-card')).forEach((c) => { byId[c.id] = c; });
+        state.ce = { byId: byId, cat: 'all', mode: 'index', slug: null };
         const wrap = document.createElement('div');
         wrap.id = 'ce-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2650;background:var(--bg);display:flex;flex-direction:column;';
         wrap.innerHTML = `
-            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line);">
-                <a href="/" onclick="MACPrep.closeCriticalEvents(); if(MACPrep.go)MACPrep.go('dashboard'); return false;" aria-label="MACPrep home" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none;flex:none;">
+            <div class="ce-topbar">
+                <a href="/" onclick="MACPrep.closeCriticalEvents(); if(MACPrep.go)MACPrep.go('dashboard'); return false;" aria-label="MACPrep home" class="ce-brandlink">
                     <svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:20px;letter-spacing:-1px;color:var(--text);">MAC<span style="color:var(--accent);">Prep</span></span>
+                    <span class="ce-brandwm">MAC<span style="color:var(--accent);">Prep</span></span>
                 </a>
-                <div style="display:flex;align-items:center;gap:13px;min-width:0;">
-                    <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Critical Events</span>
-                    <button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;flex:none;">Exit</button>
-                </div>
+                <div class="ce-topright"><span class="ce-secname">${CE_ICON}<span>Critical Events</span></span><button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" class="ce-exit">Exit</button></div>
             </div>
-            <div style="flex:none;border-bottom:1px solid var(--line);">
-              <div style="max-width:820px;margin:0 auto;padding:13px 22px;display:flex;gap:12px;align-items:center;">
-                <select class="ce-jump" id="ce-jump" aria-label="Jump to an event" style="flex:1;min-width:0;"><option value="">Jump to an event…</option></select>
-                <span class="ce-count" id="ce-count" style="flex:none;"></span>
-              </div>
-            </div>
-            <div id="ce-scroll" style="flex:1;overflow:auto;">
-              <div style="max-width:820px;margin:0 auto;padding:20px 22px 90px;">
-                <div id="ce-cards">${bundle.html}</div>
-              </div>
-            </div>`;
+            <div id="ce-body" style="flex:1;overflow:auto;"></div>`;
         document.body.appendChild(wrap);
-        document.documentElement.style.overflow = 'hidden';   // lock the page behind the overlay (removes the redundant scrollbar)
-        // Reuse the real site footer at the bottom so this section carries the same
-        // MACPrep footer as every other page (cloned, so it always stays in sync).
-        const siteFooter = document.querySelector('footer');
-        if (siteFooter) { const holder = wrap.querySelector('#ce-scroll > div'); if (holder) holder.appendChild(siteFooter.cloneNode(true)); }
+        document.documentElement.style.overflow = 'hidden';
         document.addEventListener('keydown', ceKey);
-        ceWireControls(wrap);
+        const m = (location.hash || '').match(/ce=([a-z0-9-]+)/i);
+        const wantId = m ? ('ce-' + m[1].replace(/^ce-/, '')) : null;
+        if (wantId && byId[wantId]) ceOpen(wantId, true);
+        else ceRenderIndex();
     }
 
-    function ceWireControls(root) {
-        const cards = [].slice.call(root.querySelectorAll('.ce-card'));
-        const jump = root.querySelector('#ce-jump'), count = root.querySelector('#ce-count');
-        cards.forEach((c) => { const t = (c.querySelector('.ce-title') || {}).textContent || ''; const o = document.createElement('option'); o.value = c.id; o.textContent = t; jump.appendChild(o); });
-        if (count) count.textContent = cards.length + ' events';
-        jump.addEventListener('change', () => { const el = jump.value ? root.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(jump.value) : jump.value)) : null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    function closeCriticalEvents() {
+        const o = $('ce-overlay'); if (o) o.remove();
+        document.documentElement.style.overflow = '';
+        document.removeEventListener('keydown', ceKey);
+        if (/[#&]ce=/.test(location.hash || '')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+        state.ce = null;
+    }
+    function ceKey(e) {
+        if (e.key !== 'Escape' || !$('ce-overlay')) return;
+        e.preventDefault();
+        if (state.ce && state.ce.mode === 'focused') ceRenderIndex(); else closeCriticalEvents();
     }
 
-    // Print / Save-as-PDF a single Critical Event card. Renders just that card into
-    // a hidden, light-themed iframe and calls print() — the browser's print dialog
-    // offers both "Save as PDF" (download) and paper printing from the same place.
+    function ceRenderIndex() {
+        const body = $('ce-body'); if (!body || !state.ce) return;
+        state.ce.mode = 'index'; state.ce.slug = null;
+        if (/[#&]ce=/.test(location.hash || '')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+        const active = state.ce.cat;
+        const chips = [{ key: 'all', label: 'All events', color: 'var(--accent)' }].concat(CE_CATS)
+            .map((c) => `<button class="ce-chip${active === c.key ? ' on' : ''}" style="--chip:${c.color};" onclick="MACPrep.ceFilter('${c.key}')">${ceEsc(c.label)}</button>`).join('');
+        const tiles = Object.keys(state.ce.byId)
+            .filter((id) => active === 'all' || (CE_META[id] && CE_META[id].cat === active))
+            .map((id) => {
+                const card = state.ce.byId[id];
+                const meta = CE_META[id] || {};
+                const cat = CE_CATS.find((c) => c.key === meta.cat) || { color: 'var(--muted)' };
+                const emblem = (card.querySelector('.ce-emblem') || {}).innerHTML || '';
+                const title = ((card.querySelector('.ce-title') || {}).textContent || '').trim();
+                return `<button class="ce-tile" style="--cat:${cat.color};" onclick="MACPrep.ceOpen('${id}')"><span class="ce-tile-em">${emblem}</span><span class="ce-tile-tx"><span class="ce-tile-nm">${ceEsc(title)}</span><span class="ce-tile-tg">${ceEsc(meta.trigger || '')}</span></span></button>`;
+            }).join('');
+        body.innerHTML = `<div class="ce-wrap"><div class="ce-lead"><h1 class="ce-h1">Critical Events</h1><p class="ce-sub">Clinician-reviewed rapid-reference cards for anesthesia crises. Filter by system, then open an event.</p></div><div class="ce-chips">${chips}</div><div class="ce-grid">${tiles || '<div class="ce-empty">No events in this category.</div>'}</div></div>`;
+        body.scrollTop = 0;
+    }
+
+    function ceFilter(cat) { if (!state.ce) return; state.ce.cat = cat; ceRenderIndex(); }
+
+    function ceOpen(id, skipHash) {
+        const body = $('ce-body'); if (!body || !state.ce || !state.ce.byId[id]) return;
+        state.ce.mode = 'focused'; state.ce.slug = id;
+        if (!skipHash) { try { history.replaceState(null, '', location.pathname + location.search + '#ce=' + id.replace(/^ce-/, '')); } catch (e) {} }
+        const card = ceBuildFocused(state.ce.byId[id]);
+        const wrap = document.createElement('div'); wrap.className = 'ce-wrap';
+        const back = document.createElement('button'); back.className = 'ce-back'; back.type = 'button';
+        back.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> All events';
+        back.onclick = ceRenderIndex;
+        wrap.appendChild(back); wrap.appendChild(card);
+        body.innerHTML = ''; body.appendChild(wrap); body.scrollTop = 0;
+    }
+
+    function ceBuildFocused(srcCard) {
+        const card = srcCard.cloneNode(true);
+        const meta = CE_META[card.id] || {};
+        const cat = CE_CATS.find((c) => c.key === meta.cat);
+        if (cat) card.style.setProperty('--cat', cat.color);
+        card.classList.add('ce-focus');
+        const secs = [].slice.call(card.querySelectorAll('section.ce-sec'));
+        const byLabel = (name) => secs.find((s) => (((s.querySelector('.ce-label') || {}).textContent) || '').trim().toLowerCase() === name);
+        const header = card.querySelector('header.ce-head');
+        const immediate = byLabel('immediate actions');
+        const when = byLabel('when to suspect');
+        const photoFig = card.querySelector('.ce-photo');
+        const photo = photoFig ? photoFig.closest('section.ce-sec') : null;
+        if (meta.moves && meta.moves.length && header) {
+            const strip = document.createElement('div');
+            strip.className = 'ce-keys';
+            strip.innerHTML = '<span class="ce-keys-lbl">First moves</span>' + meta.moves.map((mv) => `<span class="ce-key">${ceEsc(mv)}</span>`).join('');
+            header.insertAdjacentElement('afterend', strip);
+        }
+        const afterHead = card.querySelector('.ce-keys') || header;
+        if (immediate && afterHead) afterHead.insertAdjacentElement('afterend', immediate);
+        if (photo) { photo.classList.add('ce-photo-sec'); const anchor = when || immediate; if (anchor) anchor.insertAdjacentElement('afterend', photo); }
+        const sources = byLabel('sources');
+        if (sources) {
+            const list = sources.querySelector('ul.ce-sources');
+            const lbl = sources.querySelector('.ce-label');
+            if (list && lbl) {
+                const det = document.createElement('details'); det.className = 'ce-src-det';
+                const sum = document.createElement('summary');
+                sum.innerHTML = lbl.outerHTML + '<span class="ce-src-count">' + list.querySelectorAll('li').length + ' sources</span>';
+                det.appendChild(sum); det.appendChild(list);
+                lbl.remove(); sources.appendChild(det);
+            }
+        }
+        return card;
+    }
+
+    // Print / Save-as-PDF a single card (light-themed, one page). Works from the
+    // focused view — prints exactly what's on screen (key strip + actions first).
     function cePrintCard(cardId) {
         const card = document.getElementById(cardId); if (!card) return;
         const title = ((card.querySelector('.ce-title') || {}).textContent || 'Critical Event').trim();
         const cardCss = (($('ce-inject-css') || {}).textContent) || '';
+        const appCss = (($('ce-app-css') || {}).textContent) || '';
         const clone = card.cloneNode(true);
         const pb = clone.querySelector('.ce-print'); if (pb) pb.remove();
-        const lightVars = ":root{--bg:#fff;--panel:#fff;--panel2:#f5f7f9;--line:#d5dbe2;--line2:#c3ccd6;--text:#14181d;--text2:#3a424c;--muted:#6b7280;--accent:#146A4A;--accent-2:#146A4A;--accent-dim:#e9f4ee;--danger:#b42318;--danger-dim:#fbe9e7;--good:#146A4A;--warn:#8a5a12;--warn-dim:#f4ecdb;--serif:'Fraunces',Georgia,serif;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;}";
-        const printCss = "*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{margin:0;padding:26px;background:#fff;color:var(--text);font-family:var(--sans);}.ce-brand{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}.ce-card{border:1px solid #d5dbe2 !important;border-radius:14px;padding:22px 24px;background:#fff;margin:0;}.ce-photo img{max-height:300px;}a{color:var(--accent);}";
-        const html = "<!doctype html><html><head><meta charset='utf-8'><title>" + title + " — MACPrep Critical Events</title><style>" + lightVars + cardCss + printCss + "</style></head><body><div class='ce-brand'>MACPrep · Critical Events</div>" + clone.outerHTML + "</body></html>";
+        clone.querySelectorAll('details').forEach((d) => { d.open = true; });
+        const lightVars = ":root{--bg:#fff;--panel:#fff;--panel2:#f5f7f9;--line:#d5dbe2;--line2:#c3ccd6;--text:#14181d;--text2:#3a424c;--muted:#6b7280;--accent:#146A4A;--accent-2:#146A4A;--accent-dim:#e9f4ee;--danger:#b42318;--danger-dim:#fbe9e7;--good:#146A4A;--warn:#8a5a12;--warn-dim:#f4ecdb;--cat:#146A4A;--serif:'Fraunces',Georgia,serif;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;}";
+        const printCss = "*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{margin:0;padding:26px;background:#fff;color:var(--text);font-family:var(--sans);}.ce-brand{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}.ce-card{border:1px solid #d5dbe2 !important;border-left:3px solid var(--cat) !important;border-radius:14px;padding:22px 24px;background:#fff;margin:0;}.ce-photo-sec .ce-photo img{max-height:260px;}a{color:var(--accent);}";
+        const doc = "<!doctype html><html><head><meta charset='utf-8'><title>" + ceEsc(title) + " — MACPrep Critical Events</title><style>" + lightVars + cardCss + appCss + printCss + "</style></head><body><div class='ce-brand'>MACPrep · Critical Events</div>" + clone.outerHTML + "</body></html>";
         const frame = document.createElement('iframe');
         frame.setAttribute('aria-hidden', 'true');
         frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
         document.body.appendChild(frame);
-        const doc = frame.contentWindow.document;
-        doc.open(); doc.write(html); doc.close();
+        const idoc = frame.contentWindow.document;
+        idoc.open(); idoc.write(doc); idoc.close();
         let printed = false;
         const go = () => { if (printed) return; printed = true; try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) {} setTimeout(() => frame.remove(), 1500); };
-        const img = doc.querySelector('img');
+        const img = idoc.querySelector('img');
         if (img && !img.complete) { img.addEventListener('load', go); img.addEventListener('error', go); setTimeout(go, 2500); }
         else { setTimeout(go, 300); }
     }
@@ -3782,7 +3930,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
-        premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard,
+        premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard, ceOpen, ceFilter,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
         saveTitle, openTitlePicker, closeTitlePicker,
         saveAvatar, openAvatarPicker, closeAvatarPicker,
