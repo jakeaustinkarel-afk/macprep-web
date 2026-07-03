@@ -2948,7 +2948,7 @@
         'ce-pneumothorax': { cat: 'airway', trigger: '↑Pressure, ↓SpO₂, ↓BP, absent sounds', moves: ['Stop N₂O; 100% O₂', 'Needle decompress → chest tube'] },
         'ce-fire-airway': { cat: 'airway', trigger: 'Flash/pop in the airway', moves: ['Remove tube; stop O₂; disconnect circuit', 'Saline into airway; reintubate'] },
         'ce-anaphylaxis': { cat: 'anaphylaxis', trigger: 'Collapse ± bronchospasm/rash after a trigger', moves: ['Epinephrine 10–100 mcg IV (0.5 mg IM)', 'Stop trigger; fluids; 100% O₂'] },
-        'ce-mh': { cat: 'anaphylaxis', trigger: 'Rising ETCO₂ + tachycardia + rigidity', moves: ['Dantrolene 2.5 mg/kg IV (repeat to effect)', 'Stop trigger; cool; call MH hotline'] },
+        'ce-malignant-hyperthermia': { cat: 'anaphylaxis', trigger: 'Rising ETCO₂ + tachycardia + rigidity', moves: ['Dantrolene 2.5 mg/kg IV (repeat to effect)', 'Stop trigger; cool; call MH hotline'] },
         'ce-last': { cat: 'anaphylaxis', trigger: 'CNS/cardiac signs after local anesthetic', moves: ['Stop injecting; 100% O₂', 'Lipid 20% 1.5 mL/kg bolus + infusion'] },
         'ce-transfusion-reaction': { cat: 'anaphylaxis', trigger: 'Fever/hypotension during a unit', moves: ['STOP the transfusion', 'Support ABCs; recheck the unit'] },
         'ce-amniotic-fluid-embolism': { cat: 'obstetric', trigger: 'Sudden collapse + hypoxia in labor', moves: ['100% O₂; support circulation', 'Anticipate arrest, C-section, DIC'] },
