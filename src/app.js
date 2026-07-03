@@ -2953,9 +2953,15 @@
         wrap.id = 'ce-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2650;background:var(--bg);display:flex;flex-direction:column;';
         wrap.innerHTML = `
-            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);">
-                <div style="display:flex;align-items:center;gap:10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;">🚨 Critical Events</div>
-                <button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;">Exit</button>
+            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line);">
+                <a href="/" onclick="MACPrep.closeCriticalEvents(); if(MACPrep.go)MACPrep.go('dashboard'); return false;" aria-label="MACPrep home" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none;flex:none;">
+                    <svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:20px;letter-spacing:-1px;color:var(--text);">MAC<span style="color:var(--accent);">Prep</span></span>
+                </a>
+                <div style="display:flex;align-items:center;gap:13px;min-width:0;">
+                    <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Critical Events</span>
+                    <button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;flex:none;">Exit</button>
+                </div>
             </div>
             <div style="flex:none;border-bottom:1px solid var(--line);">
               <div style="max-width:820px;margin:0 auto;padding:13px 22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -2974,6 +2980,10 @@
             </div>`;
         document.body.appendChild(wrap);
         document.documentElement.style.overflow = 'hidden';   // lock the page behind the overlay (removes the redundant scrollbar)
+        // Reuse the real site footer at the bottom so this section carries the same
+        // MACPrep footer as every other page (cloned, so it always stays in sync).
+        const siteFooter = document.querySelector('footer');
+        if (siteFooter) { const holder = wrap.querySelector('#ce-scroll > div'); if (holder) holder.appendChild(siteFooter.cloneNode(true)); }
         document.addEventListener('keydown', ceKey);
         ceWireControls(wrap);
     }
