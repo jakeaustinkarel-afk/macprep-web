@@ -2137,28 +2137,38 @@
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
     }
 
-    // Dashboard top-10 widget — visible only when you're opted in AND have a name.
-    // Disappears entirely if you opt out (per Jake's spec).
+    // Full-width dashboard leaderboard — same three boards as the Leaderboard tab,
+    // top 10 in two columns. Visible only when you're opted in AND have a name;
+    // disappears entirely if you opt out (per Jake's spec).
+    function dashLbSetTab(k) { state.dashLbTab = k; renderDashLeaderboard(); }
     async function renderDashLeaderboard() {
         const card = $('dash-leaderboard-card'); if (!card) return;
         const paint = () => {
             const data = state.leaderboard;
             if (!data || !data.me || !data.me.opted_in || !data.me.has_name) { card.classList.add('hidden'); return; }
             const me = data.me;
-            const top = ((data.boards && data.boards.weekly) || []).slice(0, 10);
-            if (!top.length) { card.classList.add('hidden'); return; }
+            const tab = state.dashLbTab || 'weekly';
+            const rows = ((data.boards && data.boards[tab]) || []).slice(0, 10);
+            const anyActivity = data.boards && (data.boards.weekly.length || data.boards.streak.length);
+            if (!anyActivity) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
-            const row = (r, showYou) => '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13.5px;">'
-                + '<span class="mono" style="width:20px;text-align:right;' + (r.rank <= 3 ? 'color:var(--accent);font-weight:700;' : 'color:var(--muted);') + '">' + r.rank + '</span>'
+            const row = (r) => '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13.5px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);">'
+                + '<span class="mono" style="width:22px;text-align:right;' + (r.rank <= 3 ? 'color:var(--accent);font-weight:700;' : 'color:var(--muted);') + '">' + r.rank + '</span>'
                 + (r.avatar ? '<span style="font-size:15px;">' + escapeHtml(r.avatar) + '</span>' : '')
-                + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (r.is_me ? 'font-weight:700;color:var(--accent);' : '') + '">' + escapeHtml(r.name) + (r.is_me && showYou ? ' <span class="mono" style="font-size:9px;">YOU</span>' : '') + '</span>'
-                + '<span style="font-weight:600;">' + r.weekly + '</span></div>';
-            const meOutside = me.rank_weekly && me.rank_weekly > 10;
-            card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
-                + '<h3 style="margin:0;">🏆 Leaderboard <span class="mono" style="font-size:11px;color:var(--muted);font-weight:400;text-transform:none;">this week</span></h3>'
-                + '<a onclick="MACPrep.go(\'leaderboard\')" style="font-size:12px;color:var(--accent);cursor:pointer;">All boards →</a></div>'
-                + top.map((r) => row(r, true)).join('')
-                + (meOutside ? '<div style="border-top:1px dashed var(--line);margin-top:5px;padding-top:5px;">' + row({ rank: me.rank_weekly, name: me.name, weekly: me.weekly, is_me: true, avatar: '' }, true) + '</div>' : '');
+                + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (r.is_me ? 'font-weight:700;color:var(--accent);' : '') + '">' + escapeHtml(r.name) + (r.is_me ? ' <span class="mono" style="font-size:9px;">YOU</span>' : '') + '</span>'
+                + '<span style="font-weight:600;">' + lbMetricCell(r, tab) + '</span></div>';
+            const pills = LB_TABS.map((t) => '<button onclick="MACPrep.dashLbSetTab(\'' + t.key + '\')" style="padding:5px 12px;border-radius:999px;border:1px solid ' + (t.key === tab ? 'var(--accent)' : 'var(--line)') + ';background:' + (t.key === tab ? 'var(--accent-dim)' : 'transparent') + ';color:var(--text);cursor:pointer;font-size:12px;font-weight:' + (t.key === tab ? '700' : '500') + ';">' + t.label + '</button>').join('');
+            const emptyCol = '<div class="mono" style="font-size:12px;color:var(--muted);padding:8px 0;">' + (tab === 'accuracy' ? 'No one has ' + (data.min_accuracy_qs || 20) + '+ questions yet this week.' : 'No one here yet.') + '</div>';
+            const left = rows.slice(0, 5).map(row).join('') || emptyCol;
+            const right = rows.slice(5, 10).map(row).join('');
+            const meRank = tab === 'streak' ? me.rank_streak : tab === 'accuracy' ? me.rank_accuracy : me.rank_weekly;
+            const meOutside = meRank && meRank > 10;
+            card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-bottom:8px;">'
+                + '<h3 style="margin:0;">🏆 Leaderboard</h3>'
+                + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + pills + '</div>'
+                + '<a onclick="MACPrep.go(\'leaderboard\')" style="font-size:12px;color:var(--accent);cursor:pointer;margin-left:auto;">All boards →</a></div>'
+                + '<div class="dash-lb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 30px;"><div>' + left + '</div><div>' + right + '</div></div>'
+                + (meOutside ? '<div style="margin-top:6px;">' + row({ rank: meRank, name: me.name, weekly: me.weekly, streak: me.streak, accuracy: me.accuracy, attempts: me.attempts, is_me: true, avatar: '' }) + '</div>' : '');
         };
         if (state.leaderboard) paint();
         const stale = !state._lbAt || (Date.now() - state._lbAt) > 60000;
@@ -3660,7 +3670,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,

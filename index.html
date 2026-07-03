@@ -230,6 +230,8 @@
             /* Quiz actions: give wrapped rows breathing room and drop the keyboard-only hint. */
             #quiz-actions { gap: 12px; }
             #quiz-actions > span.mono { display: none; }
+            /* Dashboard leaderboard: single column on phones. */
+            .dash-lb-grid { grid-template-columns: 1fr !important; }
         }
         /* Touch devices: a hover "lift"/shadow must not stay stuck after a tap — on mobile
            that left buttons and cards raised, so their shadow overlapped the neighbours. */
@@ -797,7 +799,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
           fetch('/api/reviews').then(function(r){return r.json();}).then(function(d){
             var all=(d&&d.reviews)||[];
             var feat=all.filter(function(r){return (r.rating||0)>=5||r.featured;});
-            if(feat.length<2)return; // stay hidden until there are a few 5-star reviews
+            if(feat.length<5)return; // stay hidden until there are at least five 5-star reviews
             var sec=document.getElementById('testimonials');if(!sec)return;
             var avg=all.reduce(function(a,r){return a+(r.rating||5);},0)/all.length;
             var agg=document.getElementById('tst-agg');if(agg)agg.innerHTML='<span style="color:#f5b73c;">★</span> '+avg.toFixed(1)+' average · '+all.length+' review'+(all.length===1?'':'s');
@@ -910,7 +912,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 
         <div class="card" id="readiness"></div>
         <div class="card" id="activity-card" style="order:0;"></div>
-        <div class="card hidden" id="dash-leaderboard-card" style="order:1;"></div>
+        <div class="card hidden" id="dash-leaderboard-card" style="order:1;grid-column:1/-1;"></div>
         <div class="card hidden" id="qotd-card" style="order:-2;border-color:var(--accent);"></div>
         <div class="card hidden" id="referral-card" style="order:5;"></div>
 
