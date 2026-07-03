@@ -210,23 +210,27 @@
     }
 
     function showSignin() { const a = $('signup-pane'), b = $('signin-pane'); if (a) a.classList.add('hidden'); if (b) b.classList.remove('hidden'); const e = $('login-email'); if (e) e.focus(); }
-    function showSignup() { const a = $('signup-pane'), b = $('signin-pane'); if (b) b.classList.add('hidden'); if (a) a.classList.remove('hidden'); const e = $('su-name'); if (e) e.focus(); }
+    function showSignup() { const a = $('signup-pane'), b = $('signin-pane'); if (b) b.classList.add('hidden'); if (a) a.classList.remove('hidden'); const e = $('su-first'); if (e) e.focus(); }
 
     // Inline signup on the landing — no page hop, and auto-logs-in when email
     // confirmation is off (then drops the user straight into a warm-up).
     async function signupInline() {
         if (state.signupInFlight) return;
-        const name = ($('su-name').value || '').trim();
+        const first = (($('su-first') && $('su-first').value) || '').trim();
+        const last = (($('su-last') && $('su-last').value) || '').trim();
+        const name = (first + ' ' + last).replace(/\s+/g, ' ').trim();
+        const credential = ($('su-cred') && $('su-cred').value) || '';
         const email = ($('su-email').value || '').trim();
         const password = $('su-password').value;
         const btn = $('su-submit'); const msg = $('su-msg');
+        if (!first || !last) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please enter your first and last name.'; } return; }
         if (!email || !password) return;
         if ($('su-terms') && !$('su-terms').checked) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please accept the Terms to continue.'; } return; }
         state.signupInFlight = true;
         if (btn) { btn.disabled = true; btn.textContent = 'Creating your account…'; }
         if (msg) msg.textContent = '';
         try {
-            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password }) });
+            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
             track('signup');
             if (data.token) {
@@ -307,6 +311,7 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
+        maybePromptForName(); // returning users who never saved a first+last name
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
@@ -2162,6 +2167,69 @@
         }
     }
 
+    // ---- one-time name capture for legacy accounts ------------------------
+    // Accounts created before we required a first + last name get asked once per
+    // login until they provide it (so the leaderboard can show "First L.").
+    function lbStripCred(s) { return String(s || '').replace(/\b(SAA|CAA|C-AA|AA-C|MD|DO|CRNA|RN|SRNA)\b\.?/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim(); }
+    function needsNameCapture() {
+        const p = state.profile || {};
+        if (p.is_admin) return false; // Jake already has a name; don't nag admins
+        return !/\S+\s+\S+/.test(lbStripCred(p.full_name));
+    }
+    function maybePromptForName() {
+        if (!state.token || !state.profile || state._namePromptOpen) return;
+        if (!needsNameCapture()) return;
+        openNamePrompt();
+    }
+    function openNamePrompt() {
+        state._namePromptOpen = true;
+        const wrap = document.createElement('div');
+        wrap.id = 'name-prompt-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2800;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
+            <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Add your name</div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">MACPrep now has a leaderboard. You'll appear only as your <strong>first name + last initial</strong> (e.g. &ldquo;Jordan L.&rdquo;) — never your full name or email.</div>
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+                <div style="flex:1;"><label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">FIRST NAME</label><input id="np-first" type="text" autocomplete="given-name" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin-top:4px;"></div>
+                <div style="flex:1;"><label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">LAST NAME</label><input id="np-last" type="text" autocomplete="family-name" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin-top:4px;"></div>
+            </div>
+            <label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">CREDENTIAL (OPTIONAL)</label>
+            <select id="np-cred" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin:4px 0 16px;font-size:14px;">
+                <option value="">Prefer not to say</option>
+                <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
+                <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
+            </select>
+            <div style="display:flex;gap:10px;">
+                <button class="btn ghost" style="flex:none;" onclick="MACPrep.closeNamePrompt()">Not now</button>
+                <button class="btn" style="flex:1;" onclick="MACPrep.saveNamePrompt(this)">Save</button>
+            </div>
+            <div id="np-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
+        </div>`;
+        document.body.appendChild(wrap);
+        if (state.profile && state.profile.credential && ['SAA', 'CAA'].includes(state.profile.credential)) { const c = $('np-cred'); if (c) c.value = state.profile.credential; }
+        setTimeout(() => { const f = $('np-first'); if (f) f.focus(); }, 40);
+    }
+    function closeNamePrompt() { const o = $('name-prompt-overlay'); if (o) o.remove(); state._namePromptOpen = false; }
+    async function saveNamePrompt(btn) {
+        const first = (($('np-first') && $('np-first').value) || '').trim();
+        const last = (($('np-last') && $('np-last').value) || '').trim();
+        const credential = ($('np-cred') && $('np-cred').value) || '';
+        const msg = $('np-msg');
+        if (!first || !last) { if (msg) msg.textContent = 'Please enter your first and last name.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        try {
+            const body = { full_name: (first + ' ' + last).replace(/\s+/g, ' ').trim() };
+            if (credential) body.credential = credential;
+            const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
+            await loadProfile();
+            closeNamePrompt();
+            toast('Thanks — you\'re all set.', 'ok');
+            state._lbAt = 0; // refresh the dashboard widget with the new name
+            if ($('dashboard-view') && !$('dashboard-view').classList.contains('hidden')) renderDashboard();
+        } catch (e) { if (msg) msg.textContent = e.message; if (btn) { btn.disabled = false; btn.textContent = 'Save'; } }
+    }
+
     async function loadNotebook() {
         const body = $('notebook-body'); if (body) body.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
         try {
@@ -3592,7 +3660,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,

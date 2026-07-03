@@ -636,7 +636,18 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                         <div class="lp-benefit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> <span>Progress &amp; weak-spot tracking</span></div>
                         <div class="lp-benefit" style="margin-bottom:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> <span>A personalized plan from your exam date</span></div>
                         <form onsubmit="event.preventDefault(); MACPrep.signupInline();">
-                            <div class="form-group"><label>Name</label><input type="text" id="su-name" autocomplete="name" placeholder="Jordan Lee, SAA / CAA" required></div>
+                            <div class="form-group" style="display:flex;gap:10px;margin-bottom:0;">
+                                <div style="flex:1;"><label>First name</label><input type="text" id="su-first" autocomplete="given-name" placeholder="Jordan" required></div>
+                                <div style="flex:1;"><label>Last name</label><input type="text" id="su-last" autocomplete="family-name" placeholder="Lee" required></div>
+                            </div>
+                            <div class="sub" style="font-size:11px;margin:4px 0 12px;color:var(--muted);">Shown on the leaderboard as your first name + last initial (e.g. “Jordan L.”).</div>
+                            <div class="form-group"><label>Credential <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label>
+                                <select id="su-cred" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
+                                    <option value="">Prefer not to say</option>
+                                    <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
+                                    <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
+                                </select>
+                            </div>
                             <div class="form-group"><label>Email</label><input type="email" id="su-email" autocomplete="email" required></div>
                             <div class="form-group"><label>Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="8" placeholder="8+ characters" required></div>
                             <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin:0 0 14px;"><input type="checkbox" id="su-terms" required style="width:auto;margin-top:2px;"> I agree to the <a href="/terms.html" target="_blank">Terms</a> &amp; <a href="/privacy.html" target="_blank">Privacy</a>.</label>

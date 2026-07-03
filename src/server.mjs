@@ -661,6 +661,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const email = (req.body?.email || '').toLowerCase().trim();
     const password = req.body?.password || '';
     const name = req.body?.name || '';
+    const credential = ['SAA', 'CAA'].includes(req.body?.credential) ? req.body.credential : null;
 
     if (!supabaseAuth) return res.status(500).json({ success: false, error: 'Auth not configured.' });
     if (!email || !password) return res.status(400).json({ success: false, error: 'Email and password are required.' });
@@ -679,7 +680,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (supabase && data.user) {
                 await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null }, { onConflict: 'user_id' })
+                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential }, { onConflict: 'user_id' })
                     .then(({ error: pErr }) => { if (pErr) console.warn(`Profile create warning: ${pErr.message}`); });
             }
 
@@ -1110,8 +1111,12 @@ function lbWeekStartUTC() {
 // Day key in ET calendar days, so streaks track the user's own days, not UTC.
 function lbDayKey(d) { const p = lbNyParts(new Date(d)); return `${p.year}-${p.month}-${p.day}`; }
 // "First name + last initial" — the only identity shown on the board (never full name/email).
+// Strips any credential/comma a user may have typed into their name (e.g. "Lee, CAA").
 function lbShortName(full) {
-    const parts = String(full || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+    const clean = String(full || '')
+        .replace(/\b(SAA|CAA|C-AA|AA-C|MD|DO|CRNA|RN|SRNA)\b\.?/gi, '')
+        .replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    const parts = clean.split(' ').filter(Boolean);
     if (!parts.length) return '';
     const first = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
     return parts.length === 1 ? first : `${first} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
