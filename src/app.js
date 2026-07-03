@@ -320,7 +320,7 @@
         }
         if (location.hash === '#about') showAboutSection();
         // Deep link to a specific Critical Event (e.g. shared /#ce=malignant-hyperthermia).
-        if (/[#&]ce=/.test(location.hash || '')) { try { startCriticalEvents(); } catch (e) {} }
+        { const _ceM = (location.hash || '').match(/ce=([a-z0-9-]+)/i); if (_ceM) { try { startCriticalEvents(_ceM[1]); } catch (e) {} } }
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -3010,7 +3010,7 @@
 @media (max-width:560px){#ce-overlay .ce-wrap{padding:16px 15px 80px;}#ce-overlay .ce-grid{grid-template-columns:1fr;}}
 `;
 
-    async function startCriticalEvents() {
+    async function startCriticalEvents(deepSlug) {
         if (!premiumGate('critical')) return;
         closeNavMenus();
         toast('Loading Critical Events…');
@@ -3020,14 +3020,14 @@
             if (resp.status === 402) { openUpgradeModal('critical'); return; }
             if (!resp.ok || !data || !data.html) throw new Error((data && data.error) || 'Unavailable.');
             try { track('critical_events_open', { count: data.count || 0 }); } catch (e) {}
-            ceInit(data);
+            ceInit(data, deepSlug);
         } catch (err) {
             toast('Could not open Critical Events: ' + err.message);
         }
     }
 
-    function ceInit(bundle) {
-        const hm = (location.hash || "").match(/ce=([a-z0-9-]+)/i); // capture before close clears the hash
+    function ceInit(bundle, deepSlug) {
+        const hm = deepSlug ? [null, String(deepSlug)] : (location.hash || "").match(/ce=([a-z0-9-]+)/i);
         closeCriticalEvents();
         if (!$('ce-inject-css')) { const st = document.createElement('style'); st.id = 'ce-inject-css'; st.textContent = bundle.css || ''; document.head.appendChild(st); }
         if (!$('ce-app-css')) { const st = document.createElement('style'); st.id = 'ce-app-css'; st.textContent = CE_APP_CSS; document.head.appendChild(st); }
