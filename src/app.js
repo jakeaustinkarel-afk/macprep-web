@@ -134,6 +134,8 @@
         // "Redeem code" is only useful to free users (premium/admin already have full access).
         const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
         $('nav-redeem') && $('nav-redeem').classList.toggle('hidden', !(authed && state.profile && !isPremium));
+        // "PRO" pills sit next to premium-only nav items — free users only, so they read as an invitation, not a wall.
+        document.querySelectorAll('.nav-pro').forEach((b) => { b.hidden = !(authed && !isPremium); });
         // Marketing links + "Log in" show for logged-out visitors only.
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
@@ -1453,7 +1455,7 @@
         // Free users get ONE taste run of Arcade; after that it's part of full access.
         const usage = freeUsage();
         if (!usage.unlimited) {
-            if (arcadeFreeUsed()) { toast('That was your free Arcade run. Unlock unlimited Arcade — plus the full question bank and full-length mock exams — for a one-time $50.'); return startCheckout(); }
+            if (arcadeFreeUsed()) { openUpgradeModal('arcade'); return; }
             markArcadeFreeUsed();
             toast('Your free Arcade run — have fun! Unlimited Arcade is part of full access.', 'ok');
         }
@@ -1574,7 +1576,7 @@
         const usage = freeUsage();
         const n = Math.min(count || 100, all.length);
         // Full-length mock exams are premium, period — the board simulation is the hero unlock.
-        if (!usage.unlimited) { toast('Full-length mock exams are premium — a board-length, timed simulation of the real NCCAA exam. Unlock everything for a one-time $50.'); return startCheckout(); }
+        if (!usage.unlimited) { openUpgradeModal('mock'); return; }
         const byDom = {};
         all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
         const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -2689,6 +2691,69 @@
         if (rr) rr.innerHTML = '48-hour, no-questions-asked refund &middot; secured by Stripe &middot; instant access<br><a href="#redeem" onclick="event.preventDefault(); MACPrep.goRedeem();" style="color:var(--accent);">Have a class or cohort code? Redeem it free instead &rarr;</a>';
     }
 
+    // ---- premium gate + upgrade screen ------------------------------------
+    // Every premium-only surface (Arcade, Mock Exam, Critical Events, Flashcards)
+    // routes free users through ONE consistent upgrade screen. premiumGate()
+    // returns true when the user already has access, otherwise it shows the
+    // screen and returns false — so callers read as: `if (!premiumGate('mock')) return;`
+    const PREMIUM_FEATURES = {
+        arcade: { icon: '🕹️', name: 'Arcade', blurb: 'Unlimited high-score runs — Survival, Sudden Death, Time Attack & Blitz.' },
+        mock: { icon: '📝', name: 'The Full-Length Mock Exam', blurb: 'A board-length, timed simulation of the real NCCAA exam — the closest thing to sitting the boards.' },
+        critical: { icon: '🚨', name: 'Critical Event Cards', blurb: 'Clinician-reviewed rapid-response cards for every anesthesia crisis — searchable and printable.' },
+        flashcards: { icon: '🗂️', name: 'Flashcard Mode', blurb: 'Active recall — hide the choices, type your answer, then flip for the rationale & source.' },
+    };
+    // The single "what your $50 unlocks" list shown on every upgrade screen.
+    const PREMIUM_UNLOCKS = [
+        'The <strong>entire</strong> question bank — every domain &amp; specialty',
+        'Full-length, timed <strong>mock exams</strong> at real NCCAA pace',
+        'Unlimited <strong>Arcade</strong> — all four modes',
+        '<strong>Critical Event cards</strong> — clinician-reviewed &amp; printable',
+        '<strong>Flashcard</strong> active-recall study mode',
+        'Progress tracking, weak-spot review &amp; your exam-date plan',
+    ];
+
+    function premiumGate(featureKey) {
+        if (freeUsage().unlimited) return true;
+        openUpgradeModal(featureKey);
+        return false;
+    }
+
+    function openUpgradeModal(featureKey) {
+        closeNavMenus();
+        closeUpgradeModal();
+        const f = PREMIUM_FEATURES[featureKey] || null;
+        try { track('upgrade_screen', { feature: featureKey || 'generic' }); } catch (e) {}
+        const unlocks = PREMIUM_UNLOCKS.map((u) => `<div style="display:flex;gap:9px;align-items:flex-start;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:3px;" aria-hidden="true"><path d="m5 12 5 5L20 6"/></svg><span>${u}</span></div>`).join('');
+        const head = f
+            ? `<div style="font-size:34px;line-height:1;margin-bottom:10px;">${f.icon}</div>
+               <div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Premium feature</div>
+               <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;line-height:1.2;">${f.name} is part of full access</div>
+               <div class="sub" style="font-size:13.5px;margin-top:7px;">${f.blurb}</div>`
+            : `<div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Unlock everything</div>
+               <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;line-height:1.2;">Get full access to MACPrep</div>`;
+        const wrap = document.createElement('div');
+        wrap.id = 'upgrade-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2700;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeUpgradeModal(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 26px 22px;max-width:440px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.45);position:relative;">
+            <button onclick="MACPrep.closeUpgradeModal()" aria-label="Close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;line-height:1;">&times;</button>
+            ${head}
+            <div style="margin:18px 0 4px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);line-height:1.85;font-size:13.5px;color:var(--text2);">
+                <div class="mono" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">Your $50 unlocks</div>
+                <div style="display:flex;flex-direction:column;gap:7px;">${unlocks}</div>
+            </div>
+            <div style="margin-top:14px;padding:11px 13px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-dim);font-size:12.5px;color:var(--text);display:flex;gap:9px;align-items:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                <span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $50 back.</span>
+            </div>
+            <button class="btn" id="upgrade-cta" style="width:100%;margin-top:16px;" onclick="MACPrep.startCheckout(this)">Unlock full access — $50 (one-time)</button>
+            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:9px;text-align:center;">No subscription · 48-hour refund · secured by Stripe</div>
+            <div style="text-align:center;margin-top:8px;"><a href="#redeem" onclick="event.preventDefault(); MACPrep.closeUpgradeModal(); MACPrep.goRedeem();" style="color:var(--accent);font-size:12.5px;">Have a class or cohort code? Redeem it free →</a></div>
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeUpgradeModal() { const o = $('upgrade-overlay'); if (o) o.remove(); }
+
     // ---- profile ----------------------------------------------------------
     function renderProfile() {
         const p = state.profile || {};
@@ -3309,6 +3374,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
+        premiumGate, openUpgradeModal, closeUpgradeModal,
         saveTitle, openTitlePicker, closeTitlePicker,
         saveAvatar, openAvatarPicker, closeAvatarPicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
