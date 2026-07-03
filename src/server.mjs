@@ -5,6 +5,7 @@ import './instrument.mjs';
 import express from 'express';
 import compression from 'compression';
 import path from 'path';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
@@ -1411,6 +1412,34 @@ app.get('/api/flashcards', async (req, res) => {
         console.error('Flashcards failure:', err.message);
         return res.status(500).json({ error: 'Could not build flashcards.' });
     }
+});
+
+// Critical Event cards (premium). Clinician-reviewed rapid-reference cards for
+// anesthesia crises. The content bundle (data/critical-events.json — card HTML +
+// scoped CSS) is NOT served statically (see BLOCKED_STATIC / the /data/ guard);
+// it is delivered only through this premium-gated endpoint so free users can't
+// read the paid content by hitting a URL.
+let _ceBundle = null;
+function loadCriticalEvents() {
+    if (_ceBundle) return _ceBundle;
+    try {
+        _ceBundle = JSON.parse(readFileSync(path.join(__dirname, '../data/critical-events.json'), 'utf8'));
+    } catch (e) {
+        console.error('Critical Events bundle load failed:', e.message);
+        _ceBundle = { count: 0, css: '', html: '' };
+    }
+    return _ceBundle;
+}
+app.get('/api/critical-events', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!(await isUserPremium(user.id))) {
+        return res.status(402).json({ error: 'Critical Event cards are a premium feature.', paywall: true });
+    }
+    const ce = loadCriticalEvents();
+    if (!ce.count) return res.status(500).json({ error: 'Critical Events are unavailable right now.' });
+    res.set('Cache-Control', 'private, max-age=300');
+    return res.json(ce);
 });
 
 // ---------------------------------------------------------------------------

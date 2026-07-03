@@ -120,7 +120,7 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
@@ -666,8 +666,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 14;
+    const WHATS_NEW_VERSION = 15;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
         { tag: 'New', date: 'Jul 2', title: 'More avatars & titles to unlock', desc: 'Added new unlockable avatars (🌱 Level 5, ⚡ Level 15, 🤿 Deep Diver, and more) and titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the leaderboard.' },
@@ -2868,6 +2869,7 @@
         'Full-length, timed <strong>mock exams</strong> at real NCCAA pace',
         'Unlimited <strong>Arcade</strong> — all four modes',
         '<strong>Flashcard</strong> active-recall study mode',
+        'Clinician-reviewed <strong>Critical Event</strong> cards for every crisis',
         'Progress tracking, weak-spot review &amp; your exam-date plan',
     ];
 
@@ -2912,6 +2914,75 @@
         document.body.appendChild(wrap);
     }
     function closeUpgradeModal() { const o = $('upgrade-overlay'); if (o) o.remove(); }
+
+    // ---- Critical Events (premium) ----------------------------------------
+    // Clinician-reviewed rapid-reference cards for anesthesia crises. Card HTML +
+    // scoped .ce-* CSS come from the premium-gated /api/critical-events endpoint
+    // (the bundle is never served statically), so free users hit the upgrade
+    // screen instead of the paid content. Rendered as a full-screen searchable
+    // overlay with a jump-to-event dropdown, mirroring the standalone preview.
+    async function startCriticalEvents() {
+        if (!premiumGate('critical')) return;
+        closeNavMenus();
+        toast('Loading Critical Events…');
+        try {
+            const { resp, data } = await apiJSON('/api/critical-events', { headers: authHeaders() });
+            if (resp.status === 401) { signOut(); return; }
+            if (resp.status === 402) { openUpgradeModal('critical'); return; }
+            if (!resp.ok || !data || !data.html) throw new Error((data && data.error) || 'Unavailable.');
+            try { track('critical_events_open', { count: data.count || 0 }); } catch (e) {}
+            renderCriticalEvents(data);
+        } catch (err) {
+            toast('Could not open Critical Events: ' + err.message);
+        }
+    }
+
+    function closeCriticalEvents() {
+        const o = $('ce-overlay'); if (o) o.remove();
+        document.removeEventListener('keydown', ceKey);
+    }
+    function ceKey(e) { if (e.key === 'Escape' && $('ce-overlay')) { e.preventDefault(); closeCriticalEvents(); } }
+
+    function renderCriticalEvents(bundle) {
+        closeCriticalEvents();
+        if (!$('ce-inject-css')) {
+            const st = document.createElement('style'); st.id = 'ce-inject-css'; st.textContent = bundle.css || ''; document.head.appendChild(st);
+        }
+        const wrap = document.createElement('div');
+        wrap.id = 'ce-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2650;background:var(--bg);display:flex;flex-direction:column;';
+        wrap.innerHTML = `
+            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:center;gap:10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;">🚨 Critical Events</div>
+                <button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;">Exit</button>
+            </div>
+            <div style="flex:1;overflow:auto;">
+              <div style="max-width:820px;margin:0 auto;padding:14px 22px 90px;">
+                <div class="ce-controls">
+                    <label class="ce-search">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+                      <input id="ce-q" type="search" placeholder="Search critical events…" aria-label="Search critical events">
+                    </label>
+                    <select class="ce-jump" id="ce-jump" aria-label="Jump to an event"><option value="">Jump to an event…</option></select>
+                    <span class="ce-count" id="ce-count"></span>
+                </div>
+                <div id="ce-cards">${bundle.html}</div>
+              </div>
+            </div>`;
+        document.body.appendChild(wrap);
+        document.addEventListener('keydown', ceKey);
+        ceWireControls(wrap);
+    }
+
+    function ceWireControls(root) {
+        const cards = [].slice.call(root.querySelectorAll('.ce-card'));
+        const jump = root.querySelector('#ce-jump'), q = root.querySelector('#ce-q'), count = root.querySelector('#ce-count');
+        cards.forEach((c) => { const t = (c.querySelector('.ce-title') || {}).textContent || ''; const o = document.createElement('option'); o.value = c.id; o.textContent = t; jump.appendChild(o); });
+        const tally = () => { const n = cards.filter((c) => !c.classList.contains('no-match')).length; count.textContent = n + ' of ' + cards.length; };
+        tally();
+        q.addEventListener('input', () => { const s = q.value.trim().toLowerCase(); cards.forEach((c) => c.classList.toggle('no-match', !!s && c.textContent.toLowerCase().indexOf(s) < 0)); tally(); });
+        jump.addEventListener('change', () => { const el = jump.value ? root.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(jump.value) : jump.value)) : null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    }
 
     // ---- flashcard mode (premium active-recall) ---------------------------
     // Hide the choices, type your answer from memory, flip to reveal the correct
@@ -3678,7 +3749,7 @@
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
-        premiumGate, openUpgradeModal, closeUpgradeModal,
+        premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
         saveTitle, openTitlePicker, closeTitlePicker,
         saveAvatar, openAvatarPicker, closeAvatarPicker,
