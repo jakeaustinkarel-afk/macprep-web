@@ -2708,7 +2708,6 @@
         'The <strong>entire</strong> question bank — every domain &amp; specialty',
         'Full-length, timed <strong>mock exams</strong> at real NCCAA pace',
         'Unlimited <strong>Arcade</strong> — all four modes',
-        '<strong>Critical Event cards</strong> — clinician-reviewed &amp; printable',
         '<strong>Flashcard</strong> active-recall study mode',
         'Progress tracking, weak-spot review &amp; your exam-date plan',
     ];
