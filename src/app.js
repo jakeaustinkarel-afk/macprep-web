@@ -2964,13 +2964,9 @@
                 </div>
             </div>
             <div style="flex:none;border-bottom:1px solid var(--line);">
-              <div style="max-width:820px;margin:0 auto;padding:13px 22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                <label class="ce-search" style="margin:0;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
-                  <input id="ce-q" type="search" placeholder="Search critical events…" aria-label="Search critical events">
-                </label>
-                <select class="ce-jump" id="ce-jump" aria-label="Jump to an event"><option value="">Jump to an event…</option></select>
-                <span class="ce-count" id="ce-count"></span>
+              <div style="max-width:820px;margin:0 auto;padding:13px 22px;display:flex;gap:12px;align-items:center;">
+                <select class="ce-jump" id="ce-jump" aria-label="Jump to an event" style="flex:1;min-width:0;"><option value="">Jump to an event…</option></select>
+                <span class="ce-count" id="ce-count" style="flex:none;"></span>
               </div>
             </div>
             <div id="ce-scroll" style="flex:1;overflow:auto;">
@@ -2990,11 +2986,9 @@
 
     function ceWireControls(root) {
         const cards = [].slice.call(root.querySelectorAll('.ce-card'));
-        const jump = root.querySelector('#ce-jump'), q = root.querySelector('#ce-q'), count = root.querySelector('#ce-count');
+        const jump = root.querySelector('#ce-jump'), count = root.querySelector('#ce-count');
         cards.forEach((c) => { const t = (c.querySelector('.ce-title') || {}).textContent || ''; const o = document.createElement('option'); o.value = c.id; o.textContent = t; jump.appendChild(o); });
-        const tally = () => { const n = cards.filter((c) => !c.classList.contains('no-match')).length; count.textContent = n + ' of ' + cards.length; };
-        tally();
-        q.addEventListener('input', () => { const s = q.value.trim().toLowerCase(); cards.forEach((c) => c.classList.toggle('no-match', !!s && c.textContent.toLowerCase().indexOf(s) < 0)); tally(); });
+        if (count) count.textContent = cards.length + ' events';
         jump.addEventListener('change', () => { const el = jump.value ? root.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(jump.value) : jump.value)) : null; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     }
 
