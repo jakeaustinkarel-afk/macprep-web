@@ -679,7 +679,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (supabase && data.user) {
                 await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ user_id: data.user.id, email, account_tier: 'free' }, { onConflict: 'user_id' })
+                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null }, { onConflict: 'user_id' })
                     .then(({ error: pErr }) => { if (pErr) console.warn(`Profile create warning: ${pErr.message}`); });
             }
 

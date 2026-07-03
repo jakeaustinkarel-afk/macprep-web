@@ -2020,7 +2020,7 @@
         try {
             const { resp, data } = await apiJSON('/api/leaderboard', { headers: authHeaders() });
             if (!resp.ok) { el.innerHTML = '<div class="mono" style="color:var(--bad);">Could not load the leaderboard.</div>'; return; }
-            state.leaderboard = data;
+            state.leaderboard = data; state._lbAt = Date.now(); // shared freshness with the dashboard widget
             renderLeaderboard();
         } catch (e) { el.innerHTML = '<div class="mono" style="color:var(--bad);">Could not load the leaderboard.</div>'; }
     }
