@@ -2939,6 +2939,7 @@
 
     function closeCriticalEvents() {
         const o = $('ce-overlay'); if (o) o.remove();
+        document.documentElement.style.overflow = '';   // restore page scroll
         document.removeEventListener('keydown', ceKey);
     }
     function ceKey(e) { if (e.key === 'Escape' && $('ce-overlay')) { e.preventDefault(); closeCriticalEvents(); } }
@@ -2956,20 +2957,23 @@
                 <div style="display:flex;align-items:center;gap:10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;">🚨 Critical Events</div>
                 <button onclick="MACPrep.closeCriticalEvents()" aria-label="Exit Critical Events" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;">Exit</button>
             </div>
-            <div style="flex:1;overflow:auto;">
-              <div style="max-width:820px;margin:0 auto;padding:14px 22px 90px;">
-                <div class="ce-controls">
-                    <label class="ce-search">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
-                      <input id="ce-q" type="search" placeholder="Search critical events…" aria-label="Search critical events">
-                    </label>
-                    <select class="ce-jump" id="ce-jump" aria-label="Jump to an event"><option value="">Jump to an event…</option></select>
-                    <span class="ce-count" id="ce-count"></span>
-                </div>
+            <div style="flex:none;border-bottom:1px solid var(--line);">
+              <div style="max-width:820px;margin:0 auto;padding:13px 22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                <label class="ce-search" style="margin:0;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+                  <input id="ce-q" type="search" placeholder="Search critical events…" aria-label="Search critical events">
+                </label>
+                <select class="ce-jump" id="ce-jump" aria-label="Jump to an event"><option value="">Jump to an event…</option></select>
+                <span class="ce-count" id="ce-count"></span>
+              </div>
+            </div>
+            <div id="ce-scroll" style="flex:1;overflow:auto;">
+              <div style="max-width:820px;margin:0 auto;padding:20px 22px 90px;">
                 <div id="ce-cards">${bundle.html}</div>
               </div>
             </div>`;
         document.body.appendChild(wrap);
+        document.documentElement.style.overflow = 'hidden';   // lock the page behind the overlay (removes the redundant scrollbar)
         document.addEventListener('keydown', ceKey);
         ceWireControls(wrap);
     }
