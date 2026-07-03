@@ -1327,6 +1327,55 @@ app.get('/api/exam-export', async (req, res) => {
     }
 });
 
+// Flashcard deck (premium). Returns questions WITH the correct answer text,
+// rationale, and sources so the client can render type-then-flip active-recall
+// cards. Gated to premium since it reveals answer keys. This is a read-only
+// reveal — it does NOT record a graded attempt (recall is self-assessed).
+app.get('/api/flashcards', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await isUserPremium(user.id))) {
+        return res.status(402).json({ error: 'Flashcard mode is a premium feature.', paywall: true });
+    }
+    const count = Math.min(Math.max(parseInt(req.query.count, 10) || 20, 1), 100);
+    const category = (req.query.category || 'all').toString();
+    try {
+        let query = supabase.from('questions').select('id, category, domain_name, subtopic, stem, choices, correct_answer, explanation, "references"');
+        query = applyServedFilter(query);
+        if (category && category !== 'all') query = query.eq('category', category);
+        const { data, error } = await query.limit(1500);
+        if (error) throw error;
+        const pool = data || [];
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const picked = pool.slice(0, count).map((q) => {
+            const choices = parseChoices(q.choices);
+            let correctIndex = choices.findIndex((c) => c && typeof c === 'object' && c.correct === true);
+            if (correctIndex < 0 && typeof q.correct_answer === 'string' && q.correct_answer.trim()) {
+                correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
+            }
+            const cc = choices[correctIndex];
+            const correctText = cc ? (typeof cc === 'object' && cc ? (cc.text || '') : cc) : '';
+            let references = q.references;
+            if (typeof references === 'string') { try { references = JSON.parse(references); } catch (e) { references = []; } }
+            return {
+                id: q.id,
+                category: q.category || q.domain_name || 'General',
+                subtopic: q.subtopic || '',
+                stem: q.stem || '',
+                correctLetter: correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : '?',
+                correctText,
+                explanation: q.explanation || '',
+                references: Array.isArray(references) ? references : [],
+            };
+        });
+        return res.json({ cards: picked });
+    } catch (err) {
+        console.error('Flashcards failure:', err.message);
+        return res.status(500).json({ error: 'Could not build flashcards.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Grade a single answer server-side. Authenticated. The free-tier ceiling is
 // enforced from the server's own count of distinct questions the user has

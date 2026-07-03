@@ -1614,6 +1614,7 @@
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
         const arcCount = free ? (arcadeFreeUsed() ? '🔒 Premium' : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
         t.push(smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', arcCount, 'MACPrep.openArcadePicker()', 'New'));
+        t.push(smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, type your answer, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? '🔒 Premium' : 'New'));
         t.push(smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'));
         t.push(smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'));
         t.push(smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'));
@@ -2754,6 +2755,151 @@
     }
     function closeUpgradeModal() { const o = $('upgrade-overlay'); if (o) o.remove(); }
 
+    // ---- flashcard mode (premium active-recall) ---------------------------
+    // Hide the choices, type your answer from memory, flip to reveal the correct
+    // answer + rationale + source. Self-graded — no MCQ attempt is recorded
+    // (/api/flashcards is a read-only, premium-gated reveal).
+    async function startFlashcards(count) {
+        if (!premiumGate('flashcards')) return;
+        closeNavMenus();
+        toast('Building your flashcard deck…');
+        try {
+            const { resp, data } = await apiJSON('/api/flashcards?count=' + (count || 20), { headers: authHeaders() });
+            if (resp.status === 401) { signOut(); return; }
+            if (resp.status === 402) { openUpgradeModal('flashcards'); return; }
+            if (!resp.ok || !Array.isArray(data.cards) || !data.cards.length) throw new Error(data.error || 'No cards available.');
+            state.flash = { cards: data.cards, i: 0, revealed: false, right: 0, input: '' };
+            try { track('flashcards_start', { size: data.cards.length }); } catch (e) {}
+            renderFlashcards();
+        } catch (err) {
+            toast('Could not start flashcards: ' + err.message);
+        }
+    }
+
+    function closeFlashcards() {
+        const o = $('flash-overlay'); if (o) o.remove();
+        state.flash = null;
+        document.removeEventListener('keydown', flashKey);
+    }
+
+    function flashKey(e) {
+        const f = state.flash; if (!f) return;
+        if (e.key === 'Escape') { e.preventDefault(); closeFlashcards(); return; }
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (!f.revealed) flashReveal(); else flashNext(); }
+    }
+
+    function renderFlashcards() {
+        const f = state.flash; if (!f) return;
+        let wrap = $('flash-overlay');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'flash-overlay';
+            wrap.style.cssText = 'position:fixed;inset:0;z-index:2650;background:var(--bg);display:flex;flex-direction:column;';
+            document.body.appendChild(wrap);
+            document.addEventListener('keydown', flashKey);
+        }
+        if (f.i >= f.cards.length) { wrap.innerHTML = flashDoneHtml(); return; }
+        const pct = Math.round((f.i / f.cards.length) * 100);
+        wrap.innerHTML = `
+            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);">
+                <div style="display:flex;align-items:center;gap:10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;">🗂️ Flashcards</div>
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div class="mono" style="font-size:12px;color:var(--muted);">Card ${f.i + 1} / ${f.cards.length}</div>
+                    <button onclick="MACPrep.closeFlashcards()" aria-label="Exit flashcards" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;">Exit</button>
+                </div>
+            </div>
+            <div style="flex:none;height:3px;background:var(--line);"><div style="height:100%;width:${pct}%;background:var(--accent);transition:width .3s ease;"></div></div>
+            <div style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:26px 20px 40px;">
+                <div id="flash-card" style="width:100%;max-width:640px;transform-style:preserve-3d;"></div>
+            </div>`;
+        renderFlashFace();
+    }
+
+    function renderFlashFace() {
+        const f = state.flash; if (!f) return;
+        const card = $('flash-card'); if (!card) return;
+        const c = f.cards[f.i];
+        const meta = [c.category, c.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        if (!f.revealed) {
+            card.innerHTML = `
+                <div class="card" style="padding:24px;">
+                    <div class="mono" style="font-size:11px;letter-spacing:.5px;color:var(--muted);margin-bottom:12px;">${escapeHtml(meta)}</div>
+                    <div style="font-size:16px;line-height:1.65;">${renderRich(c.stem)}</div>
+                    <div style="margin-top:20px;">
+                        <label class="mono" style="font-size:11px;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:6px;">YOUR ANSWER (FROM MEMORY)</label>
+                        <textarea id="flash-input" rows="3" placeholder="Type what you think the answer is, then reveal…" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font-size:14px;line-height:1.5;resize:vertical;font-family:inherit;">${escapeHtml(f.input || '')}</textarea>
+                    </div>
+                    <button class="btn" style="width:100%;margin-top:14px;" onclick="MACPrep.flashReveal()">Reveal answer ↦</button>
+                    <div class="mono" style="font-size:11px;color:var(--muted);text-align:center;margin-top:9px;">Recall beats recognition — commit to an answer before you flip. <span style="opacity:.7;">(⌘/Ctrl + Enter)</span></div>
+                </div>`;
+            const ta = $('flash-input'); if (ta) setTimeout(() => ta.focus(), 30);
+        } else {
+            const refs = (c.references || []).map((r) => {
+                if (r && typeof r === 'object') { const u = safeUrl(r.url); const t = escapeHtml(r.title || r.url || 'Source'); return u ? `<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener" style="color:var(--accent);">${t}</a>` : t; }
+                const sv = String(r); const u = safeUrl(sv); return u ? `<a href="${escapeHtml(sv)}" target="_blank" rel="noopener" style="color:var(--accent);">${escapeHtml(sv)}</a>` : escapeHtml(sv);
+            }).filter(Boolean).join(' · ');
+            const yours = (f.input || '').trim();
+            card.innerHTML = `
+                <div class="card" style="padding:24px;">
+                    <div class="mono" style="font-size:11px;letter-spacing:.5px;color:var(--muted);margin-bottom:12px;">${escapeHtml(meta)}</div>
+                    <div style="font-size:15px;line-height:1.6;color:var(--text2);">${renderRich(c.stem)}</div>
+                    <div style="margin-top:18px;padding:14px 16px;border:1px solid ${GRADE_GREEN};border-radius:12px;background:color-mix(in srgb, ${GRADE_GREEN} 10%, transparent);">
+                        <div class="mono" style="font-size:11px;letter-spacing:.5px;color:${GRADE_GREEN};margin-bottom:5px;">CORRECT ANSWER (${escapeHtml(c.correctLetter || '')})</div>
+                        <div style="font-size:15.5px;font-weight:600;line-height:1.5;">${renderRich(c.correctText || '—')}</div>
+                    </div>
+                    ${yours ? `<div style="margin-top:12px;font-size:13px;color:var(--muted);"><span class="mono" style="font-size:11px;letter-spacing:.5px;">YOU WROTE:</span> ${escapeHtml(yours)}</div>` : ''}
+                    <div style="margin-top:16px;font-size:14px;line-height:1.7;"><div class="mono" style="font-size:11px;letter-spacing:.5px;color:var(--muted);margin-bottom:5px;">RATIONALE</div>${renderRich(c.explanation || 'No explanation provided.')}</div>
+                    ${refs ? `<div style="margin-top:14px;font-size:12.5px;color:var(--muted);"><span class="mono" style="font-size:11px;letter-spacing:.5px;">SOURCE:</span> ${refs}</div>` : ''}
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn secondary" style="flex:1;" onclick="MACPrep.flashGrade(false)">✗ Missed it</button>
+                        <button class="btn" style="flex:1;" onclick="MACPrep.flashGrade(true)">✓ I had it</button>
+                    </div>
+                </div>`;
+        }
+    }
+
+    function flashReveal() {
+        const f = state.flash; if (!f || f.revealed) return;
+        const ta = $('flash-input'); if (ta) f.input = ta.value;
+        const card = $('flash-card'); if (!card) { f.revealed = true; return renderFlashFace(); }
+        card.style.transition = 'transform .2s ease-in';
+        card.style.transform = 'perspective(1200px) rotateY(90deg)';
+        setTimeout(() => {
+            f.revealed = true; renderFlashFace();
+            card.style.transition = 'none';
+            card.style.transform = 'perspective(1200px) rotateY(-90deg)';
+            void card.offsetWidth;
+            card.style.transition = 'transform .2s ease-out';
+            card.style.transform = 'perspective(1200px) rotateY(0deg)';
+        }, 200);
+    }
+
+    function flashGrade(gotIt) { const f = state.flash; if (!f) return; if (gotIt) f.right++; flashNext(); }
+
+    function flashNext() {
+        const f = state.flash; if (!f) return;
+        f.i++; f.revealed = false; f.input = '';
+        if (f.i >= f.cards.length) { const w = $('flash-overlay'); if (w) w.innerHTML = flashDoneHtml(); try { track('flashcards_done', { size: f.cards.length, right: f.right }); } catch (e) {} return; }
+        renderFlashcards();
+    }
+
+    function flashDoneHtml() {
+        const f = state.flash || { right: 0, cards: [] };
+        const n = f.cards.length || 1;
+        const pct = Math.round((f.right / n) * 100);
+        return `<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;">
+            <div class="card" style="max-width:440px;width:100%;padding:30px 26px;text-align:center;">
+                <div style="font-size:40px;line-height:1;margin-bottom:10px;">🗂️</div>
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;">Deck complete</div>
+                <div class="sub" style="font-size:14px;margin-top:8px;">You felt confident on <strong style="color:var(--accent);">${f.right} / ${n}</strong> — ${pct}% recall. The ones you missed are your highest-value review.</div>
+                <div style="display:flex;gap:10px;margin-top:22px;">
+                    <button class="btn secondary" style="flex:1;" onclick="MACPrep.closeFlashcards()">Done</button>
+                    <button class="btn" style="flex:1;" onclick="MACPrep.startFlashcards(20)">New deck</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
     // ---- profile ----------------------------------------------------------
     function renderProfile() {
         const p = state.profile || {};
@@ -3375,6 +3521,7 @@
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
         premiumGate, openUpgradeModal, closeUpgradeModal,
+        startFlashcards, closeFlashcards, flashReveal, flashGrade,
         saveTitle, openTitlePicker, closeTitlePicker,
         saveAvatar, openAvatarPicker, closeAvatarPicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
