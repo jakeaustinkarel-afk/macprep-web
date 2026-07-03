@@ -1966,6 +1966,11 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
     const rating = Math.min(5, Math.max(1, Math.round((parseFloat(b.rating) || 5) * 2) / 2)); // half-star steps
     const body = String(b.body || '').trim().slice(0, 2000);
     if (!author_name || !body) return res.status(400).json({ error: 'Name and review text are required.' });
+    // Account must be >24h old to write a review — curbs drive-by / throwaway-account reviews.
+    const acctMs = user.created_at ? Date.parse(user.created_at) : NaN;
+    if (!Number.isFinite(acctMs) || (Date.now() - acctMs) < 24 * 60 * 60 * 1000) {
+        return res.status(403).json({ error: 'Reviews can be posted once your account is 24 hours old. Thanks for joining — check back tomorrow to share your thoughts!' });
+    }
     try {
         // Reviews are public and post live. One review per account: re-submitting UPDATES
         // the account's existing review (upsert on the unique user_id index). Admin can
