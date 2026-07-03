@@ -319,6 +319,8 @@
             if (answered === 0) { try { startSample(); } catch (e) {} }
         }
         if (location.hash === '#about') showAboutSection();
+        // Deep link to a specific Critical Event (e.g. shared /#ce=malignant-hyperthermia).
+        if (/[#&]ce=/.test(location.hash || '')) { try { startCriticalEvents(); } catch (e) {} }
     }
 
     // ---- dashboard --------------------------------------------------------
