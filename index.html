@@ -999,7 +999,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
 
             <button class="btn" id="start-session-btn" onclick="MACPrep.startSession()">Start Session</button>
-            <button class="btn ghost" type="button" onclick="MACPrep.downloadExam(this)" style="margin-left:10px;">📄 Printable exam (PDF)</button>
+            <button class="btn ghost" type="button" onclick="MACPrep.downloadExam(this)" style="margin-left:10px;display:inline-flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>Printable exam (PDF)</button>
             <div id="session-hint" class="mono" style="font-size:12px;color:var(--muted);margin-top:12px;"></div>
         </div>
     </div>
@@ -1033,8 +1033,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
                 <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">☆ Flag for review</button>
-                <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">🧪 Lab values</button>
-                <button type="button" onclick="MACPrep.toggleCalc()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">🧮 Calculator</button>
+                <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.8 21h10.4a2 2 0 0 0 1.8-3.5L14 9V3"/><path d="M8 14.5h8"/></svg>Lab values</button>
+                <button type="button" onclick="MACPrep.toggleCalc()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h4"/></svg>Calculator</button>
                 <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</span>
             </div>
 
