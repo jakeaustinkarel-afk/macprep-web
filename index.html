@@ -503,6 +503,18 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <div class="nav-sec sb-only">Menu</div>
             <a id="nav-dashboard" class="hidden nav-app" onclick="MACPrep.go('dashboard')" title="Dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8"></path></svg><span class="lbl">Dashboard</span></a>
+            <span id="nav-study-wrap" class="hidden" style="position:relative;">
+                <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('study', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('study', event);}" title="Study modes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg><span class="lbl">Study modes</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
+                <div id="nav-study-menu" class="navdrop hidden" role="menu">
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.startRecommended();">Recommended session</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.startQuick(10);">Quick 10</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.smartReview();">Smart Review — weak spots &amp; misses</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.startFlashcards(20);">Flashcards</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.openMockPicker();">Mock Exam</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.openBossPicker();">Domain Bosses</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.go('dashboard'); MACPrep.toggleCustomize();">Build your own</a>
+                </div>
+            </span>
             <a id="nav-notebook" class="hidden nav-app" onclick="MACPrep.go('notebook')" title="Notebook"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2-1.4-4.7-1.9-8-1v13c3.3-.9 6-.4 8 1 2-1.4 4.7-1.9 8-1V5c-3.3-.9-6-.4-8 1z"></path><path d="M12 6v13"></path></svg><span class="lbl">Notebook</span></a>
             <a id="nav-leaderboard" class="hidden nav-app" onclick="MACPrep.go('leaderboard')" title="Leaderboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5h8V8a4 4 0 0 1-8 0V4.5z"></path><path d="M8 6H5.5v1.2A2.5 2.5 0 0 0 8 9.7"></path><path d="M16 6h2.5v1.2A2.5 2.5 0 0 1 16 9.7"></path><path d="M9.5 20h5"></path><path d="M12 12.5V20"></path></svg><span class="lbl">Leaderboard</span></a>
             <a id="nav-achievements" class="hidden nav-app" onclick="MACPrep.go('achievements')" title="Achievements"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5"></circle><path d="M9 13.4 7.5 21l4.5-2.7L16.5 21 15 13.4"></path></svg><span class="lbl">Achievements</span></a>

@@ -120,7 +120,7 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
@@ -149,16 +149,15 @@
     }
 
     // Top-nav dropdown menus (Account / Admin).
+    const NAV_MENUS = ['nav-account-menu', 'nav-admin-menu', 'nav-study-menu'];
     function closeNavMenus() {
-        ['nav-account-menu', 'nav-admin-menu'].forEach((id) => { const m = $(id); if (m) m.classList.add('hidden'); });
+        NAV_MENUS.forEach((id) => { const m = $(id); if (m) m.classList.add('hidden'); });
     }
     function toggleNavMenu(which, ev) {
         if (ev) ev.stopPropagation();
-        ['theme-menu', 'font-menu', which === 'account' ? 'nav-admin-menu' : 'nav-account-menu'].forEach((id) => {
-            const m = $(id); if (m) m.classList.add('hidden');
-        });
-        const m = $(which === 'account' ? 'nav-account-menu' : 'nav-admin-menu');
-        if (m) m.classList.toggle('hidden');
+        const target = 'nav-' + which + '-menu';
+        ['theme-menu', 'font-menu'].concat(NAV_MENUS).forEach((id) => { if (id !== target) { const m = $(id); if (m) m.classList.add('hidden'); } });
+        const m = $(target); if (m) m.classList.toggle('hidden');
     }
 
     // ---- auth -------------------------------------------------------------
@@ -3963,7 +3962,7 @@
 
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
-        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu,
+        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
