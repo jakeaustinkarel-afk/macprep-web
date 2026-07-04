@@ -1028,7 +1028,9 @@
         const ctaFn = saved ? 'MACPrep.resumeSession()' : 'MACPrep.startRecommended()';
         el.innerHTML = `
             <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;"><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;line-height:1.1;">${greet}, ${escapeHtml(first)}.</div>${titleChip(activeTitle())}</div>
-            <div class="sub" style="margin:4px 0 20px;font-size:14px;">${toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — don't break the chain.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`}</div>
+            <div class="sub" style="margin:4px 0 20px;font-size:14px;">${total === 0
+                ? `Welcome — answer your first set to light up your rings and start your streak.`
+                : (toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — don't break the chain.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`)}</div>
             <div style="display:flex;flex-wrap:wrap;gap:24px 30px;align-items:center;">
                 ${rings}${legend}
                 <div style="flex:1;min-width:230px;display:flex;flex-direction:column;gap:14px;">
