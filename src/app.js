@@ -3444,6 +3444,60 @@
         $('prof-program').value = p.training_program || '';
         $('prof-examdate').value = p.target_exam_date || '';
         $('prof-phone').value = p.phone || '';
+        refreshRemindersUI();
+    }
+
+    // ---- Push study reminders (PWA) ---------------------------------------
+    function pushSupported() { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+    function urlB64ToUint8(base64) {
+        const pad = '='.repeat((4 - base64.length % 4) % 4);
+        const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(b64); const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr;
+    }
+    let _pushVapid = null; // cached { enabled, publicKey }
+    async function pushConfig() {
+        if (_pushVapid) return _pushVapid;
+        try { const { data } = await apiJSON('/api/push/vapid-public'); _pushVapid = data || { enabled: false }; } catch (e) { _pushVapid = { enabled: false }; }
+        return _pushVapid;
+    }
+    async function currentPushSub() {
+        try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
+    }
+    async function refreshRemindersUI() {
+        const card = $('reminders-card'); if (!card) return;
+        if (!pushSupported()) { card.classList.add('hidden'); return; }
+        const cfg = await pushConfig();
+        if (!cfg.enabled) { card.classList.add('hidden'); return; } // dormant until VAPID keys are set on the server
+        card.classList.remove('hidden');
+        const sub = await currentPushSub();
+        const btn = $('reminders-btn'), msg = $('reminders-msg');
+        if (btn) btn.textContent = sub ? 'Turn off reminders' : 'Enable reminders';
+        if (msg) msg.textContent = sub ? 'On — you’ll be nudged when reviews are due.' : (Notification.permission === 'denied' ? 'Notifications are blocked in your browser settings.' : '');
+    }
+    async function toggleReminders() {
+        const btn = $('reminders-btn'), msg = $('reminders-msg');
+        if (!pushSupported()) { if (msg) msg.textContent = 'This browser doesn’t support notifications.'; return; }
+        const cfg = await pushConfig();
+        if (!cfg.enabled) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }
+        const existing = await currentPushSub();
+        if (btn) btn.disabled = true;
+        try {
+            if (existing) {
+                try { await apiJSON('/api/push/unsubscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ endpoint: existing.endpoint }) }); } catch (e) {}
+                await existing.unsubscribe();
+                toast('Study reminders off.');
+            } else {
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') { if (msg) msg.textContent = 'Allow notifications to turn on reminders.'; return; }
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.publicKey) });
+                await apiJSON('/api/push/subscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ subscription: sub.toJSON ? sub.toJSON() : sub }) });
+                toast('Study reminders on ✓');
+            }
+        } catch (e) { if (msg) msg.textContent = 'Could not update reminders: ' + (e.message || e); }
+        finally { if (btn) btn.disabled = false; refreshRemindersUI(); }
     }
 
     async function saveProfile() {
@@ -4082,7 +4136,7 @@
     }
 
     window.MACPrep = {
-        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
+        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,

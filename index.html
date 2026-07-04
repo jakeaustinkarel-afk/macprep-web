@@ -1173,6 +1173,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <span id="prof-save-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
 
+        <div class="card hidden" id="reminders-card">
+            <h2>Study reminders</h2>
+            <p class="sub" style="margin:0 0 14px;font-size:13.5px;">Get a notification when you have questions due for review, so you keep your streak going. Works best with MACPrep installed to your home screen.</p>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <button class="btn" id="reminders-btn" type="button" onclick="MACPrep.toggleReminders()">Enable reminders</button>
+                <span id="reminders-msg" class="mono" style="font-size:12px;color:var(--muted);"></span>
+            </div>
+        </div>
+
         <div class="card">
             <h2>Security &amp; account</h2>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">

@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { randomBytes, createHmac, createHash } from 'crypto';
 import * as Sentry from '@sentry/node';
+import webpush from 'web-push';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -412,6 +413,18 @@ const BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://www.macprep.org').repl
 const MAILING_ADDRESS = process.env.MAILING_ADDRESS || 'MACPrep LLC · Roswell, GA, USA';
 const NUDGE_SECRET = serviceKey ? createHash('sha256').update(serviceKey + '|nudge-unsub').digest('hex') : 'dev-nudge-secret';
 function unsubToken(userId) { return createHmac('sha256', NUDGE_SECRET).update(String(userId)).digest('hex').slice(0, 32); }
+
+// Web Push (PWA notifications) — fully dormant until VAPID keys are set in env.
+// Generate with `npx web-push generate-vapid-keys`, then set VAPID_PUBLIC_KEY +
+// VAPID_PRIVATE_KEY (+ optional VAPID_SUBJECT mailto) on the host.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@macprep.org';
+const PUSH_ENABLED = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (PUSH_ENABLED) {
+    try { webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY); console.log('[push] web-push configured'); }
+    catch (e) { console.error('[push] VAPID config failed:', e.message); }
+}
 function unsubLink(userId) { return `${BASE_URL}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`; }
 function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -484,6 +497,77 @@ async function sendRetentionNudges(opts) {
     return { sent, eligible, candidates: userIds.length };
 }
 
+// Push reminders — same eligibility as the email nudge (due questions, not active in
+// 18h, ~20h per-subscription throttle), but delivered as a Web Push notification to
+// anyone who enabled reminders. Dormant unless VAPID keys are configured.
+async function sendPushReminders() {
+    if (!PUSH_ENABLED || !supabase) return { error: 'push not configured' };
+    const nowIso = new Date().toISOString();
+    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', nowIso).limit(20000);
+    const counts = {};
+    (due || []).forEach((r) => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
+    const targetIds = Object.keys(counts);
+    if (!targetIds.length) return { sent: 0, candidates: 0 };
+    const activeCutoff = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
+    const { data: active } = await supabase.from(PROGRESS_TABLE).select('user_id').gte('created_at', activeCutoff).limit(20000);
+    const activeSet = new Set((active || []).map((r) => r.user_id));
+    const inactive = targetIds.filter((uid) => !activeSet.has(uid));
+    if (!inactive.length) return { sent: 0, candidates: targetIds.length };
+    const throttle = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
+    const { data: subs } = await supabase.from('push_subscriptions')
+        .select('id, user_id, subscription, last_pushed_at')
+        .in('user_id', inactive.slice(0, 1000));
+    let sent = 0, eligible = 0;
+    for (const s of (subs || [])) {
+        if (s.last_pushed_at && s.last_pushed_at > throttle) continue;
+        eligible++;
+        const n = counts[s.user_id] || 0;
+        const payload = JSON.stringify({
+            title: 'MACPrep',
+            body: n ? `${n} question${n === 1 ? '' : 's'} due for review — keep your streak alive.` : 'Time for a quick review session.',
+            url: '/', tag: 'macprep-review',
+        });
+        try {
+            await webpush.sendNotification(s.subscription, payload);
+            await supabase.from('push_subscriptions').update({ last_pushed_at: nowIso }).eq('id', s.id);
+            sent++;
+        } catch (e) {
+            // 404/410 = the subscription is gone (uninstalled / permission revoked) → prune it.
+            if (e.statusCode === 404 || e.statusCode === 410) { await supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => {}, () => {}); }
+            else { console.error('[push] send failed:', s.user_id, e.statusCode || e.message); }
+        }
+    }
+    return { sent, eligible, candidates: targetIds.length };
+}
+
+// Expose the VAPID public key so the client can subscribe (returns enabled:false if keys aren't set).
+app.get('/api/push/vapid-public', (req, res) => {
+    if (!PUSH_ENABLED) return res.json({ enabled: false });
+    res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY });
+});
+app.post('/api/push/subscribe', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const sub = req.body?.subscription;
+    if (!sub || !sub.endpoint) return res.status(400).json({ error: 'Bad subscription.' });
+    try {
+        await supabase.from('push_subscriptions').upsert({ user_id: user.id, endpoint: sub.endpoint, subscription: sub }, { onConflict: 'endpoint' });
+        return res.json({ success: true });
+    } catch (e) { console.error('[push] subscribe failed:', e.message); return res.status(500).json({ error: 'Could not save.' }); }
+});
+app.post('/api/push/unsubscribe', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    try {
+        const endpoint = req.body?.endpoint;
+        if (endpoint) await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id);
+        else await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+        return res.json({ success: true });
+    } catch (e) { return res.status(500).json({ error: 'Could not remove.' }); }
+});
+
 // One-click unsubscribe (token-signed, no login needed).
 app.get('/api/unsubscribe', async (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -504,7 +588,21 @@ app.post('/api/admin/run-nudges', async (req, res) => {
             await sendEmail({ to: req.body.testTo, subject: '3 questions due for review on MACPrep (test)', html: nudgeEmailHtml({ name: (admin.email || '').split('@')[0], dueCount: 3, unsubUrl: unsubLink(admin.id) }) });
             return res.json({ ok: true, test_sent_to: req.body.testTo });
         }
-        res.json(await sendRetentionNudges({ dry: !!req.body?.dry }));
+        // { pushTest: true } sends a push to the admin's own devices right now (once VAPID keys are set).
+        if (req.body?.pushTest) {
+            if (!PUSH_ENABLED) return res.json({ error: 'push not configured — set VAPID keys' });
+            const { data: subs } = await supabase.from('push_subscriptions').select('id, subscription').eq('user_id', admin.id);
+            let sent = 0;
+            for (const s of (subs || [])) {
+                try { await webpush.sendNotification(s.subscription, JSON.stringify({ title: 'MACPrep', body: 'Test push — reminders are working ✓', url: '/', tag: 'macprep-test' })); sent++; }
+                catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => {}, () => {}); }
+            }
+            return res.json({ ok: true, push_test_sent: sent, subscriptions: (subs || []).length });
+        }
+        const dry = !!req.body?.dry;
+        const email = await sendRetentionNudges({ dry });
+        const push = (!dry && PUSH_ENABLED) ? await sendPushReminders() : { skipped: dry ? 'dry-run (no push sent)' : 'push not configured' };
+        res.json({ email, push });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -587,7 +685,7 @@ app.get('/api/admin/metrics', async (req, res) => {
 
 // Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
 // a US-morning window; the per-user 20h throttle makes restarts safe.
-if (RESEND_API_KEY) {
+if (RESEND_API_KEY || PUSH_ENABLED) {
     let _lastNudgeDay = null;
     setInterval(async () => {
         try {
@@ -596,12 +694,12 @@ if (RESEND_API_KEY) {
             const h = now.getUTCHours();
             if (h >= 13 && h < 15 && _lastNudgeDay !== day) {
                 _lastNudgeDay = day;
-                const r = await sendRetentionNudges();
-                console.log(`[nudges] daily run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} with due questions)`);
+                if (RESEND_API_KEY) { const r = await sendRetentionNudges(); console.log(`[nudges] daily email run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} due)`); }
+                if (PUSH_ENABLED) { const rp = await sendPushReminders(); console.log(`[push] daily run: sent ${rp.sent}/${rp.eligible} eligible (${rp.candidates} due)`); }
             }
         } catch (e) { console.error('[nudges] scheduler error:', e.message); }
     }, 30 * 60 * 1000);
-    console.log('[nudges] daily study-reminder scheduler active');
+    console.log(`[nudges] daily reminder scheduler active (email:${!!RESEND_API_KEY} push:${PUSH_ENABLED})`);
 }
 
 // ---------------------------------------------------------------------------
