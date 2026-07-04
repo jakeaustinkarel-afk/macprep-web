@@ -377,6 +377,28 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 .lp-confchip{font-family:ui-monospace,monospace;font-size:11px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted);}
 .lp-confchip.sel{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
+/* hero product header — real app chrome, not a browser window */
+.lp-apphead{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--text) 3%,var(--panel));}
+.lp-appmark{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:13px;letter-spacing:-.01em;color:var(--text);}
+.lp-appmark .tile{width:21px;height:21px;border-radius:6px;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;flex:none;box-shadow:0 2px 9px -2px color-mix(in srgb,var(--accent) 70%,transparent);}
+.lp-appmark .tile svg{width:13px;height:13px;color:var(--on-accent);}
+.lp-appmode{font-family:ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent);background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:3px 9px;}
+.lp-appprog{margin-left:auto;display:flex;align-items:center;gap:9px;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);}
+.lp-appprog .bar{width:52px;height:5px;border-radius:3px;background:var(--line);overflow:hidden;}
+.lp-appprog .bar>i{display:block;height:100%;width:40%;background:var(--accent);border-radius:3px;}
+
+/* answered/graded states for the hero card */
+.lp-wchoice.ok{border-color:var(--accent);background:var(--accent-dim);}
+.lp-wchoice.ok .ltr{background:var(--accent);color:var(--on-accent);}
+.lp-wchoice .tick{margin-left:auto;color:var(--accent);display:inline-flex;flex:none;}
+.lp-wchoice .tick svg{width:18px;height:18px;}
+.lp-wrat{display:flex;gap:9px;font-size:12.5px;line-height:1.55;color:var(--text2);margin:-1px 2px 11px;}
+.lp-wrat .rmark{color:var(--accent);font-weight:800;flex:none;}
+.lp-wrat b{color:var(--text);font-weight:700;}
+.lp-cite{display:flex;align-items:center;gap:8px;margin-top:3px;padding-top:13px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);}
+.lp-cite svg{width:15px;height:15px;color:var(--accent);flex:none;}
+.lp-cite b{color:var(--text2);font-weight:700;}
+
 /* floating chips */
 .lp-float{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:11px 14px;box-shadow:0 22px 48px -20px rgba(0,0,0,.5);font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;z-index:2;}
 .lp-float svg{width:18px;height:18px;flex:none;}
@@ -590,18 +612,20 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 </div>
                 <div class="lp-winwrap">
                     <div class="lp-window">
-                        <div class="lp-window-bar"><span class="lp-tdot" style="background:#ff5f57"></span><span class="lp-tdot" style="background:#febc2e"></span><span class="lp-tdot" style="background:#28c840"></span><span class="lp-urlpill">macprep.org/quiz</span></div>
+                        <div class="lp-apphead">
+                            <span class="lp-appmark"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 10 2-5h4"/></svg></span>MACPrep</span>
+                            <span class="lp-appmode">Tutor mode</span>
+                            <span class="lp-appprog">Q4 / 10<span class="bar"><i></i></span></span>
+                        </div>
                         <div class="lp-window-body">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
-                                <span class="lp-qbadge">PHARMACOLOGY · LOCAL ANESTHETICS</span>
-                                <span class="mono" style="font-size:11px;color:var(--muted);">Q 4 / 10</span>
-                            </div>
+                            <span class="lp-qbadge">PHARMACOLOGY · LOCAL ANESTHETICS</span>
                             <p class="lp-qstem">Minutes after a large-volume regional block, a patient reports perioral numbness, tinnitus, and a metallic taste. What is the most appropriate next step?</p>
                             <div class="lp-wchoice"><span class="ltr">A</span> Continue the block and reassess in 5 minutes</div>
-                            <div class="lp-wchoice"><span class="ltr">B</span> Stop the injection and prepare 20% lipid emulsion</div>
+                            <div class="lp-wchoice ok"><span class="ltr">B</span> Stop the injection and prepare 20% lipid emulsion <span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+                            <div class="lp-wrat"><span class="rmark">✓</span><span><b>Correct.</b> Perioral numbness, tinnitus, and a metallic taste are early signs of local anesthetic systemic toxicity — stop the injection and start 20% lipid emulsion.</span></div>
                             <div class="lp-wchoice"><span class="ltr">C</span> Administer a beta-blocker for the tinnitus</div>
                             <div class="lp-wchoice"><span class="ltr">D</span> Increase the local anesthetic dose</div>
-                            <div class="lp-conf"><span class="mono" style="font-size:11px;color:var(--muted);">How sure?</span><span class="lp-confchip">Guessing</span><span class="lp-confchip sel">Fairly sure</span><span class="lp-confchip">Confident</span></div>
+                            <div class="lp-cite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span><b>Cited source</b> · ASRA Practice Advisory on LAST (2018)</span></div>
                         </div>
                     </div>
                     <div class="lp-float tr"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>100% Pass Guarantee</div>
