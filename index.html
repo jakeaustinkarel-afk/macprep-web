@@ -422,9 +422,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 .lp-trust span{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--text2);}
 .lp-trust svg{width:15px;height:15px;color:var(--accent);}
 /* social-proof review cards */
-.lp-review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:38px;text-align:left;}
-@media(max-width:820px){.lp-review-grid{grid-template-columns:1fr;max-width:520px;margin-left:auto;margin-right:auto;}}
-.lp-review-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:11px;}
+.lp-review-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;margin-top:38px;text-align:left;}
+.lp-review-card{flex:1 1 300px;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:11px;}
 .lp-review-stars{color:#f5b73c;letter-spacing:2px;font-size:14px;}
 .lp-review-body{font-size:15px;line-height:1.62;color:var(--text);margin:0;}
 .lp-review-author{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);margin-top:auto;}
@@ -1468,7 +1467,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>span>a.nav-app .lbl{flex:1;}
         body.app-authed #nav-admin-wrap>a.nav-app .nav-caret{margin-left:auto;}
         /* Theme + font switchers are an in-app affordance — hidden on the public/marketing nav so the landing's first impression stays deterministic and conversion-focused. */
-        body:not(.app-authed) #nav-utils{display:none;}
+        body:not(.app-authed) #nav-utils{display:none !important;}
         body.app-authed #main-nav>#nav-utils{order:8;display:flex;align-items:center;gap:16px;padding:6px 4px 2px;margin-top:2px;border-top:1px solid var(--line);}
         body.app-authed #main-nav>#nav-account-wrap{order:9;width:100%;}
         body.app-authed #main-nav>#nav-account-wrap .nav-acct{width:100%;box-sizing:border-box;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);}
