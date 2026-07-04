@@ -1970,7 +1970,45 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
 // Reviews / testimonials. The public /reviews page shows APPROVED reviews;
 // logged-in users can submit (→ pending); the founder moderates in admin. Kept
 // separate from anonymous feedback, since reviews are public and attributed.
+//
+// Reviews normally post live, but any submission containing slurs, hate speech,
+// threats, or strong profanity is held as `pending` so the founder can vet it in
+// the Content review queue before it reaches the public page. The submitter is
+// deliberately NOT told their review was held — no tip-off that invites a reword.
 // ---------------------------------------------------------------------------
+const REVIEW_FLAG_WORDS = [
+    // strong profanity
+    'fuck', 'motherfucker', 'shit', 'bullshit', 'bitch', 'cunt', 'asshole', 'dickhead',
+    'cock', 'prick', 'twat', 'wanker', 'bastard', 'whore', 'slut', 'skank', 'douchebag',
+    'jackass', 'dumbass', 'bollocks',
+    // common vowel-censored skeletons (f*ck, sh*t, b*tch, c*nt → stripped to consonants)
+    'fck', 'fuk', 'sht', 'btch', 'cnt',
+    // slurs / hate speech (blocklist is deliberately blunt)
+    'nigger', 'nigga', 'faggot', 'fag', 'retard', 'spic', 'chink', 'kike', 'gook',
+    'tranny', 'dyke', 'coon', 'wetback', 'beaner', 'paki', 'raghead', 'towelhead',
+    // threats / violence
+    'kys', 'rape', 'rapist',
+];
+const REVIEW_FLAG_PHRASES = [
+    'kill yourself', 'kill your self', 'kill you', 'i will kill', 'go die', 'hope you die',
+    'die in a fire', 'shoot up', 'i will find you', 'piss off',
+];
+function reviewNeedsModeration(text) {
+    const norm = String(text || '').toLowerCase()
+        .replace(/[@4]/g, 'a').replace(/[$5]/g, 's').replace(/[!1|]/g, 'i')
+        .replace(/0/g, 'o').replace(/3/g, 'e').replace(/7/g, 't')
+        .replace(/[()*_.\-]/g, '')          // strip in-word separators: f.u.c.k, a**hole
+        .replace(/([a-z])\1{2,}/g, '$1');   // collapse 3+ repeats: fuuuuck -> fuck
+    // Full word boundaries + common suffixes → catches inflections without Scunthorpe-style
+    // false positives (e.g. "spic" won't fire on "spicy", "cock" won't fire on "cocktail").
+    for (const w of REVIEW_FLAG_WORDS) {
+        if (new RegExp('\\b' + w + '(s|es|ing|ed|er|in)?\\b').test(norm)) return true;
+    }
+    for (const p of REVIEW_FLAG_PHRASES) {
+        if (new RegExp('\\b' + p.replace(/ /g, '\\s+')).test(norm)) return true;
+    }
+    return false;
+}
 app.get('/api/reviews', async (req, res) => {
     if (!supabase) return res.json({ reviews: [] });
     try {
@@ -2004,19 +2042,25 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
         return res.status(403).json({ error: 'Reviews can be posted once your account is 24 hours old. Thanks for joining — check back tomorrow to share your thoughts!' });
     }
     try {
-        // Reviews are public and post live. One review per account: re-submitting UPDATES
-        // the account's existing review (upsert on the unique user_id index). Admin can
-        // remove any review from the Reviews panel.
+        // Clean reviews post live; anything with flagged language is HELD as `pending`
+        // (not shown publicly) for the founder to approve in the Content review queue.
+        // One review per account: re-submitting UPDATES the account's existing review
+        // (upsert on the unique user_id index).
+        const held = reviewNeedsModeration(body) || reviewNeedsModeration(author_name) || reviewNeedsModeration(credential);
+        const status = held ? 'pending' : 'approved';
         const { error } = await supabase.from('reviews').upsert(
-            { user_id: user.id, author_name, credential, rating, body, status: 'approved' },
+            { user_id: user.id, author_name, credential, rating, body, status },
             { onConflict: 'user_id' }
         );
         if (error) throw error;
         sendEmail({
             to: 'support@macprep.org',
-            subject: `New MACPrep review (live) — ${author_name}`,
-            html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p><p style="font-size:12px;color:#9ca3af;">This is live on the Reviews page. Remove it from the admin Reviews panel if needed.</p>`,
+            subject: held ? `Review HELD for moderation — ${author_name}` : `New MACPrep review (live) — ${author_name}`,
+            html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p>` + (held
+                ? `<p style="font-size:13px;color:#b45309;"><strong>⚠ Auto-held (flagged language).</strong> It is NOT on the public page. Approve or remove it in the admin Content review queue.</p>`
+                : `<p style="font-size:12px;color:#9ca3af;">This is live on the Reviews page. Remove it from the admin Reviews panel if needed.</p>`),
         }).then(() => {}, () => {});
+        // Always report success — never signal to the submitter that a review was held.
         return res.json({ success: true });
     } catch (err) {
         console.error('Review submit failure:', err.message);

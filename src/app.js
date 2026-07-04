@@ -3456,17 +3456,20 @@
         loadVouchers();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
         try {
-            const [qr, er] = await Promise.all([
+            const [qr, er, rr] = await Promise.all([
                 apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() }).catch(() => ({ data: {} })),
                 apiJSON('/api/admin/edits', { headers: authHeaders() }).catch(() => ({ data: {} })),
+                apiJSON('/api/admin/reviews', { headers: authHeaders() }).catch(() => ({ data: {} })),
             ]);
             const questions = (qr.data && qr.data.questions) || [];
             const edits = (er.data && er.data.edits) || [];
+            // Flagged user reviews (auto-held for language) land in the same queue as questions/edits.
+            const flaggedReviews = ((rr.data && rr.data.reviews) || []).filter((rv) => rv.status === 'pending');
             const qc = (qr.data && qr.data.counts) || {}, ec = (er.data && er.data.counts) || {};
             state.review = {
-                list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e }))],
+                list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e })), ...flaggedReviews.map((rv) => ({ kind: 'review', rv }))],
                 index: 0,
-                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0 },
+                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0, flaggedReviews: flaggedReviews.length },
             };
             renderReview();
         } catch (e) {
@@ -3477,13 +3480,14 @@
     function renderReview() {
         const r = state.review; const wrap = $('admin-body'); if (!r || !wrap) return;
         const c = r.counts || {};
-        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.sme_review || 0} new · ${c.editsPending || 0} edits · ${c.published || 0} published · ${c.rejected || 0} rejected`;
+        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.sme_review || 0} new · ${c.editsPending || 0} edits · ${c.flaggedReviews || 0} flagged reviews · ${c.published || 0} published · ${c.rejected || 0} rejected`;
         if (!r.list.length || r.index >= r.list.length) {
-            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">Nothing awaiting review — new questions and proposed edits both land here.</div></div>';
+            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">Nothing awaiting review — new questions, proposed edits, and flagged reviews all land here.</div></div>';
             return;
         }
         const item = r.list[r.index];
         if (item.kind === 'edit') { renderEditCard(item.e); return; }
+        if (item.kind === 'review') { renderReviewCard(item.rv); return; }
         renderQuestionCard(item.q);
     }
 
@@ -3550,6 +3554,45 @@
             if (action === 'publish') r.counts.published = (r.counts.published || 0) + 1;
             if (action === 'reject') r.counts.rejected = (r.counts.rejected || 0) + 1;
             r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
+            r.index++;
+            renderReview();
+        } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
+    // ---- Flagged review card — a user review auto-held for language, shown inline in
+    // the same Content review queue as questions/edits. Approve publishes it to the
+    // public Reviews page; Remove takes it down. Removal is confirmed (never one-click).
+    function renderReviewCard(rv) {
+        const r = state.review; const wrap = $('admin-body'); if (!wrap) return;
+        const rating = rv.rating || 5;
+        const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(Math.max(0, 5 - Math.round(rating)));
+        wrap.innerHTML = `
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">Flagged review · ${r.index + 1} of ${r.list.length} · auto-held for language</div>
+            <div class="card">
+                <div style="color:#f5b73c;letter-spacing:2px;font-size:15px;">${stars}</div>
+                <div style="font-size:15px;line-height:1.6;margin:10px 0;">“${escapeHtml(rv.body || '')}”</div>
+                <div class="mono" style="font-size:12px;color:var(--muted);">${escapeHtml(rv.author_name || '')}${rv.credential ? ' · ' + escapeHtml(rv.credential) : ''}</div>
+                <div class="mono" style="font-size:11px;color:var(--warn);margin-top:10px;">⚠ Held automatically — not on the public Reviews page until you approve it.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+                    <button class="btn" onclick="MACPrep.reviewCardAct('approve')">✓ Approve &amp; publish</button>
+                    <button class="btn ghost" onclick="MACPrep.reviewCardAct('skip')">Skip →</button>
+                    <button class="btn" style="background:var(--danger);" onclick="MACPrep.reviewCardAct('remove')">✗ Remove</button>
+                </div>
+                <span id="review-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
+            </div>`;
+    }
+    async function reviewCardAct(action) {
+        const r = state.review; if (!r) return;
+        const item = r.list[r.index]; if (!item || item.kind !== 'review') return;
+        const rv = item.rv; const msg = $('review-msg');
+        if (action === 'skip') { r.index++; renderReview(); return; }
+        // Removal is deliberate — a confirmation guards against taking a review down by accident.
+        if (action === 'remove' && !confirm('Remove this flagged review? It won’t be published.')) return;
+        const apiAction = (action === 'approve') ? 'approve' : 'reject';
+        try {
+            const { resp, data } = await apiJSON('/api/admin/review', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ id: rv.id, action: apiAction }) });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
+            r.counts.flaggedReviews = Math.max(0, (r.counts.flaggedReviews || 1) - 1);
             r.index++;
             renderReview();
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
@@ -3664,6 +3707,8 @@
         wrap.innerHTML = add + '<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:4px 0 8px;">Pending submissions</div>' + pending;
     }
     async function reviewModAct(id, action) {
+        // Reject takes a review down from the public page — confirm so it can't happen by accident.
+        if (action === 'reject' && !confirm('Remove this review from the public Reviews page? It will be taken down immediately.')) return;
         try { const { resp, data } = await apiJSON('/api/admin/review', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ id, action }) }); if (!resp.ok || !data.success) throw new Error(data.error || 'Failed'); reviewMod(); } catch (e) { toast(e.message); }
     }
     async function reviewModAdd() {
@@ -3972,7 +4017,7 @@
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
-        smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, _editLen,
+        smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         startRecommended, toggleCustomize, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
