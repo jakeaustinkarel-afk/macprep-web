@@ -938,28 +938,40 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <div class="wrap hidden" id="dashboard-view">
         <h2 class="view-title" id="dash-greeting">Welcome back</h2>
         <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
-        <div class="card" id="momentum-card" style="order:-4;border-color:var(--accent);"></div>
-        <div class="card hidden" id="dailyquests-card" style="order:-3;"></div>
-        <div class="card" id="studymodes-card" style="order:-1;"></div>
-        <div class="card" id="achievements-card" style="order:4;"></div>
+        <!-- Full-width hero -->
+        <div class="card" id="momentum-card" style="order:-10;border-color:var(--accent);"></div>
 
-        <div class="card hidden" id="resume-card" style="border-color:var(--line);"></div>
-        <div class="card hidden" id="onboarding" style="border-color:var(--line);"></div>
-        <div class="card hidden" id="exam-prompt" style="border-color:var(--line);"></div>
+        <!-- Full-width action / onboarding cards (shown conditionally by state) -->
+        <div class="card hidden" id="resume-card" style="order:-8;border-color:var(--line);"></div>
+        <div class="card hidden" id="onboarding" style="order:-8;border-color:var(--line);"></div>
+        <div class="card hidden" id="exam-prompt" style="order:-8;border-color:var(--line);"></div>
 
-        <div class="card" id="readiness"></div>
-        <div class="card" id="activity-card" style="order:0;"></div>
-        <div class="card hidden" id="dash-leaderboard-card" style="order:1;grid-column:1/-1;"></div>
-        <div class="card hidden" id="qotd-card" style="order:-2;border-color:var(--accent);"></div>
-        <div class="card hidden" id="referral-card" style="order:5;"></div>
+        <!-- Balanced two columns: left = study & standing, right = daily habit & social.
+             Independent flex columns pack tightly (masonry), so hidden cards collapse
+             without leaving gaps and both sides end roughly level. -->
+        <div class="dash-cols">
+            <div class="dash-col">
+                <div class="card" id="studymodes-card"></div>
+                <div class="card" id="readiness"></div>
+                <div class="card" id="achievements-card"></div>
+            </div>
+            <div class="dash-col">
+                <div class="card hidden" id="dailyquests-card"></div>
+                <div class="card hidden" id="qotd-card" style="border-color:var(--accent);"></div>
+                <div class="card" id="activity-card"></div>
+                <div class="card hidden" id="dash-leaderboard-card"></div>
+            </div>
+        </div>
 
-        <div class="grid cols-3" style="margin-bottom:24px;order:3;">
+        <div class="card hidden" id="referral-card" style="order:8;"></div>
+
+        <div class="grid cols-3" style="margin-bottom:24px;order:5;">
             <div class="stat"><div class="n" id="stat-answered">0</div><div class="l">Questions Answered</div></div>
             <div class="stat"><div class="n" id="stat-accuracy">—</div><div class="l">Accuracy</div></div>
             <div class="stat"><div class="n" id="stat-bank">0</div><div class="l">Questions In Bank</div></div>
         </div>
 
-        <div class="card" id="free-allowance-card" style="order:4;">
+        <div class="card" id="free-allowance-card" style="order:7;">
             <h3>Free Tier Usage</h3>
             <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
             <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
@@ -979,7 +991,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div class="card hidden" id="calibration-card" style="order:6;"></div>
 
 
-        <div class="card hidden" id="recommended-card" style="order:1;border-color:var(--accent);">
+        <div class="card hidden" id="recommended-card" style="order:-6;border-color:var(--accent);">
             <h2 style="margin-top:0;">Ready to study?</h2>
             <p class="sub" id="recommended-sub">A focused ~20-question set from your due reviews, missed questions, and weakest areas.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -988,7 +1000,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
         </div>
 
-        <div class="card hidden" id="customize-panel" style="order:1;">
+        <div class="card hidden" id="customize-panel" style="order:-6;">
             <h2 style="margin-top:0;">Customize your session</h2>
             <p class="sub">Choose a content domain and how many questions you want to practice.</p>
 
@@ -1377,10 +1389,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .mleg{border-radius:8px;padding:4px 7px;margin:-4px -7px;cursor:default;transition:background .15s ease;outline:none;}
       .mleg:hover,.mleg.mleg-on{background:color-mix(in srgb,var(--accent) 12%,transparent);}
       .mleg:focus-visible{background:color-mix(in srgb,var(--accent) 12%,transparent);box-shadow:0 0 0 2px var(--accent);}
-      #dashboard-view:not(.hidden){display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;max-width:1180px;}
-      #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#dailyquests-card,#dashboard-view>#qotd-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
+      /* Dashboard = single flex column; each direct child is a full-width row sequenced by `order`. */
+      #dashboard-view:not(.hidden){display:flex;flex-direction:column;max-width:1180px;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
-      @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
+      /* Balanced two-column region: two independent flex columns (masonry) so hidden cards
+         collapse via flex gap without leaving space, and both sides end roughly level. */
+      .dash-cols{display:flex;gap:24px;align-items:flex-start;margin-bottom:24px;}
+      .dash-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:24px;}
+      .dash-col>.card{margin-bottom:0;}
+      @media (max-width:820px){.dash-cols{display:block;}.dash-col{display:block;}.dash-col>.card{margin-bottom:24px;}}
       /* === #10 motion polish: unified press feedback (tactile tap on every surface) === */
       @keyframes chestPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent);}70%,100%{box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 0%,transparent);}}
       @keyframes skShim{100%{transform:translateX(100%);}}
