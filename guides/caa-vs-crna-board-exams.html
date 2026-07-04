@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>(function(){var T=[{id:'light',name:'Daylight',sw:['#f6f7f9','#047857','#111827']},{id:'dark',name:'Terminal',sw:['#0D0E10','#00A86B','#F9FAFB']},{id:'warm',name:'Warm Paper',sw:['#F1E9DA','#1F5D43','#B07A2E']},{id:'sandstone',name:'Sandstone',sw:['#EFE7D8','#0F766E','#2b2418']},{id:'rose',name:'Rose',sw:['#FBF1F2','#0E7C66','#2A1F22']},{id:'bloom',name:'Bloom',sw:['#FDF1F8','#C026D3','#2E1A26']},{id:'sky',name:'Sky',sw:['#F0F6FF','#2563EB','#0f2236']},{id:'lavender',name:'Lavender',sw:['#F5F3FC','#7C3AED','#241f33']},{id:'slate',name:'Slate',sw:['#1B2027','#2DD4BF','#EAEEF3']},{id:'nord',name:'Nord',sw:['#2E3440','#88C0D0','#ECEFF4']},{id:'ocean',name:'Ocean',sw:['#0B1A2B','#38BDF8','#E6F0FA']},{id:'indigo',name:'Indigo',sw:['#14122B','#A78BFA','#ECEAFB']},{id:'contrast',name:'Contrast',sw:['#000000','#00E676','#FFFFFF']},{id:'graphite',name:'Graphite',sw:['#161618','#A1A1AA','#F4F4F5']},{id:'ember',name:'Ember',sw:['#1A1214','#F87171','#FBECEE']},{id:'amber',name:'Amber',sw:['#19150A','#F5B73C','#FBF4E1']},{id:'espresso',name:'Espresso',sw:['#1A1410','#D6A06A','#F5EBDD']},{id:'sunset',name:'Sunset',sw:['#1A1113','#FF8A5B','#FBEBE8']},{id:'forest',name:'Forest',sw:['#0B1410','#34D399','#E6F2EA']},{id:'mist',name:'Mist',sw:['#EFF3F4','#0E7490','#132026']}];var ids=T.map(function(t){return t.id;});function cur(){var c=document.documentElement.getAttribute('data-theme');return ids.indexOf(c)>=0?c:'light';}try{var st=localStorage.getItem('macprep_theme');if(!st||ids.indexOf(st)<0)st='light';document.documentElement.setAttribute('data-theme',st);}catch(e){document.documentElement.setAttribute('data-theme','light');}function render(){var m=document.getElementById('theme-menu');if(!m)return;var c=cur();m.innerHTML=T.map(function(t){var sw=t.sw.map(function(x){return '<span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:'+x+';border:1px solid rgba(127,127,127,.3);"></span>';}).join('');return '<button type="button" data-tid="'+t.id+'" style="display:flex;align-items:center;gap:9px;width:100%;background:'+(t.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:8px 9px;border-radius:6px;font-family:inherit;font-size:13px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;"><span style="display:inline-flex;gap:3px;">'+sw+'</span><span style="flex:1;">'+t.name+'</span>'+(t.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-tid]'),function(b){b.onclick=function(){window.setTheme(b.getAttribute('data-tid'));};});}window.setTheme=function(id){if(ids.indexOf(id)<0)return;document.documentElement.setAttribute('data-theme',id);try{localStorage.setItem('macprep_theme',id);}catch(e){}render();if(typeof window.onThemeChange==='function'){try{window.onThemeChange(id);}catch(e){}}};window.toggleTheme=function(){window.setTheme(cur()==='dark'?'light':'dark');};window._themeMenu=function(e){if(e)e.stopPropagation();var f=document.getElementById('font-menu');if(f)f.classList.add('hidden');var m=document.getElementById('theme-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))render();};var F=[{id:'modern',name:'Modern',ff:'-apple-system,system-ui,sans-serif'},{id:'serif',name:'Serif',ff:'Georgia,serif'},{id:'mono',name:'Mono',ff:'ui-monospace,Menlo,monospace'},{id:'rounded',name:'Rounded',ff:'ui-rounded,system-ui,sans-serif'}];var fids=F.map(function(f){return f.id;});function curF(){var c=document.documentElement.getAttribute('data-font');return fids.indexOf(c)>=0?c:'modern';}try{var sf=localStorage.getItem('macprep_font');if(!sf||fids.indexOf(sf)<0)sf='modern';document.documentElement.setAttribute('data-font',sf);}catch(e){document.documentElement.setAttribute('data-font','modern');}function renderF(){var m=document.getElementById('font-menu');if(!m)return;var c=curF();m.innerHTML=F.map(function(f){return '<button type="button" data-fid="'+f.id+'" style="display:flex;align-items:center;gap:10px;width:100%;background:'+(f.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:9px 10px;border-radius:6px;font-size:15px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;font-family:'+f.ff+';"><span style="flex:1;">'+f.name+'</span>'+(f.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-fid]'),function(b){b.onclick=function(){window.setFont(b.getAttribute('data-fid'));};});}window.setFont=function(id){if(fids.indexOf(id)<0)return;document.documentElement.setAttribute('data-font',id);try{localStorage.setItem('macprep_font',id);}catch(e){}renderF();if(typeof window.onFontChange==='function'){try{window.onFontChange(id);}catch(e){}}};window._fontMenu=function(e){if(e)e.stopPropagation();var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var m=document.getElementById('font-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderF();};document.addEventListener('click',function(){var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var fm=document.getElementById('font-menu');if(fm)fm.classList.add('hidden');});document.addEventListener('DOMContentLoaded',function(){render();renderF();});})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAA vs CRNA Board Exams: Key Differences — MACPrep</title>
+    <link rel="canonical" href="https://www.macprep.org/guides/caa-vs-crna-board-exams">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="MACPrep">
+    <meta property="og:title" content="CAA vs CRNA Board Exams: Key Differences — MACPrep">
+    <meta property="og:description" content="How the CAA (NCCAA) and CRNA (NBCRNA) board exams differ — certifying bodies, eligibility, exam format, and content weighting — and why CAA prep should track the NCCAA blueprint.">
+    <meta property="og:url" content="https://www.macprep.org/guides/caa-vs-crna-board-exams">
+    <meta property="og:image" content="https://www.macprep.org/og-image.png?v=2">
+    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CAA vs CRNA Board Exams: Key Differences — MACPrep">
+    <meta name="twitter:description" content="How the CAA (NCCAA) and CRNA (NBCRNA) board exams differ — certifying bodies, eligibility, exam format, and content weighting — and why CAA prep should track the NCCAA blueprint.">
+    <meta name="twitter:image" content="https://www.macprep.org/og-image.png?v=2">
+    <meta name="description" content="How the CAA (NCCAA) and CRNA (NBCRNA) board exams differ — certifying bodies, eligibility, exam format, and content weighting — and why CAA prep should track the NCCAA blueprint.">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/svg+xml" href="/brand/macprep-mark.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <style>
+        :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;}
+
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--on-accent:#ffffff;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="warm"]{--bg:#F1E9DA;--panel:#FBF6EB;--line:#E1D5C0;--text:#2A2620;--text2:#4a4339;--muted:#796D5B;--accent:#1F5D43;--on-accent:#ffffff;--accent-dim:#e6efe9;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#1F5D43;--warn:#9a6a14;--bad:#9a3a2a;--info:#3a6ea5;}
+        html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--on-accent:#ffffff;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
+        html[data-theme="rose"]{--bg:#FBF1F2;--panel:#ffffff;--line:#EBDADC;--text:#2A1F22;--text2:#4a3a3e;--muted:#8a6f74;--accent:#0E7C66;--on-accent:#ffffff;--accent-dim:#e3f3ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#0E7C66;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="bloom"]{--bg:#FDF1F8;--panel:#ffffff;--line:#F0DBE8;--text:#2E1A26;--text2:#4f3343;--muted:#8a6478;--accent:#C026D3;--on-accent:#ffffff;--accent-dim:#f7e3fa;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="sky"]{--bg:#F0F6FF;--panel:#ffffff;--line:#dbe6f5;--text:#0f2236;--text2:#33485f;--muted:#5f7388;--accent:#2563EB;--on-accent:#ffffff;--accent-dim:#e2ecfd;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="lavender"]{--bg:#F5F3FC;--panel:#ffffff;--line:#e6e1f4;--text:#241f33;--text2:#43395c;--muted:#6f6589;--accent:#7C3AED;--on-accent:#ffffff;--accent-dim:#efe9fc;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#7c3aed;}
+        html[data-theme="slate"]{--bg:#1B2027;--panel:#242B34;--line:#374151;--text:#EAEEF3;--text2:#c3ccd6;--muted:#8b97a6;--accent:#2DD4BF;--on-accent:#0c1116;--accent-dim:#0c2b27;--danger:#f87171;--danger-dim:#2a1414;--good:#2DD4BF;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#b0bbce;--accent:#88C0D0;--on-accent:#0c1116;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
+        html[data-theme="ocean"]{--bg:#0B1A2B;--panel:#11263D;--line:#22384F;--text:#E6F0FA;--text2:#bcd0e3;--muted:#7d93a8;--accent:#38BDF8;--on-accent:#0c1116;--accent-dim:#0a2536;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#38bdf8;}
+        html[data-theme="indigo"]{--bg:#14122B;--panel:#1E1B3A;--line:#332E54;--text:#ECEAFB;--text2:#cac6e8;--muted:#9690bb;--accent:#A78BFA;--on-accent:#0c1116;--accent-dim:#1e1840;--danger:#fb7185;--danger-dim:#2a1420;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#a78bfa;}
+        html[data-theme="contrast"]{--bg:#000000;--panel:#0A0A0A;--line:#333333;--text:#FFFFFF;--text2:#E5E5E5;--muted:#A3A3A3;--accent:#00E676;--on-accent:#0c1116;--accent-dim:#04220f;--danger:#FF5252;--danger-dim:#2a0c0c;--good:#00E676;--warn:#FFD54F;--bad:#FF5252;--info:#40C4FF;}
+        html[data-theme="graphite"]{--bg:#161618;--panel:#202022;--line:#34343a;--text:#F4F4F5;--text2:#cfcfd4;--muted:#9a9aa2;--accent:#A1A1AA;--on-accent:#18181b;--accent-dim:#2a2a30;--danger:#f87171;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#f87171;--info:#60a5fa;}
+        html[data-theme="ember"]{--bg:#1A1214;--panel:#241719;--line:#3A2529;--text:#FBECEE;--text2:#e6cace;--muted:#b38f94;--accent:#F87171;--on-accent:#2a0a0a;--accent-dim:#331619;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#60a5fa;}
+        html[data-theme="amber"]{--bg:#19150A;--panel:#231E0F;--line:#3C3318;--text:#FBF4E1;--text2:#e8dcb8;--muted:#b2a176;--accent:#F5B73C;--on-accent:#231903;--accent-dim:#31270b;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="espresso"]{--bg:#1A1410;--panel:#241C16;--line:#3A2E23;--text:#F5EBDD;--text2:#ddcab2;--muted:#a8927a;--accent:#D6A06A;--on-accent:#241803;--accent-dim:#332518;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="sunset"]{--bg:#1A1113;--panel:#251619;--line:#3B2529;--text:#FBEBE8;--text2:#e8c9c3;--muted:#b38f8a;--accent:#FF8A5B;--on-accent:#2a1003;--accent-dim:#331a12;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="forest"]{--bg:#0B1410;--panel:#121F18;--line:#22362A;--text:#E6F2EA;--text2:#c2d8c9;--muted:#7d9587;--accent:#34D399;--on-accent:#052015;--accent-dim:#0c2b20;--danger:#fb7185;--danger-dim:#2a1414;--good:#34D399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="mist"]{--bg:#EFF3F4;--panel:#ffffff;--line:#dde6e8;--text:#132026;--text2:#354952;--muted:#5e7580;--accent:#0E7490;--on-accent:#ffffff;--accent-dim:#e0eff2;--danger:#b42318;--danger-dim:#fde8e8;--good:#0f766e;--warn:#b45309;--bad:#b42318;--info:#0e7490;}
+        :root { --bg:#0D0E10; --panel:#111214; --line:#1F2937; --text:#F9FAFB; --muted:#828b9a; --accent:#00A86B; --accent-dim:#0f2a20; }
+        .social-ico{color:var(--muted,#6B7280);transition:color .15s ease;}.social-ico:hover{color:var(--accent,#00A86B);}
+        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;}
+        a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
+        .header-bar{padding:16px 32px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+        .brand-logo{font-family:'Figtree',ui-monospace,sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+        .accent{color:var(--accent);}
+        .nav{display:flex;gap:20px;align-items:center;font-family:ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
+        .nav a{color:var(--muted);} .nav a:hover{color:var(--text);text-decoration:none;}
+        .wrap{max-width:760px;margin:0 auto;padding:40px 24px 56px;}
+        .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+        h1{font-size:32px;line-height:1.22;margin:10px 0 12px;color:var(--text);}
+        h2{font-size:21px;margin:34px 0 10px;color:var(--text);}
+        h3{font-size:17px;margin:22px 0 6px;color:var(--text);}
+        p{color:var(--text2);margin:0 0 14px;}
+        ul,ol{color:var(--text2);padding-left:22px;margin:0 0 16px;} li{margin:6px 0;}
+        strong{color:var(--text);}
+        .lead{font-size:18px;color:var(--text);margin:0 0 8px;}
+        .meta-line{color:var(--muted);font-size:13px;margin:0 0 26px;}
+        .callout{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:14px 18px;margin:20px 0;}
+        .callout p{margin:0;color:var(--text);font-size:14.5px;}
+        .cta-box{background:var(--accent-dim);border:1px solid var(--accent);border-radius:12px;padding:26px 24px;margin:34px 0;text-align:center;}
+        .cta-box h3{margin:0 0 8px;}
+        .cta-box p{margin:0 0 16px;color:var(--text);}
+        .cta-btn{display:inline-block;background:var(--accent);color:#ffffff;font-weight:700;padding:12px 26px;border-radius:8px;text-decoration:none;}
+        .cta-btn:hover{text-decoration:none;opacity:.92;}
+        .related{border-top:1px solid var(--line);margin-top:42px;padding-top:18px;}
+        .related b{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:ui-monospace,monospace;}
+        .related a{display:block;margin:10px 0;font-size:15px;}
+        .disc{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:30px;padding-top:14px;}
+        .card-link{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:14px 0;text-decoration:none;transition:border-color .15s ease;}
+        .card-link:hover{border-color:var(--accent);text-decoration:none;}
+        .card-link h3{margin:0 0 6px;color:var(--text);}
+        .card-link p{margin:0;color:var(--muted);font-size:14px;}
+        .nav-toggle{display:none;background:none;border:1px solid var(--line,#1F2937);color:var(--text,#F9FAFB);border-radius:4px;padding:6px 12px;font-size:18px;line-height:1;cursor:pointer;}
+        @media (max-width:720px){
+          .header-bar{position:relative;flex-wrap:wrap;padding:14px 16px;}
+          .nav-toggle{display:block;}
+          .nav{display:none;position:absolute;top:100%;right:12px;left:12px;margin-top:6px;flex-direction:column;align-items:stretch;gap:0;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:8px;padding:6px;z-index:50;}
+          .nav a,.nav button{padding:12px 10px;border-bottom:1px solid var(--line,#1F2937);text-align:left;}
+          .nav a:last-of-type{border-bottom:none;}
+          .nav.nav-open{display:flex;}
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+        .hidden{display:none;}
+            :root{--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+        html[data-font="serif"]{--font:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
+        html[data-font="mono"]{--font:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;}
+        html[data-font="rounded"]{--font:"SF Pro Rounded",ui-rounded,"Hiragino Maru Gothic ProN",Quicksand,"Segoe UI",system-ui,sans-serif;}
+        body{font-family:var(--font);}
+    </style>
+
+    <style>
+        .gtbl-wrap{overflow-x:auto;margin:0 0 18px;-webkit-overflow-scrolling:touch;}
+        .gtbl{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14.5px;}
+        .gtbl thead th{background:var(--accent-dim);color:var(--text);text-align:left;font-weight:700;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+        .gtbl th[scope="row"]{text-align:left;font-weight:700;color:var(--text);}
+        .gtbl td,.gtbl tbody th{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top;}
+        .gtbl tbody tr:last-child td,.gtbl tbody tr:last-child th{border-bottom:none;}
+        .gtbl strong{color:var(--text);}
+    </style>
+
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.macprep.org/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://www.macprep.org/guides/"},{"@type":"ListItem","position":3,"name":"CAA vs CRNA Board Exams","item":"https://www.macprep.org/guides/caa-vs-crna-board-exams"}]}</script>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="/index.html" class="brand-logo" style="display:inline-flex;align-items:center;gap:9px;"><svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg><span>MAC<span class="accent">Prep</span></span></a>
+        <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
+        <nav class="nav" id="site-nav">
+            <a href="/index.html#features">Features</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/guides/">Guides</a>
+            <a href="/faq">FAQ</a>
+            <a href="/login">Log in</a>
+            <a href="/index.html#signup-pane" class="nav-cta" style="background:var(--accent);color:var(--on-accent);padding:7px 15px;border-radius:8px;font-weight:700;white-space:nowrap;">Start Free →</a>
+        </nav>
+    </div>
+    <div class="wrap">
+        <span class="tag">Career &amp; Exam Comparison</span>
+        <h1>CAA vs CRNA Board Exams: How the Two Credentials Differ</h1>
+        <p class="meta-line">For SAAs and prospective students comparing the two non-physician anesthesia pathways · ~9 min read</p>
+        <p class="lead">Certified Anesthesiologist Assistants (CAAs) and Certified Registered Nurse Anesthetists (CRNAs) do overlapping clinical work but earn their credentials through entirely separate education pathways and entirely separate board exams. If you're studying, that last point matters most: <strong>CAA board prep should be built against the NCCAA blueprint — not repurposed from CRNA material.</strong></p>
+
+        <p>CAAs certify through the <strong>NCCAA Certification Examination</strong> (the National Commission for Certification of Anesthesiologist Assistants). CRNAs certify through the <strong>NBCRNA National Certification Examination (NCE)</strong>. Different governing body, different eligibility rules, different exam engine, different content weighting. This guide lays out the differences fact by fact so you can prepare against the right target.</p>
+
+        <h2>The two roles at a glance</h2>
+        <p>Both CAAs and CRNAs are advanced, master's- or doctorate-level anesthesia providers who deliver the same core clinical care within the operating room: pre-anesthetic assessment, airway management, vascular access, drug administration, application and interpretation of monitors, and management of the anesthetic through emergence.</p>
+        <p>The central structural difference is the <strong>practice model</strong>:</p>
+        <ul>
+          <li><strong>CAAs practice exclusively within the physician-led Anesthesia Care Team (ACT)</strong>, always under the medical direction or supervision of a licensed anesthesiologist. A CAA's license is dependent on that supervising physician relationship. (<a href="https://www.anesthetist.org/about-caas-menu" target="_blank" rel="noopener">AAAA — About CAAs</a>)</li>
+          <li><strong>CRNAs may practice in the care-team model as well, but in many states can practice with greater autonomy.</strong> More than 20 states have "opted out" of the federal physician-supervision requirement for CRNA anesthesia billing under Medicare, and a CRNA holds a license independent of any anesthesiologist. (<a href="https://www.aana.com/" target="_blank" rel="noopener">AANA / CRNA scope resources</a>)</li>
+        </ul>
+        <p>Neither role is "junior" to the other in clinical skill — on the Anesthesia Care Team the day-to-day tasks a CAA and a CRNA perform are essentially identical. The difference is the pathway in and the legal scope, not the hands-on capability. (<a href="https://thecrna.com/crna-vs-caa-comparison-what-is-the-difference/" target="_blank" rel="noopener">TheCRNA.com — CRNA vs CAA</a>)</p>
+
+        <h2>Side-by-side: the two credentials and their exams</h2>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th></th><th>CAA (Certified Anesthesiologist Assistant)</th><th>CRNA (Certified Registered Nurse Anesthetist)</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Certifying body</th><td>NCCAA (National Commission for Certification of Anesthesiologist Assistants), with NBME/PSI test delivery</td><td>NBCRNA (National Board of Certification and Recertification for Nurse Anesthetists)</td></tr>
+            <tr><th scope="row">Board exam</th><td>NCCAA Certification Examination ("the Certifying Exam" / CERT)</td><td>National Certification Examination (NCE)</td></tr>
+            <tr><th scope="row">Pre-professional background</th><td>Bachelor's degree with a full pre-med prerequisite science sequence (no nursing license required)</td><td>BSN (or equivalent) + active RN license</td></tr>
+            <tr><th scope="row">Required clinical experience before school</th><td>None mandated; clinical exposure/shadowing is expected but not a licensure prerequisite</td><td>&ge; 1 year full-time acute-care/ICU RN experience (competitive applicants often 2–3 yrs)</td></tr>
+            <tr><th scope="row">Professional degree</th><td>Master's degree from a CAAHEP-accredited Anesthesiologist Assistant program (~24–28 months)</td><td>Doctorate (DNP or DNAP) — <strong>required for all entry-level graduates as of Jan 1, 2025</strong>; programs &ge; 36 months</td></tr>
+            <tr><th scope="row">Exam format</th><td>Fixed-length, linear: <strong>180 multiple-choice items</strong> in two 90-item blocks</td><td><strong>Variable-length computer-adaptive test (CAT): 100–170 items</strong></td></tr>
+            <tr><th scope="row">Scored vs. pretest items</th><td>150 scored + 30 unscored pretest items</td><td>70 scored (min) + 30 unscored pretest items (100-item minimum)</td></tr>
+            <tr><th scope="row">Time limit</th><td>235-min window: two 110-min blocks + optional 15-min break</td><td>Up to 3 hours</td></tr>
+            <tr><th scope="row">Item types</th><td>Multiple choice, one at a time</td><td>Multiple choice <strong>plus</strong> calculations, drag-and-drop, hotspot, and graphics/video items</td></tr>
+            <tr><th scope="row">Adaptive?</th><td>No — every candidate sees the same number of items</td><td>Yes — item difficulty adjusts to performance; test ends when the pass/fail decision is statistically confident</td></tr>
+            <tr><th scope="row">Scoring</th><td>Pass/fail; NCCAA sets the passing score</td><td>Pass/fail; NBCRNA sets the passing standard</td></tr>
+            <tr><th scope="row">Practice/supervision</th><td>Anesthesia Care Team only, under anesthesiologist supervision</td><td>Care team or, in opt-out states, more autonomous practice</td></tr>
+            <tr><th scope="row">Recertification</th><td>50 hrs CME every 2 yrs (&ge; 40 anesthesia-specific) + periodic CDQ exam</td><td>Continued Professional Certification (CPC) &rarr; transitioning to the Maintaining Anesthesia Certification (MAC) program; CE + periodic assessment</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><p>Sources for the table rows are cited in full in the sections below and in <strong>Sources</strong>. Where a specific current number could not be independently confirmed from an official publication, it is flagged in-line.</p></div>
+
+        <h2>Eligibility &amp; education pathway</h2>
+        <h3>Getting to the CAA exam</h3>
+        <p>The road to the NCCAA Certification Examination runs through a <strong>CAAHEP-accredited master's-level Anesthesiologist Assistant program</strong>. Candidates typically enter with any bachelor's major so long as they complete a pre-medical prerequisite sequence (biology, general and organic chemistry, physics, and math), similar to a pre-med applicant. A nursing license is <strong>not</strong> part of the pathway. (<a href="https://www.caahep.org/profession-description-and-certification-information/anesthesiologist-assistant" target="_blank" rel="noopener">CAAHEP — Anesthesiologist Assistant</a>; <a href="https://case.edu/medicine/msa-program/about-us/caa-profession" target="_blank" rel="noopener">Case Western — CAA profession</a>)</p>
+        <p>Per the NCCAA Certification Examination Handbook, the candidate must:</p>
+        <ul>
+          <li>Be at least <strong>21 years old</strong>,</li>
+          <li>Have <strong>graduated from (or be a senior in) an NCCAA-approved, CAAHEP-accredited AA program</strong>, and</li>
+          <li>Meet the NCCAA's self-reported, program-verified <strong>clinical experience minimums</strong> for entry-level CAAs.</li>
+        </ul>
+        <p>Eligibility to sit for the initial Certifying Examination extends for <strong>no more than two years from graduation</strong>, during which a candidate gets a <strong>maximum of six attempts</strong>. (<a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>)</p>
+        <h3>Getting to the CRNA exam</h3>
+        <p>The CRNA pathway is a nursing pathway. It requires a <strong>BSN (or equivalent) and an active RN license</strong>, followed by <strong>at least one year of full-time critical-care/ICU experience</strong> (SICU, CVICU, CCU, MICU, PICU, NICU, etc.), and then a <strong>doctoral nurse-anesthesia program</strong>. As of <strong>January 1, 2025, all entry-into-practice CRNA graduates must hold a doctorate</strong> (DNP or DNAP); the master's-entry route has closed. Accredited programs run a <strong>minimum of 36 months</strong> and often longer. (<a href="https://nurse.org/education/crna-or-dnp-dnap-differences/" target="_blank" rel="noopener">Nurse.org — DNAP vs DNP</a>; <a href="https://www.aag.health/post/crna-doctorate-changes" target="_blank" rel="noopener">AAG Health — 2025 CRNA doctorate changes</a>)</p>
+        <div class="callout"><p><strong>Bottom line on the path:</strong> a CAA reaches the boards through a pre-med &rarr; master's route with no RN requirement; a CRNA reaches them through an RN &rarr; ICU &rarr; doctorate route. Same OR, very different on-ramp.</p></div>
+
+        <h2>Exam format: the biggest practical difference</h2>
+        <p>This is where "just study CRNA material" quietly breaks down, because the two exams are built on different engines.</p>
+        <h3>NCCAA Certification Examination (CAAs)</h3>
+        <p>Per the NCCAA Certification Examination Handbook (content outline Rev. 2021):</p>
+        <ul>
+          <li><strong>180 multiple-choice items total</strong>, delivered in <strong>two blocks of 90 items</strong>, with <strong>110 minutes per block</strong>.</li>
+          <li><strong>30 of the 180 items are unscored pretest items</strong> distributed throughout — meaning <strong>150 items count</strong> toward your result. Pretest items "are not used in the calculation of score for the examination."</li>
+          <li>Total seat time is a <strong>235-minute window</strong>: the two 110-minute blocks plus an <strong>optional break of up to 15 minutes</strong> taken only between blocks (plus a 10–15 min pre-test tutorial and a 10–15 min post-test survey).</li>
+          <li>Items appear <strong>one at a time</strong>; you may review and change answers <strong>within the current block</strong>, but you <strong>cannot re-enter a block once you submit it</strong>.</li>
+          <li>It is a <strong>fixed-length, linear exam</strong> — everyone answers the same number of items. It is <strong>not adaptive.</strong></li>
+          <li>The exam is administered at <strong>PSI test centers</strong> across the US; the NCCAA owns the content outline and <strong>sets the passing score</strong>, and the blueprint is validated against a profession-wide <strong>Job Analysis (JA) last performed in 2021.</strong> (<a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>; <a href="https://nccaa.org/certifyexaminfo" target="_blank" rel="noopener">NCCAA — Exam Info</a>)</li>
+        </ul>
+        <h3>NBCRNA National Certification Examination (CRNAs)</h3>
+        <ul>
+          <li>The NCE is a <strong>variable-length, computer-adaptive test (CAT)</strong> of <strong>100–170 questions</strong>, with a <strong>maximum of 3 hours</strong>.</li>
+          <li>Every candidate answers <strong>at least 100 items — 70 that count toward the content outline plus 30 unscored pretest items</strong> — and the test continues (up to 170 items) only until the candidate's performance is confidently above or below the passing standard.</li>
+          <li>Because it's adaptive, <strong>question difficulty rises or falls based on your answers</strong>, and two candidates can finish having seen different numbers of items.</li>
+          <li>Item formats go beyond multiple choice to include <strong>calculations, drag-and-drop, hotspot, and graphics/video</strong> items. (<a href="https://www.nbcrna.com/students/nce-resources" target="_blank" rel="noopener">NBCRNA — Students / NCE resources</a>; <a href="https://thecrna.com/preparing-for-the-national-certification-exam/" target="_blank" rel="noopener">TheCRNA.com — Preparing for the NCE</a>)</li>
+        </ul>
+        <div class="callout"><p><strong>Why the format gap matters for prep:</strong> a CRNA candidate practices for an adaptive test with mixed interaction types; a CAA candidate practices for a <strong>fixed 180-item, two-block, pure-multiple-choice</strong> exam. Pacing strategy, stamina planning, and the "feel" of the test are genuinely different. A question bank tuned to the CAA format trains the right test-day behavior — block pacing across 90-item sets, no adaptivity to game, straightforward A–E selection.</p></div>
+
+        <h2>Content emphasis: overlapping science, different blueprints</h2>
+        <p>Both exams cover core anesthesia science — pharmacology, physiology, monitoring, airway, subspecialty care. But the <strong>weighting and the source-of-truth blueprint are different</strong>, and that's exactly what dedicated prep should mirror.</p>
+        <p>The <strong>NCCAA Certification Exam</strong> is organized into <strong>six (6) major content areas</strong>, each carrying an approximate percentage of items. Per the NCCAA Content Outline (Rev. 2021), the areas are:</p>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th>NCCAA content area</th><th>Approx. % of items</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Principles of Anesthesia (incl. preoperative evaluation, administration of anesthesia)</td><td>9%</td></tr>
+            <tr><td>Physiology, Pathophysiology, and Management</td><td>19%</td></tr>
+            <tr><td>Instrumentation, Monitoring, and Anesthetic Delivery Systems</td><td>15%</td></tr>
+            <tr><td>Subspecialty Care</td><td>31%</td></tr>
+            <tr><td>Pharmacology</td><td>15%</td></tr>
+            <tr><td>Regional Anesthesia and Pain Management</td><td>8%</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p>The "Principles of Anesthesia (9%)" weighting is confirmed verbatim in the NCCAA Certification Examination Handbook (Rev. 2021). The remaining five percentages above reflect the widely published NCCAA breakdown; always confirm against the current official Handbook. (<a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>; <a href="https://truelearn.com/resource-library/nccaa-certification-exam-breakdown/" target="_blank" rel="noopener">TrueLearn — NCCAA exam breakdown</a>)</p>
+        <p>Two things stand out for CAA test-takers:</p>
+        <ol>
+          <li><strong>Subspecialty Care is the single heaviest domain (~31%)</strong> — cardiac, obstetric, pediatric, neuro, trauma, and other subspecialty anesthesia collectively carry the most weight. If your prep under-samples subspecialty vignettes, you're under-training the largest slice of the blueprint.</li>
+          <li><strong>The blueprint is a CAA blueprint</strong>, derived from a Job Analysis of what entry-level <em>CAAs</em> actually do in the physician-led care team — not from the NBCRNA content outline for nurse anesthetists.</li>
+        </ol>
+        <p>The NBCRNA NCE, by contrast, is built on its <strong>own four core knowledge domains</strong> validated for nurse-anesthesia practice, with its own weightings. (<a href="https://www.nbcrna.com/certification-programs/cpc-assessment" target="_blank" rel="noopener">NBCRNA — CPC Assessment / domains</a>)</p>
+
+        <h2>Recertification, briefly</h2>
+        <p>Certification isn't one-and-done for either credential.</p>
+        <ul>
+          <li><strong>CAAs</strong> must register <strong>50 hours of CME every two years</strong> — at least <strong>40 hours of anesthesia-specific (Category I) CME</strong> plus 10 hours of general/professional CME — and periodically re-examine via the <strong>Continued Demonstration of Qualifications (CDQ) exam</strong>. Confirm the current CDQ interval against the NCCAA CDQ Handbook, as it has been changing. (<a href="https://nccaa.org/" target="_blank" rel="noopener">NCCAA</a>)</li>
+          <li><strong>CRNAs</strong> maintain certification through the <strong>Continued Professional Certification (CPC) program</strong>, which the NBCRNA is transitioning to the <strong>Maintaining Anesthesia Certification (MAC) program</strong> for the 2026 cycle, combining continuing-education credit requirements with a periodic assessment. (<a href="https://www.nbcrna.com/certification-programs/cpc" target="_blank" rel="noopener">NBCRNA — CPC</a>)</li>
+        </ul>
+
+        <h2>Why CAA prep should be built for the NCCAA — not adapted from CRNA material</h2>
+        <p>Pulling the threads together, here's the case for CAA-specific preparation, stated plainly and without knocking either profession:</p>
+        <ol>
+          <li><strong>Different blueprint.</strong> The NCCAA exam is weighted to a CAA Job Analysis (Subspecialty Care ~31%, six defined domains). CRNA prep is weighted to the NBCRNA's four nurse-anesthesia domains. Studying the wrong weighting means over-preparing some areas and under-preparing others.</li>
+          <li><strong>Different format.</strong> 180 fixed items in two 90-item multiple-choice blocks vs. a 100–170-item adaptive test with drag-and-drop, hotspot, and calculation items. The pacing and stamina you rehearse should match the exam you'll actually sit.</li>
+          <li><strong>Different framing of the same clinical facts.</strong> A malignant-hyperthermia or LAST question written for a CAA sitting in the physician-led care team is framed around the CAA's role and the ACT context. The underlying pharmacology is universal; the exam framing is not.</li>
+          <li><strong>Different governing body and rules.</strong> Eligibility windows, attempt limits, and recertification cadence all come from the NCCAA, not the NBCRNA — so authoritative CAA prep tracks NCCAA publications.</li>
+        </ol>
+        <p>The clinical science overlaps heavily — that's real, and good CRNA resources are excellent at what they do. But <strong>"close enough" isn't the same as built-for-purpose.</strong> A CAA candidate is best served by material mapped to the NCCAA content outline and the NCCAA exam format.</p>
+
+        <h2>Practice questions</h2>
+        <p>These are board-style practice items written in NCCAA multiple-choice style. Cover the answer, commit to a choice, then read the full rationale.</p>
+
+        <h3>Question 1</h3>
+        <p>An SAA is confirming which credentialing body will score their upcoming board exam. Which organization administers and sets the passing score for the exam a Certified Anesthesiologist Assistant must pass for initial certification?</p>
+        <ul>
+          <li>A. NBCRNA (National Board of Certification and Recertification for Nurse Anesthetists)</li>
+          <li>B. NCCAA (National Commission for Certification of Anesthesiologist Assistants)</li>
+          <li>C. AANA (American Association of Nurse Anesthesiology)</li>
+          <li>D. CAAHEP (Commission on Accreditation of Allied Health Education Programs)</li>
+          <li>E. ABA (American Board of Anesthesiology)</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: B.</strong> The NCCAA administers the Certification Examination for CAAs, owns the content outline, and sets the passing score. CAAHEP (D) accredits the <em>educational programs</em> but does not certify individuals; the NBCRNA (A) and AANA (C) belong to the CRNA world; the ABA (E) certifies physician anesthesiologists.<br><em>Source: <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>.</em></p></div>
+
+        <h3>Question 2</h3>
+        <p>A student is comparing the structure of the two anesthesia board exams. Which statement accurately describes the <strong>format</strong> of the NCCAA Certification Examination compared with the NBCRNA National Certification Examination (NCE)?</p>
+        <ul>
+          <li>A. Both exams are computer-adaptive and end when a pass/fail decision is reached.</li>
+          <li>B. The NCCAA exam is a fixed-length, 180-item exam in two blocks; the NCE is a variable-length adaptive test of 100–170 items.</li>
+          <li>C. The NCCAA exam is adaptive; the NCE is a fixed 180-item exam.</li>
+          <li>D. Both exams are fixed at exactly 170 items.</li>
+          <li>E. Neither exam includes unscored pretest items.</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: B.</strong> The NCCAA exam is a fixed-length, linear exam of 180 items delivered in two 90-item blocks (150 scored + 30 pretest). The NBCRNA NCE is a variable-length computer-adaptive test of 100–170 items. Both, in fact, do include unscored pretest items, which makes E wrong.<br><em>Source: <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>; <a href="https://www.nbcrna.com/students/nce-resources" target="_blank" rel="noopener">NBCRNA NCE Resources</a>.</em></p></div>
+
+        <h3>Question 3</h3>
+        <p>On the NCCAA Certification Examination, a candidate answers all 180 presented items. How many of those items actually count toward the reported score?</p>
+        <ul>
+          <li>A. 100</li>
+          <li>B. 120</li>
+          <li>C. 150</li>
+          <li>D. 170</li>
+          <li>E. 180</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: C.</strong> The exam contains 180 items, of which <strong>30 are unscored pretest items</strong> distributed throughout; the remaining <strong>150 items</strong> determine the score. The pretest items "are not used in the calculation of score for the examination."<br><em>Source: <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>.</em></p></div>
+
+        <h3>Question 4</h3>
+        <p>A prospective applicant asks which pathway leads to the CAA credential rather than the CRNA credential. Which set of prerequisites corresponds to the <strong>Certified Anesthesiologist Assistant</strong> route?</p>
+        <ul>
+          <li>A. BSN, active RN license, and &ge; 1 year of ICU experience before a doctoral program</li>
+          <li>B. A bachelor's degree with a pre-medical prerequisite science sequence, then a CAAHEP-accredited master's AA program — no RN license required</li>
+          <li>C. Completion of medical school and an anesthesiology residency</li>
+          <li>D. An associate degree in nursing and passage of the NCLEX</li>
+          <li>E. A doctorate in nursing practice (DNP) with critical-care RN experience</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: B.</strong> The CAA pathway requires a bachelor's degree with pre-med prerequisites followed by a CAAHEP-accredited master's-level Anesthesiologist Assistant program; a nursing license is not required. Option A (and E) describes the CRNA pathway; C describes a physician anesthesiologist; D describes an entry-level RN.<br><em>Source: <a href="https://www.caahep.org/profession-description-and-certification-information/anesthesiologist-assistant" target="_blank" rel="noopener">CAAHEP — Anesthesiologist Assistant</a>; <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook</a>.</em></p></div>
+
+        <h3>Question 5</h3>
+        <p>According to the NCCAA content outline (Rev. 2021), which of the six major content areas carries the <strong>largest</strong> approximate share of exam items?</p>
+        <ul>
+          <li>A. Principles of Anesthesia</li>
+          <li>B. Regional Anesthesia and Pain Management</li>
+          <li>C. Pharmacology</li>
+          <li>D. Subspecialty Care</li>
+          <li>E. Instrumentation, Monitoring, and Anesthetic Delivery Systems</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: D.</strong> Subspecialty Care is the most heavily weighted domain on the NCCAA blueprint (approximately 31% of items), ahead of Physiology/Pathophysiology/Management (~19%), Pharmacology (~15%), Instrumentation/Monitoring/Delivery (~15%), Principles of Anesthesia (~9%), and Regional Anesthesia and Pain Management (~8%).<br><em>Source: <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">NCCAA Certification Examination Handbook / Content Outline Rev. 2021</a>; <a href="https://truelearn.com/resource-library/nccaa-certification-exam-breakdown/" target="_blank" rel="noopener">TrueLearn NCCAA breakdown</a>.</em></p></div>
+
+        <div class="cta-box">
+          <h3>Train against the right blueprint</h3>
+          <p>MACPrep is a board-review question bank built for the NCCAA Certification Exam from the ground up — mapped to the NCCAA content outline, written for the physician-led Anesthesia Care Team, and reviewed by a practicing CAA. It's not CRNA material with the labels swapped.</p>
+          <a class="cta-btn" href="/index.html">Try 3 questions free — no signup →</a>
+        </div>
+
+        <h2>Sources</h2>
+        <ul>
+          <li>NCCAA — Certification Examination Handbook (Rev. 2021 content outline; format, item counts, eligibility): <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">nccaa.org/CertificationExamHandbook.pdf</a></li>
+          <li>NCCAA — Certification Exam Info: <a href="https://nccaa.org/certifyexaminfo" target="_blank" rel="noopener">nccaa.org/certifyexaminfo</a></li>
+          <li>NCCAA — Certification Exam Eligibility: <a href="https://nccaa.org/certifyeligibility" target="_blank" rel="noopener">nccaa.org/certifyeligibility</a></li>
+          <li>NCCAA — home / recertification &amp; CME: <a href="https://nccaa.org/" target="_blank" rel="noopener">nccaa.org</a></li>
+          <li>NBCRNA — Students / NCE Resources (NCE format, adaptive testing, item types): <a href="https://www.nbcrna.com/students/nce-resources" target="_blank" rel="noopener">nbcrna.com/students/nce-resources</a></li>
+          <li>NBCRNA — Continued Professional Certification (CPC) program: <a href="https://www.nbcrna.com/certification-programs/cpc" target="_blank" rel="noopener">nbcrna.com/certification-programs/cpc</a></li>
+          <li>NBCRNA — CPC Assessment (four core knowledge domains): <a href="https://www.nbcrna.com/certification-programs/cpc-assessment" target="_blank" rel="noopener">nbcrna.com/certification-programs/cpc-assessment</a></li>
+          <li>TheCRNA.com — Preparing for the National Certification Exam: <a href="https://thecrna.com/preparing-for-the-national-certification-exam/" target="_blank" rel="noopener">thecrna.com</a></li>
+          <li>TheCRNA.com — CRNA vs CAA Comparison: <a href="https://thecrna.com/crna-vs-caa-comparison-what-is-the-difference/" target="_blank" rel="noopener">thecrna.com</a></li>
+          <li>CAAHEP — Anesthesiologist Assistant profession &amp; certification: <a href="https://www.caahep.org/profession-description-and-certification-information/anesthesiologist-assistant" target="_blank" rel="noopener">caahep.org</a></li>
+          <li>Case Western Reserve — Certified Anesthesiologist Assistant profession: <a href="https://case.edu/medicine/msa-program/about-us/caa-profession" target="_blank" rel="noopener">case.edu</a></li>
+          <li>AAAA (American Academy of Anesthesiologist Assistants) — About CAAs: <a href="https://www.anesthetist.org/about-caas-menu" target="_blank" rel="noopener">anesthetist.org</a></li>
+          <li>Nurse.org — DNAP vs DNP CRNA programs: <a href="https://nurse.org/education/crna-or-dnp-dnap-differences/" target="_blank" rel="noopener">nurse.org</a></li>
+          <li>AAG Health — 2025 CRNA Doctorate Changes: <a href="https://www.aag.health/post/crna-doctorate-changes" target="_blank" rel="noopener">aag.health</a></li>
+          <li>TrueLearn — NCCAA Certification Exam breakdown (content-area percentages): <a href="https://truelearn.com/resource-library/nccaa-certification-exam-breakdown/" target="_blank" rel="noopener">truelearn.com</a></li>
+        </ul>
+
+        <div class="related"><b>Keep reading</b>
+          <a href="/guides/how-to-pass-the-nccaa-certification-exam.html">How to Pass the NCCAA Certification Exam →</a>
+          <a href="/guides/how-long-to-study-for-the-nccaa-exam.html">How Long Should You Study for the NCCAA Exam? →</a>
+          <a href="/guides/nccaa-exam-pass-rates.html">NCCAA Exam Pass Rates: What to Expect →</a>
+        </div>
+        <p class="disc">MACPrep is an independent study resource and is not affiliated with or endorsed by the NCCAA. Exam format, eligibility, fees, and requirements change — always confirm current details on the official NCCAA website. This article is for educational purposes and is not medical advice.</p>
+    </div>
+    <footer style="border-top:1px solid var(--line,#1F2937);margin-top:48px;padding:34px 24px 28px;text-align:center;">
+  <a href="/index.html" style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:22px;letter-spacing:-1px;color:var(--text,#F9FAFB);text-decoration:none;">MAC<span style="color:var(--accent,#00A86B);">Prep</span></a>
+  <div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted,#828b9a);margin-top:8px;">NCCAA board review for SAAs (certification) &amp; CAAs (recertification).</div>
+  <div style="font-family:ui-monospace,monospace;font-size:12px;margin-top:18px;line-height:2.1;">
+    <a href="/updates.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Updates</a>·<a href="/faq.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">FAQ</a>·<a href="/guides/" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Guides</a>·<a href="/why-trust-us.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Why trust us</a>·<a href="/reviews" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Reviews</a><br>
+    <a href="/privacy.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Privacy</a>·<a href="/terms.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Terms</a>·<a href="/cookies.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Cookies</a><br>
+    <a href="mailto:support@macprep.org" style="color:var(--accent,#00A86B);text-decoration:none;">support@macprep.org</a>
+  </div>
+  <div style="display:flex;gap:18px;justify-content:center;align-items:center;margin-top:16px;"><a href="https://www.facebook.com/profile.php?id=61591253695681" target="_blank" rel="noopener" aria-label="MACPrep on Facebook" title="Facebook" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a><a href="https://www.linkedin.com/company/130213953/" target="_blank" rel="noopener" aria-label="MACPrep on LinkedIn" title="LinkedIn" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg></a><a href="https://www.instagram.com/macprep_/" target="_blank" rel="noopener" aria-label="MACPrep on Instagram" title="Instagram" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.332.014 7.052.072 2.695.272.273 2.69.073 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.332 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a></div>
+  <div style="border-top:1px solid var(--line,#1F2937);margin:22px auto 0;padding-top:20px;max-width:640px;">
+    <style>
+      .pf-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+      .pf-card{display:flex;align-items:center;gap:13px;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:14px;padding:12px 16px 12px 14px;text-decoration:none;min-width:250px;transition:transform .18s ease,border-color .18s ease,box-shadow .25s ease;}
+      .pf-card:hover{transform:translateY(-3px);border-color:var(--accent,#00A86B);box-shadow:0 16px 34px -22px rgba(0,0,0,.5);}
+      .pf-card .pf-nm{display:block;font-weight:700;font-size:14px;color:var(--text,#F9FAFB);line-height:1.25;}
+      .pf-card .pf-ds{display:block;font-size:12px;color:var(--muted,#828b9a);line-height:1.3;margin-top:1px;}
+      .pf-card .pf-arw{margin-left:auto;color:var(--accent,#00A86B);display:inline-flex;}
+      @media (max-width:520px){.pf-card{min-width:0;width:100%;}}
+    </style>
+    <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#828b9a);text-align:center;">Community partners</div>
+    <div class="pf-cards">
+      <a class="pf-card" href="https://discord.com/servers/caa-706407688359247924" target="_blank" rel="noopener"><img src="/partner-caa-discord.png" alt="CAA Discord Server logo" width="38" height="38" style="border-radius:9px;display:block;flex:none;"><span style="display:flex;flex-direction:column;"><span class="pf-nm">CAA Discord Server</span><span class="pf-ds">Where CAAs &amp; SAAs connect</span></span><span class="pf-arw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      <a class="pf-card" href="https://bagmask.com/" target="_blank" rel="noopener"><img src="/partner-bagmask.png" alt="BagMask.com logo" width="38" height="38" style="border-radius:9px;display:block;flex:none;background:#fff;"><span style="display:flex;flex-direction:column;"><span class="pf-nm">Bag Mask</span><span class="pf-ds">Anesthesia jobs &amp; careers</span></span><span class="pf-arw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+    </div>
+  </div>
+  <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
+</footer>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"CAA vs CRNA Board Exams: Key Differences — MACPrep","description":"How the CAA (NCCAA) and CRNA (NBCRNA) board exams differ — certifying bodies, eligibility, exam format, and content weighting — and why CAA prep should track the NCCAA blueprint.","author":{"@type":"Organization","name":"MACPrep"},"publisher":{"@type":"Organization","name":"MACPrep","logo":{"@type":"ImageObject","url":"https://www.macprep.org/logo.png"}},"mainEntityOfPage":"https://www.macprep.org/guides/caa-vs-crna-board-exams","image":"https://www.macprep.org/og-image.png?v=2"}</script>
+</body>
+</html>

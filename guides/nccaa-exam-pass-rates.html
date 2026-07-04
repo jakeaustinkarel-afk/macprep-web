@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>(function(){var T=[{id:'light',name:'Daylight',sw:['#f6f7f9','#047857','#111827']},{id:'dark',name:'Terminal',sw:['#0D0E10','#00A86B','#F9FAFB']},{id:'warm',name:'Warm Paper',sw:['#F1E9DA','#1F5D43','#B07A2E']},{id:'sandstone',name:'Sandstone',sw:['#EFE7D8','#0F766E','#2b2418']},{id:'rose',name:'Rose',sw:['#FBF1F2','#0E7C66','#2A1F22']},{id:'bloom',name:'Bloom',sw:['#FDF1F8','#C026D3','#2E1A26']},{id:'sky',name:'Sky',sw:['#F0F6FF','#2563EB','#0f2236']},{id:'lavender',name:'Lavender',sw:['#F5F3FC','#7C3AED','#241f33']},{id:'slate',name:'Slate',sw:['#1B2027','#2DD4BF','#EAEEF3']},{id:'nord',name:'Nord',sw:['#2E3440','#88C0D0','#ECEFF4']},{id:'ocean',name:'Ocean',sw:['#0B1A2B','#38BDF8','#E6F0FA']},{id:'indigo',name:'Indigo',sw:['#14122B','#A78BFA','#ECEAFB']},{id:'contrast',name:'Contrast',sw:['#000000','#00E676','#FFFFFF']},{id:'graphite',name:'Graphite',sw:['#161618','#A1A1AA','#F4F4F5']},{id:'ember',name:'Ember',sw:['#1A1214','#F87171','#FBECEE']},{id:'amber',name:'Amber',sw:['#19150A','#F5B73C','#FBF4E1']},{id:'espresso',name:'Espresso',sw:['#1A1410','#D6A06A','#F5EBDD']},{id:'sunset',name:'Sunset',sw:['#1A1113','#FF8A5B','#FBEBE8']},{id:'forest',name:'Forest',sw:['#0B1410','#34D399','#E6F2EA']},{id:'mist',name:'Mist',sw:['#EFF3F4','#0E7490','#132026']}];var ids=T.map(function(t){return t.id;});function cur(){var c=document.documentElement.getAttribute('data-theme');return ids.indexOf(c)>=0?c:'light';}try{var st=localStorage.getItem('macprep_theme');if(!st||ids.indexOf(st)<0)st='light';document.documentElement.setAttribute('data-theme',st);}catch(e){document.documentElement.setAttribute('data-theme','light');}function render(){var m=document.getElementById('theme-menu');if(!m)return;var c=cur();m.innerHTML=T.map(function(t){var sw=t.sw.map(function(x){return '<span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:'+x+';border:1px solid rgba(127,127,127,.3);"></span>';}).join('');return '<button type="button" data-tid="'+t.id+'" style="display:flex;align-items:center;gap:9px;width:100%;background:'+(t.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:8px 9px;border-radius:6px;font-family:inherit;font-size:13px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;"><span style="display:inline-flex;gap:3px;">'+sw+'</span><span style="flex:1;">'+t.name+'</span>'+(t.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-tid]'),function(b){b.onclick=function(){window.setTheme(b.getAttribute('data-tid'));};});}window.setTheme=function(id){if(ids.indexOf(id)<0)return;document.documentElement.setAttribute('data-theme',id);try{localStorage.setItem('macprep_theme',id);}catch(e){}render();if(typeof window.onThemeChange==='function'){try{window.onThemeChange(id);}catch(e){}}};window.toggleTheme=function(){window.setTheme(cur()==='dark'?'light':'dark');};window._themeMenu=function(e){if(e)e.stopPropagation();var f=document.getElementById('font-menu');if(f)f.classList.add('hidden');var m=document.getElementById('theme-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))render();};var F=[{id:'modern',name:'Modern',ff:'-apple-system,system-ui,sans-serif'},{id:'serif',name:'Serif',ff:'Georgia,serif'},{id:'mono',name:'Mono',ff:'ui-monospace,Menlo,monospace'},{id:'rounded',name:'Rounded',ff:'ui-rounded,system-ui,sans-serif'}];var fids=F.map(function(f){return f.id;});function curF(){var c=document.documentElement.getAttribute('data-font');return fids.indexOf(c)>=0?c:'modern';}try{var sf=localStorage.getItem('macprep_font');if(!sf||fids.indexOf(sf)<0)sf='modern';document.documentElement.setAttribute('data-font',sf);}catch(e){document.documentElement.setAttribute('data-font','modern');}function renderF(){var m=document.getElementById('font-menu');if(!m)return;var c=curF();m.innerHTML=F.map(function(f){return '<button type="button" data-fid="'+f.id+'" style="display:flex;align-items:center;gap:10px;width:100%;background:'+(f.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:9px 10px;border-radius:6px;font-size:15px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;font-family:'+f.ff+';"><span style="flex:1;">'+f.name+'</span>'+(f.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-fid]'),function(b){b.onclick=function(){window.setFont(b.getAttribute('data-fid'));};});}window.setFont=function(id){if(fids.indexOf(id)<0)return;document.documentElement.setAttribute('data-font',id);try{localStorage.setItem('macprep_font',id);}catch(e){}renderF();if(typeof window.onFontChange==='function'){try{window.onFontChange(id);}catch(e){}}};window._fontMenu=function(e){if(e)e.stopPropagation();var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var m=document.getElementById('font-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderF();};document.addEventListener('click',function(){var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var fm=document.getElementById('font-menu');if(fm)fm.classList.add('hidden');});document.addEventListener('DOMContentLoaded',function(){render();renderF();});})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCCAA Exam Pass Rates: What to Expect — MACPrep</title>
+    <link rel="canonical" href="https://www.macprep.org/guides/nccaa-exam-pass-rates">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="MACPrep">
+    <meta property="og:title" content="NCCAA Exam Pass Rates: What to Expect — MACPrep">
+    <meta property="og:description" content="The published NCCAA CERT and CDQ exam pass rates, why first-time rates run in the low-90s while repeat rates drop sharply, what drives pass vs. fail, and how to maximize your odds.">
+    <meta property="og:url" content="https://www.macprep.org/guides/nccaa-exam-pass-rates">
+    <meta property="og:image" content="https://www.macprep.org/og-image.png?v=2">
+    <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NCCAA Exam Pass Rates: What to Expect — MACPrep">
+    <meta name="twitter:description" content="The published NCCAA CERT and CDQ exam pass rates, why first-time rates run in the low-90s while repeat rates drop sharply, what drives pass vs. fail, and how to maximize your odds.">
+    <meta name="twitter:image" content="https://www.macprep.org/og-image.png?v=2">
+    <meta name="description" content="The published NCCAA CERT and CDQ exam pass rates, why first-time rates run in the low-90s while repeat rates drop sharply, what drives pass vs. fail, and how to maximize your odds.">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/svg+xml" href="/brand/macprep-mark.svg">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <style>
+        :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;}
+
+        html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--on-accent:#ffffff;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="warm"]{--bg:#F1E9DA;--panel:#FBF6EB;--line:#E1D5C0;--text:#2A2620;--text2:#4a4339;--muted:#796D5B;--accent:#1F5D43;--on-accent:#ffffff;--accent-dim:#e6efe9;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#1F5D43;--warn:#9a6a14;--bad:#9a3a2a;--info:#3a6ea5;}
+        html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--on-accent:#ffffff;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
+        html[data-theme="rose"]{--bg:#FBF1F2;--panel:#ffffff;--line:#EBDADC;--text:#2A1F22;--text2:#4a3a3e;--muted:#8a6f74;--accent:#0E7C66;--on-accent:#ffffff;--accent-dim:#e3f3ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#0E7C66;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
+        html[data-theme="bloom"]{--bg:#FDF1F8;--panel:#ffffff;--line:#F0DBE8;--text:#2E1A26;--text2:#4f3343;--muted:#8a6478;--accent:#C026D3;--on-accent:#ffffff;--accent-dim:#f7e3fa;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="sky"]{--bg:#F0F6FF;--panel:#ffffff;--line:#dbe6f5;--text:#0f2236;--text2:#33485f;--muted:#5f7388;--accent:#2563EB;--on-accent:#ffffff;--accent-dim:#e2ecfd;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#2563eb;}
+        html[data-theme="lavender"]{--bg:#F5F3FC;--panel:#ffffff;--line:#e6e1f4;--text:#241f33;--text2:#43395c;--muted:#6f6589;--accent:#7C3AED;--on-accent:#ffffff;--accent-dim:#efe9fc;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#7c3aed;}
+        html[data-theme="slate"]{--bg:#1B2027;--panel:#242B34;--line:#374151;--text:#EAEEF3;--text2:#c3ccd6;--muted:#8b97a6;--accent:#2DD4BF;--on-accent:#0c1116;--accent-dim:#0c2b27;--danger:#f87171;--danger-dim:#2a1414;--good:#2DD4BF;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="nord"]{--bg:#2E3440;--panel:#3B4252;--line:#4C566A;--text:#ECEFF4;--text2:#d8dee9;--muted:#b0bbce;--accent:#88C0D0;--on-accent:#0c1116;--accent-dim:#27343a;--danger:#BF616A;--danger-dim:#3a2528;--good:#A3BE8C;--warn:#EBCB8B;--bad:#BF616A;--info:#81A1C1;}
+        html[data-theme="ocean"]{--bg:#0B1A2B;--panel:#11263D;--line:#22384F;--text:#E6F0FA;--text2:#bcd0e3;--muted:#7d93a8;--accent:#38BDF8;--on-accent:#0c1116;--accent-dim:#0a2536;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#38bdf8;}
+        html[data-theme="indigo"]{--bg:#14122B;--panel:#1E1B3A;--line:#332E54;--text:#ECEAFB;--text2:#cac6e8;--muted:#9690bb;--accent:#A78BFA;--on-accent:#0c1116;--accent-dim:#1e1840;--danger:#fb7185;--danger-dim:#2a1420;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#a78bfa;}
+        html[data-theme="contrast"]{--bg:#000000;--panel:#0A0A0A;--line:#333333;--text:#FFFFFF;--text2:#E5E5E5;--muted:#A3A3A3;--accent:#00E676;--on-accent:#0c1116;--accent-dim:#04220f;--danger:#FF5252;--danger-dim:#2a0c0c;--good:#00E676;--warn:#FFD54F;--bad:#FF5252;--info:#40C4FF;}
+        html[data-theme="graphite"]{--bg:#161618;--panel:#202022;--line:#34343a;--text:#F4F4F5;--text2:#cfcfd4;--muted:#9a9aa2;--accent:#A1A1AA;--on-accent:#18181b;--accent-dim:#2a2a30;--danger:#f87171;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#f87171;--info:#60a5fa;}
+        html[data-theme="ember"]{--bg:#1A1214;--panel:#241719;--line:#3A2529;--text:#FBECEE;--text2:#e6cace;--muted:#b38f94;--accent:#F87171;--on-accent:#2a0a0a;--accent-dim:#331619;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb7185;--info:#60a5fa;}
+        html[data-theme="amber"]{--bg:#19150A;--panel:#231E0F;--line:#3C3318;--text:#FBF4E1;--text2:#e8dcb8;--muted:#b2a176;--accent:#F5B73C;--on-accent:#231903;--accent-dim:#31270b;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="espresso"]{--bg:#1A1410;--panel:#241C16;--line:#3A2E23;--text:#F5EBDD;--text2:#ddcab2;--muted:#a8927a;--accent:#D6A06A;--on-accent:#241803;--accent-dim:#332518;--danger:#fb7185;--danger-dim:#2a1414;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="sunset"]{--bg:#1A1113;--panel:#251619;--line:#3B2529;--text:#FBEBE8;--text2:#e8c9c3;--muted:#b38f8a;--accent:#FF8A5B;--on-accent:#2a1003;--accent-dim:#331a12;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="forest"]{--bg:#0B1410;--panel:#121F18;--line:#22362A;--text:#E6F2EA;--text2:#c2d8c9;--muted:#7d9587;--accent:#34D399;--on-accent:#052015;--accent-dim:#0c2b20;--danger:#fb7185;--danger-dim:#2a1414;--good:#34D399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
+        html[data-theme="mist"]{--bg:#EFF3F4;--panel:#ffffff;--line:#dde6e8;--text:#132026;--text2:#354952;--muted:#5e7580;--accent:#0E7490;--on-accent:#ffffff;--accent-dim:#e0eff2;--danger:#b42318;--danger-dim:#fde8e8;--good:#0f766e;--warn:#b45309;--bad:#b42318;--info:#0e7490;}
+        :root { --bg:#0D0E10; --panel:#111214; --line:#1F2937; --text:#F9FAFB; --muted:#828b9a; --accent:#00A86B; --accent-dim:#0f2a20; }
+        .social-ico{color:var(--muted,#6B7280);transition:color .15s ease;}.social-ico:hover{color:var(--accent,#00A86B);}
+        *{box-sizing:border-box;} body{background:var(--bg);color:var(--text);margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65;}
+        a{color:var(--accent);text-decoration:none;} a:hover{text-decoration:underline;}
+        .header-bar{padding:16px 32px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+        .brand-logo{font-family:'Figtree',ui-monospace,sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;color:var(--text);}
+        .accent{color:var(--accent);}
+        .nav{display:flex;gap:20px;align-items:center;font-family:ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:1px;}
+        .nav a{color:var(--muted);} .nav a:hover{color:var(--text);text-decoration:none;}
+        .wrap{max-width:760px;margin:0 auto;padding:40px 24px 56px;}
+        .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+        h1{font-size:32px;line-height:1.22;margin:10px 0 12px;color:var(--text);}
+        h2{font-size:21px;margin:34px 0 10px;color:var(--text);}
+        h3{font-size:17px;margin:22px 0 6px;color:var(--text);}
+        p{color:var(--text2);margin:0 0 14px;}
+        ul,ol{color:var(--text2);padding-left:22px;margin:0 0 16px;} li{margin:6px 0;}
+        strong{color:var(--text);}
+        .lead{font-size:18px;color:var(--text);margin:0 0 8px;}
+        .meta-line{color:var(--muted);font-size:13px;margin:0 0 26px;}
+        .callout{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:14px 18px;margin:20px 0;}
+        .callout p{margin:0;color:var(--text);font-size:14.5px;}
+        .cta-box{background:var(--accent-dim);border:1px solid var(--accent);border-radius:12px;padding:26px 24px;margin:34px 0;text-align:center;}
+        .cta-box h3{margin:0 0 8px;}
+        .cta-box p{margin:0 0 16px;color:var(--text);}
+        .cta-btn{display:inline-block;background:var(--accent);color:#ffffff;font-weight:700;padding:12px 26px;border-radius:8px;text-decoration:none;}
+        .cta-btn:hover{text-decoration:none;opacity:.92;}
+        .related{border-top:1px solid var(--line);margin-top:42px;padding-top:18px;}
+        .related b{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:ui-monospace,monospace;}
+        .related a{display:block;margin:10px 0;font-size:15px;}
+        .disc{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:30px;padding-top:14px;}
+        .card-link{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:14px 0;text-decoration:none;transition:border-color .15s ease;}
+        .card-link:hover{border-color:var(--accent);text-decoration:none;}
+        .card-link h3{margin:0 0 6px;color:var(--text);}
+        .card-link p{margin:0;color:var(--muted);font-size:14px;}
+        .nav-toggle{display:none;background:none;border:1px solid var(--line,#1F2937);color:var(--text,#F9FAFB);border-radius:4px;padding:6px 12px;font-size:18px;line-height:1;cursor:pointer;}
+        @media (max-width:720px){
+          .header-bar{position:relative;flex-wrap:wrap;padding:14px 16px;}
+          .nav-toggle{display:block;}
+          .nav{display:none;position:absolute;top:100%;right:12px;left:12px;margin-top:6px;flex-direction:column;align-items:stretch;gap:0;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:8px;padding:6px;z-index:50;}
+          .nav a,.nav button{padding:12px 10px;border-bottom:1px solid var(--line,#1F2937);text-align:left;}
+          .nav a:last-of-type{border-bottom:none;}
+          .nav.nav-open{display:flex;}
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+        .hidden{display:none;}
+            :root{--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+        html[data-font="serif"]{--font:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
+        html[data-font="mono"]{--font:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;}
+        html[data-font="rounded"]{--font:"SF Pro Rounded",ui-rounded,"Hiragino Maru Gothic ProN",Quicksand,"Segoe UI",system-ui,sans-serif;}
+        body{font-family:var(--font);}
+    </style>
+
+    <style>
+        .gtbl-wrap{overflow-x:auto;margin:0 0 18px;-webkit-overflow-scrolling:touch;}
+        .gtbl{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14.5px;}
+        .gtbl thead th{background:var(--accent-dim);color:var(--text);text-align:left;font-weight:700;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+        .gtbl th[scope="row"]{text-align:left;font-weight:700;color:var(--text);}
+        .gtbl td,.gtbl tbody th{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top;}
+        .gtbl tbody tr:last-child td,.gtbl tbody tr:last-child th{border-bottom:none;}
+        .gtbl strong{color:var(--text);}
+    </style>
+
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.macprep.org/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://www.macprep.org/guides/"},{"@type":"ListItem","position":3,"name":"NCCAA Exam Pass Rates","item":"https://www.macprep.org/guides/nccaa-exam-pass-rates"}]}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is the NCCAA Certification Exam first-time pass rate?","acceptedAnswer":{"@type":"Answer","text":"In the most recent NCCAA Pass/Fail Reports, the first-time pass rate on the Certification (CERT) exam was about 92.8% (June 2024–Feb 2025) and 92.2% (June 2023–Feb 2024). Repeat-taker pass rates are markedly lower, often in the 55–80% range. Always confirm the latest figures at nccaa.org/passfailreport."}},{"@type":"Question","name":"How hard is the CAA board exam?","acceptedAnswer":{"@type":"Answer","text":"The ~92% first-time pass rate reflects a well-trained, well-filtered candidate pool rather than an easy exam. Accredited AA programs must maintain a minimum 90% cumulative NCCAA pass rate, so the candidates sitting the exam are already selected for competence. It is demanding but very passable for a prepared candidate."}},{"@type":"Question","name":"What is on the NCCAA Certification Exam?","acceptedAnswer":{"@type":"Answer","text":"The CERT exam is 180 multiple-choice items in two blocks of 90 questions, 110 minutes per block. The content blueprint is weighted heaviest toward Subspecialty Care (~31%) and Physiology/Pathophysiology (~19%), followed by Instrumentation/Monitoring (15%), Pharmacology (15%), Principles of Anesthesia (9%), and Regional Anesthesia/Pain (8%)."}},{"@type":"Question","name":"How often do CAAs take the CDQ recertification exam?","acceptedAnswer":{"@type":"Answer","text":"The CDQ recertification exam interval is transitioning from every 6 years to every 10 years. CAAs certified in 2020 or later take a first CDQ exam at 4 years before moving to the 10-year cycle, while existing CAAs complete their current 6-year cycle first. Separately, CAAs must complete 50 hours of CME every 2 years (at least 40 hours of Category I – Anesthesia). Confirm current rules with the NCCAA."}}]}</script>
+</head>
+<body>
+    <div class="header-bar">
+        <a href="/index.html" class="brand-logo" style="display:inline-flex;align-items:center;gap:9px;"><svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg><span>MAC<span class="accent">Prep</span></span></a>
+        <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
+        <nav class="nav" id="site-nav">
+            <a href="/index.html#features">Features</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/guides/">Guides</a>
+            <a href="/faq">FAQ</a>
+            <a href="/login">Log in</a>
+            <a href="/index.html#signup-pane" class="nav-cta" style="background:var(--accent);color:var(--on-accent);padding:7px 15px;border-radius:8px;font-weight:700;white-space:nowrap;">Start Free →</a>
+        </nav>
+    </div>
+    <div class="wrap">
+        <span class="tag">Exam Data &amp; Expectations</span>
+        <h1>NCCAA Exam Pass Rates: What to Expect Before the CAA Boards</h1>
+        <p class="meta-line">Published CERT &amp; CDQ pass rates, what drives them, and how to beat them · ~9 min read</p>
+        <p class="lead">If you're a Student Anesthesiologist Assistant (SAA) staring down the NCCAA Certification Exam — or a practicing Certified Anesthesiologist Assistant (CAA) facing your recertification exam — the first question is almost always the same: <em>how hard is this, really?</em> Pass rates are the shorthand answer, and they matter because they set your expectations, calm the panic, and tell you what "prepared" actually looks like.</p>
+        <p>The short version: the NCCAA Certification Exam has a high first-time pass rate, but "high" does not mean "automatic." A meaningful minority of candidates fail on the first attempt every cycle, and the repeat-taker numbers drop sharply. Below is exactly what the published data says, what actually drives the pass/fail line, and how to make sure you land on the right side of it.</p>
+
+        <h2>Quick answer: the published NCCAA pass rates</h2>
+        <p>The NCCAA publishes official Pass/Fail Summary reports for both the Certification Exam (the initial "boards" for new grads) and the CDQ Exam (the recertification exam for practicing CAAs). Here are the two most recent reporting periods, taken directly from those reports.</p>
+        <h3>Certification Exam (CERT) — the initial CAA boards</h3>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th>Reporting period</th><th>Candidate group</th><th>Passed</th><th>Failed</th><th>Pass rate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>June 2024 – Feb 2025</td><td>First-time</td><td>398 / 429</td><td>31</td><td><strong>92.8%</strong></td></tr>
+            <tr><td>June 2024 – Feb 2025</td><td>Repeat</td><td>25 / 43</td><td>18</td><td>58.1%</td></tr>
+            <tr><td>June 2023 – Feb 2024</td><td>First-time</td><td>331 / 359</td><td>28</td><td><strong>92.2%</strong></td></tr>
+            <tr><td>June 2023 – Feb 2024</td><td>Repeat</td><td>22 / 28</td><td>6</td><td>78.6%</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="meta-line" style="margin:0 0 10px;">Source: NCCAA Exam Pass/Fail Reports.</p>
+        <h3>CDQ Exam — the CAA recertification exam</h3>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th>Reporting period</th><th>Candidate group</th><th>Passed</th><th>Failed</th><th>Pass rate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>June 2024 – Feb 2025</td><td>First-time</td><td>758 / 783</td><td>25</td><td><strong>96.8%</strong></td></tr>
+            <tr><td>June 2024 – Feb 2025</td><td>Repeat</td><td>20 / 30</td><td>10</td><td>66.7%</td></tr>
+            <tr><td>June 2023 – Feb 2024</td><td>First-time</td><td>690 / 706</td><td>16</td><td><strong>97.7%</strong></td></tr>
+            <tr><td>June 2023 – Feb 2024</td><td>Repeat</td><td>9 / 13</td><td>4</td><td>69.2%</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="meta-line" style="margin:0 0 10px;">Source: NCCAA Exam Pass/Fail Reports.</p>
+        <div class="callout"><p>These are the officially published figures at the time of writing. NCCAA updates the report each cycle, so before you cite a number anywhere it matters, check the current report at <a href="https://nccaa.org/passfailreport" target="_blank" rel="noopener">nccaa.org/passfailreport</a>.</p></div>
+        <p><strong>Two things jump out of these tables:</strong></p>
+        <ol>
+          <li><strong>First-time pass rates sit in the low-to-mid 90s</strong> — high, but not a formality. Roughly 7–8 out of every 100 first-time CERT candidates do not pass.</li>
+          <li><strong>Repeat-taker pass rates are dramatically lower</strong> — often in the 55–80% range. Failing once and re-sitting is not a coin flip in your favor. Whatever gap caused the first failure tends to persist unless it's specifically addressed. <strong>The single most valuable attempt you have is your first one.</strong></li>
+        </ol>
+
+        <h2>How hard is the CAA boards, honestly?</h2>
+        <p>Here's the honest framing. A ~92% first-time CERT pass rate is <em>not</em> evidence of an easy exam — it's evidence of a well-filtered, well-trained candidate pool. Every first-time test taker has already:</p>
+        <ul>
+          <li>Completed a rigorous, accredited master's-level anesthesia program, and</li>
+          <li>Come out of a curriculum whose accreditor <strong>requires programs to maintain a minimum 90% cumulative NCCAA pass rate</strong> to stay accredited (per the ASA's statement on CAAs). Programs have strong institutional pressure to graduate students who will pass.</li>
+        </ul>
+        <p>So the population walking into the CERT exam is already selected for competence. The pass rate reflects a strong cohort clearing a real bar — not a soft exam. If you treat it casually because "almost everyone passes," you're mis-reading the number. The people in that 92% studied hard.</p>
+        <p>For context, that first-time pass rate is broadly in line with other well-established health-professional certification exams, which commonly report first-time pass rates in the high-80s to mid-90s. The CAA boards are demanding but very passable <em>for a prepared candidate.</em></p>
+
+        <h2>What's actually on the exam (so you know what you're being graded on)</h2>
+        <p>You can't manage your odds without knowing the target. Here's the CERT exam structure.</p>
+        <h3>CERT exam format at a glance</h3>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th>Feature</th><th>Detail</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Number of questions</th><td>180 multiple-choice items</td></tr>
+            <tr><th scope="row">Structure</th><td>Two blocks of 90 questions</td></tr>
+            <tr><th scope="row">Time</th><td>110 minutes per block</td></tr>
+            <tr><th scope="row">Delivery</th><td>Computer-based</td></tr>
+            <tr><th scope="row">Offered</th><td>Three times per year</td></tr>
+            <tr><th scope="row">Eligibility</th><td>Graduate of an NCCAA-approved program; up to six attempts within a 2-year eligibility window</td></tr>
+            <tr><th scope="row">Result</th><td>Overall score + subject-area subscores, with national averages for comparison</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="meta-line" style="margin:0 0 10px;">Source: TrueLearn NCCAA Certification Exam breakdown; NCCAA Certification Exam Handbook.</p>
+        <h3>CERT content blueprint (what's weighted heaviest)</h3>
+        <p>This is the part most worth internalizing. The exam is <strong>not evenly distributed</strong> across topics. Subspecialty care and physiology/pathophysiology together make up half the exam.</p>
+        <div class="gtbl-wrap">
+        <table class="gtbl">
+          <thead>
+            <tr><th>Content domain</th><th>Approx. weight</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Subspecialty Care</strong></td><td><strong>31%</strong></td></tr>
+            <tr><td><strong>Physiology, Pathophysiology, and Management</strong></td><td><strong>19%</strong></td></tr>
+            <tr><td>Instrumentation, Monitoring, and Anesthetic Delivery Systems</td><td>15%</td></tr>
+            <tr><td>Pharmacology</td><td>15%</td></tr>
+            <tr><td>Principles of Anesthesia</td><td>9%</td></tr>
+            <tr><td>Regional Anesthesia and Pain Management</td><td>8%</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="meta-line" style="margin:0 0 10px;">Source: TrueLearn NCCAA Certification Exam breakdown (blueprint attributed to NCCAA).</p>
+        <div class="callout"><p><strong>Study takeaway:</strong> if you spend your prep time evenly across all six domains, you're under-investing in the two categories (Subspecialty Care + Physiology/Pathophysiology) that decide roughly <em>half</em> your score. Weight your effort toward the blueprint.</p></div>
+        <h3>How scoring works</h3>
+        <p>The NCCAA reports an overall score plus subject-matter-area subscores, along with national averages for cohort comparison. NCCAA does not publish a raw cut score or a fixed "you need X%" threshold on its public pages, and it treats detailed scoring methodology as internal. Like most professional credentialing exams, it functions as a <strong>pass/fail, criterion-referenced</strong> exam — you are measured against a defined competence standard, not ranked on a curve against your cohort. Practically, that means <strong>you are not competing against other test-takers for a limited number of passes.</strong> If you meet the standard, you pass, regardless of how anyone else did.</p>
+
+        <h2>What drives pass vs. fail</h2>
+        <p>Pull apart the candidates who pass first-time from those who don't, and the same patterns show up. None of these are exotic — which is good news, because they're all fixable.</p>
+        <h3>1. Studying flat instead of to the blueprint</h3>
+        <p>The most common self-inflicted wound. Candidates who distribute effort evenly, or who over-study their comfortable domains, leave points on the table in the heavily weighted categories. Prioritize Subspecialty Care and Physiology/Pathophysiology.</p>
+        <h3>2. Recognition-level knowledge instead of application-level knowledge</h3>
+        <p>Board items are clinical vignettes, not fact recall. Memorizing an isolated fact is recognition; reading a full patient scenario and choosing the correct next step under time pressure is application &mdash; a different, harder skill. Passing candidates practice on complete vignettes, not flashcards alone.</p>
+        <h3>3. Thin, question-light preparation</h3>
+        <p>There is a strong, consistent relationship across every professional board exam between <strong>volume of practice questions completed</strong> and first-time pass likelihood. Candidates who work through a large, board-style question bank — reading every rationale, not just checking right/wrong — walk in calibrated. Candidates who mostly re-read notes walk in guessing.</p>
+        <h3>4. Poor timing and stamina</h3>
+        <p>Two blocks, 90 questions each, 110 minutes each. That's a real endurance test. Candidates who never did timed, full-length practice sometimes run out of time or fade in the second block. Simulate the real conditions before exam day.</p>
+        <h3>5. Treating a re-sit like a re-roll</h3>
+        <p>The repeat-taker pass rates above (often 55–80%) are the data-driven warning. If your first attempt didn't work, the fix is a <strong>different, targeted</strong> study plan built around your weakest subscores — not simply doing the same thing again and hoping. Your CERT results report gives you subject-area subscores; use them to aim your remediation.</p>
+
+        <h2>The recert side: CDQ exam and staying certified</h2>
+        <p>If you're already a CAA, "pass rates" mostly means the CDQ (Continued Demonstration of Qualifications) recertification exam. A few facts worth knowing:</p>
+        <ul>
+          <li><strong>CDQ format:</strong> 135 scored items in two blocks (68 + 67), 165 minutes total, plus 20 pretest items that don't count toward your score. Computer-based, multiple-choice. <em>(Source: NCCAA CDQ Exam Information.)</em></li>
+          <li><strong>First-time CDQ pass rates are very high</strong> — 96.8% (2024–25) and 97.7% (2023–24) — reflecting experienced clinicians recertifying. But note the repeat rates fall to the 60s%, same pattern as CERT.</li>
+          <li><strong>Recert interval is changing:</strong> the CDQ exam was historically required every <strong>6 years</strong> and is moving to a <strong>10-year</strong> interval. CAAs certified in 2020 or later take their first CDQ exam at <strong>4 years</strong>, then move to the 10-year cycle; existing CAAs finish their current 6-year cycle before transitioning. <em>(Sources: NCCAA; University of Colorado AA Program certification page.)</em> Confirm the current interval against NCCAA rules, since this policy is being updated.</li>
+          <li><strong>CME is the year-in, year-out requirement:</strong> continued certification requires <strong>50 hours of eligible CME every two years</strong>, of which <strong>40 hours must be CAA Category I – Anesthesia</strong>; the remaining 10 may be Category II (General Medicine or Professional Development) or additional Category I. Credits cannot be carried over between cycles, and the registration deadline is <strong>June 1</strong> of the registration year. <em>(Source: NCCAA CME Process.)</em></li>
+        </ul>
+
+        <h2>How to maximize your odds</h2>
+        <p>Concrete, in priority order:</p>
+        <ol>
+          <li><strong>Study to the blueprint, not evenly.</strong> Put your heaviest hours on Subspecialty Care (31%) and Physiology/Pathophysiology (19%). Half your score lives there.</li>
+          <li><strong>Do a high volume of board-style questions, and read every rationale.</strong> This is the highest-yield single behavior. Aim to see your weak domains many times over.</li>
+          <li><strong>Simulate exam conditions.</strong> At least one or two full-length, timed runs (two blocks) so exam-day stamina and pacing are not a surprise.</li>
+          <li><strong>Track your subscores and remediate the weakest.</strong> Whether it's practice-bank analytics now or your CERT results report after a failed attempt, aim your effort where the gap is.</li>
+          <li><strong>Protect your first attempt.</strong> It's statistically your best shot. Don't schedule it before your practice scores are consistently clearing the bar.</li>
+          <li><strong>For recert: don't let CME lapse.</strong> The exam is passable; the boring administrative miss (CME hours or the June 1 deadline) is a more common way to lose certification than the exam itself.</li>
+        </ol>
+
+        <h2>Practice questions</h2>
+        <p>These items test knowledge <em>about the NCCAA exam and certification process</em>, so the sources are the official NCCAA/accreditation references. Cover the answer, commit to a choice, then read the rationale.</p>
+
+        <h3>Question 1</h3>
+        <p>A student anesthesiologist assistant is building a study schedule for the NCCAA Certification Exam and wants to weight their time by exam content. Based on the published CERT content blueprint, which single domain represents the <strong>largest</strong> share of the exam?</p>
+        <ul>
+          <li>A. Pharmacology</li>
+          <li>B. Regional Anesthesia and Pain Management</li>
+          <li>C. Subspecialty Care</li>
+          <li>D. Principles of Anesthesia</li>
+          <li>E. Instrumentation, Monitoring, and Anesthetic Delivery Systems</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: C. Subspecialty Care.</strong> On the published NCCAA CERT blueprint, Subspecialty Care is the single heaviest domain at ~31%, followed by Physiology/Pathophysiology at ~19%. Pharmacology and Instrumentation/Monitoring are each ~15%, Principles of Anesthesia ~9%, and Regional/Pain ~8%. Prioritizing Subspecialty Care aligns study effort with the largest block of points.<br><em>Source: TrueLearn NCCAA Certification Exam breakdown (blueprint attributed to NCCAA).</em></p></div>
+
+        <h3>Question 2</h3>
+        <p>A new graduate asks how many attempts they have to pass the NCCAA Certification Exam. Which statement best reflects the published eligibility structure?</p>
+        <ul>
+          <li>A. A single attempt, with no re-sits permitted</li>
+          <li>B. Unlimited attempts for life</li>
+          <li>C. Up to six attempts within a 2-year eligibility window</li>
+          <li>D. Three attempts within a 5-year window</li>
+          <li>E. Two attempts, one per calendar year</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: C. Up to six attempts within a 2-year eligibility window.</strong> Per the exam information, candidates have up to six opportunities to sit the CERT exam during a 2-year eligibility period, and the exam is offered three times per year. While multiple attempts exist, published repeat-taker pass rates are markedly lower than first-time rates — reinforcing that the first attempt is the most valuable.<br><em>Source: TrueLearn NCCAA Certification Exam breakdown; NCCAA Certification Exam Handbook.</em></p></div>
+
+        <h3>Question 3</h3>
+        <p>During advising, a program director notes that accredited AA programs face an accreditation requirement tied to board performance. Which threshold must accredited Anesthesiologist Assistant programs maintain on the NCCAA examination?</p>
+        <ul>
+          <li>A. A minimum 70% cumulative pass rate</li>
+          <li>B. A minimum 80% cumulative pass rate</li>
+          <li>C. A minimum 90% cumulative pass rate</li>
+          <li>D. A minimum 95% cumulative pass rate</li>
+          <li>E. There is no pass-rate requirement for programs</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: C. A minimum 90% cumulative pass rate.</strong> Per the ASA statement on Certified Anesthesiologist Assistants, accredited AA education programs must maintain a minimum cumulative NCCAA pass rate of 90% among their graduates. This is one reason first-time cohort pass rates run high — the candidate pool is trained and filtered by programs under real accreditation pressure.<br><em>Source: ASA, Statement on Certified Anesthesiologist Assistants: Description and Practice.</em></p></div>
+
+        <h3>Question 4</h3>
+        <p>A practicing CAA who was certified in 2018 asks how often they must sit the CDQ recertification exam. Which statement best captures the current NCCAA policy on the CDQ interval?</p>
+        <ul>
+          <li>A. The CDQ exam has been eliminated; CME alone recertifies</li>
+          <li>B. The CDQ interval is fixed permanently at 6 years for all CAAs</li>
+          <li>C. The interval is transitioning from every 6 years to every 10 years, with existing CAAs completing their current 6-year cycle before moving to the 10-year schedule</li>
+          <li>D. The CDQ exam must be taken annually</li>
+          <li>E. The CDQ exam is required every 2 years</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: C. Transitioning from 6 years to 10 years, existing CAAs finish their current cycle first.</strong> NCCAA is moving the CDQ recertification interval from every 6 years to every 10 years. CAAs already in a 6-year cycle complete it before transitioning, and CAAs certified in 2020 or later take a first CDQ exam at 4 years before moving to the 10-year cadence. CME (50 hours every 2 years) is the separate, ongoing requirement.<br><em>Source: NCCAA; University of Colorado Anesthesiologist Assistant Program — Certification Process.</em></p></div>
+
+        <h3>Question 5</h3>
+        <p>A CAA is planning their two-year CME cycle. Per NCCAA requirements, how many total CME hours are required every two years, and how many of those must be Category I – Anesthesia?</p>
+        <ul>
+          <li>A. 40 total hours, 20 of which must be Category I – Anesthesia</li>
+          <li>B. 50 total hours, 40 of which must be Category I – Anesthesia</li>
+          <li>C. 100 total hours, 50 of which must be Category I – Anesthesia</li>
+          <li>D. 30 total hours, all of which must be Category I – Anesthesia</li>
+          <li>E. 50 total hours, with no category restrictions</li>
+        </ul>
+        <div class="callout"><p><strong>Correct answer: B. 50 total hours, 40 of which must be Category I – Anesthesia.</strong> NCCAA requires 50 hours of eligible CME every two years for continued certification. Of these, 40 hours must be CAA Category I – Anesthesia; the remaining 10 may be Category II (General Medicine or Professional Development) or additional Category I. Credits cannot be carried over between cycles, and registration is due by June 1 of the registration year.<br><em>Source: NCCAA CME Process.</em></p></div>
+
+        <div class="cta-box">
+          <h3>Practice this on the full bank</h3>
+          <p>Knowing the pass rates is step one. Getting on the right side of them is about reps — a high volume of board-style vignettes, weighted to the NCCAA blueprint, with a rationale after every question so you're learning application, not just recognition. That's exactly what MACPrep is built for: an NCCAA-focused question bank made for CAAs and SAAs, with transparent sourcing on every item.</p>
+          <a class="cta-btn" href="/index.html">Try 3 questions free — no signup →</a>
+        </div>
+
+        <h2>Sources</h2>
+        <ul>
+          <li>NCCAA — Exam Pass/Fail Reports (official CERT and CDQ pass/fail summaries): <a href="https://nccaa.org/passfailreport" target="_blank" rel="noopener">nccaa.org/passfailreport</a></li>
+          <li>NCCAA — Certification Exam Results (scoring / subscores): <a href="https://nccaa.org/certifyexamresults" target="_blank" rel="noopener">nccaa.org/certifyexamresults</a></li>
+          <li>NCCAA — CDQ Exam Information (recert exam format): <a href="https://nccaa.org/cdqexaminfo" target="_blank" rel="noopener">nccaa.org/cdqexaminfo</a></li>
+          <li>NCCAA — CME Process (CME requirements): <a href="https://nccaa.org/cmeprocess" target="_blank" rel="noopener">nccaa.org/cmeprocess</a></li>
+          <li>NCCAA — Certification Examination Handbook (PDF): <a href="https://nccaa.org/CertificationExamHandbook.pdf" target="_blank" rel="noopener">nccaa.org/CertificationExamHandbook.pdf</a></li>
+          <li>NCCAA — Homepage: <a href="https://nccaa.org/" target="_blank" rel="noopener">nccaa.org</a></li>
+          <li>TrueLearn — NCCAA Certification Exam: Format, Content, and Scoring (blueprint, format, first-time pass rate): <a href="https://truelearn.com/resource-library/nccaa-certification-exam-breakdown/" target="_blank" rel="noopener">truelearn.com</a></li>
+          <li>ASA — Statement on Certified Anesthesiologist Assistants: Description and Practice (90% program pass-rate requirement): <a href="https://www.asahq.org/standards-and-practice-parameters/statement-on-certified-anesthesiologist-assistants-description-and-practice" target="_blank" rel="noopener">asahq.org</a></li>
+          <li>University of Colorado — Anesthesiologist Assistant Program, Certification Process (CDQ interval, CME): <a href="https://medschool.cuanschutz.edu/anesthesiology/education/anesthesiologist-assistant-program/aa-profession/certification-process" target="_blank" rel="noopener">medschool.cuanschutz.edu</a></li>
+          <li>ARC-AA — Anesthesiologist Assistants Accreditation: <a href="https://www.arc-aa.org/" target="_blank" rel="noopener">arc-aa.org</a></li>
+        </ul>
+
+        <div class="related"><b>Keep reading</b>
+          <a href="/guides/how-to-pass-the-nccaa-certification-exam.html">How to Pass the NCCAA Certification Exam →</a>
+          <a href="/guides/how-long-to-study-for-the-nccaa-exam.html">How Long Should You Study for the NCCAA Exam? →</a>
+          <a href="/guides/caa-recertification-guide.html">CAA Recertification: Requirements & How to Prepare →</a>
+        </div>
+        <p class="disc">MACPrep is an independent study resource and is not affiliated with or endorsed by the NCCAA. Exam format, eligibility, fees, and requirements change — always confirm current details on the official NCCAA website. This article is for educational purposes and is not medical advice.</p>
+    </div>
+    <footer style="border-top:1px solid var(--line,#1F2937);margin-top:48px;padding:34px 24px 28px;text-align:center;">
+  <a href="/index.html" style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:22px;letter-spacing:-1px;color:var(--text,#F9FAFB);text-decoration:none;">MAC<span style="color:var(--accent,#00A86B);">Prep</span></a>
+  <div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted,#828b9a);margin-top:8px;">NCCAA board review for SAAs (certification) &amp; CAAs (recertification).</div>
+  <div style="font-family:ui-monospace,monospace;font-size:12px;margin-top:18px;line-height:2.1;">
+    <a href="/updates.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Updates</a>·<a href="/faq.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">FAQ</a>·<a href="/guides/" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Guides</a>·<a href="/why-trust-us.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Why trust us</a>·<a href="/reviews" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Reviews</a><br>
+    <a href="/privacy.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Privacy</a>·<a href="/terms.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Terms</a>·<a href="/cookies.html" style="color:var(--muted,#828b9a);text-decoration:none;margin:0 7px;">Cookies</a><br>
+    <a href="mailto:support@macprep.org" style="color:var(--accent,#00A86B);text-decoration:none;">support@macprep.org</a>
+  </div>
+  <div style="display:flex;gap:18px;justify-content:center;align-items:center;margin-top:16px;"><a href="https://www.facebook.com/profile.php?id=61591253695681" target="_blank" rel="noopener" aria-label="MACPrep on Facebook" title="Facebook" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a><a href="https://www.linkedin.com/company/130213953/" target="_blank" rel="noopener" aria-label="MACPrep on LinkedIn" title="LinkedIn" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg></a><a href="https://www.instagram.com/macprep_/" target="_blank" rel="noopener" aria-label="MACPrep on Instagram" title="Instagram" style="display:inline-flex;color:var(--muted,#828b9a);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.332.014 7.052.072 2.695.272.273 2.69.073 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.332 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></a></div>
+  <div style="border-top:1px solid var(--line,#1F2937);margin:22px auto 0;padding-top:20px;max-width:640px;">
+    <style>
+      .pf-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+      .pf-card{display:flex;align-items:center;gap:13px;background:var(--panel,#111214);border:1px solid var(--line,#1F2937);border-radius:14px;padding:12px 16px 12px 14px;text-decoration:none;min-width:250px;transition:transform .18s ease,border-color .18s ease,box-shadow .25s ease;}
+      .pf-card:hover{transform:translateY(-3px);border-color:var(--accent,#00A86B);box-shadow:0 16px 34px -22px rgba(0,0,0,.5);}
+      .pf-card .pf-nm{display:block;font-weight:700;font-size:14px;color:var(--text,#F9FAFB);line-height:1.25;}
+      .pf-card .pf-ds{display:block;font-size:12px;color:var(--muted,#828b9a);line-height:1.3;margin-top:1px;}
+      .pf-card .pf-arw{margin-left:auto;color:var(--accent,#00A86B);display:inline-flex;}
+      @media (max-width:520px){.pf-card{min-width:0;width:100%;}}
+    </style>
+    <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#828b9a);text-align:center;">Community partners</div>
+    <div class="pf-cards">
+      <a class="pf-card" href="https://discord.com/servers/caa-706407688359247924" target="_blank" rel="noopener"><img src="/partner-caa-discord.png" alt="CAA Discord Server logo" width="38" height="38" style="border-radius:9px;display:block;flex:none;"><span style="display:flex;flex-direction:column;"><span class="pf-nm">CAA Discord Server</span><span class="pf-ds">Where CAAs &amp; SAAs connect</span></span><span class="pf-arw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+      <a class="pf-card" href="https://bagmask.com/" target="_blank" rel="noopener"><img src="/partner-bagmask.png" alt="BagMask.com logo" width="38" height="38" style="border-radius:9px;display:block;flex:none;background:#fff;"><span style="display:flex;flex-direction:column;"><span class="pf-nm">Bag Mask</span><span class="pf-ds">Anesthesia jobs &amp; careers</span></span><span class="pf-arw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+    </div>
+  </div>
+  <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
+</footer>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"NCCAA Exam Pass Rates: What to Expect — MACPrep","description":"The published NCCAA CERT and CDQ exam pass rates, why first-time rates run in the low-90s while repeat rates drop sharply, what drives pass vs. fail, and how to maximize your odds.","author":{"@type":"Organization","name":"MACPrep"},"publisher":{"@type":"Organization","name":"MACPrep","logo":{"@type":"ImageObject","url":"https://www.macprep.org/logo.png"}},"mainEntityOfPage":"https://www.macprep.org/guides/nccaa-exam-pass-rates","image":"https://www.macprep.org/og-image.png?v=2"}</script>
+</body>
+</html>
