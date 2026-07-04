@@ -534,13 +534,13 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <span id="nav-study-wrap" class="hidden" style="position:relative;">
                 <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('study', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('study', event);}" title="Study modes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg><span class="lbl">Study modes</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
                 <div id="nav-study-menu" class="navdrop hidden" role="menu">
-                    <a onclick="MACPrep.closeNavMenus(); MACPrep.startRecommended();">Recommended session</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.startRecommended();">Recommended</a>
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.startQuick(10);">Quick 10</a>
-                    <a onclick="MACPrep.closeNavMenus(); MACPrep.smartReview();">Smart Review — weak spots &amp; misses</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.smartReview();">Smart Review</a>
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.startFlashcards(20);">Flashcards</a>
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.openMockPicker();">Mock Exam</a>
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.openBossPicker();">Domain Bosses</a>
-                    <a onclick="MACPrep.closeNavMenus(); MACPrep.go('dashboard'); MACPrep.toggleCustomize();">Build your own</a>
+                    <a onclick="MACPrep.closeNavMenus(); MACPrep.go('dashboard'); MACPrep.toggleCustomize();">Custom</a>
                 </div>
             </span>
             <a id="nav-notebook" class="hidden nav-app" onclick="MACPrep.go('notebook')" title="Notebook"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2-1.4-4.7-1.9-8-1v13c3.3-.9 6-.4 8 1 2-1.4 4.7-1.9 8-1V5c-3.3-.9-6-.4-8 1z"></path><path d="M12 6v13"></path></svg><span class="lbl">Notebook</span></a>
