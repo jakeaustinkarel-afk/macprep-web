@@ -3086,10 +3086,14 @@
                 return `<button class="ce-tile" style="--cat:${cat.color};" onclick="MACPrep.ceOpen('${id}')"><span class="ce-tile-em">${emblem}</span><span class="ce-tile-tx"><span class="ce-tile-nm">${ceEsc(title)}</span><span class="ce-tile-tg">${ceEsc(meta.trigger || '')}</span></span></button>`;
             }).join('');
         body.innerHTML = `<div class="ce-wrap"><div class="ce-lead"><h1 class="ce-h1">Critical Events</h1><p class="ce-sub">Clinician-reviewed rapid-reference cards for anesthesia crises. Filter by system, then open an event.</p></div><div class="ce-chips">${chips}</div><div class="ce-grid">${tiles || '<div class="ce-empty">No events in this category.</div>'}</div></div>`;
+        const cf = ceFooter(); if (cf) { const w = body.querySelector('.ce-wrap'); if (w) w.appendChild(cf); }
         body.scrollTop = 0;
     }
 
     function ceFilter(cat) { if (!state.ce) return; state.ce.cat = cat; ceRenderIndex(); }
+    // Clone the canonical site footer so every Critical Events screen carries it.
+    // (The per-card PDF clones only the .ce-card, so the footer never prints.)
+    function ceFooter() { const f = document.querySelector('footer'); return f ? f.cloneNode(true) : null; }
 
     function ceOpen(id, skipHash) {
         const body = $('ce-body'); if (!body || !state.ce || !state.ce.byId[id]) return;
@@ -3101,6 +3105,7 @@
         back.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> All events';
         back.onclick = ceRenderIndex;
         wrap.appendChild(back); wrap.appendChild(card);
+        const cf = ceFooter(); if (cf) wrap.appendChild(cf);
         body.innerHTML = ''; body.appendChild(wrap); body.scrollTop = 0;
     }
 
