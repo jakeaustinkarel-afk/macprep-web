@@ -253,7 +253,7 @@
         stopExamTimer();
         setToken(null); setRefresh(null);
         ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
-        state.token = null; state.profile = null; state.questions = []; state.session = null;
+        state.token = null; state.profile = null; state.questions = []; state.session = null; state.gam = null;
         go('login');
     }
 
@@ -272,6 +272,11 @@
         const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         state.profile = data.profile || null;
+        if (state.profile) {
+            const P = state.profile;
+            state.gam = { bonus_xp: Number(P.bonus_xp) || 0, ach_claimed: Array.isArray(P.ach_claimed) ? P.ach_claimed.slice() : [], daily_state: (P.daily_state && typeof P.daily_state === 'object') ? P.daily_state : {} };
+            try { migrateLocalGamification(); recomputeBonusXp(); } catch (e) {}
+        }
         // Theme & font follow your ACCOUNT across devices: the saved profile value is the
         // source of truth and is applied on load. setTheme/setFont also update this device's
         // localStorage to match, and any change saves back to the account (onThemeChange), so
@@ -793,8 +798,39 @@
     // XP = 4 per question answered + 8 more for each correct (an attempt = 4 XP, a correct answer = 12).
     // Cost to go from level L to L+1 = 50 + (L-1)*25, capped at 100 — fast early levels, gently steepening.
     // Bonus XP earned from quests/chests (accumulates on top of the stats-derived XP).
-    function bonusXp() { try { return parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; } catch (e) { return 0; } }
-    function addBonusXp(n) { try { localStorage.setItem('macprep_bonus_xp', String(bonusXp() + (n || 0))); } catch (e) {} }
+    function bonusXp() { if (state.gam && typeof state.gam.bonus_xp === 'number') return state.gam.bonus_xp; try { return parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; } catch (e) { return 0; } }
+    function addBonusXp(n) {
+        n = n || 0; if (!n) return;
+        try { localStorage.setItem('macprep_bonus_xp', String((parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0) + n)); } catch (e) {}
+        if (state.gam) { state.gam.bonus_xp = (state.gam.bonus_xp || 0) + n; scheduleGamSync(); }
+    }
+    let _gamSyncTimer = null;
+    function scheduleGamSync() { if (!state.gam || !state.token) return; clearTimeout(_gamSyncTimer); _gamSyncTimer = setTimeout(() => { _gamSyncTimer = null; pushGamSync(); }, 1200); }
+    async function pushGamSync() {
+        if (!state.gam || !state.token) return;
+        try {
+            const g = state.gam;
+            const { resp, data } = await apiJSON('/api/gamification', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ bonus_xp: g.bonus_xp || 0, ach_claimed: g.ach_claimed || [], daily_state: g.daily_state || {} }) });
+            if (resp && resp.ok && data && state.gam) {
+                state.gam.bonus_xp = Math.max(state.gam.bonus_xp || 0, data.bonus_xp || 0);
+                if (Array.isArray(data.ach_claimed)) state.gam.ach_claimed = data.ach_claimed;
+                if (data.daily_state && typeof data.daily_state === 'object') state.gam.daily_state = data.daily_state;
+            }
+        } catch (e) {}
+    }
+    function migrateLocalGamification() {
+        if (!state.gam) return; let changed = false;
+        try { const lb = parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; if (lb > (state.gam.bonus_xp || 0)) { state.gam.bonus_xp = lb; changed = true; } } catch (e) {}
+        try { const la = JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]'); if (Array.isArray(la) && la.length) { const set = new Set(state.gam.ach_claimed || []); la.forEach((t) => { if (typeof t === 'string' && !set.has(t)) { set.add(t); changed = true; } }); state.gam.ach_claimed = Array.from(set); } } catch (e) {}
+        try { const k = qotdDayKey(); const ld = JSON.parse(localStorage.getItem('macprep_daily_' + k) || 'null'); if (ld && typeof ld === 'object') { const c = state.gam.daily_state[k] || {}; state.gam.daily_state[k] = { answered: Math.max(+c.answered || 0, +ld.answered || 0), correct: Math.max(+c.correct || 0, +ld.correct || 0), specs: [...new Set([...(c.specs || []), ...(ld.specs || [])])], rewarded: [...new Set([...(c.rewarded || []), ...(ld.rewarded || [])])], chest: !!(c.chest || ld.chest) }; changed = true; } } catch (e) {}
+        if (changed) scheduleGamSync();
+    }
+    function recomputeBonusXp() {
+        if (!state.gam) return; let xp = 0;
+        try { const m = {}; computeAchievements().forEach((a) => { m[a.title] = a.xp || 0; }); (state.gam.ach_claimed || []).forEach((t) => { xp += m[t] || 0; }); } catch (e) {}
+        try { const ds = state.gam.daily_state || {}; Object.keys(ds).forEach((k) => { const d = ds[k] || {}; xp += (Array.isArray(d.rewarded) ? d.rewarded.length : 0) * QUEST_XP + (d.chest ? CHEST_XP : 0); }); } catch (e) {}
+        state.gam.bonus_xp = Math.max(state.gam.bonus_xp || 0, xp);
+    }
     function xpLevel(p) {
         const s = (p && p.stats) || {};
         const totalXp = (s.answered || 0) * 4 + (s.correct || 0) * 8 + bonusXp();
@@ -853,12 +889,12 @@
 
     // ---- Daily Quests (reset at 7:00 AM ET, same boundary as the Question of the Day) ----
     function dailyKey() { return 'macprep_daily_' + qotdDayKey(); }
-    function getDaily() { try { return JSON.parse(localStorage.getItem(dailyKey()) || '{}'); } catch (e) { return {}; } }
+    function getDaily() { if (state.gam) { return state.gam.daily_state[qotdDayKey()] || {}; } try { return JSON.parse(localStorage.getItem(dailyKey()) || '{}'); } catch (e) { return {}; } }
     // Questions answered today, LIVE — the client daily counter (incremented on every
     // answer) or the server's value, whichever is higher. Keeps the momentum rings and
     // daily quests consistent and reflecting the current session, not a stale profile.
     function answeredTodayLive() { const p = state.profile || {}; return Math.max(p.answered_today || 0, (getDaily().answered || 0)); }
-    function saveDaily(d) { try { localStorage.setItem(dailyKey(), JSON.stringify(d)); } catch (e) {} }
+    function saveDaily(d) { try { localStorage.setItem(dailyKey(), JSON.stringify(d)); } catch (e) {} if (state.gam) { state.gam.daily_state[qotdDayKey()] = d; scheduleGamSync(); } }
     function bumpDaily(patch) {
         const d = getDaily();
         if (patch.answered) d.answered = (d.answered || 0) + patch.answered;
@@ -1281,11 +1317,12 @@
     function grantAchievementXp() {
         if (!state.profile) return;
         const A = computeAchievements();
-        let claimed; try { claimed = new Set(JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]')); } catch (e) { claimed = new Set(); }
+        let claimed; try { claimed = new Set(state.gam ? (state.gam.ach_claimed || []) : JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]')); } catch (e) { claimed = new Set(); }
         let gained = 0, n = 0;
         A.forEach((a) => { if (a.met && !claimed.has(a.title)) { claimed.add(a.title); gained += (a.xp || 0); n++; } });
         if (gained > 0) {
             try { localStorage.setItem('macprep_ach_claimed', JSON.stringify(Array.from(claimed))); } catch (e) {}
+            if (state.gam) { state.gam.ach_claimed = Array.from(claimed); scheduleGamSync(); }
             addBonusXp(gained);
             toast(`+${gained} XP — ${n} achievement${n === 1 ? '' : 's'} unlocked!`, 'ok');
             if ($('momentum-card')) renderMomentum();
