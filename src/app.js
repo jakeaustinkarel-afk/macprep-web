@@ -659,8 +659,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 17;
+    const WHATS_NEW_VERSION = 18;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 4', title: 'Avatars got a glow-up', desc: 'Your unlockable avatars are now a custom study-buddy character on a rarity-colored badge (bronze → legendary) with a pip for the achievement that earned it — a real step up from the old emoji. If you already had one picked, it carried over. Set or change yours in Account → Avatar.' },
         { tag: 'New', date: 'Jul 4', title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
