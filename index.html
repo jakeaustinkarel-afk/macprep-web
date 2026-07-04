@@ -67,6 +67,10 @@
         html[data-theme="sunset"]{--bg:#1A1113;--panel:#251619;--line:#3B2529;--text:#FBEBE8;--text2:#e8c9c3;--muted:#b38f8a;--accent:#FF8A5B;--on-accent:#2a1003;--accent-dim:#331a12;--danger:#fb7185;--danger-dim:#2a1418;--good:#34d399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
         html[data-theme="forest"]{--bg:#0B1410;--panel:#121F18;--line:#22362A;--text:#E6F2EA;--text2:#c2d8c9;--muted:#7d9587;--accent:#34D399;--on-accent:#052015;--accent-dim:#0c2b20;--danger:#fb7185;--danger-dim:#2a1414;--good:#34D399;--warn:#fbbf24;--bad:#fb8a7a;--info:#60a5fa;}
         html[data-theme="mist"]{--bg:#EFF3F4;--panel:#ffffff;--line:#dde6e8;--text:#132026;--text2:#354952;--muted:#5b717c;--accent:#0E7490;--on-accent:#ffffff;--accent-dim:#e0eff2;--danger:#b42318;--danger-dim:#fde8e8;--good:#0f766e;--warn:#b45309;--bad:#b42318;--info:#0e7490;}
+        /* Graded verdict colors — theme-aware so "Correct"/"Incorrect" clear WCAG AA contrast
+           on both light and dark surfaces (a single fixed green/red failed on tinted dims). */
+        :root,html[data-theme="light"],html[data-theme="warm"],html[data-theme="sandstone"],html[data-theme="rose"],html[data-theme="bloom"],html[data-theme="sky"],html[data-theme="lavender"],html[data-theme="mist"]{--grade-ok:#15803d;--grade-bad:#b42318;}
+        html[data-theme="slate"],html[data-theme="nord"],html[data-theme="ocean"],html[data-theme="indigo"],html[data-theme="contrast"],html[data-theme="graphite"],html[data-theme="ember"],html[data-theme="amber"],html[data-theme="espresso"],html[data-theme="sunset"],html[data-theme="forest"]{--grade-ok:#4ade80;--grade-bad:#f87171;}
 
 
 
@@ -1012,7 +1016,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <label style="font-weight:600;color:var(--text);">Have a class or cohort code?</label>
                 <div class="sub" style="font-size:12px;margin:2px 0 8px;">Paste it here to unlock premium for free — <strong>don't</strong> enter it at checkout.</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <input id="redeem-code" type="text" placeholder="MACP-XXXXXXXX" style="flex:1;min-width:160px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);text-transform:uppercase;">
+                    <input id="redeem-code" type="text" aria-label="Class or redemption code" placeholder="MACP-XXXXXXXX" style="flex:1;min-width:160px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);text-transform:uppercase;">
                     <button class="btn" type="button" onclick="MACPrep.redeemCode()">Redeem</button>
                 </div>
                 <span id="redeem-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
@@ -1027,8 +1031,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <h2 style="margin-top:0;">Ready to study?</h2>
             <p class="sub" id="recommended-sub">A focused ~20-question set from your due reviews, missed questions, and weakest areas.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                <button class="btn" id="start-recommended-btn" onclick="MACPrep.startRecommended()" style="font-size:16px;padding:15px 28px;">▶&nbsp; Start recommended session</button>
-                <button class="btn ghost" type="button" onclick="MACPrep.toggleCustomize()">⚙ Customize</button>
+                <button class="btn" id="start-recommended-btn" onclick="MACPrep.startRecommended()" style="font-size:16px;padding:15px 28px;display:inline-flex;align-items:center;gap:9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L8.52 4.65A1 1 0 0 0 7 5.5z"/></svg>Start recommended session</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.toggleCustomize()" style="display:inline-flex;align-items:center;gap:7px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Customize</button>
             </div>
         </div>
 
@@ -1246,15 +1250,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <div class="wrap hidden" id="notebook-view">
         <h2 class="view-title">My Notebook</h2>
         <p class="sub">Your notes and flagged questions, in one searchable place.</p>
-        <input id="notebook-search" type="text" placeholder="Search notes and questions…" oninput="MACPrep.renderNotebook()" style="width:100%;max-width:480px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);margin-bottom:20px;">
+        <input id="notebook-search" type="text" aria-label="Search notes and flagged questions" placeholder="Search notes and questions…" oninput="MACPrep.renderNotebook()" style="width:100%;max-width:480px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);margin-bottom:20px;">
         <div id="notebook-body"></div>
     </div>
 
     <div id="labs-modal" class="hidden" onclick="if(event.target===this)MACPrep.toggleLabs()" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;">
-      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:580px;width:100%;max-height:85vh;overflow:auto;padding:24px;">
+      <div role="dialog" aria-modal="true" aria-label="Normal lab values" style="background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:580px;width:100%;max-height:85vh;overflow:auto;padding:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <h3 style="margin:0;">Normal lab values</h3>
-          <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+          <button type="button" onclick="MACPrep.toggleLabs()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:8px;margin:-8px -8px -8px 0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <p class="mono" style="font-size:11px;color:var(--muted);margin:0 0 16px;">Reference adult ranges, units as commonly reported.</p>
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -1283,7 +1287,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:330px;width:100%;max-height:90vh;overflow:auto;padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <h3 style="margin:0;font-size:17px;">Calculator</h3>
-          <button type="button" onclick="MACPrep.toggleCalc()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+          <button type="button" onclick="MACPrep.toggleCalc()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:8px;margin:-8px -8px -8px 0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <input id="calc-display" type="text" value="0" readonly aria-label="Calculator display" style="width:100%;box-sizing:border-box;text-align:right;font-family:ui-monospace,monospace;font-size:23px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--text);margin-bottom:10px;">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
@@ -1320,7 +1324,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       <div role="dialog" aria-modal="true" aria-label="What's new" style="background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:460px;width:100%;margin-top:6vh;max-height:80vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">What's new</div>
-          <button type="button" onclick="MACPrep.closeWhatsNew()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+          <button type="button" onclick="MACPrep.closeWhatsNew()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:8px;margin:-8px -8px -8px 0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <div id="wn-body"></div>
         <div style="text-align:center;margin-top:14px;"><a href="/updates.html" style="font-family:ui-monospace,monospace;font-size:12px;color:var(--accent);text-decoration:none;">See full changelog →</a></div>
@@ -1333,7 +1337,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">Mock exam</div>
             <h3 id="mock-title" style="margin:5px 0 0;font-size:19px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:700;">Simulate the real thing</h3>
           </div>
-          <button type="button" onclick="MACPrep.closeMockPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+          <button type="button" onclick="MACPrep.closeMockPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:8px;margin:-8px -8px -8px 0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <p class="sub" style="font-size:13px;margin:8px 0 16px;">Built to match the real NCCAA exam: <strong>180 questions</strong> timed to the board's <strong>220 minutes</strong> (two 110-minute blocks of 90). Sampled across all six NCCAA domains in proportion to the bank, with a per-domain score breakdown at the end.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1349,7 +1353,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;">Focused quiz</div>
             <h3 id="sp-title" style="margin:5px 0 0;font-size:19px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:700;">Specialty</h3>
           </div>
-          <button type="button" onclick="MACPrep.closeSpecialtyPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+          <button type="button" onclick="MACPrep.closeSpecialtyPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:8px;margin:-8px -8px -8px 0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <p id="sp-sub" class="sub" style="font-size:13px;margin:8px 0 18px;">How many questions?</p>
         <div id="sp-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
@@ -1392,9 +1396,9 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);max-width:90%;padding:12px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;background:var(--danger);box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:9999;}
       #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
       #toast.ok{background:var(--accent);}
-      .conf-chip{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
+      .conf-chip{display:inline-flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box;background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 16px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
       /* Unified quiz secondary-tool controls: flag / lab values / calculator / notes / report — one font, size, color, icon size. */
-      .q-tool{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);padding:0;line-height:1.5;transition:color .15s ease;}
+      .q-tool{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);padding:8px 8px;min-height:44px;line-height:1.5;transition:color .15s ease;}
       .q-tool:hover{color:var(--text);}
       .q-tool svg{width:15px;height:15px;flex:none;}
       .q-tool.on{color:var(--warn);}

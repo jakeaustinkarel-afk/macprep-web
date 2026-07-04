@@ -123,6 +123,10 @@
             && $('quiz-view') && !$('quiz-view').classList.contains('hidden')) {
             if (!confirm('Leave this session? Your progress is saved — you can resume it from the dashboard.')) return;
         }
+        // Pause the exam countdown when navigating away from the quiz (resumeSession restarts it).
+        // Otherwise the timer kept ticking on other screens and could silently auto-submit the exam
+        // while the user was away — contradicting the "you can resume it" promise above.
+        if (view !== 'quiz') stopExamTimer();
         if (view !== 'login' && !state.token) view = 'login';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
@@ -2012,7 +2016,7 @@
         const s = state.session;
         if (!s || s.mode !== 'exam' || s.complete || s.timeLeft == null) { el.style.display = 'none'; return; }
         el.style.display = '';
-        el.textContent = '⏱ ' + fmtClock(s.timeLeft);
+        el.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:3px;"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>' + fmtClock(s.timeLeft);
         el.style.color = s.timeLeft <= 60 ? 'var(--bad)' : 'var(--muted)';
     }
     function startExamTimer() {
@@ -2460,7 +2464,9 @@
     // grading live and when re-rendering an already-answered question.
     // Fixed correct/incorrect colors — deliberately NOT theme tokens, so "Correct"
     // reads green and "Incorrect" reads red on every theme the user picks.
-    const GRADE_GREEN = '#16a34a', GRADE_RED = '#dc2626';
+    // Theme-aware so "Correct"/"Incorrect" hit WCAG AA contrast on both light and dark
+    // surfaces — a single fixed green/red failed on tinted accent-dim/danger-dim panels.
+    const GRADE_GREEN = 'var(--grade-ok)', GRADE_RED = 'var(--grade-bad)';
     function applyGradedView(data, selectedIndex) {
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
         const rationales = data.rationales || [];
@@ -4161,6 +4167,25 @@
             e.preventDefault();
             const m = $('cmdk');
             if (m && m.classList.contains('hidden')) openCmdk(); else closeCmdk();
+        }
+    });
+    // Global Escape closes the topmost open overlay/modal — WCAG 2.1.2 keyboard dismiss.
+    // (Flashcards + Critical Events own a focused surface and handle their own Escape; this
+    // covers the ~12 overlays that previously could only be dismissed with the mouse.)
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const closers = [
+            ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
+            ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
+            ['title-overlay', closeTitlePicker], ['avatar-overlay', closeAvatarPicker],
+            ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents],
+            ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
+            ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
+            ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
+        ];
+        for (let i = 0; i < closers.length; i++) {
+            const el = $(closers[i][0]);
+            if (el && !el.classList.contains('hidden')) { e.preventDefault(); try { closers[i][1](); } catch (_) {} return; }
         }
     });
     document.addEventListener('click', closeNavMenus);
