@@ -379,10 +379,10 @@
                 const c = t.accuracy >= 75 ? 'var(--accent)' : t.accuracy >= 50 ? 'var(--warn)' : 'var(--bad)';
                 return `<div title="${t.day}: ${t.accuracy}%" style="flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;"><span style="width:100%;max-width:26px;height:${h}px;background:${c};border-radius:4px 4px 2px 2px;"></span></div>`;
             }).join('') + `</div>`
-            : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:100%;"><span style="font-size:18px;">📈</span> Answer a few questions — your accuracy trend shows up here.</div>';
+            : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:100%;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle;flex:none;"><path d="M3 16.5l5.5-5.5 3.5 3.5 8-8"/><path d="M16 6.5h4v4"/></svg> Answer a few questions — your accuracy trend shows up here.</div>';
         const bank = (state.questions || []).length;
         const planLine = (exam != null && exam > 0 && bank > 0)
-            ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;">📅 <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
+            ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
             : '';
         const answeredToday = answeredTodayLive();
         let goalLine = '';
@@ -418,11 +418,11 @@
                 </svg>
                 <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:16px;">
                     <div style="display:flex;align-items:center;gap:11px;">
-                        <span style="font-size:24px;line-height:1;${streak ? 'display:inline-block;animation:flamePulse 1.6s ease-in-out infinite;' : 'filter:grayscale(1);opacity:.5;'}">🔥</span>
+                        <span style="line-height:1;display:inline-flex;color:${streak ? 'var(--accent)' : 'var(--muted)'};${streak ? 'animation:flamePulse 1.6s ease-in-out infinite;' : 'opacity:.55;'}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.2 3 4 4.2 4 8a4 4 0 0 1-8 0c0-1.6.6-2.6 1.2-3.2.3 1 1 1.6 1.6 1.6C10.6 8 11 5.6 12 3z"/></svg></span>
                         <div><div style="${numS}color:${streak ? 'var(--accent)' : 'var(--muted)'};">${streak}</div><div class="mono" style="${metaL}">Day streak${streak ? '' : ' — start today'}</div></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:11px;">
-                        <span style="font-size:22px;line-height:1;">📅</span>
+                        <span style="line-height:1;display:inline-flex;color:var(--text2);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span>
                         <div>${examMetric}</div>
                     </div>
                 </div>
@@ -431,7 +431,7 @@
             ${goalLine}
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Accuracy — last 7 active days</div>
             <div style="height:52px;margin-bottom:2px;">${spark}</div>
-            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:14px;font-size:13px;width:100%;">📊 Take a diagnostic — get your readiness score</button>`;
+            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:14px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — get your readiness score</button>`;
         const ring = el.querySelector('.ring-fill');
         if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
     }
@@ -2204,7 +2204,7 @@
             const meRank = tab === 'streak' ? me.rank_streak : tab === 'accuracy' ? me.rank_accuracy : me.rank_weekly;
             const meOutside = meRank && meRank > 10;
             card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-bottom:8px;">'
-                + '<h3 style="margin:0;">🏆 Leaderboard</h3>'
+                + '<h3 style="margin:0;display:inline-flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4.5h8V8a4 4 0 0 1-8 0V4.5z"/><path d="M8 6H5.5v1.2A2.5 2.5 0 0 0 8 9.7"/><path d="M16 6h2.5v1.2A2.5 2.5 0 0 1 16 9.7"/><path d="M9.5 20h5"/><path d="M12 12.5V20"/></svg> Leaderboard</h3>'
                 + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + pills + '</div>'
                 + '<a onclick="MACPrep.go(\'leaderboard\')" style="font-size:12px;color:var(--accent);cursor:pointer;margin-left:auto;">All boards →</a></div>'
                 + '<div class="dash-lb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 30px;"><div>' + left + '</div><div>' + right + '</div></div>'
