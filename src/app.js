@@ -101,6 +101,14 @@
         if (el) el.classList.toggle('hidden', _loadingCount === 0);
     }
 
+    // Skeleton placeholder rows for async views — a progressive-loading shimmer
+    // reads faster than a blocking "Loading…" line while data is in flight.
+    function skeletonList(n, cls) {
+        let h = '<div class="sk-stack" aria-hidden="true">';
+        for (let i = 0; i < (n || 5); i++) h += '<div class="skeleton ' + (cls || 'sk-row') + '"></div>';
+        return h + '</div>';
+    }
+
     const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
@@ -964,7 +972,7 @@
         if (dq.allDone && !dq.chestOpened) {
             chest = `<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:14px;text-align:center;">
                 <div class="sub" style="font-size:13px;margin-bottom:10px;">All 5 quests done — open your chest for <strong style="color:var(--accent);">+${CHEST_XP} XP</strong>!</div>
-                <button class="btn" type="button" onclick="MACPrep.openDailyChest()">Open chest →</button></div>`;
+                <button class="btn chest-ready" type="button" onclick="MACPrep.openDailyChest()">Open chest →</button></div>`;
         } else if (dq.chestOpened) {
             const tip = CHEST_TIPS[new Date().getDate() % CHEST_TIPS.length];
             chest = `<div style="margin-top:12px;background:var(--accent-dim);border-radius:10px;padding:12px 14px;">
@@ -2060,7 +2068,7 @@
     // ---- study league (weekly global leaderboard) -------------------------
     async function loadLeaderboard() {
         const el = $('leaderboard-body'); if (!el) return;
-        el.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
+        el.innerHTML = skeletonList(8);
         try {
             const { resp, data } = await apiJSON('/api/leaderboard', { headers: authHeaders() });
             if (!resp.ok) { el.innerHTML = '<div class="mono" style="color:var(--bad);">Could not load the leaderboard.</div>'; return; }
@@ -2280,7 +2288,7 @@
     }
 
     async function loadNotebook() {
-        const body = $('notebook-body'); if (body) body.innerHTML = '<div class="mono" style="color:var(--muted);">Loading…</div>';
+        const body = $('notebook-body'); if (body) body.innerHTML = skeletonList(4);
         try {
             const { resp, data } = await apiJSON('/api/user/notebook', { headers: authHeaders() });
             if (!resp.ok) throw new Error(data.error || 'Could not load.');

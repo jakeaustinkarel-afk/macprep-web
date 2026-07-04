@@ -1381,6 +1381,22 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       #dashboard-view>#dash-greeting,#dashboard-view>#dash-subtitle,#dashboard-view>#momentum-card,#dashboard-view>#dailyquests-card,#dashboard-view>#qotd-card,#dashboard-view>#studymodes-card,#dashboard-view>#achievements-card,#dashboard-view>#resume-card,#dashboard-view>#onboarding,#dashboard-view>#exam-prompt,#dashboard-view>#recommended-card,#dashboard-view>#customize-panel,#dashboard-view>#referral-card,#dashboard-view>.grid{grid-column:1/-1;}
       #dashboard-view>#dash-subtitle{margin-top:-10px;}
       @media (max-width:760px){#dashboard-view:not(.hidden){grid-template-columns:1fr;}}
+      /* === #10 motion polish: unified press feedback (tactile tap on every surface) === */
+      @keyframes chestPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent);}70%,100%{box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 0%,transparent);}}
+      @keyframes skShim{100%{transform:translateX(100%);}}
+      @media (prefers-reduced-motion:no-preference){
+        .chip,.conf-chip,.cmdk-row,.choice-option-node,.nav-app{transition:transform .12s var(--ease-out),background .16s ease,border-color .16s ease,box-shadow .16s ease,color .15s ease;}
+        .sm-tile:active,.spec-tile:active,.pf-card:active{transform:translateY(0) scale(.984);}
+        .chip:active,.conf-chip:active,.cmdk-row:active,.choice-option-node:active:not(:disabled){transform:scale(.972);}
+        .btn.secondary:active:not(:disabled),.btn.ghost:active:not(:disabled){transform:translateY(0) scale(.98);}
+        .chest-ready{animation:chestPulse 1.7s ease-out infinite;}
+      }
+      /* === #10 motion polish: skeleton shimmer for async views (progressive loading) === */
+      .skeleton{position:relative;overflow:hidden;background:color-mix(in srgb,var(--muted) 16%,transparent);border-radius:8px;}
+      .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--muted) 20%,transparent),transparent);animation:skShim 1.25s ease-in-out infinite;}
+      .sk-stack{display:flex;flex-direction:column;gap:9px;}
+      .sk-row{height:52px;}
+      @media (prefers-reduced-motion:reduce){.skeleton::after{animation:none;}}
       /* Signed-in menu on phones + tablets (<900px): always the hamburger dropdown, never
          a crowded horizontal bar. Logged-out landing keeps its own breakpoints (frozen). */
       @media (max-width:899px){
