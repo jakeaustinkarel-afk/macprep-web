@@ -1106,20 +1106,20 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <button class="btn ghost" id="prev-btn" type="button" onclick="MACPrep.prevQuestion()" style="display:none;">&laquo; Previous</button>
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
-                <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);">☆ Flag for review</button>
-                <button type="button" onclick="MACPrep.toggleLabs()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.8 21h10.4a2 2 0 0 0 1.8-3.5L14 9V3"/><path d="M8 14.5h8"/></svg>Lab values</button>
-                <button type="button" onclick="MACPrep.toggleCalc()" style="background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h4"/></svg>Calculator</button>
-                <span class="mono" style="font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</span>
+                <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>Flag for review</button>
+                <button type="button" onclick="MACPrep.toggleLabs()" class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.8 21h10.4a2 2 0 0 0 1.8-3.5L14 9V3"/><path d="M8 14.5h8"/></svg>Lab values</button>
+                <button type="button" onclick="MACPrep.toggleCalc()" class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h4"/></svg>Calculator</button>
             </div>
+            <div class="mono" style="margin-top:9px;font-size:11px;color:var(--muted);">Keys: A–E answer · ←/→ nav · F flag · right-click to cross out</div>
 
             <details class="quiz-extra" style="margin-top:16px;">
-                <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">My notes</summary>
+                <summary class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5z"/><path d="M8 4v16M11 8.5h5M11 12h5"/></svg>My notes<svg class="q-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
                 <textarea id="note-text" rows="3" placeholder="Private notes on this question (saved automatically)…" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
                 <span id="note-msg" class="mono" style="font-size:11px;color:var(--accent);"></span>
             </details>
 
             <details class="quiz-extra" style="margin-top:10px;">
-                <summary class="mono" style="font-size:12px;color:var(--muted);cursor:pointer;">⚐ Report a problem with this question</summary>
+                <summary class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 4 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Report a problem with this question<svg class="q-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
                 <textarea id="report-text" rows="2" placeholder="What's wrong? (e.g. the answer key looks off, a typo, outdated guidance)" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;"></textarea>
                 <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                     <button class="btn ghost" type="button" onclick="MACPrep.reportQuestion()" style="font-size:12px;padding:6px 12px;">Send report</button>
@@ -1378,6 +1378,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
       #toast.ok{background:var(--accent);}
       .conf-chip{background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;}
+      /* Unified quiz secondary-tool controls: flag / lab values / calculator / notes / report — one font, size, color, icon size. */
+      .q-tool{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);padding:0;line-height:1.5;transition:color .15s ease;}
+      .q-tool:hover{color:var(--text);}
+      .q-tool svg{width:15px;height:15px;flex:none;}
+      .q-tool.on{color:var(--warn);}
+      summary.q-tool{list-style:none;}
+      summary.q-tool::-webkit-details-marker{display:none;}
+      summary.q-tool .q-caret{margin-left:1px;opacity:.7;transition:transform .18s ease;}
+      details[open]>summary.q-tool .q-caret{transform:rotate(180deg);}
       .conf-chip:hover{border-color:var(--accent);color:var(--text);}
       .conf-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
       /* Dashboard: app-style 2-column grid (1 col on mobile). order: still controls flow;

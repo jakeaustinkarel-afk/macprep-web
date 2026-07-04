@@ -2070,8 +2070,8 @@
         const btn = $('flag-btn'); const s = state.session; if (!btn || !s) return;
         const q = s.pool[s.index];
         const flagged = q && ((state.profile && state.profile.flagged_ids) || []).includes(q.id);
-        btn.textContent = flagged ? '★ Flagged' : '☆ Flag for review';
-        btn.style.color = flagged ? 'var(--warn)' : 'var(--muted)';
+        btn.classList.toggle('on', !!flagged);
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="${flagged ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>${flagged ? 'Flagged' : 'Flag for review'}`;
     }
 
     async function loadNote() {
