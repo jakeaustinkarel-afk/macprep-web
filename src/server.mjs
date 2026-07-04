@@ -1442,6 +1442,35 @@ app.get('/api/critical-events', async (req, res) => {
     return res.json(ce);
 });
 
+// Gamification sync (authenticated). Bonus XP, claimed achievements, and daily-quest
+// state used to live only in each browser (localStorage), so a phone and a laptop
+// drifted apart. Persist them on the account; the client merges its local copy on load
+// and posts here, where we UNION so no device can clobber another's progress.
+app.post('/api/gamification', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const b = req.body || {};
+    try {
+        const { data: cur } = await supabase.from(PROFILE_TABLE).select('bonus_xp, ach_claimed, daily_state').eq('user_id', user.id).maybeSingle();
+        const ach_claimed = [...new Set([...(Array.isArray(cur?.ach_claimed) ? cur.ach_claimed : []), ...(Array.isArray(b.ach_claimed) ? b.ach_claimed : [])].filter((x) => typeof x === 'string'))].slice(0, 500);
+        const mergeDaily = (A0, B0) => {
+            const out = {}; const keys = new Set([...Object.keys(A0 || {}), ...Object.keys(B0 || {})]);
+            for (const k of keys) { const A = (A0 && A0[k]) || {}, B2 = (B0 && B0[k]) || {};
+                out[k] = { answered: Math.max(+A.answered || 0, +B2.answered || 0), correct: Math.max(+A.correct || 0, +B2.correct || 0), specs: [...new Set([...(A.specs || []), ...(B2.specs || [])])].slice(0, 12), rewarded: [...new Set([...(A.rewarded || []), ...(B2.rewarded || [])])].slice(0, 12), chest: !!(A.chest || B2.chest) }; }
+            const trimmed = {}; Object.keys(out).sort().slice(-5).forEach((k) => { trimmed[k] = out[k]; }); return trimmed;
+        };
+        const daily_state = mergeDaily(cur?.daily_state, b.daily_state);
+        const bonus_xp = Math.max(+(cur?.bonus_xp) || 0, +(b.bonus_xp) || 0);
+        const { error } = await supabase.from(PROFILE_TABLE).update({ bonus_xp, ach_claimed, daily_state }).eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ bonus_xp, ach_claimed, daily_state });
+    } catch (err) {
+        console.error('Gamification sync failure:', err.message);
+        return res.status(500).json({ error: 'Could not sync progress.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Grade a single answer server-side. Authenticated. The free-tier ceiling is
 // enforced from the server's own count of distinct questions the user has
@@ -1621,7 +1650,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, selected_avatar')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, selected_avatar, bonus_xp, ach_claimed, daily_state')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1759,6 +1788,9 @@ app.get('/api/user/profile', async (req, res) => {
                 leaderboard_opt_in: !!profile?.leaderboard_opt_in,
                 selected_title: profile?.selected_title || null,
                 selected_avatar: profile?.selected_avatar || null,
+                bonus_xp: Number(profile?.bonus_xp) || 0,
+                ach_claimed: Array.isArray(profile?.ach_claimed) ? profile.ach_claimed : [],
+                daily_state: (profile && profile.daily_state && typeof profile.daily_state === 'object') ? profile.daily_state : {},
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
                 stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
