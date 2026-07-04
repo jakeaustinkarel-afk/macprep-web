@@ -3331,7 +3331,7 @@
         const pct = Math.round((f.i / f.cards.length) * 100);
         wrap.innerHTML = `
             <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);">
-                <div style="display:flex;align-items:center;gap:10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;">🗂️ Flashcards</div>
+                <div style="display:flex;align-items:center;gap:9px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13.5" height="13" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v10"/></svg>Flashcards</div>
                 <div style="display:flex;align-items:center;gap:14px;">
                     <div class="mono" style="font-size:12px;color:var(--muted);">Card ${f.i + 1} / ${f.cards.length}</div>
                     <button onclick="MACPrep.closeFlashcards()" aria-label="Exit flashcards" style="background:none;border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px;">Exit</button>
@@ -3418,7 +3418,7 @@
         const pct = Math.round((f.right / n) * 100);
         return `<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;">
             <div class="card" style="max-width:440px;width:100%;padding:30px 26px;text-align:center;">
-                <div style="font-size:40px;line-height:1;margin-bottom:10px;">🗂️</div>
+                <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13.5" height="13" rx="2"/><path d="M7 4h11a2 2 0 0 1 2 2v10"/></svg></div>
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;">Deck complete</div>
                 <div class="sub" style="font-size:14px;margin-top:8px;">You felt confident on <strong style="color:var(--accent);">${f.right} / ${n}</strong> — ${pct}% recall. The ones you missed are your highest-value review.</div>
                 <div style="display:flex;gap:10px;margin-top:22px;">
