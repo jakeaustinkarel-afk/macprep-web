@@ -665,7 +665,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
             <div class="lp-container" data-reveal style="max-width:760px;margin-top:34px;">
                 <div class="lp-window">
-                    <div class="lp-window-bar"><span class="lp-tdot" style="background:#ff5f57"></span><span class="lp-tdot" style="background:#febc2e"></span><span class="lp-tdot" style="background:#28c840"></span><span class="lp-urlpill">macprep.org/demo</span></div>
+                    <div class="lp-apphead">
+                        <span class="lp-appmark"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 10 2-5h4"/></svg></span>MACPrep</span>
+                        <span class="lp-appmode">Sample questions</span>
+                    </div>
                     <div class="lp-window-body">
                         <div id="demo-card" style="min-height:200px;"><div class="mono" style="font-size:12px;color:var(--muted);">Loading a sample question…</div></div>
                     </div>
@@ -748,7 +751,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div class="lp-container lp-split rev">
                 <div class="lp-split-visual" data-reveal>
                     <div class="lp-window">
-                        <div class="lp-window-bar"><span class="lp-tdot" style="background:#ff5f57"></span><span class="lp-tdot" style="background:#febc2e"></span><span class="lp-tdot" style="background:#28c840"></span><span class="lp-urlpill">macprep.org/dashboard</span></div>
+                        <div class="lp-apphead">
+                            <span class="lp-appmark"><span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 3 10 2-5h4"/></svg></span>MACPrep</span>
+                            <span class="lp-appmode">Dashboard</span>
+                        </div>
                         <div class="lp-window-body" style="padding:18px;">
                             <div style="font-weight:800;font-size:18px;letter-spacing:-.02em;margin-bottom:2px;">Welcome back, Jordan</div>
                             <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:14px;">Pick up where you left off — or start a focused set.</div>
@@ -1377,6 +1383,13 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .sm-count{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--accent);font-weight:700;margin-top:auto;padding-top:10px;}
       .sm-tag{display:inline-block;font-family:ui-monospace,monospace;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--on-accent,#fff);background:var(--accent);padding:2px 6px;border-radius:5px;vertical-align:middle;margin-left:5px;}
       .sm-rec{grid-column:1/3;grid-row:1/3;background:linear-gradient(160deg,var(--accent-dim),var(--panel));border-color:var(--accent);}
+      .sm-rec-breakdown{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:18px;}
+      .sm-rec-stat{display:flex;flex-direction:column;gap:2px;}
+      .sm-rec-stat .n{font-family:ui-monospace,monospace;font-size:23px;font-weight:800;line-height:1;color:var(--accent);}
+      .sm-rec-stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+      .sm-rec-cta{margin-top:auto;padding-top:16px;display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:13.5px;color:var(--accent);}
+      .sm-rec-cta svg{transition:transform .16s var(--ease-out,ease);}
+      .sm-tile.sm-rec:hover .sm-rec-cta svg{transform:translateX(3px);}
       .sm-mock{grid-column:3/5;grid-row:1;}
       .sm-q10{grid-column:3;grid-row:2;}.sm-smart{grid-column:4;grid-row:2;}
       .sm-missed{grid-column:1;grid-row:3;}.sm-flag{grid-column:2;grid-row:3;}.sm-spec{grid-column:3;grid-row:3;}.sm-build{grid-column:4;grid-row:3;}
@@ -1429,6 +1442,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed #main-nav>a.nav-active{background:var(--accent-dim);color:var(--accent);}
         body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>span>a.nav-app .lbl{flex:1;}
         body.app-authed #nav-admin-wrap>a.nav-app .nav-caret{margin-left:auto;}
+        /* Theme + font switchers are an in-app affordance — hidden on the public/marketing nav so the landing's first impression stays deterministic and conversion-focused. */
+        body:not(.app-authed) #nav-utils{display:none;}
         body.app-authed #main-nav>#nav-utils{order:8;display:flex;align-items:center;gap:16px;padding:6px 4px 2px;margin-top:2px;border-top:1px solid var(--line);}
         body.app-authed #main-nav>#nav-account-wrap{order:9;width:100%;}
         body.app-authed #main-nav>#nav-account-wrap .nav-acct{width:100%;box-sizing:border-box;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);}
@@ -1506,6 +1521,39 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     </style>
     <script src="/src/app.js"></script>
     <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
+    <!-- PWA install prompt: a dismissible banner shown when the app is installable (+ an iOS hint). -->
+    <div id="pwa-install" class="hidden" role="dialog" aria-label="Install MACPrep" style="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:1200;width:max-content;max-width:calc(100vw - 24px);display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 12px 11px 15px;box-shadow:0 16px 44px -18px rgba(0,0,0,.55);">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="m9 11 3 3 3-3"/></svg>
+      <div style="min-width:0;">
+        <div style="font-weight:700;font-size:13.5px;color:var(--text);">Install MACPrep</div>
+        <div id="pwa-install-sub" style="font-size:12px;color:var(--muted);">Study offline and get streak reminders.</div>
+      </div>
+      <button id="pwa-install-btn" class="btn" style="padding:8px 14px;font-size:12px;flex:none;">Install</button>
+      <button id="pwa-install-x" aria-label="Dismiss" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;flex:none;">✕</button>
+    </div>
+    <script>
+    (function(){
+      var KEY='macprep_pwa_dismissed', banner=null, deferred=null;
+      function standalone(){ try{ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }catch(e){ return false; } }
+      function dismissed(){ try{ return localStorage.getItem(KEY)==='1'; }catch(e){ return false; } }
+      function show(){ banner=document.getElementById('pwa-install'); if(banner && !dismissed() && !standalone()) banner.classList.remove('hidden'); }
+      function hide(persist){ if(banner) banner.classList.add('hidden'); if(persist){ try{ localStorage.setItem(KEY,'1'); }catch(e){} } }
+      window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred=e; show(); });
+      window.addEventListener('appinstalled', function(){ hide(true); });
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn=document.getElementById('pwa-install-btn'), x=document.getElementById('pwa-install-x');
+        if(btn) btn.onclick=function(){ if(deferred){ deferred.prompt(); deferred.userChoice.then(function(){ hide(true); deferred=null; }); } else { hide(true); } };
+        if(x) x.onclick=function(){ hide(true); };
+        // iOS Safari has no beforeinstallprompt — show a manual "Add to Home Screen" hint once.
+        var ua=navigator.userAgent||'';
+        var isIOS=/iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+        var isSafari=/safari/i.test(ua) && !/crios|fxios|android/i.test(ua);
+        if(isIOS && isSafari && !standalone() && !dismissed()){
+          setTimeout(function(){ var s=document.getElementById('pwa-install-sub'); if(s) s.textContent='Tap Share, then “Add to Home Screen.”'; if(btn) btn.style.display='none'; show(); }, 4500);
+        }
+      });
+    })();
+    </script>
     <script>
     (function(){
       // Public "try 3 free" demo. Renders for any landing view (incl. a signed-in user who

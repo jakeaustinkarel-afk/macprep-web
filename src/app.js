@@ -404,43 +404,19 @@
         } else if (answeredToday > 0) {
             goalLine = `<div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
         }
-        const metaL = 'font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);';
-        const numS = 'font-weight:800;font-size:20px;line-height:1;';
-        const examMetric = (exam != null)
-            ? (exam >= 0
-                ? `<div style="${numS}">${exam}</div><div class="mono" style="${metaL}">Days to exam</div>`
-                : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Exam date passed</div>`)
-            : (p.study_goal === 'practice'
-                ? `<div style="${numS}">${Math.min(answeredToday, 10)}/10</div><div class="mono" style="${metaL}">Today's goal</div>`
-                : `<div style="${numS}color:var(--muted);">—</div><div class="mono" style="${metaL}">Add an exam date</div>`);
-        const C = 226.2; // ring circumference, 2πr with r=36
-        const ringOff = C * (1 - Math.max(0, Math.min(100, readiness)) / 100);
-        el.innerHTML = `<h3>Exam readiness</h3>
-            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:16px;">
-                <svg viewBox="0 0 84 84" width="118" height="118" style="display:block;flex:none;">
-                    <circle cx="42" cy="42" r="36" fill="none" stroke="var(--line)" stroke-width="8"></circle>
-                    <circle class="ring-fill" cx="42" cy="42" r="36" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 42 42)" style="transition:stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1);"></circle>
-                    <text x="42" y="45" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:21px;fill:var(--text);">${readiness}%</text>
-                    <text x="42" y="58" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1.5px;">READY</text>
-                </svg>
-                <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:16px;">
-                    <div style="display:flex;align-items:center;gap:11px;">
-                        <span style="line-height:1;display:inline-flex;color:${streak ? 'var(--accent)' : 'var(--muted)'};${streak ? 'animation:flamePulse 1.6s ease-in-out infinite;' : 'opacity:.55;'}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1.2 3 4 4.2 4 8a4 4 0 0 1-8 0c0-1.6.6-2.6 1.2-3.2.3 1 1 1.6 1.6 1.6C10.6 8 11 5.6 12 3z"/></svg></span>
-                        <div><div style="${numS}color:${streak ? 'var(--accent)' : 'var(--muted)'};">${streak}</div><div class="mono" style="${metaL}">Day streak${streak ? '' : ' — start today'}</div></div>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:11px;">
-                        <span style="line-height:1;display:inline-flex;color:var(--text2);"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></span>
-                        <div>${examMetric}</div>
-                    </div>
-                </div>
-            </div>
+        // The momentum hero already shows readiness %, streak, and today's goal as rings,
+        // so this card no longer repeats them — it owns what the hero doesn't: the accuracy
+        // trend and the exam-pace plan. (De-dup keeps the dashboard from saying it twice.)
+        const examNudge = (exam == null)
+            ? `<div class="mono" style="font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> Add your exam date in your profile to unlock a daily pace plan.</div>`
+            : '';
+        el.innerHTML = `<h3>Accuracy &amp; exam plan</h3>
+            <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Accuracy — last 7 active days</div>
+            <div style="height:70px;margin-bottom:16px;">${spark}</div>
             ${planLine}
             ${goalLine}
-            <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Accuracy — last 7 active days</div>
-            <div style="height:52px;margin-bottom:2px;">${spark}</div>
-            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:14px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — get your readiness score</button>`;
-        const ring = el.querySelector('.ring-fill');
-        if (ring) requestAnimationFrame(() => requestAnimationFrame(() => { ring.style.strokeDashoffset = ringOff; }));
+            ${examNudge}
+            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — refresh your readiness score</button>`;
     }
 
     // Refer-a-classmate: a shareable message + the $10-off code (a Stripe promo
@@ -1657,11 +1633,16 @@
         const el = $('studymodes-card'); if (!el) return;
         const p = state.profile || {};
         const due = (p.due_ids || []).length, missed = (p.missed_ids || []).length, flagged = (p.flagged_ids || []).length;
-        const recParts = [due ? `${due} due` : '', missed ? `${missed} missed` : ''].filter(Boolean);
-        const recCount = recParts.length ? recParts.join(' · ') : 'a smart mix for you';
+        // Recommended tile shows a glanceable breakdown of what's in the set + a clear CTA,
+        // so the big 2x2 bento tile earns its size instead of sitting mostly empty (#7).
+        const recStats = [];
+        if (due) recStats.push(`<div class="sm-rec-stat"><span class="n">${due}</span><span class="l">due to review</span></div>`);
+        if (missed) recStats.push(`<div class="sm-rec-stat"><span class="n">${missed}</span><span class="l">recent misses</span></div>`);
+        if (flagged) recStats.push(`<div class="sm-rec-stat"><span class="n">${flagged}</span><span class="l">flagged</span></div>`);
+        if (!recStats.length) recStats.push(`<div class="sm-rec-stat"><span class="n">~20</span><span class="l">a smart starter mix</span></div>`);
         const t = [];
         const free = !freeUsage().unlimited;
-        t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:20px;">Today's focused set</div><div class="sm-desc" style="max-width:250px;">Your weak spots, due reviews, and recent misses — the highest-impact set right now.</div><div class="sm-count">${recCount}</div></button>`);
+        t.push(`<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Your weak spots, due reviews, and recent misses — the highest-impact ~20 questions right now.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`);
         t.push(smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? '🔒 Premium' : 'New'));
         t.push(smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'));
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
