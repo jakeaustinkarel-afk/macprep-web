@@ -128,7 +128,10 @@
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
         // Signed-in app nav: study links, account menu, tier badge.
-        ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger'].forEach((id) =>
+        // nav-utils (theme/font/search) hides on the public marketing nav and shows in-app — driven by
+        // the `authed` boolean so it's immune to CSS-specificity/inline-style fights (the .hidden class
+        // is display:none!important). #2 from the UI pass.
+        ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger', 'nav-utils'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
