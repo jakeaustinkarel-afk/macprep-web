@@ -1227,7 +1227,7 @@
         const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const rows = titles.map((t) => `<button type="button" onclick="MACPrep.saveTitle('${esc(t)}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:${t === cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${t === cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;"><span style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(t)}</span>${t === cur ? '<span class="mono" style="font-size:10px;color:var(--accent);">ACTIVE</span>' : ''}</button>`).join('');
         const lockedRows = Object.keys(TITLE_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
-            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);opacity:.55;"><span style="font-weight:600;font-size:13px;">🔒 ${escapeHtml(TITLE_MAP[ach])}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;text-align:right;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : a.title)}</span></div>`; }).join('');
+            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);opacity:.55;"><span style="font-weight:600;font-size:13px;">${lockSvg(12)} ${escapeHtml(TITLE_MAP[ach])}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;text-align:right;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : a.title)}</span></div>`; }).join('');
         const wrap = document.createElement('div');
         wrap.id = 'title-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
@@ -1248,6 +1248,11 @@
 
     // ---- Avatars: emoji profile pictures unlocked by achievements (server-stored
     // as selected_avatar, so they also show on the leaderboard). Default = initials.
+    // Small padlock for locked / premium-gated states — SVG, consistent with the icon set (replaces the 🔒 emoji).
+    function lockSvg(size) {
+        const s = size || 11;
+        return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1.5px;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
+    }
     // A study-buddy mascot (surgical cap) on a rarity-tiered badge with an achievement pip.
     // `selected_avatar` stores the unlocking achievement's TITLE (legacy emoji values migrate on read).
     const AV_TIER = { bronze: '#A9743F', silver: '#8A97A6', gold: '#D6A238', platinum: '#3FA9B8', legendary: '#7E63D8' };
@@ -1336,7 +1341,7 @@
         const tile = (av, active) => `<button type="button" onclick="MACPrep.saveAvatar('${esc(av)}')" title="${escapeHtml(av)}" style="width:56px;height:56px;padding:5px;display:flex;align-items:center;justify-content:center;background:${active ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${active ? 'var(--accent)' : 'var(--line)'};border-radius:14px;cursor:pointer;">${avatarSvg(av, 44)}</button>`;
         const ownedGrid = owned.length ? owned.map((av) => tile(av, av === cur)).join('') : '<div class="mono" style="font-size:12px;color:var(--muted);padding:6px 0;">None yet — unlock avatars from the achievements below.</div>';
         const lockedRows = Object.keys(AVATAR_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
-            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;gap:11px;padding:8px 2px;border-top:1px solid var(--line);"><span style="opacity:.42;filter:saturate(.5);flex:none;display:inline-flex;">${avatarSvg(ach, 34)}</span><span style="flex:1;font-size:12.5px;">🔒 ${escapeHtml(ach)}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : '')}</span></div>`; }).join('');
+            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;gap:11px;padding:8px 2px;border-top:1px solid var(--line);"><span style="opacity:.42;filter:saturate(.5);flex:none;display:inline-flex;">${avatarSvg(ach, 34)}</span><span style="flex:1;font-size:12.5px;">${lockSvg(11)} ${escapeHtml(ach)}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : '')}</span></div>`; }).join('');
         const wrap = document.createElement('div');
         wrap.id = 'avatar-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
@@ -1708,16 +1713,16 @@
         const free = !freeUsage().unlimited;
         const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Your weak spots, due reviews, and recent misses — the highest-impact ~20 questions right now.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
-        const arcCount = free ? (arcadeFreeUsed() ? '🔒 Premium' : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
+        const arcCount = free ? (arcadeFreeUsed() ? `${lockSvg(10)} Premium` : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
         // Lead with the recommended set + the four core study modes; fold the rest behind a
         // toggle so the launcher isn't 11 choices at once (#4). Nothing is buried — the folded
         // modes also live in the sidebar Study-modes menu, and Arcade has its own nav item.
         const primary = [
             recTile,
-            smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? '🔒 Premium' : 'New'),
+            smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? `${lockSvg(10)} Premium` : 'New'),
             smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'),
             smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'),
-            smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, type your answer, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? '🔒 Premium' : 'New'),
+            smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, type your answer, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? `${lockSvg(10)} Premium` : 'New'),
         ];
         const more = [
             smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'),
