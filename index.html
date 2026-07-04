@@ -949,17 +949,19 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <!-- Balanced two columns: left = study & standing, right = daily habit & social.
              Independent flex columns pack tightly (masonry), so hidden cards collapse
              without leaving gaps and both sides end roughly level. -->
+        <!-- Full-width study-modes bento — renders best as a 4-tile strip, not squeezed into a half-width column -->
+        <div class="card" id="studymodes-card" style="order:-5;"></div>
+
         <div class="dash-cols">
             <div class="dash-col">
-                <div class="card" id="studymodes-card"></div>
                 <div class="card" id="readiness"></div>
                 <div class="card" id="achievements-card"></div>
+                <div class="card hidden" id="dash-leaderboard-card"></div>
             </div>
             <div class="dash-col">
                 <div class="card hidden" id="dailyquests-card"></div>
                 <div class="card hidden" id="qotd-card" style="border-color:var(--accent);"></div>
                 <div class="card" id="activity-card"></div>
-                <div class="card hidden" id="dash-leaderboard-card"></div>
             </div>
         </div>
 
