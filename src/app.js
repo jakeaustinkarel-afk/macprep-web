@@ -680,8 +680,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 15;
+    const WHATS_NEW_VERSION = 16;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
         { tag: 'New', date: 'Jul 2', title: 'More avatars & titles to unlock', desc: 'Added new unlockable avatars (🌱 Level 5, ⚡ Level 15, 🤿 Deep Diver, and more) and titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
