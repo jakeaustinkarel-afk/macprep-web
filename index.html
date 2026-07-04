@@ -29,7 +29,13 @@
     <link rel="icon" type="image/svg+xml" href="/brand/macprep-mark.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="manifest" href="/manifest.webmanifest">
+    <script>
+      /* PWA install is offered to signed-in users only — installing from the logged-out
+         marketing landing would just capture the landing page, not the app. The manifest
+         (which is what makes the browser show "Install"/"Open in app") is therefore added
+         only when an auth token is present. */
+      try { if (localStorage.getItem('macprep_token')) { var _m = document.createElement('link'); _m.rel = 'manifest'; _m.href = '/manifest.webmanifest'; document.head.appendChild(_m); } } catch (e) {}
+    </script>
     <meta name="theme-color" content="#146A4A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

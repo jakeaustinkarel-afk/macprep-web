@@ -109,7 +109,7 @@ Legend: **USER-ONLY** = only Jake can do it (requires his LinkedIn login / a hum
      or Microsoft names/logos — a documented rejection reason).
    - **LinkedIn Page:** select the **MACPrep** company Page (`/company/130213953/`).
      Associating the app with the Page here is what later lets the Super Admin "verify" it.
-   - **App logo:** use `macprep_logo.png` / `macprep_icon.png` from the repo root.
+   - **App logo:** use the current brand mark — `icon-512.png` (square) or `logo.png` (horizontal) from the repo root.
    - Accept the **LinkedIn API Terms of Use**.
 5. **USER-ONLY — Verify the app against the Page.** On the app's **Settings** tab there is a
    **"Verify"** button that generates a verification URL. A **Super Admin of the MACPrep
