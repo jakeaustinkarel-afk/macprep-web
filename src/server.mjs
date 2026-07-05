@@ -2000,6 +2000,83 @@ app.post('/api/user/flashcard', async (req, res) => {
     }
 });
 
+// ---- Async 1v1 duels — a fixed question set shared by code; scores compared ----
+function duelCode() {
+    const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no ambiguous 0/O/1/I/L
+    let c = ''; for (let i = 0; i < 6; i++) c += abc[Math.floor(Math.random() * abc.length)];
+    return c;
+}
+async function duelName(userId) {
+    try {
+        const { data } = await supabase.from(PROFILE_TABLE).select('full_name').eq('user_id', userId).maybeSingle();
+        const n = data && data.full_name ? lbShortName(data.full_name) : '';
+        return n || 'A classmate';
+    } catch (e) { return 'A classmate'; }
+}
+app.post('/api/duel/create', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 10, 5), 20);
+    try {
+        let q = supabase.from('questions').select('id');
+        q = applyServedFilter(q);
+        const { data: qs } = await q.limit(1500);
+        const pool = (qs || []).map((r) => r.id);
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const ids = pool.slice(0, count);
+        if (ids.length < 3) return res.status(400).json({ error: 'Not enough questions available for a duel.' });
+        const name = await duelName(user.id);
+        let code = duelCode(), tries = 0, ok = false;
+        while (tries < 6) {
+            const { error } = await supabase.from('duels').insert({ code, creator_id: user.id, creator_name: name, question_ids: ids });
+            if (!error) { ok = true; break; }
+            code = duelCode(); tries++;
+        }
+        if (!ok) return res.status(500).json({ error: 'Could not create duel — try again.' });
+        return res.json({ success: true, code, questionIds: ids, creatorName: name });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not create duel.' });
+    }
+});
+app.get('/api/duel/:code', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const code = String(req.params.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    try {
+        const { data: d } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        if (!d) return res.status(404).json({ error: 'That duel code was not found.' });
+        const youAre = d.creator_id === user.id ? 'creator' : (d.opponent_id === user.id ? 'opponent' : (d.opponent_id ? 'spectator' : 'new'));
+        return res.json({
+            code: d.code, creatorName: d.creator_name, questionIds: d.question_ids || [],
+            creatorScore: d.creator_score, creatorTotal: d.creator_total,
+            opponentName: d.opponent_name, opponentScore: d.opponent_score, opponentTotal: d.opponent_total,
+            youAre,
+        });
+    } catch (err) { return res.status(500).json({ error: 'Could not load that duel.' }); }
+});
+app.post('/api/duel/score', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const code = String(req.body?.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    const score = Math.max(0, Math.min(parseInt(req.body?.score, 10) || 0, 200));
+    const total = Math.max(1, Math.min(parseInt(req.body?.total, 10) || 1, 200));
+    try {
+        const { data: d } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        if (!d) return res.status(404).json({ error: 'That duel code was not found.' });
+        const name = await duelName(user.id);
+        const upd = {};
+        if (d.creator_id === user.id) { upd.creator_score = score; upd.creator_total = total; if (d.opponent_score != null) upd.completed_at = new Date().toISOString(); }
+        else if (!d.opponent_id || d.opponent_id === user.id) { upd.opponent_id = user.id; upd.opponent_name = name; upd.opponent_score = score; upd.opponent_total = total; if (d.creator_score != null) upd.completed_at = new Date().toISOString(); }
+        else { return res.status(409).json({ error: 'This duel already has two players.' }); }
+        await supabase.from('duels').update(upd).eq('code', code);
+        const m = { ...d, ...upd };
+        return res.json({ success: true, code, creatorName: m.creator_name, creatorScore: m.creator_score, creatorTotal: m.creator_total, opponentName: m.opponent_name, opponentScore: m.opponent_score, opponentTotal: m.opponent_total });
+    } catch (err) { return res.status(500).json({ error: 'Could not save your duel score.' }); }
+});
+
 // Per-question personal notes.
 app.get('/api/user/note', async (req, res) => {
     const user = await getUserFromToken(req);

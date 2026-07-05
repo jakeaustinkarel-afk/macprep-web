@@ -331,6 +331,7 @@
         go('dashboard');
         maybeHandleCheckoutReturn();
         maybePromptForName(); // returning users who never saved a first+last name
+        checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
@@ -1665,6 +1666,7 @@
         const more = [
             smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'),
             smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', arcCount, 'MACPrep.openArcadePicker()', 'New'),
+            smTile('sm-duel', 'Compete', 'Duel a classmate', 'Same questions, head-to-head — share a code, see who wins.', '', 'MACPrep.openDuelPicker()', free ? `${lockSvg(10)} Premium` : 'New'),
             smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'),
             smTile('sm-flag', 'Targeted', 'Flagged', '', flagged ? `${flagged} saved` : 'none flagged', 'MACPrep.startFlagged()'),
             ...(deck ? [smTile('sm-mydeck', 'Active recall', 'My Flashcards', 'Recall your saved cards, then flip for the rationale.', `${deck} saved`, 'MACPrep.startFlashcardDeck()', free ? `${lockSvg(10)} Premium` : '')] : []),
@@ -2051,6 +2053,136 @@
         const ids = (state.profile && state.profile.flashcard_ids) || [];
         if (!ids.length) { toast('Your flashcard deck is empty — tap “+ Card” on a question or in Review to add some.'); return; }
         startFlashcards(0, ids);
+    }
+
+    // ---- Async 1v1 Duels — challenge a classmate to the same question set ----
+    function openDuelPicker() {
+        if (!premiumGate('duel')) return;
+        closeNavMenus();
+        const wrap = document.createElement('div');
+        wrap.id = 'duel-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeDuelPicker(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Duel a classmate" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:430px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">⚔ Duel a classmate</div>
+                <button onclick="MACPrep.closeDuelPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Play a fixed set of questions, then share the code — your classmate plays the same set and you see who won.</div>
+            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Start a new duel</div>
+            <div style="display:flex;gap:9px;margin-bottom:20px;">
+                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(5)">5 Q</button>
+                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(10)">10 Q</button>
+                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(20)">20 Q</button>
+            </div>
+            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Or join with a code</div>
+            <div style="display:flex;gap:9px;">
+                <input id="duel-code-input" type="text" maxlength="8" placeholder="ABC123" aria-label="Duel code" autocapitalize="characters" style="flex:1;text-transform:uppercase;letter-spacing:2px;font-family:ui-monospace,monospace;font-size:16px;padding:11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);" onkeydown="if(event.key==='Enter')MACPrep.duelJoin(this.value)">
+                <button class="btn" type="button" onclick="MACPrep.duelJoin(document.getElementById('duel-code-input').value)">Join</button>
+            </div>
+        </div>`;
+        document.body.appendChild(wrap);
+        setTimeout(() => { const i = $('duel-code-input'); if (i) i.focus(); }, 30);
+    }
+    function closeDuelPicker() { const o = $('duel-overlay'); if (o) o.remove(); }
+    async function duelCreate(count) {
+        if (!premiumGate('duel')) return;
+        closeDuelPicker();
+        toast('Setting up your duel…');
+        try {
+            const { resp, data } = await apiJSON('/api/duel/create', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ count: count || 10 }) });
+            if (resp.status === 402) { openUpgradeModal('duel'); return; }
+            if (!resp.ok || !data.questionIds) throw new Error(data.error || 'Could not create duel.');
+            startDuelSession(data.questionIds, { code: data.code, role: 'creator' });
+        } catch (e) { toast('Could not start duel: ' + e.message); }
+    }
+    async function duelJoin(code) {
+        code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        if (!code) { toast('Enter a duel code first.'); return; }
+        if (!premiumGate('duel')) return;
+        closeDuelPicker();
+        toast('Loading duel…');
+        try {
+            const { resp, data } = await apiJSON('/api/duel/' + encodeURIComponent(code), { headers: authHeaders() });
+            if (resp.status === 402) { openUpgradeModal('duel'); return; }
+            if (!resp.ok || !data.questionIds) throw new Error(data.error || 'Duel not found.');
+            if (data.youAre === 'creator') { toast('That’s your own duel — share the code with a classmate.'); return; }
+            if (data.youAre === 'spectator' || (data.youAre === 'opponent' && data.opponentScore != null)) { showDuelResult(data, 'spectator'); return; }
+            startDuelSession(data.questionIds, { code: data.code, role: 'opponent', creatorName: data.creatorName });
+        } catch (e) { toast('Could not join duel: ' + e.message); }
+    }
+    function startDuelSession(ids, duel) {
+        const byId = {}; (state.questions || []).forEach((q) => { byId[q.id] = q; });
+        const ordered = (ids || []).map((id) => byId[id]).filter(Boolean);
+        if (ordered.length < 3) { toast('This duel’s questions aren’t available right now.'); return; }
+        beginSession(ordered, 'tutor');
+        if (state.session) state.session.duel = duel;
+        toast('⚔ Duel started — answer all ' + ordered.length + ', then your score locks in.');
+    }
+    async function finishDuel(s) {
+        $('question-meta').textContent = '⚔ DUEL COMPLETE';
+        try {
+            const { resp, data } = await apiJSON('/api/duel/score', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ code: s.duel.code, score: s.correct, total: s.answered }) });
+            if (!resp.ok) throw new Error(data.error || 'Could not save your duel score.');
+            $('question-stem').innerHTML = duelResultHtml(s.duel.role, data);
+        } catch (e) {
+            $('question-stem').innerHTML = `<div style="color:var(--warn);">Your answers were graded, but the duel didn’t sync: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+    function showDuelResult(data, role) {
+        go('quiz');
+        $('question-meta').textContent = '⚔ DUEL';
+        $('choices-container').innerHTML = ''; $('explanation-pane').classList.add('hidden');
+        $('quiz-palette') && ($('quiz-palette').innerHTML = '');
+        document.querySelectorAll('.quiz-extra').forEach((e) => { e.style.display = 'none'; });
+        $('quiz-actions') && ($('quiz-actions').style.display = 'none');
+        $('quiz-progress-wrap') && ($('quiz-progress-wrap').style.display = 'none');
+        const sr = $('session-review'); if (sr) sr.classList.add('hidden');
+        const sb = $('session-breakdown'); if (sb) sb.classList.add('hidden');
+        $('question-stem').innerHTML = duelResultHtml(role, data);
+        const btn = $('advance-vignette-trigger');
+        if (btn) { btn.textContent = 'Back to Dashboard'; btn.className = 'btn'; btn.style.visibility = 'visible'; btn.onclick = () => go('dashboard'); }
+    }
+    function duelScoreCard(name, score, total, hi) {
+        return `<div><div class="mono" style="font-size:11px;color:var(--muted);">${escapeHtml(name)}</div><div style="font-size:26px;font-weight:800;${hi ? 'color:var(--accent);' : ''}">${score == null ? '—' : score}<span style="font-size:14px;color:var(--muted);">/${total || '—'}</span></div></div>`;
+    }
+    function duelResultHtml(role, d) {
+        if (role === 'creator' && d.opponentScore == null) {
+            return `<div style="font-size:16px;">You scored <strong>${d.creatorScore}/${d.creatorTotal}</strong>. Now challenge a classmate — send them this code:</div>
+                <div style="margin:14px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span class="mono" style="font-size:26px;font-weight:800;letter-spacing:3px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent);border-radius:10px;padding:8px 18px;">${escapeHtml(d.code)}</span>
+                    <button class="btn ghost" type="button" onclick="MACPrep.copyDuel('${escapeHtml(d.code)}')">Copy invite link</button>
+                </div>
+                <div class="mono" style="font-size:12px;color:var(--muted);">They open the link — or enter the code under Study Modes → Duel — play the same ${d.creatorTotal} questions, and you’ll both see who won.</div>`;
+        }
+        let mine, theirs;
+        if (role === 'creator') { mine = { n: 'You', s: d.creatorScore, t: d.creatorTotal }; theirs = { n: d.opponentName || 'Classmate', s: d.opponentScore, t: d.opponentTotal }; }
+        else if (role === 'opponent') { mine = { n: 'You', s: d.opponentScore, t: d.opponentTotal }; theirs = { n: d.creatorName || 'Classmate', s: d.creatorScore, t: d.creatorTotal }; }
+        else { mine = { n: d.creatorName || 'Creator', s: d.creatorScore, t: d.creatorTotal }; theirs = { n: d.opponentName || 'Challenger', s: d.opponentScore, t: d.opponentTotal }; }
+        let verdict;
+        if (role === 'spectator') verdict = 'Duel results';
+        else { const win = mine.s > theirs.s, tie = mine.s === theirs.s; verdict = tie ? '🤝 It’s a tie!' : (win ? '🏆 You win!' : `${escapeHtml(theirs.n)} takes this one`); }
+        return `<div style="font-size:20px;font-weight:700;margin-bottom:12px;">${verdict}</div>
+            <div style="display:flex;gap:22px;align-items:flex-end;">
+                ${duelScoreCard(mine.n, mine.s, mine.t, role !== 'spectator' && mine.s >= (theirs.s || 0))}
+                <div class="mono" style="color:var(--muted);padding-bottom:6px;">vs</div>
+                ${duelScoreCard(theirs.n, theirs.s, theirs.t, false)}
+            </div>
+            <div style="margin-top:16px;"><button class="btn ghost" type="button" onclick="MACPrep.openDuelPicker()">Start another duel</button></div>`;
+    }
+    function copyDuel(code) {
+        const link = location.origin + '/#duel=' + code;
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(link).then(() => toast('Invite link copied!', 'ok')).catch(() => window.prompt('Copy this invite link:', link)); }
+        else window.prompt('Copy this invite link:', link);
+    }
+    // Deep link: opening /#duel=CODE (shared by a classmate) jumps straight into joining it.
+    function checkDuelDeepLink() {
+        try {
+            const m = (location.hash || '').match(/duel=([A-Za-z0-9]{4,8})/);
+            if (!m) return;
+            history.replaceState(null, '', location.pathname + location.search);
+            if (state.token) setTimeout(() => duelJoin(m[1]), 400);
+        } catch (e) {}
     }
 
     async function toggleFlag() {
@@ -2756,6 +2888,7 @@
         if (s.answered >= 3 && pct >= 70) celebrate();
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
+        if (s.duel) finishDuel(s);
         renderSessionBreakdown(s.log || []);
         renderSessionReview(s.log || []);
         const btn = $('advance-vignette-trigger');
@@ -2986,6 +3119,7 @@
         mock: { icon: '📝', name: 'The Full-Length Mock Exam', blurb: 'A board-length, timed simulation of the real NCCAA exam — the closest thing to sitting the boards.' },
         critical: { icon: '🚨', name: 'Critical Event Cards', blurb: 'Clinician-reviewed rapid-response cards for every anesthesia crisis — searchable and printable.' },
         flashcards: { icon: '🗂️', name: 'Flashcard Mode', blurb: 'Active recall — hide the choices, type your answer, then flip for the rationale & source.' },
+        duel: { icon: '⚔️', name: 'Duels', blurb: 'Challenge a classmate head-to-head on the same question set — share a code and see who wins.' },
     };
     // The single "what your $50 unlocks" list shown on every upgrade screen.
     const PREMIUM_UNLOCKS = [
@@ -4161,6 +4295,7 @@
         openArcadePicker, closeArcadePicker, startArcade,
         premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard, ceOpen, ceFilter,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
+        openDuelPicker, closeDuelPicker, duelCreate, duelJoin, copyDuel,
         saveTitle, openTitlePicker, closeTitlePicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
@@ -4184,7 +4319,7 @@
             ['title-overlay', closeTitlePicker],
             ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents],
             ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
-            ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
+            ['duel-overlay', closeDuelPicker], ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
             ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
         ];
         for (let i = 0; i < closers.length; i++) {
