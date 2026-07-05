@@ -14,7 +14,7 @@
     <meta name="robots" content="noindex,nofollow">
     <link rel="canonical" href="https://www.macprep.org/">
     <meta http-equiv="refresh" content="0; url=/index.html">
-    <style>body{background:#0D0E10;color:#6B7280;font-family:ui-monospace,monospace;}
+    <style>body{background:var(--bg);color:var(--text);font-family:ui-monospace,monospace;}
         html[data-theme="light"]{--bg:#f6f7f9;--panel:#ffffff;--line:#e3e6ea;--text:#111827;--text2:#374151;--muted:#5b6470;--accent:#047857;--on-accent:#ffffff;--accent-dim:#e6f5ee;--danger:#b42318;--danger-dim:#fde8e8;--good:#047857;--warn:#b45309;--bad:#b42318;--info:#1d4ed8;}
         html[data-theme="warm"]{--bg:#F1E9DA;--panel:#FBF6EB;--line:#E1D5C0;--text:#2A2620;--text2:#4a4339;--muted:#796D5B;--accent:#1F5D43;--on-accent:#ffffff;--accent-dim:#e6efe9;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#1F5D43;--warn:#9a6a14;--bad:#9a3a2a;--info:#3a6ea5;}
         html[data-theme="sandstone"]{--bg:#EFE7D8;--panel:#FBF7EF;--line:#ddd2bd;--text:#2b2418;--text2:#4a4131;--muted:#7a6f59;--accent:#0F766E;--on-accent:#ffffff;--accent-dim:#e0efec;--danger:#9a3a2a;--danger-dim:#f3e0db;--good:#0F766E;--warn:#9a6a14;--bad:#9a3a2a;--info:#0e7490;}
@@ -54,6 +54,9 @@
     </style>
 </head>
 <body>
+    <header style="padding:15px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;">
+      <a href="/index.html" aria-label="MACPrep home" style="display:inline-flex;align-items:center;gap:9px;font-family:'Figtree',ui-monospace,sans-serif;font-size:21px;font-weight:800;letter-spacing:-1px;color:var(--text);text-decoration:none;"><svg width="23" height="23" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg><span>MAC<span style="color:var(--accent);">Prep</span></span></a>
+    </header>
     <p style="padding:40px;">Redirecting to sign in… <a href="/index.html#signin" style="color:#00A86B;">Continue</a></p>
     <script>window.location.replace('/index.html#signin');</script>
 <footer style="border-top:1px solid var(--line,#1F2937);margin-top:48px;padding:34px 24px 28px;text-align:center;">
