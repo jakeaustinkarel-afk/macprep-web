@@ -331,7 +331,9 @@
         go('dashboard');
         maybeHandleCheckoutReturn();
         maybePromptForName(); // returning users who never saved a first+last name
+        const _duelLink = /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
         checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
+        if (!_duelLink) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
@@ -664,7 +666,7 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 20;
+    const WHATS_NEW_VERSION = 21;
     const WHATS_NEW = [
         { tag: 'New', date: 'Jul 5', title: 'Duel a classmate', desc: 'Go head-to-head — Study Modes → Duel a classmate. Play a set of questions, share your code or invite link, and your classmate plays the exact same set. You’ll both see who won.' },
         { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
@@ -696,6 +698,39 @@
     ];
     function whatsNewUnread() { try { return WHATS_NEW_VERSION > (parseInt(ls('macprep_whatsnew_seen'), 10) || 0); } catch (e) { return false; } }
     function renderWhatsNewDot() { const d = $('wn-dot'); if (d) d.style.display = whatsNewUnread() ? '' : 'none'; }
+    // Centered "what's new" popup on login — highlights the latest updates once per release,
+    // on top of the persistent What's New menu item + unread dot.
+    function maybeShowWhatsNewPopup() {
+        let seen; try { seen = parseInt(ls('macprep_whatsnew_seen'), 10) || 0; } catch (e) { seen = 0; }
+        if (!seen) { try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {} renderWhatsNewDot(); return; } // brand-new user: baseline silently, no popup
+        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen) return;
+        const rows = WHATS_NEW.slice(0, 4).map((e) => {
+            const isFix = e.tag === 'Fix';
+            const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
+            const pillBg = isFix ? 'color-mix(in srgb,var(--warn) 16%,transparent)' : 'var(--accent-dim)';
+            return `<div style="padding:12px 0;border-top:1px solid var(--line);">`
+                + `<div style="font-weight:700;font-size:14px;line-height:1.3;">${escapeHtml(e.title)} <span class="mono" style="font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${pillColor};background:${pillBg};padding:2px 6px;border-radius:5px;">${e.tag}</span></div>`
+                + `<div style="font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5;">${escapeHtml(e.desc)}</div></div>`;
+        }).join('');
+        const wrap = document.createElement('div');
+        wrap.id = 'wn-popup';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2650;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (ev) => { if (ev.target === wrap) closeWhatsNewPopup(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-label="What's new in MACPrep" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;max-height:82vh;overflow:auto;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+            <div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">✨ Just shipped</div>
+            <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;margin:5px 0 3px;">What's new in MACPrep</div>
+            <div class="sub" style="font-size:12.5px;margin-bottom:4px;">Here are the latest updates since you were last here.</div>
+            ${rows}
+            <div style="display:flex;gap:10px;margin-top:18px;">
+                <button class="btn" type="button" onclick="MACPrep.closeWhatsNewPopup()" style="flex:1;">Got it</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.closeWhatsNewPopup(); MACPrep.openWhatsNew();">See all updates</button>
+            </div>
+        </div>`;
+        document.body.appendChild(wrap);
+        try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {}
+        renderWhatsNewDot();
+    }
+    function closeWhatsNewPopup() { const o = $('wn-popup'); if (o) o.remove(); }
 
     // Sidebar account block: initials + name + plan.
     function renderSidebarAccount() {
@@ -4292,7 +4327,7 @@
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
-        startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew,
+        startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew, closeWhatsNewPopup,
         ringFocus, ringBlur, toggleSidebar, resetProgress, closeLevelUp, openDailyChest,
         openBossPicker, closeBossPicker, startBossFight,
         openArcadePicker, closeArcadePicker, startArcade,
@@ -4321,7 +4356,7 @@
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
             ['title-overlay', closeTitlePicker],
             ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents],
-            ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
+            ['wn-popup', closeWhatsNewPopup], ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
             ['duel-overlay', closeDuelPicker], ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
             ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
         ];
