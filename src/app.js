@@ -664,8 +664,11 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 19;
+    const WHATS_NEW_VERSION = 20;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 5', title: 'Duel a classmate', desc: 'Go head-to-head — Study Modes → Duel a classmate. Play a set of questions, share your code or invite link, and your classmate plays the exact same set. You’ll both see who won.' },
+        { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
+        { tag: 'New', date: 'Jul 5', title: 'Flag questions from the Review', desc: 'The end-of-session Review now has Flag + “+ Card” buttons on every question — even the ones you got right — so you can save anything to revisit, or add it to your flashcards, while you review.' },
         { tag: 'New', date: 'Jul 5', title: '100 achievements — and a title for every one', desc: 'The achievement bank is now 100 strong, and every single achievement unlocks its own title to show by your name — 100 titles to collect. Pick your favorite in Account → Title ★. The new ones span longer streaks, sharper accuracy (up to 99%), full-bank coverage, higher levels, and tougher Arcade runs.' },
         { tag: 'New', date: 'Jul 4', title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
