@@ -663,8 +663,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 18;
+    const WHATS_NEW_VERSION = 19;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 5', title: '100 achievements — and a title for every one', desc: 'The achievement bank is now 100 strong, and every single achievement unlocks its own title to show by your name — 100 titles to collect. Pick your favorite in Account → Title ★. The new ones span longer streaks, sharper accuracy (up to 99%), full-bank coverage, higher levels, and tougher Arcade runs.' },
         { tag: 'New', date: 'Jul 4', title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
@@ -1149,6 +1150,27 @@
         lvlA(15, 'Level 15'); lvlA(75, 'Level 75');
         milePush('clipboard', 'Mock veteran — ten Mock Exams', mocks >= 10, Math.round((mocks / 10) * 100), `${mocks} / 10 completed`);
 
+        // --- expansion toward 100 achievements (2026-07-05) — every achievement also grants a title ---
+        vol(1500, 'Momentum — 1,500'); vol(4000, 'Four thousand strong'); vol(6000, 'Six-K'); vol(8000, 'Eight-K'); vol(15000, 'Fifteen-K — 15,000'); vol(20000, 'Twenty-K — 20,000');
+        strk(5, 'Five-day flame'); strk(90, 'A full quarter — 90 days'); strk(150, 'One-fifty — 150 days'); strk(180, 'Half a year — 180 days'); strk(500, 'Five hundred days');
+        accA(75, 100, 'Dialed in — 75%'); accA(90, 300, 'Deadeye — 90% over 300'); accA(95, 500, 'Cold-blooded — 95% over 500'); accA(99, 200, 'Flawless — 99%');
+        const dom90 = bySpec.filter((r) => (r.accuracy || 0) >= 90 && (covByCat[r.category] || 0) >= 20).length;
+        covPush('grid', 'A dozen deep — 12 specialties', started >= 12, Math.round((started / 12) * 100), `${started} / 12 started`);
+        covPush('layers', 'Century diver — 100 in one specialty', maxSeen >= 100, Math.round((maxSeen / 100) * 100), `best is ${maxSeen} / 100`);
+        covPush('layers', 'Abyssal — 200 in one specialty', maxSeen >= 200, Math.round((maxSeen / 200) * 100), `best is ${maxSeen} / 200`);
+        covPush('grid', 'Triple complete — 3 at 100%', mastered >= 3, Math.round((mastered / 3) * 100), `${mastered} / 3 fully covered`);
+        covPush('layers', 'A quarter of the bank', bankPct >= 25, Math.round((bankPct / 25) * 100), `${bankPct}% of the bank seen`);
+        covPush('layers', 'Three-quarters of the bank', bankPct >= 75, Math.round((bankPct / 75) * 100), `${bankPct}% of the bank seen`);
+        masPush('Five-domain expert', domHi >= 5, Math.round((domHi / 5) * 100), `${domHi} / 5 specialties at 85%+`);
+        masPush('Prodigy — 90% in a specialty', dom90 >= 1, 0, '90%+ in any specialty (20+ answered)');
+        masPush('Triple virtuoso — 90% in three', dom90 >= 3, Math.round((dom90 / 3) * 100), `${dom90} / 3 specialties at 90%+`);
+        A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss veteran — three domains', desc: 'Defeat three Domain Bosses (80%+ on each challenge).', met: bossN >= 3, pct: bossN >= 3 ? 100 : Math.max(0, Math.min(99, Math.round((bossN / 3) * 100))), sub: bossN >= 3 ? 'Unlocked' : `${bossN} / 3 domains defeated` });
+        milePush('gauge', 'Razor-sharp — 90% readiness', rdy >= 90, Math.round((rdy / 90) * 100), `readiness ${rdy}% / 90%`);
+        milePush('clipboard', 'Mock regular — five', mocks >= 5, Math.round((mocks / 5) * 100), `${mocks} / 5 completed`);
+        lvlA(20, 'Level 20'); lvlA(30, 'Level 30'); lvlA(40, 'Level 40'); lvlA(60, 'Level 60'); lvlA(90, 'Level 90');
+        arcPush('Arcade veteran — 100 runs', 'Play 100 Arcade runs across any modes.', arcPlays >= 100, Math.round((arcPlays / 100) * 100), `${arcPlays} / 100 runs`);
+        arcPush('Arcade legend — 30 in a run', 'Score 30+ correct in a single Arcade run.', arcTopScore >= 30, Math.round((arcTopScore / 30) * 100), `best run is ${arcTopScore} / 30`);
+
         // meta — unlock every other achievement (grants the rarest title: The Legend)
         const doneCount = A.filter((a) => a.met).length;
         const allMet = doneCount >= A.length;
@@ -1160,8 +1182,8 @@
             const t = a.title;
             let xp = ({ Volume: 60, Consistency: 90, Accuracy: 110, Coverage: 80, Mastery: 130, Milestones: 100 })[a.cat] || 75;
             if (/every achievement/i.test(t)) xp = 1000;
-            else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000|Year of prep/i.test(t)) xp = 500;
-            else if (/Level 50|Level 75|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Mock veteran|Half-century — 50|Untouchable|7,500 club/i.test(t)) xp = 300;
+            else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000|Year of prep|Twenty-K|Fifteen-K|Five hundred days|Flawless — 99%|Abyssal|Level 90/i.test(t)) xp = 500;
+            else if (/Level 50|Level 75|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Mock veteran|Half-century — 50|Untouchable|7,500 club|Cold-blooded|Deadeye|Half a year|One-fifty|Level 60|Five-domain expert|Triple virtuoso|Century diver|Boss veteran|Prodigy — 90%/i.test(t)) xp = 300;
             else if (/Off the mark/i.test(t)) xp = 30;
             a.xp = xp;
         });
@@ -1171,29 +1193,58 @@
     // ---- Titles: unlocked by achievements, one active title shown by your name ----
     // Keyed by achievement title. Picking a title persists server-side so it also
     // shows on the leaderboard. Unlock-gating is client-side (low-stakes flair).
+    // Every achievement unlocks a distinct title (Jake, 2026-07-05). Keys must match the
+    // achievement `title` exactly (verified by a coverage check). ~100 titles to chase.
     const TITLE_MAP = {
-        'One week strong': 'The Consistent',
-        'Centurion streak': 'The Relentless',
-        'Elite — 90%': 'Sharpshooter',
-        'Five figures — 10,000': 'The Machine',
-        'Scholar — 1,000 answered at 80%+': 'The Scholar',
-        'Grand tour — every specialty at 100%': 'The Cartographer',
+        // Volume
+        'Off the mark': 'The Initiate', 'Warming up — 25': 'Warmed Up', 'Fifty in': 'The Fifty',
+        'Century — 100 questions': 'The Centurion', 'Quarter-K — 250': 'Quarter-Master', '500 club': 'The Five-Hundred',
+        'Three-quarter-K — 750': 'The Three-Quarter', 'Four figures — 1,000': 'Four Figures', 'Momentum — 1,500': 'The Persistent',
+        'Halfway hero — 2,500': 'Halfway Hero', 'Four thousand strong': 'The Workhorse', 'High five — 5,000': 'The High-Fiver',
+        'Six-K': 'The Tireless', '7,500 club': 'The Seventy-Five', 'Eight-K': 'The Unwavering',
+        'Five figures — 10,000': 'The Machine', 'Fifteen-K — 15,000': 'The Titan', 'Twenty-K — 20,000': 'The Colossus',
+        // Consistency
+        'Two in a row': 'The Regular', 'Three-peat': 'The Three-Peat', 'Five-day flame': 'The Steady',
+        'One week strong': 'The Consistent', 'Fortnight': 'The Fortnight', 'Three weeks': 'The Three-Week',
+        'A month deep': 'The Monthly', 'Half-century — 50-day streak': 'The Half-Century', 'Two months': 'The Bimonthly',
+        'A full quarter — 90 days': 'The Committed', 'Centurion streak': 'The Relentless', 'One-fifty — 150 days': 'The Dedicated',
+        'Half a year — 180 days': 'The Ironclad', 'Unstoppable — 200 days': 'The Unstoppable', 'Year of prep — 365 days': 'The Devoted',
+        'Five hundred days': 'The Eternal',
+        // Accuracy
+        'On target — 70%': 'On Target', 'Dialed in — 75%': 'Dialed In', 'Sharpshooter — 80%': 'Dead Aim',
+        'Locked in — 80% over 500': 'Locked In', 'Crack shot — 85%': 'Crack Shot', 'Elite — 90%': 'Sharpshooter',
+        'Deadeye — 90% over 300': 'Deadeye', 'Marksman — 95%': 'The Marksman', 'Cold-blooded — 95% over 500': 'Cold-Blooded',
+        'Flawless — 99%': 'The Flawless',
+        // Coverage
+        'Explorer — every specialty': 'The Explorer', 'Specialist — 100% of a specialty': 'The Specialist',
+        'Daily habit — Question of the Day': 'The Daily', 'Broad start — 4 specialties': 'The Generalist',
+        'Getting around — 8 specialties': 'The Traveler', 'A dozen deep — 12 specialties': 'The Well-Rounded',
+        'Deep diver — 50 in one specialty': 'The Diver', 'Century diver — 100 in one specialty': 'The Fathomless',
+        'Abyssal — 200 in one specialty': 'The Abyssal', 'Double specialist — 2 at 100%': 'The Double-Specialist',
+        'Triple complete — 3 at 100%': 'The Thorough', 'Polymath — 5 at 100%': 'The Polymath',
+        'Grand tour — every specialty at 100%': 'The Cartographer', 'A quarter of the bank': 'A Quarter Down',
+        'Halfway through the bank': 'Halfway There', 'Three-quarters of the bank': 'The Home Stretch',
         'Completionist — the whole bank': 'The Encyclopedia',
-        'Boss slayer — every domain': 'Boss Slayer',
-        'Max level — 100': 'Grandmaster',
-        'Peak form — 95% readiness': 'Peak Form',
-        'Mock master — three Mock Exams': 'Battle-Tested',
-        'Year of prep — 365 days': 'The Devoted',
-        'Level 75': 'Virtuoso',
-        'Untouchable — 15 in Sudden Death': 'Untouchable',
-        'High scorer — 20 in a run': 'Arcade Ace',
-        'Halfway hero — 2,500': 'Halfway Hero',
-        'Marksman — 95%': 'The Marksman',
-        'Locked in — 80% over 500': 'Locked In',
-        'Polymath — 5 at 100%': 'The Polymath',
-        'Unstoppable — 200 days': 'The Unstoppable',
-        'Mock veteran — ten Mock Exams': 'The Veteran',
-        'The Grand Slam — every achievement': 'The Legend',
+        // Mastery
+        'Domain expert — 85% in a specialty': 'Domain Expert', 'Triple threat — 85% in three': 'Triple Threat',
+        'Five-domain expert': 'The Master', 'Prodigy — 90% in a specialty': 'The Prodigy',
+        'Triple virtuoso — 90% in three': 'The Savant', 'Boss hunter — beat your first domain': 'Boss Hunter',
+        'Boss veteran — three domains': 'Boss Veteran', 'Boss slayer — every domain': 'Boss Slayer',
+        // Milestones
+        'Exam-ready — 80% readiness': 'Exam-Ready', 'Razor-sharp — 90% readiness': 'Razor-Sharp',
+        'Peak form — 95% readiness': 'Peak Form', 'Scholar — 1,000 answered at 80%+': 'The Scholar',
+        'The grind — 30-day streak + 2,500': 'The Grinder', 'Dress rehearsal — finish a Mock Exam': 'The Understudy',
+        'Mock master — three Mock Exams': 'Battle-Tested', 'Mock regular — five': 'The Rehearsed',
+        'Mock veteran — ten Mock Exams': 'The Veteran', 'Level 5': 'The Novice', 'Level 10': 'The Apprentice',
+        'Level 15': 'The Journeyman', 'Level 20': 'The Adept', 'Level 25': 'The Practiced', 'Level 30': 'The Seasoned',
+        'Level 40': 'The Expert', 'Level 50 — halfway to max': 'The Accomplished', 'Level 60': 'The Formidable',
+        'Level 75': 'Virtuoso', 'Level 90': 'The Ascendant', 'Max level — 100': 'Grandmaster',
+        'Quest complete — first daily set': 'The Quester', 'Quest week — 7 days': 'The Diligent',
+        'Quest master — 30 days': 'The Questmaster', 'The Grand Slam — every achievement': 'The Legend',
+        // Arcade
+        'Arcade debut': 'Arcade Rookie', 'Arcade regular — 25 runs': 'Arcade Regular',
+        'Arcade veteran — 100 runs': 'Arcade Veteran', 'High scorer — 20 in a run': 'Arcade Ace',
+        'Arcade legend — 30 in a run': 'Arcade Legend', 'Untouchable — 15 in Sudden Death': 'Untouchable',
     };
     const BASE_TITLES = ['Rookie']; // always available so the picker is never empty
     function unlockedTitles() {
