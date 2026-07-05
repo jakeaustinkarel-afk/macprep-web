@@ -1691,30 +1691,26 @@
         const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Your weak spots, due reviews, and recent misses — the highest-impact ~20 questions right now.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
         const arcCount = free ? (arcadeFreeUsed() ? `${lockSvg(10)} Premium` : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
-        // Lead with the recommended set + the four core study modes; fold the rest behind a
-        // toggle so the launcher isn't 11 choices at once (#4). Nothing is buried — the folded
-        // modes also live in the sidebar Study-modes menu, and Arcade has its own nav item.
-        const primary = [
+        // Every study mode shown directly — no fold (Jake: don't hide modes behind a dropdown
+        // when the grid isn't even full). Ordered by usefulness for board prep; Mock stays
+        // prominent up top. rec (2x2) + Mock (wide) + the singles tile a clean 4-col bento.
+        const tiles = [
             recTile,
-            smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? `${lockSvg(10)} Premium` : 'New'),
-            smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Weak areas + your misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'),
-            smTile('sm-q10', 'Quick start', 'Quick 10', '10 random questions.', '', 'MACPrep.startQuick(10)'),
-            smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, type your answer, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? `${lockSvg(10)} Premium` : 'New'),
-        ];
-        const more = [
-            smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', 'New'),
-            smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', arcCount, 'MACPrep.openArcadePicker()', 'New'),
+            smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Your weak areas + recent misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'),
+            smTile('sm-q10', 'Quick start', 'Quick 10', '10 quick questions to warm up.', '', 'MACPrep.startQuick(10)'),
+            smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, recall, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-spec', 'By specialty', 'Focused quiz', 'Drill any single specialty.', '', "MACPrep.jumpToCard('specialty-perf')"),
+            smTile('sm-missed', 'Targeted', 'Redo Missed', 'Re-drill what you got wrong.', missed ? `${missed} to fix` : 'none yet', 'MACPrep.redoMissed()'),
+            smTile('sm-flag', 'Targeted', 'Flagged', 'Questions you saved to revisit.', flagged ? `${flagged} saved` : 'none yet', 'MACPrep.startFlagged()'),
             smTile('sm-duel', 'Compete', 'Duel a classmate', 'Same questions, head-to-head — share a code, see who wins.', '', 'MACPrep.openDuelPicker()', free ? `${lockSvg(10)} Premium` : 'New'),
-            smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'),
-            smTile('sm-flag', 'Targeted', 'Flagged', '', flagged ? `${flagged} saved` : 'none flagged', 'MACPrep.startFlagged()'),
-            ...(deck ? [smTile('sm-mydeck', 'Active recall', 'My Flashcards', 'Recall your saved cards, then flip for the rationale.', `${deck} saved`, 'MACPrep.startFlashcardDeck()', free ? `${lockSvg(10)} Premium` : '')] : []),
-            smTile('sm-spec', 'By specialty', 'Focused quiz', 'Pick any specialty.', '', "MACPrep.jumpToCard('specialty-perf')"),
+            ...(deck ? [smTile('sm-mydeck', 'Active recall', 'My Flashcards', 'Recall your saved cards, then flip.', `${deck} saved`, 'MACPrep.startFlashcardDeck()', free ? `${lockSvg(10)} Premium` : 'New')] : []),
             smTile('sm-build', 'Custom', 'Build Your Own', 'Domain · count · difficulty.', '', 'MACPrep.toggleCustomize()'),
+            smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()'),
+            smTile('sm-arcade', 'Play', 'Arcade', 'Four fast, score-chasing modes.', arcCount, 'MACPrep.openArcadePicker()'),
         ];
         el.innerHTML = `<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:15px;">Study modes</div>`
-            + `<div class="sm-bento">${primary.join('')}</div>`
-            + `<button type="button" class="sm-more-btn" aria-expanded="false" onclick="MACPrep.toggleMoreModes(this)">More ways to study<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`
-            + `<div class="sm-bento sm-bento-more hidden" id="sm-more">${more.join('')}</div>`;
+            + `<div class="sm-bento">${tiles.join('')}</div>`;
     }
 
     function toggleMoreModes(btn) {
