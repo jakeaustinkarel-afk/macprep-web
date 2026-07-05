@@ -1242,7 +1242,7 @@ app.get('/api/leaderboard', async (req, res) => {
         const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
         // Board = opted-in players who have added a real name (a "First L." to show).
         const { data: players } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, full_name, selected_title, selected_avatar')
+            .select('user_id, full_name, selected_title')
             .eq('leaderboard_opt_in', true).not('full_name', 'is', null);
         const playerList = (players || []).filter((p) => lbShortName(p.full_name));
         const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 2000);
@@ -1260,11 +1260,11 @@ app.get('/api/leaderboard', async (req, res) => {
             const attempts = weekAtt[uid] || 0, correct = weekCorrect[uid] || 0;
             return { weekly: attempts, correct, attempts, accuracy: attempts ? Math.round((correct / attempts) * 1000) / 10 : 0, streak: lbStreak(daysByUser[uid] || new Set()) };
         };
-        const enriched = playerList.map((p) => ({ user_id: p.user_id, name: lbShortName(p.full_name), title: p.selected_title || '', avatar: p.selected_avatar || '', is_me: p.user_id === user.id, ...stat(p.user_id) }));
+        const enriched = playerList.map((p) => ({ user_id: p.user_id, name: lbShortName(p.full_name), title: p.selected_title || '', is_me: p.user_id === user.id, ...stat(p.user_id) }));
         const rankBoard = (metric, tiebreak, filterFn) => enriched
             .filter(filterFn || (() => true))
             .sort((a, b) => (b[metric] - a[metric]) || (b[tiebreak] - a[tiebreak]) || a.name.localeCompare(b.name))
-            .map((p, i) => ({ rank: i + 1, name: p.name, title: p.title, avatar: p.avatar, streak: p.streak, weekly: p.weekly, accuracy: p.accuracy, attempts: p.attempts, is_me: p.is_me }))
+            .map((p, i) => ({ rank: i + 1, name: p.name, title: p.title, streak: p.streak, weekly: p.weekly, accuracy: p.accuracy, attempts: p.attempts, is_me: p.is_me }))
             .slice(0, 50);
         const boards = {
             streak: rankBoard('streak', 'weekly'),
@@ -1714,7 +1714,7 @@ app.post('/api/grade', async (req, res) => {
     }
 });
 
-// User cosmetics — active title / avatar, shown on the dashboard, sidebar, and
+// User cosmetics — active title, shown on the dashboard, sidebar, and
 // leaderboard. Unlock-gating is enforced client-side (low-stakes flair earned
 // from achievements); the server stores the selection and echoes it back.
 app.post('/api/user/cosmetics', async (req, res) => {
@@ -1724,7 +1724,6 @@ app.post('/api/user/cosmetics', async (req, res) => {
     const b = req.body || {};
     const upd = {};
     if ('title' in b) upd.selected_title = String(b.title || '').trim().slice(0, 40) || null;
-    if ('avatar' in b) upd.selected_avatar = String(b.avatar || '').trim().slice(0, 40) || null;
     if (!Object.keys(upd).length) return res.status(400).json({ error: 'Nothing to update.' });
     try {
         const { error } = await supabase.from(PROFILE_TABLE).update(upd).eq('user_id', user.id);
@@ -1748,7 +1747,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, selected_avatar, bonus_xp, ach_claimed, daily_state')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1885,7 +1884,6 @@ app.get('/api/user/profile', async (req, res) => {
                 leaderboard_handle: profile?.leaderboard_handle || null,
                 leaderboard_opt_in: !!profile?.leaderboard_opt_in,
                 selected_title: profile?.selected_title || null,
-                selected_avatar: profile?.selected_avatar || null,
                 bonus_xp: Number(profile?.bonus_xp) || 0,
                 ach_claimed: Array.isArray(profile?.ach_claimed) ? profile.ach_claimed : [],
                 daily_state: (profile && profile.daily_state && typeof profile.daily_state === 'object') ? profile.daily_state : {},

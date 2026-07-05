@@ -665,13 +665,11 @@
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
     const WHATS_NEW_VERSION = 18;
     const WHATS_NEW = [
-        { tag: 'New', date: 'Jul 4', title: 'Avatars got a glow-up', desc: 'Your unlockable avatars are now a custom study-buddy character on a rarity-colored badge (bronze → legendary) with a pip for the achievement that earned it — a real step up from the old emoji. If you already had one picked, it carried over. Set or change yours in Account → Avatar.' },
         { tag: 'New', date: 'Jul 4', title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
-        { tag: 'New', date: 'Jul 2', title: 'More avatars & titles to unlock', desc: 'Added new unlockable avatars (🌱 Level 5, ⚡ Level 15, 🤿 Deep Diver, and more) and titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
-        { tag: 'New', date: 'Jul 1', title: 'Avatars', desc: 'Unlock emoji profile pictures from achievements (🚀 at Level 10, 🎯 at Sharpshooter, 🐉 at 5,000 answered, and more). Pick one in Account → Avatar ✦ — it shows in your sidebar and on the leaderboard.' },
+        { tag: 'New', date: 'Jul 2', title: 'More titles to unlock', desc: 'Added new unlockable titles (The Marksman, The Polymath, The Veteran, Halfway Hero, and more) tied to achievements.' },
         { tag: 'New', date: 'Jul 1', title: 'Two more Arcade modes', desc: 'Arcade now has four modes: Survival, Time Attack, plus new Sudden Death (one wrong answer ends the run) and Blitz (a countdown that every correct answer extends). Each keeps its own high score.' },
         { tag: 'New', date: 'Jul 1', title: 'More achievements', desc: 'New badges to chase — an Arcade set (play modes, hit a 20-run, go flawless in Sudden Death), plus more streak, volume, level, and mock-exam milestones, each with its own XP and a few new titles (Arcade Ace, Virtuoso, The Devoted).' },
         { tag: 'New', date: 'Jul 1', title: 'Achievements now reward XP', desc: 'Every achievement grants XP toward your level when you unlock it — bigger achievements, bigger rewards. The Achievements page now shows each one’s XP and any title it unlocks, so you can chase the ones you want.' },
@@ -694,7 +692,7 @@
     function whatsNewUnread() { try { return WHATS_NEW_VERSION > (parseInt(ls('macprep_whatsnew_seen'), 10) || 0); } catch (e) { return false; } }
     function renderWhatsNewDot() { const d = $('wn-dot'); if (d) d.style.display = whatsNewUnread() ? '' : 'none'; }
 
-    // Sidebar account block: initials avatar + name + plan.
+    // Sidebar account block: initials + name + plan.
     function renderSidebarAccount() {
         const p = state.profile || {};
         const name = (p.full_name || '').trim();
@@ -702,12 +700,8 @@
         let initials = parts.length ? ((parts[0][0] || '') + (parts.length > 1 ? (parts[parts.length - 1][0] || '') : '')) : '';
         if (!initials) initials = (p.email || 'U').charAt(0);
         const set = (idn, txt) => { const e = $(idn); if (e) e.textContent = txt; };
-        const av = activeAvatar();
         const initEl = $('nav-acct-initials');
-        if (initEl) {
-            if (av) { initEl.innerHTML = avatarSvg(av, 34); initEl.style.background = 'transparent'; initEl.style.fontSize = ''; }
-            else { initEl.textContent = initials.toUpperCase(); initEl.style.background = ''; initEl.style.fontSize = ''; }
-        }
+        if (initEl) { initEl.textContent = initials.toUpperCase(); initEl.style.background = ''; initEl.style.fontSize = ''; }
         set('nav-acct-name', name || 'Account');
         // Sub line shows your active title (accent) if you've picked one, else your plan.
         const title = activeTitle();
@@ -1250,125 +1244,14 @@
     }
     function closeTitlePicker() { const o = $('title-overlay'); if (o) o.remove(); }
 
-    // ---- Avatars: emoji profile pictures unlocked by achievements (server-stored
-    // as selected_avatar, so they also show on the leaderboard). Default = initials.
     // Small padlock for locked / premium-gated states — SVG, consistent with the icon set (replaces the 🔒 emoji).
     function lockSvg(size) {
         const s = size || 11;
         return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1.5px;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
     }
-    // A study-buddy mascot (surgical cap) on a rarity-tiered badge with an achievement pip.
-    // `selected_avatar` stores the unlocking achievement's TITLE (legacy emoji values migrate on read).
-    const AV_TIER = { bronze: '#A9743F', silver: '#8A97A6', gold: '#D6A238', platinum: '#3FA9B8', legendary: '#7E63D8' };
-    const AV_PIP = {
-        sprout: '<path d="M12 21v-8"/><path d="M12 13c0-3.2-2.2-5.4-5.4-5.4C6.6 10.8 8.8 13 12 13z"/><path d="M12 11.5c0-2.7 2-4.4 4.7-4.4C16.7 9.8 14.7 11.5 12 11.5z"/>',
-        books: '<rect x="4" y="5.5" width="16" height="4" rx="1"/><rect x="4" y="10.5" width="16" height="4" rx="1"/><rect x="5.5" y="15.5" width="13" height="4" rx="1"/>',
-        medal: '<circle cx="12" cy="14.5" r="5.5"/><path d="M9 9.5 7 3.5M15 9.5 17 3.5"/>',
-        target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.3"/><circle cx="12" cy="12" r="1.3" fill="#fff" stroke="none"/>',
-        gamepad: '<rect x="2.5" y="8" width="19" height="9" rx="4.5"/><path d="M7.5 11v3M6 12.5h3M15 12h.01M17.5 13h.01"/>',
-        flame: '<path d="M12 3c1.6 3 4 4.4 4 8a4 4 0 0 1-8 0c0-1.7.6-2.8 1.3-3.8.2 1.1.9 1.7 1.7 1.9C10.7 6.9 10.3 5 12 3z"/>',
-        rocket: '<path d="M12 2.5c3 2.4 4.6 5.4 4.6 9.2l-1.8 2h-5.6l-1.8-2C7.4 7.9 9 4.9 12 2.5z"/><path d="M9.4 15.7l-1.8 3.8M14.6 15.7l1.8 3.8"/>',
-        lightning: '<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
-        shield: '<path d="M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z"/><path d="M9 12l2 2 4-4"/>',
-        check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5.5-5.5"/>',
-        droplet: '<path d="M12 3c3 4 5.4 6.6 5.4 9.6a5.4 5.4 0 0 1-10.8 0C6.6 9.6 9 7 12 3z"/>',
-        map: '<path d="M9 4 3.5 6.2v13.8L9 18l6 2 5.5-2.2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/>',
-        star: '<path d="M12 3.2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.5 6.8 19.2l1-5.8-4.2-4.1 5.8-.8z"/>',
-        compass: '<circle cx="12" cy="12" r="9"/><path d="M15.8 8.2l-2.2 5.6-5.4 2.2 2.2-5.6z" fill="#fff"/>',
-        stethoscope: '<path d="M6 3v4a4 4 0 0 0 8 0V3"/><path d="M10 15v-3M10 15a4 4 0 0 0 8 0v-1"/><circle cx="18" cy="10" r="2"/>',
-        calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
-        peak: '<path d="M3 19l5.5-10 3 4.2 2-3.2L20 19z"/>',
-        dumbbell: '<path d="M3 12h18"/><path d="M5.5 8.5v7M8.5 10v4M15.5 10v4M18.5 8.5v7"/>',
-        crown: '<path d="M4 8l3.2 8.5h9.6L20 8l-5 3.8-3-6.3-3 6.3z"/>',
-    };
-    const AVATAR_MAP = {
-        'Level 5': { tier: 'bronze', pip: 'sprout' }, 'Century — 100 questions': { tier: 'bronze', pip: 'books' },
-        'Quarter-K — 250': { tier: 'bronze', pip: 'medal' }, 'On target — 70%': { tier: 'bronze', pip: 'target' },
-        'Arcade debut': { tier: 'bronze', pip: 'gamepad' },
-        'Fortnight': { tier: 'silver', pip: 'flame' }, 'Level 10': { tier: 'silver', pip: 'rocket' },
-        'Level 15': { tier: 'silver', pip: 'lightning' }, '500 club': { tier: 'silver', pip: 'medal' },
-        'Boss hunter — beat your first domain': { tier: 'silver', pip: 'shield' },
-        'Dress rehearsal — finish a Mock Exam': { tier: 'silver', pip: 'check' },
-        'Arcade regular — 25 runs': { tier: 'silver', pip: 'gamepad' },
-        'Deep diver — 50 in one specialty': { tier: 'silver', pip: 'droplet' },
-        'Getting around — 8 specialties': { tier: 'silver', pip: 'map' },
-        'Sharpshooter — 80%': { tier: 'gold', pip: 'target' }, 'A month deep': { tier: 'gold', pip: 'flame' },
-        'Level 25': { tier: 'gold', pip: 'star' }, 'Explorer — every specialty': { tier: 'gold', pip: 'compass' },
-        'Exam-ready — 80% readiness': { tier: 'gold', pip: 'stethoscope' },
-        'Quest master — 30 days': { tier: 'gold', pip: 'calendar' }, 'Two months': { tier: 'gold', pip: 'peak' },
-        'Level 50 — halfway to max': { tier: 'platinum', pip: 'crown' },
-        'Specialist — 100% of a specialty': { tier: 'platinum', pip: 'check' },
-        'Domain expert — 85% in a specialty': { tier: 'platinum', pip: 'star' },
-        'The grind — 30-day streak + 2,500': { tier: 'platinum', pip: 'dumbbell' },
-        'High five — 5,000': { tier: 'legendary', pip: 'peak' },
-    };
-    const LEGACY_EMOJI = { '📚': 'Century — 100 questions', '🔥': 'Fortnight', '🦁': 'A month deep', '🎯': 'Sharpshooter — 80%', '🐉': 'High five — 5,000', '🧭': 'Explorer — every specialty', '🔬': 'Specialist — 100% of a specialty', '⚔️': 'Boss hunter — beat your first domain', '🧠': 'Domain expert — 85% in a specialty', '📝': 'Dress rehearsal — finish a Mock Exam', '🚀': 'Level 10', '⭐': 'Level 25', '🏅': 'Level 50 — halfway to max', '🕹️': 'Arcade debut', '👾': 'Arcade regular — 25 runs', '🩺': 'Exam-ready — 80% readiness', '💪': 'The grind — 30-day streak + 2,500', '📅': 'Quest master — 30 days', '🌱': 'Level 5', '⚡': 'Level 15', '🎖️': '500 club', '🥉': 'Quarter-K — 250', '👍': 'On target — 70%', '🤿': 'Deep diver — 50 in one specialty', '🗺️': 'Getting around — 8 specialties', '🏔️': 'Two months' };
-    function avatarId(raw) { if (!raw) return ''; return LEGACY_EMOJI[raw] || raw; }
-    let _avUid = 0;
-    function avatarSvg(rawId, size) {
-        const id = avatarId(rawId);
-        const spec = AVATAR_MAP[id];
-        if (!spec) return '';
-        const c = AV_TIER[spec.tier] || '#146A4A';
-        const pip = AV_PIP[spec.pip] || '';
-        const s = size || 40, u = 'avc' + (++_avUid);
-        return `<svg viewBox="0 0 64 64" width="${s}" height="${s}" style="display:block;border-radius:50%;" role="img" aria-label="${escapeHtml(id)} avatar">`
-            + `<defs><clipPath id="${u}"><circle cx="32" cy="32" r="30"/></clipPath></defs>`
-            + `<circle cx="32" cy="32" r="30" fill="${c}"/><circle cx="32" cy="32" r="30" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>`
-            + `<g clip-path="url(#${u})"><path d="M20 55 Q32 48 44 55 L44 64 L20 64 Z" fill="#57B49F"/><path d="M32 51 L28 57 L32 60 L36 57 Z" fill="#F1C29A"/></g>`
-            + `<circle cx="32" cy="32" r="14" fill="#F4CBA0"/>`
-            + `<path d="M19 30 Q18 15 32 14.5 Q46 15 45 30 Q39 25 32 25 Q25 25 19 30 Z" fill="#ECF2F1"/>`
-            + `<circle cx="27" cy="21" r="1.1" fill="${c}"/><circle cx="33" cy="19.5" r="1.1" fill="${c}"/><circle cx="38" cy="22.5" r="1.1" fill="${c}"/>`
-            + `<circle cx="27.5" cy="32" r="1.8" fill="#3A2A20"/><circle cx="36.5" cy="32" r="1.8" fill="#3A2A20"/>`
-            + `<path d="M28 36.5 Q32 39.5 36 36.5" fill="none" stroke="#3A2A20" stroke-width="1.6" stroke-linecap="round"/>`
-            + `<circle cx="24" cy="36" r="2" fill="#F3A97E" opacity=".5"/><circle cx="40" cy="36" r="2" fill="#F3A97E" opacity=".5"/>`
-            + (pip ? `<circle cx="49" cy="47" r="9.5" fill="#fff"/><g transform="translate(43,41) scale(.5)" stroke="${c}" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${pip}</g>` : '')
-            + `</svg>`;
-    }
-    function unlockedAvatars() { return computeAchievements().filter((a) => a.met && AVATAR_MAP[a.title]).map((a) => a.title); }
-    function activeAvatar() { const id = avatarId(state.profile && state.profile.selected_avatar); return id && unlockedAvatars().includes(id) ? id : ''; }
-    async function saveAvatar(av) {
-        closeAvatarPicker();
-        try {
-            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ avatar: av || '' }) });
-            if (state.profile) state.profile.selected_avatar = av || null;
-            renderSidebarAccount();
-            toast(av ? 'Avatar updated.' : 'Avatar cleared — back to initials.', 'ok');
-        } catch (e) { toast('Could not save avatar: ' + e.message); }
-    }
-    function openAvatarPicker() {
-        closeNavMenus();
-        const owned = unlockedAvatars();
-        const cur = (state.profile && state.profile.selected_avatar) || '';
-        const A = computeAchievements();
-        const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        const tile = (av, active) => `<button type="button" onclick="MACPrep.saveAvatar('${esc(av)}')" title="${escapeHtml(av)}" style="width:56px;height:56px;padding:5px;display:flex;align-items:center;justify-content:center;background:${active ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${active ? 'var(--accent)' : 'var(--line)'};border-radius:14px;cursor:pointer;">${avatarSvg(av, 44)}</button>`;
-        const ownedGrid = owned.length ? owned.map((av) => tile(av, av === cur)).join('') : '<div class="mono" style="font-size:12px;color:var(--muted);padding:6px 0;">None yet — unlock avatars from the achievements below.</div>';
-        const lockedRows = Object.keys(AVATAR_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
-            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;gap:11px;padding:8px 2px;border-top:1px solid var(--line);"><span style="opacity:.42;filter:saturate(.5);flex:none;display:inline-flex;">${avatarSvg(ach, 34)}</span><span style="flex:1;font-size:12.5px;">${lockSvg(11)} ${escapeHtml(ach)}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : '')}</span></div>`; }).join('');
-        const wrap = document.createElement('div');
-        wrap.id = 'avatar-overlay';
-        wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
-        wrap.onclick = (e) => { if (e.target === wrap) closeAvatarPicker(); };
-        wrap.innerHTML = `<div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
-                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your avatar</div>
-                <button onclick="MACPrep.closeAvatarPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
-            </div>
-            <div class="sub" style="font-size:13px;margin-bottom:12px;">A study-buddy avatar you unlock from achievements — the badge color shows how rare it is (bronze → legendary). Shows in your sidebar and on the leaderboard.</div>
-            <div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;">
-                <button type="button" onclick="MACPrep.saveAvatar('')" style="font-size:12px;width:56px;height:56px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:14px;cursor:pointer;color:var(--muted);">Initials</button>
-                ${ownedGrid}
-            </div>
-            ${lockedRows ? `<div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 2px;">Locked — earn these</div>${lockedRows}` : ''}
-        </div>`;
-        document.body.appendChild(wrap);
-    }
-    function closeAvatarPicker() { const o = $('avatar-overlay'); if (o) o.remove(); }
     function achReward(a) {
         const title = TITLE_MAP[a.title];
         if (title) return `🎁 Unlocks title <strong style="color:var(--accent);">${escapeHtml(title)}</strong>`;
-        if (AVATAR_MAP[a.title]) return `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;">🎁 Unlocks an avatar ${avatarSvg(a.title, 20)}</span>`;
         return '';
     }
     // Grant each newly-unlocked achievement's XP once (tracked in localStorage), with a toast.
@@ -2224,7 +2107,7 @@
             const trs = rows.map((r) =>
                 '<tr style="' + (r.is_me ? 'background:var(--accent-dim);' : '') + '">'
                 + '<td style="padding:9px 10px;font-family:ui-monospace,monospace;' + (r.rank <= 3 ? 'font-weight:700;color:var(--accent);' : 'color:var(--text2);') + '">' + r.rank + '</td>'
-                + '<td style="padding:9px 10px;">' + (avatarSvg(r.avatar, 20) ? '<span style="display:inline-flex;vertical-align:-5px;margin-right:6px;">' + avatarSvg(r.avatar, 20) + '</span>' : '') + escapeHtml(r.name) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
+                + '<td style="padding:9px 10px;">' + escapeHtml(r.name) + (r.title ? ' ' + titleChip(r.title, true) : '') + (r.is_me ? ' <span class="mono" style="font-size:10px;color:var(--accent);">YOU</span>' : '') + '</td>'
                 + '<td style="padding:9px 10px;text-align:right;font-weight:600;">' + lbMetricCell(r, tab) + '</td></tr>').join('');
             board = '<div class="card" style="padding:6px;"><table style="width:100%;font-size:14px;border-collapse:collapse;">'
                 + '<tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">#</th><th style="text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Player</th><th style="text-align:right;padding:8px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">' + escapeHtml(tabDef.metric) + '</th></tr>'
@@ -2273,7 +2156,6 @@
             card.classList.remove('hidden');
             const row = (r) => '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13.5px;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);">'
                 + '<span class="mono" style="width:22px;text-align:right;' + (r.rank <= 3 ? 'color:var(--accent);font-weight:700;' : 'color:var(--muted);') + '">' + r.rank + '</span>'
-                + (avatarSvg(r.avatar, 20) ? '<span style="display:inline-flex;flex:none;">' + avatarSvg(r.avatar, 20) + '</span>' : '')
                 + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' + (r.is_me ? 'font-weight:700;color:var(--accent);' : '') + '">' + escapeHtml(r.name) + (r.is_me ? ' <span class="mono" style="font-size:9px;">YOU</span>' : '') + '</span>'
                 + '<span style="font-weight:600;">' + lbMetricCell(r, tab) + '</span></div>';
             const pills = LB_TABS.map((t) => '<button onclick="MACPrep.dashLbSetTab(\'' + t.key + '\')" style="padding:5px 12px;border-radius:999px;border:1px solid ' + (t.key === tab ? 'var(--accent)' : 'var(--line)') + ';background:' + (t.key === tab ? 'var(--accent-dim)' : 'transparent') + ';color:var(--text);cursor:pointer;font-size:12px;font-weight:' + (t.key === tab ? '700' : '500') + ';">' + t.label + '</button>').join('');
@@ -2287,7 +2169,7 @@
                 + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + pills + '</div>'
                 + '<a onclick="MACPrep.go(\'leaderboard\')" style="font-size:12px;color:var(--accent);cursor:pointer;margin-left:auto;">All boards →</a></div>'
                 + '<div class="dash-lb-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0 30px;"><div>' + left + '</div><div>' + right + '</div></div>'
-                + (meOutside ? '<div style="margin-top:6px;">' + row({ rank: meRank, name: me.name, weekly: me.weekly, streak: me.streak, accuracy: me.accuracy, attempts: me.attempts, is_me: true, avatar: '' }) + '</div>' : '');
+                + (meOutside ? '<div style="margin-top:6px;">' + row({ rank: meRank, name: me.name, weekly: me.weekly, streak: me.streak, accuracy: me.accuracy, attempts: me.attempts, is_me: true }) + '</div>' : '');
         };
         if (state.leaderboard) paint();
         const stale = !state._lbAt || (Date.now() - state._lbAt) > 60000;
@@ -4157,7 +4039,6 @@
         premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard, ceOpen, ceFilter,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
         saveTitle, openTitlePicker, closeTitlePicker,
-        saveAvatar, openAvatarPicker, closeAvatarPicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
 
@@ -4177,7 +4058,7 @@
         const closers = [
             ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
-            ['title-overlay', closeTitlePicker], ['avatar-overlay', closeAvatarPicker],
+            ['title-overlay', closeTitlePicker],
             ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents],
             ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
             ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
