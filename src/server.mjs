@@ -895,6 +895,7 @@ app.post('/api/user/delete', async (req, res) => {
         await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
         await supabase.from(PROFILE_TABLE).delete().eq('user_id', user.id);
         await supabase.from('user_flags').delete().eq('user_id', user.id).then(() => {}, () => {});
+        await supabase.from('user_flashcards').delete().eq('user_id', user.id).then(() => {}, () => {});
         await supabase.from('user_notes').delete().eq('user_id', user.id).then(() => {}, () => {});
         const { error } = await supabase.auth.admin.deleteUser(user.id);
         if (error) throw error;
@@ -1474,12 +1475,15 @@ app.get('/api/flashcards', async (req, res) => {
     if (!(await isUserPremium(user.id))) {
         return res.status(402).json({ error: 'Flashcard mode is a premium feature.', paywall: true });
     }
-    const count = Math.min(Math.max(parseInt(req.query.count, 10) || 20, 1), 100);
+    const idsParam = (req.query.ids || '').toString().trim();
+    const ids = idsParam ? idsParam.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 200) : [];
+    const count = ids.length ? ids.length : Math.min(Math.max(parseInt(req.query.count, 10) || 20, 1), 100);
     const category = (req.query.category || 'all').toString();
     try {
         let query = supabase.from('questions').select('id, category, domain_name, subtopic, stem, choices, correct_answer, explanation, "references"');
         query = applyServedFilter(query);
-        if (category && category !== 'all') query = query.eq('category', category);
+        if (ids.length) query = query.in('id', ids);
+        else if (category && category !== 'all') query = query.eq('category', category);
         const { data, error } = await query.limit(1500);
         if (error) throw error;
         const pool = data || [];
@@ -1775,6 +1779,8 @@ app.get('/api/user/profile', async (req, res) => {
 
         const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
         const flagged_ids = (flags || []).map((f) => f.question_id);
+        const { data: fcards } = await supabase.from('user_flashcards').select('question_id').eq('user_id', user.id);
+        const flashcard_ids = (fcards || []).map((f) => f.question_id);
 
         // Per-specialty (category) accuracy from attempts.
         const byCat = {};
@@ -1903,6 +1909,7 @@ app.get('/api/user/profile', async (req, res) => {
                 confident_missed_ids,
                 due_ids,
                 flagged_ids,
+                flashcard_ids,
                 answered_ids: Array.from(answeredIds),
             },
         });
@@ -1970,6 +1977,26 @@ app.post('/api/user/flag', async (req, res) => {
         return res.json({ success: true, flagged });
     } catch (err) {
         return res.status(500).json({ error: 'Could not update flag.' });
+    }
+});
+
+// Personal flashcard deck — add/remove a question the user wants to drill as a flashcard.
+app.post('/api/user/flashcard', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const questionId = String(req.body?.questionId || '');
+    const saved = req.body?.saved !== false;
+    if (!questionId) return res.status(400).json({ error: 'questionId required.' });
+    try {
+        if (saved) {
+            await supabase.from('user_flashcards').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+        } else {
+            await supabase.from('user_flashcards').delete().eq('user_id', user.id).eq('question_id', questionId);
+        }
+        return res.json({ success: true, saved });
+    } catch (err) {
+        return res.status(500).json({ error: 'Could not update flashcard deck.' });
     }
 });
 

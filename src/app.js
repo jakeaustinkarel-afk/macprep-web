@@ -1640,7 +1640,7 @@
     function renderStudyModes() {
         const el = $('studymodes-card'); if (!el) return;
         const p = state.profile || {};
-        const due = (p.due_ids || []).length, missed = (p.missed_ids || []).length, flagged = (p.flagged_ids || []).length;
+        const due = (p.due_ids || []).length, missed = (p.missed_ids || []).length, flagged = (p.flagged_ids || []).length, deck = (p.flashcard_ids || []).length;
         // Recommended tile shows a glanceable breakdown of what's in the set + a clear CTA,
         // so the big 2x2 bento tile earns its size instead of sitting mostly empty (#7).
         const recStats = [];
@@ -1667,6 +1667,7 @@
             smTile('sm-arcade', 'Play', 'Arcade', 'Four modes — Survival, Sudden Death, Time Attack & Blitz.', arcCount, 'MACPrep.openArcadePicker()', 'New'),
             smTile('sm-missed', 'Targeted', 'Redo Missed', '', missed ? `${missed} to fix` : 'none missed', 'MACPrep.redoMissed()'),
             smTile('sm-flag', 'Targeted', 'Flagged', '', flagged ? `${flagged} saved` : 'none flagged', 'MACPrep.startFlagged()'),
+            ...(deck ? [smTile('sm-mydeck', 'Active recall', 'My Flashcards', 'Recall your saved cards, then flip for the rationale.', `${deck} saved`, 'MACPrep.startFlashcardDeck()', free ? `${lockSvg(10)} Premium` : '')] : []),
             smTile('sm-spec', 'By specialty', 'Focused quiz', 'Pick any specialty.', '', "MACPrep.jumpToCard('specialty-perf')"),
             smTile('sm-build', 'Custom', 'Build Your Own', 'Domain · count · difficulty.', '', 'MACPrep.toggleCustomize()'),
         ];
@@ -1995,6 +1996,62 @@
 
     function redoMissed() { startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
     function startFlagged() { startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
+    // ---- Flag + personal-flashcard-deck actions (from the Review screen + quiz toolbar) ----
+    function revFlagInner(on) {
+        return `<svg viewBox="0 0 24 24" width="12" height="12" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>${on ? 'Flagged' : 'Flag'}`;
+    }
+    function revCardInner(on) {
+        return `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>${on ? 'Saved' : '+ Card'}`;
+    }
+    async function flagFromReview(id, btn) {
+        if (!id) return;
+        const flags = new Set((state.profile && state.profile.flagged_ids) || []);
+        const willFlag = !flags.has(id);
+        try {
+            await apiJSON('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, flagged: willFlag }) });
+            if (willFlag) flags.add(id); else flags.delete(id);
+            if (state.profile) state.profile.flagged_ids = Array.from(flags);
+            if (btn) { btn.classList.toggle('on', willFlag); btn.innerHTML = revFlagInner(willFlag); }
+            toast(willFlag ? 'Flagged — find it under Study Modes → Flagged.' : 'Removed from flagged.', 'ok');
+        } catch (e) { toast('Could not update flag right now.'); }
+    }
+    async function flashcardFromReview(id, btn) {
+        if (!id) return;
+        const cards = new Set((state.profile && state.profile.flashcard_ids) || []);
+        const willAdd = !cards.has(id);
+        try {
+            await apiJSON('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, saved: willAdd }) });
+            if (willAdd) cards.add(id); else cards.delete(id);
+            if (state.profile) state.profile.flashcard_ids = Array.from(cards);
+            if (btn) { btn.classList.toggle('on', willAdd); btn.innerHTML = revCardInner(willAdd); }
+            toast(willAdd ? 'Added to your flashcard deck — study it under Study Modes → My Flashcards.' : 'Removed from your deck.', 'ok');
+        } catch (e) { toast('Could not update your deck right now.'); }
+    }
+    async function toggleFlashcard() {
+        const s = state.session; if (!s) return; const q = s.pool[s.index]; if (!q) return;
+        const cards = new Set((state.profile && state.profile.flashcard_ids) || []);
+        const willAdd = !cards.has(q.id);
+        try {
+            await apiJSON('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, saved: willAdd }) });
+            if (willAdd) cards.add(q.id); else cards.delete(q.id);
+            if (state.profile) state.profile.flashcard_ids = Array.from(cards);
+            updateFlashcardBtn();
+            toast(willAdd ? 'Added to your flashcard deck.' : 'Removed from your deck.', 'ok');
+        } catch (e) { /* ignore */ }
+    }
+    function updateFlashcardBtn() {
+        const btn = $('flashcard-btn'); const s = state.session; if (!btn || !s) return;
+        const q = s.pool[s.index];
+        const on = q && ((state.profile && state.profile.flashcard_ids) || []).includes(q.id);
+        btn.classList.toggle('on', !!on);
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>${on ? 'In flashcards' : 'Add to flashcards'}`;
+    }
+    // Study "My Flashcards" — active recall over the deck you've saved.
+    function startFlashcardDeck() {
+        const ids = (state.profile && state.profile.flashcard_ids) || [];
+        if (!ids.length) { toast('Your flashcard deck is empty — tap “+ Card” on a question or in Review to add some.'); return; }
+        startFlashcards(0, ids);
+    }
 
     async function toggleFlag() {
         const s = state.session; if (!s) return;
@@ -2499,6 +2556,7 @@
         $('report-text') && ($('report-text').value = '');
         $('report-msg') && ($('report-msg').textContent = '');
         updateFlagButton();
+        updateFlashcardBtn();
         saveNote();   // flush any pending note from the previous question before loading this one
         loadNote();
         renderPalette();
@@ -2550,6 +2608,7 @@
             $('confidence-row') && ($('confidence-row').style.display = 'none');
             announce(data.correct ? 'Correct.' : `Incorrect. The correct answer is ${String.fromCharCode(65 + (data.correctIndex || 0))}.`);
             (s.log = s.log || []).push({
+                id: currentQ.id,
                 meta: [currentQ.category || currentQ.domain_name, currentQ.subtopic].filter(Boolean).join(' · '),
                 category: currentQ.category || currentQ.domain_name || 'General',
                 stem: currentQ.stem || '',
@@ -2634,7 +2693,7 @@
         s.complete = true; ls('macprep_session', null);
         s.log = answeredIdx.map((i) => {
             const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
-            return { meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: s.diagnostic ? (q.domain_name || q.category || 'General') : (q.category || q.domain_name || 'General'), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+            return { id: q.id, meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: s.diagnostic ? (q.domain_name || q.category || 'General') : (q.category || q.domain_name || 'General'), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
         });
         track('session_complete', { mode: 'exam', size: s.pool.length });
         try { await loadProfile(); } catch (e) {}
@@ -2762,17 +2821,29 @@
         const el = $('session-review');
         if (!el) return;
         if (!log.length) { el.classList.add('hidden'); return; }
-        const rows = log.map((r, i) => `
+        const flset = new Set((state.profile && state.profile.flagged_ids) || []);
+        const cardset = new Set((state.profile && state.profile.flashcard_ids) || []);
+        const rows = log.map((r, i) => {
+            const fl = r.id && flset.has(r.id), fc = r.id && cardset.has(r.id);
+            const actions = r.id ? `<div style="display:flex;gap:6px;flex:none;">
+                    <button type="button" class="rev-act${fl ? ' on' : ''}" onclick="MACPrep.flagFromReview('${r.id}', this)" title="Flag this to review later — even ones you got right">${revFlagInner(fl)}</button>
+                    <button type="button" class="rev-act${fc ? ' on' : ''}" onclick="MACPrep.flashcardFromReview('${r.id}', this)" title="Add this to your flashcard deck">${revCardInner(fc)}</button>
+                </div>` : '';
+            return `
             <div style="border-bottom:1px solid var(--line);padding:14px 0;">
-                <div class="mono" style="font-size:11px;color:var(--muted);margin-bottom:4px;">${i + 1}. ${r.meta || ''}</div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                    <div class="mono" style="font-size:11px;color:var(--muted);">${i + 1}. ${r.meta || ''}</div>
+                    ${actions}
+                </div>
                 <div style="font-size:14px;margin-bottom:6px;">${r.stem}</div>
                 <div class="mono" style="font-size:12px;">
                     <span style="color:${r.correct ? 'var(--accent)' : 'var(--bad)'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                     &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
                 </div>
                 ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
-            </div>`).join('');
-        el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session, with the correct answer and explanation.</p>${rows}`;
+            </div>`;
+        }).join('');
+        el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session — <strong>Flag</strong> any to revisit later, or <strong>+ Card</strong> to add it to your flashcard deck.</p>${rows}`;
         el.classList.remove('hidden');
     }
 
@@ -3227,12 +3298,13 @@
     // Hide the choices, type your answer from memory, flip to reveal the correct
     // answer + rationale + source. Self-graded — no MCQ attempt is recorded
     // (/api/flashcards is a read-only, premium-gated reveal).
-    async function startFlashcards(count) {
+    async function startFlashcards(count, ids) {
         if (!premiumGate('flashcards')) return;
         closeNavMenus();
         toast('Building your flashcard deck…');
         try {
-            const { resp, data } = await apiJSON('/api/flashcards?count=' + (count || 20), { headers: authHeaders() });
+            const qstr = (ids && ids.length) ? ('ids=' + encodeURIComponent(ids.slice(0, 200).join(','))) : ('count=' + (count || 20));
+            const { resp, data } = await apiJSON('/api/flashcards?' + qstr, { headers: authHeaders() });
             if (resp.status === 401) { signOut(); return; }
             if (resp.status === 402) { openUpgradeModal('flashcards'); return; }
             if (!resp.ok || !Array.isArray(data.cards) || !data.cards.length) throw new Error(data.error || 'No cards available.');
@@ -4076,7 +4148,7 @@
 
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders,
-        requestPasswordReset, redoMissed, startFlagged, toggleFlag, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
+        requestPasswordReset, redoMissed, startFlagged, toggleFlag, flagFromReview, flashcardFromReview, toggleFlashcard, startFlashcardDeck, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
