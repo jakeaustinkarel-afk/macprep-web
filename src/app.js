@@ -2097,26 +2097,61 @@
         wrap.id = 'duel-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
         wrap.onclick = (e) => { if (e.target === wrap) closeDuelPicker(); };
-        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Duel a classmate" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:430px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.4);">
+        const optRow = (fn) => `<div style="display:flex;gap:9px;margin-bottom:18px;"><button class="sp-opt" style="flex:1;" onclick="MACPrep.${fn}(5)">5 Q</button><button class="sp-opt" style="flex:1;" onclick="MACPrep.${fn}(10)">10 Q</button><button class="sp-opt" style="flex:1;" onclick="MACPrep.${fn}(20)">20 Q</button></div>`;
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Duel a classmate" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:440px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">⚔ Duel a classmate</div>
                 <button onclick="MACPrep.closeDuelPicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;line-height:1;display:inline-flex;padding:6px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
             </div>
-            <div class="sub" style="font-size:13px;margin-bottom:16px;">Play a fixed set of questions, then share the code — your classmate plays the same set and you see who won.</div>
-            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Start a new duel</div>
-            <div style="display:flex;gap:9px;margin-bottom:20px;">
-                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(5)">5 Q</button>
-                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(10)">10 Q</button>
-                <button class="sp-opt" style="flex:1;" onclick="MACPrep.duelCreate(20)">20 Q</button>
-            </div>
-            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Or join with a code</div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Race a classmate through the same questions — match with a random student, or challenge someone specific with a code.</div>
+            <div id="duel-recent"></div>
+            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:3px;">🎲 Random match</div>
+            <div class="sub" style="font-size:12px;margin-bottom:8px;">We'll pair you instantly if someone's waiting — otherwise you're first in the queue.</div>
+            ${optRow('duelRandom')}
+            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px;">Challenge someone specific</div>
+            <div class="sub" style="font-size:12px;margin-bottom:8px;">Get a code + invite link to share — only they can join.</div>
+            ${optRow('duelCreate')}
+            <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Have a code?</div>
             <div style="display:flex;gap:9px;">
                 <input id="duel-code-input" type="text" maxlength="8" placeholder="ABC123" aria-label="Duel code" autocapitalize="characters" style="flex:1;text-transform:uppercase;letter-spacing:2px;font-family:ui-monospace,monospace;font-size:16px;padding:11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);" onkeydown="if(event.key==='Enter')MACPrep.duelJoin(this.value)">
                 <button class="btn" type="button" onclick="MACPrep.duelJoin(document.getElementById('duel-code-input').value)">Join</button>
             </div>
         </div>`;
         document.body.appendChild(wrap);
-        setTimeout(() => { const i = $('duel-code-input'); if (i) i.focus(); }, 30);
+        loadDuelRecent();
+    }
+    // Random matchmaking — instant if someone's waiting, else queue up as the creator.
+    async function duelRandom(count) {
+        if (!premiumGate('duel')) return;
+        closeDuelPicker();
+        toast('Finding you a random opponent…');
+        try {
+            const { resp, data } = await apiJSON('/api/duel/random', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ count: count || 10 }) });
+            if (resp.status === 402) { openUpgradeModal('duel'); return; }
+            if (!resp.ok || !data.questionIds) throw new Error(data.error || 'Could not start a random duel.');
+            if (data.matched) toast('⚔ Matched with ' + (data.creatorName || 'a classmate') + '!', 'ok');
+            startDuelSession(data.questionIds, { code: data.code, role: data.role || (data.matched ? 'opponent' : 'creator'), creatorName: data.creatorName, isRandom: true });
+        } catch (e) { toast('Could not start a random duel: ' + e.message); }
+    }
+    // Show the player's finished duels in the picker (so a waiting random creator sees results).
+    async function loadDuelRecent() {
+        try {
+            const { resp, data } = await apiJSON('/api/duel/mine', { headers: authHeaders() });
+            if (!resp.ok) return;
+            const el = $('duel-recent'); if (!el) return;
+            const done = (data.duels || []).filter((d) => d.completed);
+            if (!done.length) return;
+            const rows = done.slice(0, 3).map((d) => {
+                const meS = d.youAre === 'creator' ? d.creatorScore : d.opponentScore;
+                const themS = d.youAre === 'creator' ? d.opponentScore : d.creatorScore;
+                const themN = d.youAre === 'creator' ? (d.opponentName || 'Classmate') : (d.creatorName || 'Classmate');
+                const tie = meS === themS, win = meS > themS;
+                const badge = tie ? '🤝 Tie' : (win ? '🏆 Won' : 'Lost');
+                const bc = tie ? 'var(--muted)' : (win ? 'var(--accent)' : 'var(--bad)');
+                return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--line);"><span>vs <strong>${escapeHtml(themN)}</strong> · ${meS}–${themS}</span><span style="font-weight:700;color:${bc};">${badge}</span></div>`;
+            }).join('');
+            el.innerHTML = `<div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;">Your recent duels</div>${rows}<div style="height:18px;"></div>`;
+        } catch (e) { /* best-effort */ }
     }
     function closeDuelPicker() { const o = $('duel-overlay'); if (o) o.remove(); }
     async function duelCreate(count) {
@@ -2182,6 +2217,10 @@
     }
     function duelResultHtml(role, d) {
         if (role === 'creator' && d.opponentScore == null) {
+            if (d.isRandom) {
+                return `<div style="font-size:16px;">You scored <strong>${d.creatorScore}/${d.creatorTotal}</strong>. 🎲 You're in the random queue — we'll pair you with the next student who duels. <strong>Reopen Duel</strong> (Study Modes → Duel a classmate) to see who you drew and who won.</div>
+                    <div style="margin-top:16px;"><button class="btn ghost" type="button" onclick="MACPrep.openDuelPicker()">Back to Duels</button></div>`;
+            }
             return `<div style="font-size:16px;">You scored <strong>${d.creatorScore}/${d.creatorTotal}</strong>. Now challenge a classmate — send them this code:</div>
                 <div style="margin:14px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                     <span class="mono" style="font-size:26px;font-weight:800;letter-spacing:3px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent);border-radius:10px;padding:8px 18px;">${escapeHtml(d.code)}</span>
@@ -4329,7 +4368,7 @@
         openArcadePicker, closeArcadePicker, startArcade,
         premiumGate, openUpgradeModal, closeUpgradeModal, startCriticalEvents, closeCriticalEvents, cePrintCard, ceOpen, ceFilter,
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
-        openDuelPicker, closeDuelPicker, duelCreate, duelJoin, copyDuel,
+        openDuelPicker, closeDuelPicker, duelCreate, duelRandom, duelJoin, copyDuel,
         saveTitle, openTitlePicker, closeTitlePicker,
         zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
