@@ -1346,7 +1346,7 @@ app.get('/api/demo/questions', demoLimiter, async (req, res) => {
     try {
         const picks = pickRandom(await getDemoPool(), 3).map((q) => ({
             id: q.id,
-            specialty: q.specialty || q.category || '',
+            specialty: q.category || q.domain_name || '',   // broad category only — q.specialty is granular and can name the answer
             stem: q.stem,
             choices: (q.choices || []).map((c) => ({ label: c.label, text: c.text })),
         }));

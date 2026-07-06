@@ -630,7 +630,7 @@
                 + '<div class="sub" style="font-size:12.5px;margin-top:2px;">A fresh one drops at <strong>7:00&nbsp;AM&nbsp;ET</strong>. <a href="#" onclick="event.preventDefault();MACPrep.startQotd();" style="color:var(--accent);">Review today\'s again →</a></div></div></div>';
             return;
         }
-        const meta = [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · ');
+        const meta = q.category || q.domain_name || '';   // broad specialty only — subtopic can spoil the answer
         const reviewed = q.reviewed ? '<span style="font-size:11px;color:var(--accent);white-space:nowrap;">✓ reviewed by a CAA</span>' : '';
         card.innerHTML =
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">Question of the day</span>' + reviewed + '</div>'
@@ -2723,7 +2723,9 @@
         const graded = ans && ans.graded;
         s.locked = !!graded; // tutor: locked once graded
 
-        const metaText = [q.category || q.domain_name, q.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        // Only the broad specialty/domain here — never the granular subtopic, which often
+        // names the diagnosis/answer and would give away the question (user feedback 2026-07-05).
+        const metaText = (q.category || q.domain_name || '').toUpperCase();
         const reviewedBadge = q.reviewed ? ' <span style="text-transform:none;letter-spacing:0;color:var(--muted);">· <span style="color:var(--accent);">✓</span> Reviewed by a practicing CAA</span>' : '';
         $('question-meta').innerHTML = escapeHtml(metaText) + reviewedBadge;
         const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
@@ -3566,7 +3568,7 @@
         const f = state.flash; if (!f) return;
         const card = $('flash-card'); if (!card) return;
         const c = f.cards[f.i];
-        const meta = [c.category, c.subtopic].filter(Boolean).join('  ·  ').toUpperCase();
+        const meta = (c.category || '').toUpperCase();   // broad specialty only — subtopic can spoil the answer
         if (!f.revealed) {
             card.innerHTML = `
                 <div class="card" style="padding:24px;">
