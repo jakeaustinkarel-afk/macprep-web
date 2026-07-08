@@ -185,9 +185,9 @@ function applyServedFilter(query) {
     return SERVE_FILLER ? query : query.in('status', SERVED_STATUSES);
 }
 
-// Free users may access 10% of the *served* question bank. Computed from the
-// live count and cached briefly so we don't COUNT on every grade.
-const FREE_TIER_FRACTION = 0.10;
+// Free accounts may try a fixed number of NEW questions total (changed 2026-07-06 from
+// 10% of the bank to a flat 25 — clearer for users, and it doesn't balloon as the bank grows).
+const FREE_TIER_LIMIT = 25;
 let _freeCeilingCache = { value: 50, at: 0 };
 async function getFreeTierCeiling() {
     const now = Date.now();
@@ -196,7 +196,7 @@ async function getFreeTierCeiling() {
     try {
         const q = applyServedFilter(supabase.from('questions').select('id', { count: 'exact', head: true }));
         const { count } = await q;
-        const ceiling = Math.max(1, Math.ceil((count || 0) * FREE_TIER_FRACTION));
+        const ceiling = FREE_TIER_LIMIT;
         _freeCeilingCache = { value: ceiling, at: now };
         return ceiling;
     } catch (e) {

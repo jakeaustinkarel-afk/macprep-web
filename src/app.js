@@ -521,6 +521,7 @@
     }
 
     function smartReview() {
+        if (!premiumGate('studymode')) return;
         // Prioritize missed questions, then fill from weakest specialties.
         const p = state.profile || {};
         const ids = new Set(p.missed_ids || []);
@@ -585,6 +586,7 @@
     }
 
     function toggleCustomize() {
+        if (!premiumGate('studymode')) return;
         const panel = $('customize-panel'); if (!panel) return;
         const show = panel.classList.contains('hidden');
         panel.classList.toggle('hidden', !show);
@@ -1417,6 +1419,7 @@
         setTimeout(() => { el.style.boxShadow = ''; }, 1300);
     }
     function startQuick(n) {
+        if (!premiumGate('studymode')) return;
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
         let pool = (state.questions || []).slice();
@@ -1437,6 +1440,7 @@
     function bossesCleared() { try { return JSON.parse(localStorage.getItem('macprep_bosses') || '[]') || []; } catch (e) { return []; } }
     function markBossCleared(domain) { try { const a = bossesCleared(); if (a.indexOf(domain) < 0) { a.push(domain); localStorage.setItem('macprep_bosses', JSON.stringify(a)); } } catch (e) {} }
     function openBossPicker() {
+        if (!premiumGate('studymode')) return;
         const doms = uniqueDomains(), cleared = bossesCleared();
         if (!doms.length) { toast('Questions are still loading — try again in a moment.'); return; }
         const rows = doms.map(([name]) => {
@@ -1697,16 +1701,16 @@
         const tiles = [
             recTile,
             smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? `${lockSvg(10)} Premium` : ''),
-            smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Your weak areas + recent misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()'),
-            smTile('sm-q10', 'Quick start', 'Quick 10', '10 quick questions to warm up.', '', 'MACPrep.startQuick(10)'),
+            smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Your weak areas + recent misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()', free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-q10', 'Quick start', 'Quick 10', '10 quick questions to warm up.', '', 'MACPrep.startQuick(10)', free ? `${lockSvg(10)} Premium` : ''),
             smTile('sm-flash', 'Active recall', 'Flashcards', 'Hide the choices, recall, then flip for the rationale &amp; source.', 'Type &amp; flip', 'MACPrep.startFlashcards(20)', free ? `${lockSvg(10)} Premium` : ''),
-            smTile('sm-spec', 'By specialty', 'Focused quiz', 'Drill any single specialty.', '', "MACPrep.jumpToCard('specialty-perf')"),
-            smTile('sm-missed', 'Targeted', 'Redo Missed', 'Re-drill what you got wrong.', missed ? `${missed} to fix` : 'none yet', 'MACPrep.redoMissed()'),
-            smTile('sm-flag', 'Targeted', 'Flagged', 'Questions you saved to revisit.', flagged ? `${flagged} saved` : 'none yet', 'MACPrep.startFlagged()'),
+            smTile('sm-spec', 'By specialty', 'Focused quiz', 'Drill any single specialty.', '', "MACPrep.jumpToCard('specialty-perf')", free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-missed', 'Targeted', 'Redo Missed', 'Re-drill what you got wrong.', missed ? `${missed} to fix` : 'none yet', 'MACPrep.redoMissed()', free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-flag', 'Targeted', 'Flagged', 'Questions you saved to revisit.', flagged ? `${flagged} saved` : 'none yet', 'MACPrep.startFlagged()', free ? `${lockSvg(10)} Premium` : ''),
             smTile('sm-duel', 'Compete', 'Duel a classmate', 'Same questions, head-to-head — share a code, see who wins.', '', 'MACPrep.openDuelPicker()', free ? `${lockSvg(10)} Premium` : 'New'),
             ...(deck ? [smTile('sm-mydeck', 'Active recall', 'My Flashcards', 'Recall your saved cards, then flip.', `${deck} saved`, 'MACPrep.startFlashcardDeck()', free ? `${lockSvg(10)} Premium` : 'New')] : []),
-            smTile('sm-build', 'Custom', 'Build Your Own', 'Domain · count · difficulty.', '', 'MACPrep.toggleCustomize()'),
-            smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()'),
+            smTile('sm-build', 'Custom', 'Build Your Own', 'Domain · count · difficulty.', '', 'MACPrep.toggleCustomize()', free ? `${lockSvg(10)} Premium` : ''),
+            smTile('sm-boss', 'Challenge', 'Domain Bosses', 'Beat a domain to clear it.', (bossesCleared().length ? `${bossesCleared().length}/${uniqueDomains().length} defeated` : `${uniqueDomains().length} to beat`), 'MACPrep.openBossPicker()', free ? `${lockSvg(10)} Premium` : ''),
             smTile('sm-arcade', 'Play', 'Arcade', 'Four fast, score-chasing modes.', arcCount, 'MACPrep.openArcadePicker()'),
         ];
         el.innerHTML = `<div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:15px;">Study modes</div>`
@@ -1748,7 +1752,7 @@
             card.classList.remove('hidden');
             const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
             $('free-allowance-text').textContent =
-                `${usage.used} of ${usage.limit} free questions used (10% of the ${state.questions.length.toLocaleString()}-question bank). ${usage.remaining} remaining.`;
+                `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining — then it's a one-time $50 for the full 1,500+ bank.`;
             $('free-allowance-bar').style.width = pct + '%';
         }
 
@@ -2030,8 +2034,8 @@
         beginSession(chosen);
     }
 
-    function redoMissed() { startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
-    function startFlagged() { startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
+    function redoMissed() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
+    function startFlagged() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
     // ---- Flag + personal-flashcard-deck actions (from the Review screen + quiz toolbar) ----
     function revFlagInner(on) {
         return `<svg viewBox="0 0 24 24" width="12" height="12" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>${on ? 'Flagged' : 'Flag'}`;
@@ -3076,6 +3080,7 @@
     }
 
     function drillSpecialty(cat) {
+        if (!premiumGate('studymode')) return;
         go('dashboard');
         const sel = $('domain-select'); if (sel) sel.value = cat;
         const diff = $('difficulty-select'); if (diff) diff.value = 'all';
@@ -3089,6 +3094,7 @@
         return (state.questions || []).filter((q) => (q.category || q.domain_name || 'General') === cat);
     }
     function openSpecialtyPicker(cat) {
+        if (!premiumGate('studymode')) return;
         const modal = $('specialty-picker'); if (!modal) return;
         const avail = specialtyPool(cat).length;
         if (!avail) { toast('No questions available for that specialty yet.'); return; }
@@ -3121,7 +3127,7 @@
         beginSession(pool.slice(0, n));
     }
 
-    function reviewDue() { startFromIds((state.profile && state.profile.due_ids) || [], 'due'); }
+    function reviewDue() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.due_ids) || [], 'due'); }
 
     // Printable take-home exam → opens a clean print-to-PDF window (premium).
     async function downloadExam(btn) {
@@ -3162,7 +3168,7 @@
         const n = limit || state.profile?.free_tier_limit || '';
         const bank = (state.questions || []).length;
         const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session — momentum worth keeping. ` : '';
-        $('question-stem').innerHTML = `You've worked through all <strong>${n}</strong> of your free questions (10% of the bank). ${statLine}`
+        $('question-stem').innerHTML = `You've worked through all <strong>${n}</strong> of your free questions. ${statLine}`
             + `<div style="margin-top:16px;text-align:left;max-width:480px;">Unlock <strong>full access</strong> and get:`
             + `<div style="line-height:2;margin-top:8px;color:var(--text2);">`
             + `<span style="color:var(--accent);">✓</span> The entire ${bank ? '<strong>' + bank.toLocaleString() + '+</strong> question ' : ''}bank — every domain &amp; specialty<br>`
@@ -3190,6 +3196,7 @@
     // returns true when the user already has access, otherwise it shows the
     // screen and returns false — so callers read as: `if (!premiumGate('mock')) return;`
     const PREMIUM_FEATURES = {
+        studymode: { icon: '🎯', name: 'This study mode', blurb: 'Free accounts get the recommended session — 25 questions to try MACPrep. Upgrade to unlock every study mode (Quick sets, Smart Review, Focused quizzes by specialty, Custom sessions) plus flashcards, mock exams, duels, and the full 1,500+ question bank.' },
         arcade: { icon: '🕹️', name: 'Arcade', blurb: 'Unlimited high-score runs — Survival, Sudden Death, Time Attack & Blitz.' },
         mock: { icon: '📝', name: 'The Full-Length Mock Exam', blurb: 'A board-length, timed simulation of the real NCCAA exam — the closest thing to sitting the boards.' },
         critical: { icon: '🚨', name: 'Critical Event Cards', blurb: 'Clinician-reviewed rapid-response cards for every anesthesia crisis — searchable and printable.' },
