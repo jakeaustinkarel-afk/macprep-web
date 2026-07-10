@@ -762,8 +762,11 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 21;
+    const WHATS_NEW_VERSION = 22;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 10', title: 'Search the question bank', desc: 'Remember part of a question? Study Modes → Find a question. Search by keyword to pull up any question in the bank — perfect for reviewing a tricky one or talking it through with a classmate.' },
+        { tag: 'New', date: 'Jul 10', title: 'Your Recommended set now adapts to you', desc: 'The “Recommended for you” set now estimates your ability in each of the six exam domains and serves new questions at a difficulty matched to your level — easing in where you’re new and ramping up as you improve, on top of your due spaced-repetition reviews and recent misses. See your new Mastery-by-domain breakdown on the dashboard.' },
+        { tag: 'New', date: 'Jul 10', title: 'Students → automatic CAA upgrade', desc: 'Tell us your credential (SAA or CAA). Students add an expected graduation date, and your account upgrades to CAA automatically the day you graduate — setting up CAA-only features (like CME) down the road.' },
         { tag: 'New', date: 'Jul 5', title: 'Duel a classmate', desc: 'Go head-to-head — Study Modes → Duel a classmate. Play a set of questions, share your code or invite link, and your classmate plays the exact same set. You’ll both see who won.' },
         { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
         { tag: 'New', date: 'Jul 5', title: 'Flag questions from the Review', desc: 'The end-of-session Review now has Flag + “+ Card” buttons on every question — even the ones you got right — so you can save anything to revisit, or add it to your flashcards, while you review.' },
@@ -1794,6 +1797,7 @@
         // prominent up top. rec (2x2) + Mock (wide) + the singles tile a clean 4-col bento.
         const tiles = [
             recTile,
+            smTile('sm-search', 'Look up', 'Find a question', 'Search the bank by keyword — pull up any question to review or discuss.', '', 'MACPrep.openQuestionSearch()'),
             smTile('sm-mock', 'Exam simulation', 'Mock Exam', 'Simulate the real NCCAA boards — board-length, timed, and scored so you know you’re ready.', '180 Q · timed', 'MACPrep.openMockPicker()', free ? `${lockSvg(10)} Premium` : ''),
             smTile('sm-smart', 'Spaced repetition', 'Smart Review', 'Your weak areas + recent misses.', due ? `${due} due today` : '', 'MACPrep.smartReview()', free ? `${lockSvg(10)} Premium` : ''),
             smTile('sm-q10', 'Quick start', 'Quick 10', '10 quick questions to warm up.', '', 'MACPrep.startQuick(10)', free ? `${lockSvg(10)} Premium` : ''),
@@ -2130,6 +2134,90 @@
 
     function redoMissed() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
     function startFlagged() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
+
+    // ---- Search the question bank -----------------------------------------
+    // A student who remembers part of a question can find it fast (to review it,
+    // or pull it up with a classmate). Runs client-side over the loaded bank —
+    // matches stems + choice text, shows only the safe category (never the
+    // answer-giving subtopic). Opening a result starts a single-question tutor
+    // session (answer → full rationale + sources). Available to everyone; the
+    // free-tier limit is still enforced server-side when a new question is graded.
+    function openQuestionSearch() {
+        if (state._searchOpen) return;
+        state._searchOpen = true;
+        const n = (state.questions || []).length;
+        const wrap = document.createElement('div');
+        wrap.id = 'qsearch-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeQuestionSearch(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-label="Search questions" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;width:100%;max-width:640px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.45);overflow:hidden;">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input id="qsearch-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search the bank — e.g. &ldquo;amniotic fluid embolism&rdquo;, &ldquo;sugammadex&rdquo;…" oninput="MACPrep.runQuestionSearch()" style="flex:1;border:none;background:transparent;color:var(--text);font-size:16px;outline:none;padding:6px 0;">
+                <button type="button" onclick="MACPrep.closeQuestionSearch()" aria-label="Close" style="flex:none;background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;display:inline-flex;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div id="qsearch-results" style="overflow-y:auto;padding:7px;flex:1;"></div>
+            <div style="padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);">Searching ${n.toLocaleString()} questions · open one to review it and its explanation.</div>
+        </div>`;
+        document.body.appendChild(wrap);
+        setTimeout(() => { const i = $('qsearch-input'); if (i) i.focus(); }, 40);
+        runQuestionSearch();
+    }
+    function closeQuestionSearch() { const o = $('qsearch-overlay'); if (o) o.remove(); state._searchOpen = false; }
+    function searchSnippet(stem, terms) {
+        const lower = stem.toLowerCase();
+        let pos = stem.length;
+        terms.forEach((t) => { const i = lower.indexOf(t); if (i >= 0 && i < pos) pos = i; });
+        // If the match was only in the answer choices (not the stem), show the stem's
+        // opening rather than an unhelpful tail.
+        const start = (pos >= stem.length) ? 0 : Math.max(0, pos - 45);
+        let snip = stem.slice(start, start + 170);
+        if (start > 0) snip = '…' + snip;
+        if (start + 170 < stem.length) snip += '…';
+        let html = escapeHtml(snip);
+        terms.forEach((t) => {
+            if (!t) return;
+            const re = new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            html = html.replace(re, '<mark style="background:var(--accent-dim);color:var(--text);border-radius:2px;padding:0 1px;">$1</mark>');
+        });
+        return html;
+    }
+    function runQuestionSearch() {
+        const box = $('qsearch-results'); if (!box) return;
+        const raw = (($('qsearch-input') && $('qsearch-input').value) || '').trim().toLowerCase();
+        const all = state.questions || [];
+        if (raw.length < 2) { box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">Start typing to search question stems.</div>'; return; }
+        const terms = raw.split(/\s+/).filter(Boolean);
+        const hits = [];
+        for (const item of all) {
+            const hay = ((item.stem || '') + ' ' + (item.choices || []).map((c) => (c && c.text) || '').join(' ')).toLowerCase();
+            if (terms.every((t) => hay.includes(t))) hits.push(item);
+            if (hits.length >= 40) break;
+        }
+        if (!hits.length) { box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">No questions match &ldquo;' + escapeHtml(raw) + '&rdquo;.</div>'; return; }
+        box.innerHTML = hits.map((item) => {
+            const cat = escapeHtml(item.category || item.domain_name || 'General');
+            const diff = item.difficulty ? escapeHtml(item.difficulty) : '';
+            return `<button type="button" class="qsearch-row" data-qid="${escapeHtml(item.id)}" style="display:block;width:100%;text-align:left;background:transparent;border:none;border-radius:10px;padding:11px 12px;cursor:pointer;color:var(--text);transition:background .12s ease;">
+                <div style="font-size:13.5px;line-height:1.5;color:var(--text2);">${searchSnippet(item.stem || '', terms)}</div>
+                <div style="margin-top:6px;display:flex;gap:9px;align-items:center;">
+                    <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:999px;">${cat}</span>
+                    ${diff ? `<span style="font-size:11px;color:var(--muted);text-transform:capitalize;">${diff}</span>` : ''}
+                </div>
+            </button>`;
+        }).join('');
+        box.querySelectorAll('.qsearch-row').forEach((b) => {
+            b.onmouseover = () => { b.style.background = 'var(--bg)'; };
+            b.onmouseout = () => { b.style.background = 'transparent'; };
+            b.onclick = () => searchStartQuestion(b.getAttribute('data-qid'));
+        });
+    }
+    function searchStartQuestion(id) {
+        const q = (state.questions || []).find((x) => x.id === id);
+        if (!q) return;
+        closeQuestionSearch();
+        beginSession([q], 'tutor');
+    }
     // ---- Flag + personal-flashcard-deck actions (from the Review screen + quiz toolbar) ----
     function revFlagInner(on) {
         return `<svg viewBox="0 0 24 24" width="12" height="12" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>${on ? 'Flagged' : 'Flag'}`;
@@ -4544,6 +4632,7 @@
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange,
+        openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
@@ -4575,7 +4664,7 @@
             ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
             ['title-overlay', closeTitlePicker],
-            ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents],
+            ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents], ['qsearch-overlay', closeQuestionSearch],
             ['wn-popup', closeWhatsNewPopup], ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
             ['duel-overlay', closeDuelPicker], ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
             ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
