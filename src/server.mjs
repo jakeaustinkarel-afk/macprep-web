@@ -617,7 +617,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const windowDays = 30;
         const since = new Date(now - windowDays * 86400000).toISOString();
         const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
-            supabase.from(PROFILE_TABLE).select('email, account_tier, target_exam_date, premium_unlocked_at, created_at'),
+            supabase.from(PROFILE_TABLE).select('email, account_tier, credential, target_exam_date, premium_unlocked_at, created_at'),
             supabase.from('analytics_events').select('name, created_at, meta, user_id').gte('created_at', since).limit(100000),
             supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
@@ -667,16 +667,23 @@ app.get('/api/admin/metrics', async (req, res) => {
         Object.keys(dayVids).forEach((d) => { if (buckets[d]) buckets[d].visits = dayVids[d].size; });
         U.forEach((u) => { const d = (u.created_at || '').slice(0, 10); if (buckets[d]) buckets[d].signups++; });
 
+        // Credential mix (SAA students vs CAA certified) — normalized from new codes
+        // and any legacy long labels. "over time" is visible via recent_signups credentials.
+        const normCred = (c) => { if (!c) return null; const u = String(c).trim().toUpperCase(); return u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : 'other'; };
+        const credential_mix = { saa: 0, caa: 0, other: 0, unset: 0 };
+        U.forEach((u) => { const c = normCred(u.credential); if (c === 'SAA') credential_mix.saa++; else if (c === 'CAA') credential_mix.caa++; else if (c === 'other') credential_mix.other++; else credential_mix.unset++; });
+
         res.json({
             generated_at: new Date(now).toISOString(),
             window_days: windowDays,
             totals: { users: U.length, premium, free: U.length - premium, with_exam_date: U.filter((u) => u.target_exam_date).length },
+            credential_mix,
             revenue: { paid_conversions: paid, est_revenue: paid * PRICE, price: PRICE },
             funnel,
             event_counts: ec,
             daily: Object.values(buckets),
             recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
-                .map((u) => ({ email: u.email, tier: u.account_tier, joined: u.created_at, exam_date: u.target_exam_date || null })),
+                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null })),
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });
@@ -761,12 +768,19 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const password = req.body?.password || '';
     const name = req.body?.name || '';
     const credential = ['SAA', 'CAA'].includes(req.body?.credential) ? req.body.credential : null;
+    const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const gradDate = isDate(req.body?.graduation_date) ? req.body.graduation_date : null;
+    const examDate = isDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
 
     if (!supabaseAuth) return res.status(500).json({ success: false, error: 'Auth not configured.' });
     if (!email || !password) return res.status(400).json({ success: false, error: 'Email and password are required.' });
 
     try {
         if (action === 'register') {
+            // Credential is required at signup; students (SAA) must add a graduation
+            // date so the account can auto-promote to CAA when they graduate.
+            if (!credential) return res.status(400).json({ success: false, error: 'Please select your credential (SAA or CAA).' });
+            if (credential === 'SAA' && !gradDate) return res.status(400).json({ success: false, error: 'Students (SAA) must add a graduation date.' });
             const { data, error } = await supabaseAuth.auth.signUp({
                 email,
                 password,
@@ -779,7 +793,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (supabase && data.user) {
                 await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential }, { onConflict: 'user_id' })
+                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential, graduation_date: gradDate, target_exam_date: examDate }, { onConflict: 'user_id' })
                     .then(({ error: pErr }) => { if (pErr) console.warn(`Profile create warning: ${pErr.message}`); });
             }
 
@@ -830,8 +844,13 @@ app.post('/api/auth/reset-request', authLimiter, async (req, res) => {
     if (!supabaseAuth || !email) return res.status(400).json({ error: 'Email is required.' });
     const base = safeBaseUrl(req);
     try {
-        await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo: `${base}/reset.html` });
-    } catch (err) { /* do not reveal whether the email exists */ }
+        // resetPasswordForEmail returns { error } rather than throwing for most
+        // failures (bad SMTP config, provider rejection, rate limit) — capture BOTH
+        // paths. Password recovery is critical, so failures must be observable in the
+        // server logs even though the client always gets the same generic response.
+        const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo: `${base}/reset.html` });
+        if (error) console.error(`[reset-request] resetPasswordForEmail failed: ${error.message || error}`);
+    } catch (err) { console.error(`[reset-request] unexpected error: ${err?.message || err}`); }
     // Always return success to avoid email enumeration.
     return res.json({ success: true });
 });
@@ -1751,7 +1770,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -1760,7 +1779,8 @@ app.get('/api/user/profile', async (req, res) => {
         const { data: progress } = await supabase
             .from(PROGRESS_TABLE)
             .select('question_id, is_correct, category, created_at, confidence')
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true });
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
         const correct = (progress || []).filter((r) => r.is_correct).length;
@@ -1814,7 +1834,7 @@ app.get('/api/user/profile', async (req, res) => {
         // category was undercounted (totals summed to 1000 instead of the real bank size).
         const bankRows = [];
         for (let from = 0; from < 50000; from += 1000) {
-            const { data: chunk } = await applyServedFilter(supabase.from('questions').select('category')).range(from, from + 999);
+            const { data: chunk } = await applyServedFilter(supabase.from('questions').select('id, category, domain_name, difficulty')).range(from, from + 999);
             if (!chunk || !chunk.length) break;
             bankRows.push(...chunk);
             if (chunk.length < 1000) break;
@@ -1829,6 +1849,66 @@ app.get('/api/user/profile', async (req, res) => {
         const coverage = Object.keys(bankTotal).map((c) => ({
             category: c, total: bankTotal[c], answered: (answeredByCat[c] ? answeredByCat[c].size : 0),
         })).sort((a, b) => b.total - a.total);
+
+        // ---- Adaptive engine inputs: per-domain ability (Elo) + mastery -------
+        // The served bank rows (paged above) carry each question's domain + difficulty.
+        // Replay the user's attempts in time order as a lightweight Elo per NCCAA
+        // domain: each answer nudges the domain rating toward/away from the
+        // question's difficulty rating. The client uses `target` to serve
+        // difficulty matched to the learner (with a slight upward stretch) and
+        // `mastery` to rank weakest domains + drive the readiness view. All
+        // derived on the fly from history — no schedule table, works retroactively.
+        const qMeta = {};
+        const bankByDomain = {};
+        (bankRows || []).forEach((r) => {
+            const dn = r.domain_name || 'General';
+            qMeta[r.id] = { domain: dn, difficulty: String(r.difficulty || 'medium').toLowerCase() };
+            bankByDomain[dn] = (bankByDomain[dn] || 0) + 1;
+        });
+        const DIFF_RATING = { easy: 900, medium: 1100, hard: 1300 };
+        const ELO_K = 24, ELO_START = 1100;
+        const domAbility = {};
+        const ensureDom = (d) => (domAbility[d] = domAbility[d] || { theta: ELO_START, attempts: 0, correct: 0, answered: new Set() });
+        Object.keys(bankByDomain).forEach(ensureDom); // every served domain appears, even untouched
+        (progress || []).forEach((r) => {
+            const meta = qMeta[r.question_id];
+            if (!meta) return; // attempt on a question no longer served — skip ability update
+            const D = ensureDom(meta.domain);
+            const qr = DIFF_RATING[meta.difficulty] || ELO_START;
+            const expected = 1 / (1 + Math.pow(10, (qr - D.theta) / 400));
+            D.theta += ELO_K * ((r.is_correct ? 1 : 0) - expected);
+            if (D.theta < 700) D.theta = 700; else if (D.theta > 1500) D.theta = 1500;
+            D.attempts++; if (r.is_correct) D.correct++;
+            D.answered.add(r.question_id);
+        });
+        const DOMAIN_ORDER = [
+            'Principles of Anesthesia',
+            'Physiology, Pathophysiology & Management',
+            'Instrumentation, Monitoring & Anesthetic Delivery Systems',
+            'Subspecialty Care',
+            'Pharmacology',
+            'Regional Anesthesia & Pain Management',
+        ];
+        const by_domain = Object.keys(domAbility).map((d) => {
+            const D = domAbility[d];
+            const theta = Math.round(D.theta);
+            const target = theta + 40; // desirable-difficulty stretch just above current ability
+            return {
+                domain: d,
+                attempts: D.attempts,
+                correct: D.correct,
+                accuracy: D.attempts ? Math.round((D.correct / D.attempts) * 100) : null,
+                answered: D.answered.size,
+                total: bankByDomain[d] || 0,
+                ability: theta,
+                target,
+                target_tier: target >= 1200 ? 'hard' : target >= 1000 ? 'medium' : 'easy',
+                mastery: D.attempts >= 5 ? Math.max(0, Math.min(100, Math.round(((theta - 800) / 600) * 100))) : null,
+            };
+        }).sort((a, b) => {
+            const ia = DOMAIN_ORDER.indexOf(a.domain), ib = DOMAIN_ORDER.indexOf(b.domain);
+            return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+        });
 
         // Study streak: consecutive days (ending today or yesterday) with activity.
         // Day boundaries use the user's LOCAL timezone (tz = browser getTimezoneOffset
@@ -1874,6 +1954,24 @@ app.get('/api/user/profile', async (req, res) => {
             due_ids = (dueRows || []).map((r) => r.question_id);
         } catch (e) { /* review_state optional */ }
 
+        // Effective credential: an SAA (student) whose graduation date has passed is
+        // treated as a CAA from that day on (computed, no scheduled job) — this is what
+        // gates the future CME section to CAAs. Source of truth stays credential + grad date.
+        const rawCred = profile?.credential || null;
+        const gradDate = profile?.graduation_date || null;
+        // Normalize both new codes ("SAA"/"CAA") and legacy long labels ("SAA (student …)")
+        // to a bare code so the auto-upgrade + gating logic is consistent. Non-AA values
+        // (e.g. "Anesthesiologist", "Other") pass through unchanged and never prompt.
+        let credCode = rawCred;
+        if (rawCred) { const u = rawCred.trim().toUpperCase(); credCode = u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : rawCred; }
+        let credentialEffective = credCode;
+        if (credCode === 'SAA' && gradDate) {
+            const g = new Date(gradDate + 'T00:00:00Z');
+            if (!isNaN(g.getTime()) && g.getTime() <= Date.now()) credentialEffective = 'CAA';
+        }
+        // Prompt for credential when it's missing, or when an SAA has no graduation date yet.
+        const needsCredential = !credCode || (credCode === 'SAA' && !gradDate);
+
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
@@ -1881,7 +1979,11 @@ app.get('/api/user/profile', async (req, res) => {
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
                 is_admin: isAdminEmail(user.email),
                 full_name: profile?.full_name || '',
-                credential: profile?.credential || '',
+                credential: credCode || '',
+                graduation_date: gradDate || '',
+                credential_effective: credentialEffective || '',
+                is_caa: credentialEffective === 'CAA',
+                needs_credential: needsCredential,
                 training_program: profile?.training_program || '',
                 target_exam_date: profile?.target_exam_date || '',
                 study_goal: profile?.study_goal || null,
@@ -1899,6 +2001,7 @@ app.get('/api/user/profile', async (req, res) => {
                 by_specialty,
                 calibration,
                 coverage,
+                by_domain,
                 streak,
                 active_days: Array.from(activeDays),
                 trend,
@@ -1934,6 +2037,10 @@ app.post('/api/user/profile', async (req, res) => {
     if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
     else if (typeof b.target_exam_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.target_exam_date)) {
         update.target_exam_date = b.target_exam_date;
+    }
+    if (b.graduation_date === '' || b.graduation_date === null) update.graduation_date = null;
+    else if (typeof b.graduation_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.graduation_date)) {
+        update.graduation_date = b.graduation_date;
     }
     if (typeof b.study_goal === 'string' && ['exam', 'practice', 'none'].includes(b.study_goal)) {
         update.study_goal = b.study_goal;

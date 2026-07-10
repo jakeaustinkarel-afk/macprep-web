@@ -63,58 +63,99 @@
         .ghost-btn{background:var(--panel);border:1px solid var(--line);color:var(--text2);border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
         .ghost-btn:hover{border-color:var(--accent);color:var(--text);}
         .icon-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:4px;line-height:1;}
-        .wrap{max-width:1000px;margin:0 auto;padding:30px 24px 90px;}
-        .page-title{font-size:25px;font-weight:800;letter-spacing:-.5px;margin:0 0 3px;display:flex;align-items:center;gap:10px;}
+        .wrap{max-width:1140px;margin:0 auto;padding:28px 24px 96px;}
+        .page-title{font-size:26px;font-weight:800;letter-spacing:-.6px;margin:0 0 4px;display:flex;align-items:center;gap:11px;}
         .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:3px 10px;}
         .live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(16,185,129,.5);animation:pulse 2s infinite;}
         @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.45);}70%{box-shadow:0 0 0 6px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
-        .meta{color:var(--muted);font-size:12.5px;margin:0 0 26px;}
-        .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
-        @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}}
-        .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
-        .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:.85;}
-        .kpi.k-info::before{background:var(--info);} .kpi.k-warn::before{background:var(--warn);}
-        .kpi .n{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.05;}
-        .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:5px;font-weight:600;}
-        .kpi .s{font-size:12.5px;color:var(--text2);margin-top:8px;}
-        .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow);}
-        .card h2{font-size:12px;margin:0 0 18px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:700;font-family:ui-monospace,monospace;}
+        .meta{color:var(--muted);font-size:12.5px;margin:0 0 24px;}
+        .sec{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:700;font-family:ui-monospace,monospace;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+        .sec svg{width:13px;height:13px;}
+
+        /* KPI cards */
+        .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
+        @media(max-width:880px){.kpis{grid-template-columns:repeat(2,1fr);}}
+        @media(max-width:440px){.kpis{grid-template-columns:1fr;}}
+        .kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:17px 18px;box-shadow:var(--shadow);}
+        .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;min-height:34px;}
+        .ic{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);flex:none;}
+        .ic svg{width:18px;height:18px;}
+        .ic.info{background:var(--info-soft);color:var(--info);}
+        .ic.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);}
+        .delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+        .delta.up{color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent);}
+        .delta.down{color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent);}
+        .delta.flat{color:var(--muted);background:var(--bg);}
+        .kpi .n{font-size:31px;font-weight:800;letter-spacing:-1.2px;line-height:1.02;font-variant-numeric:tabular-nums;}
+        .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:6px;font-weight:700;}
+        .kpi .s{font-size:12.5px;color:var(--text2);margin-top:7px;}
+
+        /* last-7-day mini strip */
+        .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+        @media(max-width:880px){.strip{grid-template-columns:repeat(2,1fr);}}
+        .mini{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px;}
+        .mini .ml{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:700;display:flex;align-items:center;gap:6px;}
+        .mini .ml svg{width:14px;height:14px;opacity:.85;}
+        .mini .mrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:6px;}
+        .mini .mn{font-size:22px;font-weight:800;letter-spacing:-.6px;font-variant-numeric:tabular-nums;}
+
+        .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow);}
+        .card h2{font-size:12px;margin:0;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:700;font-family:ui-monospace,monospace;}
+        .card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+        .card-h .hl{display:flex;align-items:center;gap:8px;}
+        .card-h .hl svg{width:15px;height:15px;color:var(--muted);}
+        .pill{font-size:11.5px;font-weight:700;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-variant-numeric:tabular-nums;}
+        .pill b{color:var(--accent);}
+
         /* funnel */
-        .frow{display:grid;grid-template-columns:140px 1fr 132px;align-items:center;gap:14px;margin:7px 0;}
-        .frow .flabel{font-size:13.5px;color:var(--text2);}
-        .ftrack{background:var(--bg);border:1px solid var(--line);border-radius:8px;height:30px;overflow:hidden;}
-        .ffill{height:100%;background:var(--accent);border-radius:7px 0 0 7px;transition:width .5s ease;}
+        .frow{display:grid;grid-template-columns:150px 1fr 156px;align-items:center;gap:14px;margin:9px 0;}
+        .frow .flabel{font-size:13.5px;color:var(--text2);font-weight:500;}
+        .ftrack{background:var(--bg);border:1px solid var(--line);border-radius:8px;height:32px;overflow:hidden;}
+        .ffill{height:100%;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 68%,var(--info)));border-radius:7px 0 0 7px;transition:width .55s cubic-bezier(.2,.8,.2,1);min-height:100%;}
         .ffill.zero{background:transparent;}
-        .fnum{text-align:right;font-size:13.5px;white-space:nowrap;}
+        .fnum{text-align:right;font-size:13.5px;white-space:nowrap;font-variant-numeric:tabular-nums;}
         .fnum b{font-weight:800;font-size:15px;}
         .fnum .pct{color:var(--muted);font-size:11.5px;margin-left:2px;}
-        /* On phones the fixed funnel columns get cramped — stack label / bar / number. */
+        .fnum .pct.drop{color:var(--bad);font-weight:700;}
+        .frow.biggest .flabel::after{content:'biggest drop';margin-left:8px;font-size:9.5px;font-weight:700;color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent);padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px;}
         @media(max-width:560px){
           .frow{grid-template-columns:1fr;gap:5px;margin:14px 0;}
-          .ftrack{height:22px;}
+          .ftrack{height:24px;}
           .fnum{text-align:left;}
         }
-        /* chart */
-        .legend{display:flex;gap:18px;font-size:12px;color:var(--text2);margin-bottom:16px;}
-        .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:middle;}
-        .chart{display:flex;align-items:flex-end;gap:3px;height:150px;padding-bottom:0;border-bottom:1px solid var(--line);}
-        .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;position:relative;}
-        .pmark{width:7px;height:7px;border-radius:50%;background:var(--warn);margin-bottom:1px;}
-        .bars{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%;width:100%;}
-        .bar{width:42%;max-width:9px;border-radius:3px 3px 0 0;min-height:0;transition:height .4s ease;}
-        .bar.v{background:var(--info);} .bar.s{background:var(--accent);}
-        .xaxis{display:flex;gap:3px;margin-top:7px;}
-        .xaxis .col{font-size:9.5px;color:var(--muted);height:auto;}
-        /* table */
+
+        /* SVG trend chart */
+        .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--text2);margin-bottom:14px;}
+        .legend span{display:inline-flex;align-items:center;gap:6px;}
+        .legend i{display:inline-block;width:13px;height:3px;border-radius:2px;}
+        .legend i.dot{width:8px;height:8px;border-radius:50%;}
+        .tchart{width:100%;height:auto;display:block;}
+        .tchart rect.hb:hover{fill:color-mix(in srgb,var(--accent) 8%,transparent);}
+
+        /* tables */
         table{width:100%;border-collapse:collapse;font-size:13.5px;}
         th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);}
         th{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;}
+        td{font-variant-numeric:tabular-nums;}
+        tbody tr{transition:background .12s ease;}
+        tbody tr:hover td{background:var(--bg);}
         tr:last-child td{border-bottom:none;}
-        td.email{font-weight:500;}
+        td.email{font-weight:500;font-variant-numeric:normal;}
         .badge{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
         .badge.premium{background:var(--accent-soft);color:var(--accent);}
         .badge.free{background:var(--bg);color:var(--muted);border:1px solid var(--line);}
         .badge.kind{background:var(--info-soft);color:var(--info);}
+        .badge.saa{background:var(--info-soft);color:var(--info);}
+        .badge.caa{background:var(--accent-soft);color:var(--accent);}
+        .badge.none{background:var(--bg);color:var(--muted);border:1px solid var(--line);}
+        .credbar{display:flex;height:32px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:var(--bg);}
+        .credseg{transition:width .5s cubic-bezier(.2,.8,.2,1);min-width:0;}
+        .credseg.saa{background:var(--info);} .credseg.caa{background:var(--accent);}
+        .credseg.empty{display:flex;align-items:center;justify-content:center;width:100%;color:var(--muted);font-size:12.5px;}
+        .credlegend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12.5px;color:var(--text2);}
+        .credlegend span{display:inline-flex;align-items:center;gap:6px;}
+        .credlegend i{display:inline-block;width:11px;height:11px;border-radius:3px;}
+        .credlegend i.saa{background:var(--info);} .credlegend i.caa{background:var(--accent);}
         .fb{border-top:1px solid var(--line);padding:14px 2px;}
         .fb:first-of-type{border-top:none;padding-top:2px;}
         .fb-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap;}
@@ -124,6 +165,7 @@
         .loading{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:80px 0;font-size:14px;}
         .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
         @keyframes spin{to{transform:rotate(360deg);}}
+        @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
             .hidden{display:none;}
     </style>
 </head>
@@ -163,64 +205,152 @@
     }
 
     function signedOut(msg) {
-        return '<div class="card center"><div style="font-size:34px;margin-bottom:12px;">🔒</div><p class="muted" style="max-width:420px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
+        return '<div class="card center"><div style="margin-bottom:14px;color:var(--muted);"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><p class="muted" style="max-width:420px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
+    }
+
+    // ---- inline SVG icons (stroke-based, no emoji) -----------------------
+    const IC = {
+        users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        crown:'<path d="M3 18h18"/><path d="M4 8l4 4 4-6 4 6 4-4-1.6 10H5.6z"/>',
+        dollar:'<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+        trend:'<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>',
+        eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
+        userplus:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>',
+        activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        cart:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+        funnel:'<path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z"/>',
+        chart:'<path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/>',
+        list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+        msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    };
+    const svg = (name, w) => '<svg viewBox="0 0 24 24" width="' + (w||18) + '" height="' + (w||18) + '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[name]||'') + '</svg>';
+
+    // ▲/▼ change vs the previous period (percentage when there's a base to compare to).
+    function deltaChip(cur, prev) {
+        if (!prev && !cur) return '<span class="delta flat">—</span>';
+        if (!prev) return '<span class="delta up">▲ new</span>';
+        const p = Math.round(((cur - prev) / prev) * 100);
+        if (p > 0) return '<span class="delta up">▲ ' + p + '%</span>';
+        if (p < 0) return '<span class="delta down">▼ ' + Math.abs(p) + '%</span>';
+        return '<span class="delta flat">0%</span>';
+    }
+
+    function kpi(tone, icon, n, l, delta, s) {
+        return '<div class="kpi"><div class="kpi-top"><span class="ic ' + tone + '">' + svg(icon) + '</span>' + (delta||'') + '</div>' +
+            '<div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
+    }
+    function mini(icon, label, cur, prev) {
+        return '<div class="mini"><div class="ml">' + svg(icon, 14) + esc(label) + '</div>' +
+            '<div class="mrow"><span class="mn">' + cur.toLocaleString() + '</span>' + deltaChip(cur, prev) + '</div></div>';
+    }
+
+    // Responsive SVG area+line chart: area = landing views, line = signups,
+    // dots on the signup line, warm dots on the x-axis mark purchase days.
+    function lineChart(days) {
+        const n = days.length;
+        if (!n) return '<p class="muted" style="margin:0;">No activity yet.</p>';
+        const W = 720, H = 210, padL = 34, padR = 12, padT = 12, padB = 26;
+        const pw = W - padL - padR, ph = H - padT - padB;
+        const rawMax = Math.max(1, ...days.map(x => Math.max(x.visits, x.signups)));
+        const ymax = rawMax <= 5 ? 5 : Math.ceil(rawMax / 5) * 5;
+        const X = i => padL + (n <= 1 ? pw / 2 : (i / (n - 1)) * pw);
+        const Y = v => padT + ph * (1 - v / ymax);
+        const linePath = key => days.map((d, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(d[key]).toFixed(1)).join(' ');
+        const areaPath = key => 'M' + X(0).toFixed(1) + ' ' + (padT + ph) + ' ' + days.map((d, i) => 'L' + X(i).toFixed(1) + ' ' + Y(d[key]).toFixed(1)).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (padT + ph) + ' Z';
+        let grid = '';
+        [0, 0.5, 1].forEach(f => {
+            const gy = (padT + ph * (1 - f)).toFixed(1);
+            grid += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="var(--line)" stroke-width="1"/>' +
+                '<text x="' + (padL - 7) + '" y="' + (+gy + 3.5) + '" text-anchor="end" fill="var(--muted)" font-size="10" font-family="ui-monospace,monospace">' + Math.round(ymax * f) + '</text>';
+        });
+        let xl = '';
+        days.forEach((d, i) => { if (i % 4 === 0 || i === n - 1) xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" fill="var(--muted)" font-size="9.5" font-family="ui-monospace,monospace">' + esc(d.date.slice(5)) + '</text>'; });
+        const sd = days.map((d, i) => '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(d.signups).toFixed(1) + '" r="2.3" fill="var(--accent)"/>').join('');
+        const pk = days.map((d, i) => d.purchases > 0 ? '<circle cx="' + X(i).toFixed(1) + '" cy="' + (padT + ph - 3) + '" r="3.6" fill="var(--warn)"/>' : '').join('');
+        const bw = pw / n;
+        const hb = days.map((d, i) => '<rect class="hb" x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + padT + '" width="' + bw.toFixed(1) + '" height="' + ph + '" fill="transparent"><title>' + esc(d.date) + ' — ' + d.visits + ' views · ' + d.signups + ' signups · ' + d.sessions + ' sessions · ' + d.purchases + ' purchases</title></rect>').join('');
+        return '<svg class="tchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily activity trend, landing views and signups">' +
+            grid +
+            '<path d="' + areaPath('visits') + '" fill="var(--info)" opacity="0.13"/>' +
+            '<path d="' + linePath('visits') + '" fill="none" stroke="var(--info)" stroke-width="2" stroke-linejoin="round"/>' +
+            '<path d="' + linePath('signups') + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>' +
+            sd + pk + xl + hb + '</svg>';
     }
 
     function render(d) {
-        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + '  ·  funnel: last ' + d.window_days + ' days  ·  revenue: all-time';
-        const t = d.totals, rev = d.revenue;
+        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + '  ·  activity + funnel: last ' + d.window_days + ' days  ·  revenue: all-time';
+        const t = d.totals, rev = d.revenue, days = d.daily || [], n = days.length;
+        const rng = (key, a, b) => { let s = 0; for (let i = a; i < b; i++) s += (days[i] && days[i][key]) || 0; return s; };
+        const l7 = k => rng(k, Math.max(0, n - 7), n), p7 = k => rng(k, Math.max(0, n - 14), Math.max(0, n - 7));
         const convRate = pct(rev.paid_conversions, t.users);
+        const premiumConv = pct(t.premium, t.users);
+        const arpu = t.users ? (rev.est_revenue / t.users) : 0;
         const dollars = '$' + (rev.est_revenue).toLocaleString();
 
-        let html = '<div class="kpis">' +
-            kpi('', t.users.toLocaleString(), 'Total users', t.with_exam_date + ' set an exam date') +
-            kpi('', t.premium.toLocaleString(), 'Premium', t.free + ' on free tier') +
-            kpi('k-warn', dollars, 'Est. revenue', rev.paid_conversions + ' paid × $' + rev.price) +
-            kpi('k-info', convRate + '%', 'User → paid', rev.paid_conversions + ' of ' + t.users + ' users') +
-        '</div>';
+        // Primary KPIs (all-time), each with a 7-day trend signal
+        let html = '<div class="sec">' + svg('trend', 13) + ' Overview · all-time</div><div class="kpis">' +
+            kpi('', 'users', t.users.toLocaleString(), 'Total users', deltaChip(l7('signups'), p7('signups')), t.premium + ' premium · ' + t.free + ' free') +
+            kpi('warn', 'crown', t.premium.toLocaleString(), 'Premium members', '<span class="delta ' + (premiumConv > 0 ? 'up' : 'flat') + '">' + premiumConv + '%</span>', premiumConv + '% of all users') +
+            kpi('info', 'dollar', dollars, 'Est. revenue', deltaChip(l7('purchases') * rev.price, p7('purchases') * rev.price), '$' + arpu.toFixed(2) + ' per user (ARPU)') +
+            kpi('', 'trend', convRate + '%', 'User → paid', '', rev.paid_conversions + ' paid · $' + rev.price + ' each') +
+            '</div>';
 
-        // Funnel
-        const top = Math.max(1, ...d.funnel.map(f=>f.n));
-        html += '<div class="card"><h2>Conversion funnel · last ' + d.window_days + ' days</h2>';
+        // Last-7-days activity strip (vs the previous 7 days)
+        html += '<div class="sec">' + svg('activity', 13) + ' Last 7 days · vs previous 7</div><div class="strip">' +
+            mini('eye', 'Landing views', l7('visits'), p7('visits')) +
+            mini('userplus', 'Signups', l7('signups'), p7('signups')) +
+            mini('activity', 'Practice sessions', l7('sessions'), p7('sessions')) +
+            mini('cart', 'Purchases', l7('purchases'), p7('purchases')) +
+            '</div>';
+
+        // Credential mix — SAA (students) vs CAA (certified), so you can watch the split over time
+        const cm = d.credential_mix || { saa: 0, caa: 0, other: 0, unset: 0 };
+        const cmT = cm.saa + cm.caa;
+        const saaPct = cmT ? Math.round((cm.saa / cmT) * 100) : 0;
+        const caaPct = cmT ? 100 - saaPct : 0;
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('users', 15) + '<h2>Credential mix</h2></span><span class="pill">' + cm.saa + ' SAA · ' + cm.caa + ' CAA</span></div>' +
+            '<div class="credbar">' +
+            (cm.saa ? '<div class="credseg saa" style="width:' + saaPct + '%"></div>' : '') +
+            (cm.caa ? '<div class="credseg caa" style="width:' + caaPct + '%"></div>' : '') +
+            (cmT ? '' : '<div class="credseg empty">No credentials recorded yet</div>') +
+            '</div>' +
+            '<div class="credlegend"><span><i class="saa"></i>SAA — students (' + cm.saa + ' · ' + saaPct + '%)</span><span><i class="caa"></i>CAA — certified (' + cm.caa + ' · ' + caaPct + '%)</span>' + ((cm.other + cm.unset) ? '<span class="muted">' + (cm.other + cm.unset) + ' other / not set</span>' : '') + '</div></div>';
+
+        // Funnel — flag the single biggest drop-off + show overall conversion
+        const top = Math.max(1, ...d.funnel.map(f => f.n));
+        let biggest = -1, lostMost = -1;
+        for (let i = 1; i < d.funnel.length; i++) { const prev = d.funnel[i - 1].n; if (prev > 0) { const lost = prev - d.funnel[i].n; if (lost > lostMost) { lostMost = lost; biggest = i; } } }
+        const overall = pct(d.funnel[d.funnel.length - 1].n, d.funnel[0].n);
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('funnel', 15) + '<h2>Conversion funnel · last ' + d.window_days + ' days</h2></span>' +
+            '<span class="pill">Overall <b>' + overall + '%</b> visit → paid</span></div>';
         d.funnel.forEach((f, i) => {
-            const w = Math.round((f.n/top)*100);
-            const ofTop = i===0 ? '<span class="pct">top of funnel</span>' : '<span class="pct">· ' + pct(f.n, d.funnel[i-1].n) + '% of prev</span>';
-            html += '<div class="frow"><div class="flabel">' + esc(f.label) + '</div>' +
-                '<div class="ftrack"><div class="ffill' + (f.n===0?' zero':'') + '" style="width:' + w + '%;min-width:' + (f.n>0?'6px':'0') + ';"></div></div>' +
-                '<div class="fnum"><b>' + f.n.toLocaleString() + '</b> ' + ofTop + '</div></div>';
+            const w = Math.round((f.n / top) * 100);
+            let right;
+            if (i === 0) right = '<span class="pct">top of funnel</span>';
+            else right = '<span class="pct' + (i === biggest ? ' drop' : '') + '">' + pct(f.n, d.funnel[i - 1].n) + '% of prev</span>';
+            html += '<div class="frow' + (i === biggest ? ' biggest' : '') + '"><div class="flabel">' + esc(f.label) + '</div>' +
+                '<div class="ftrack"><div class="ffill' + (f.n === 0 ? ' zero' : '') + '" style="width:' + w + '%;min-width:' + (f.n > 0 ? '6px' : '0') + ';"></div></div>' +
+                '<div class="fnum"><b>' + f.n.toLocaleString() + '</b> ' + right + '</div></div>';
         });
         html += '</div>';
 
-        // Daily chart — last 14 days, clean grouped columns
-        const days = d.daily.slice(-14);
-        const dmax = Math.max(1, ...days.map(x=>Math.max(x.visits, x.signups)));
-        const H = 120;
-        const h = (v) => v>0 ? Math.max(4, Math.round((v/dmax)*H)) : 0;
-        html += '<div class="card"><h2>Daily activity · last 14 days</h2>' +
-            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i style="background:var(--warn)"></i>Purchase</span></div>' +
-            '<div class="chart">';
-        days.forEach(x => {
-            const title = x.date + ' — ' + x.visits + ' views, ' + x.signups + ' signups, ' + x.purchases + ' purchases';
-            html += '<div class="col" title="' + title + '">' +
-                (x.purchases ? '<div class="pmark"></div>' : '') +
-                '<div class="bars">' +
-                  '<div class="bar v" style="height:' + h(x.visits) + 'px"></div>' +
-                  '<div class="bar s" style="height:' + h(x.signups) + 'px"></div>' +
-                '</div></div>';
-        });
-        html += '</div><div class="xaxis">' + days.map((x,i)=> '<div class="col">' + ((i%3===0||i===days.length-1)? x.date.slice(5) : '') + '</div>').join('') + '</div></div>';
+        // Daily activity — SVG area + line chart
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('chart', 15) + '<h2>Daily activity · last ' + n + ' days</h2></span></div>' +
+            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i class="dot" style="background:var(--warn)"></i>Purchase</span></div>' +
+            lineChart(days) + '</div>';
 
         // Recent signups
-        html += '<div class="card"><h2>Recent signups</h2><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
-        if (!d.recent_signups.length) html += '<tr><td colspan="4" class="muted">No signups yet.</td></tr>';
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Recent signups</h2></span><span class="pill">' + t.users.toLocaleString() + ' total</span></div><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Credential</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
+        if (!d.recent_signups.length) html += '<tr><td colspan="5" class="muted">No signups yet.</td></tr>';
         d.recent_signups.forEach(u => {
-            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
+            const credCls = u.credential==='SAA'?'saa':u.credential==='CAA'?'caa':'none';
+            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + credCls + '">' + esc(u.credential || '—') + '</span></td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
         });
         html += '</tbody></table></div></div>';
 
         // Recent feedback
         const fb = d.recent_feedback || [];
-        html += '<div class="card"><h2>Recent feedback' + (fb.length ? ' · ' + fb.length : '') + '</h2>';
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('msg', 15) + '<h2>Recent feedback</h2></span>' + (fb.length ? '<span class="pill">' + fb.length + '</span>' : '') + '</div>';
         if (!fb.length) {
             html += '<p class="muted" style="margin:0;">No feedback yet. When someone uses the in-app Feedback form, it appears here and emails you a copy.</p>';
         } else {
@@ -234,10 +364,6 @@
         html += '</div>';
 
         $('content').innerHTML = html;
-    }
-
-    function kpi(cls, n, l, s) {
-        return '<div class="kpi ' + cls + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
     }
 
     load();

@@ -234,17 +234,22 @@
         const last = (($('su-last') && $('su-last').value) || '').trim();
         const name = (first + ' ' + last).replace(/\s+/g, ' ').trim();
         const credential = ($('su-cred') && $('su-cred').value) || '';
+        const gradDate = ($('su-grad') && $('su-grad').value) || '';
+        const examDate = ($('su-exam') && $('su-exam').value) || '';
         const email = ($('su-email').value || '').trim();
         const password = $('su-password').value;
         const btn = $('su-submit'); const msg = $('su-msg');
-        if (!first || !last) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please enter your first and last name.'; } return; }
+        const fail = (m) => { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = m; } };
+        if (!first || !last) { fail('Please enter your first and last name.'); return; }
+        if (!credential) { fail('Please select your credential (SAA or CAA).'); return; }
+        if (credential === 'SAA' && !gradDate) { fail('Please add your expected graduation date.'); return; }
         if (!email || !password) return;
-        if ($('su-terms') && !$('su-terms').checked) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please accept the Terms to continue.'; } return; }
+        if ($('su-terms') && !$('su-terms').checked) { fail('Please accept the Terms to continue.'); return; }
         state.signupInFlight = true;
         if (btn) { btn.disabled = true; btn.textContent = 'Creating your account…'; }
         if (msg) msg.textContent = '';
         try {
-            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential }) });
+            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential, graduation_date: credential === 'SAA' ? gradDate : null, target_exam_date: credential === 'SAA' ? examDate : null }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
             track('signup');
             if (data.token) {
@@ -273,12 +278,18 @@
 
     // Forgot-password: request a reset email.
     async function requestPasswordReset() {
-        const email = ($('login-email').value || '').trim() || prompt('Enter your account email to reset your password:');
-        if (!email) return;
+        let email = (($('login-email') && $('login-email').value) || '').trim();
+        if (!email) { email = (prompt('Enter your account email and we’ll send a reset link:') || '').trim(); }
+        // Never silently no-op: if there's no usable email, tell the user what to do
+        // instead of returning quietly (which reads as "the button is broken").
+        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            toast('Enter the email you signed up with in the field above, then tap “Forgot password?” again.');
+            return;
+        }
         try {
             await fetch('/api/auth/reset-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-        } catch (e) { /* ignore */ }
-        toast('If an account exists for ' + email + ', a reset link is on its way — check your email.', 'ok');
+        } catch (e) { /* network errors must not reveal whether the account exists */ }
+        toast('If an account exists for ' + email + ', a reset link is on its way — check your inbox and your spam/junk folder.', 'ok');
     }
 
     async function loadProfile() {
@@ -330,10 +341,11 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
-        maybePromptForName(); // returning users who never saved a first+last name
+        const _credAsked = maybePromptCredential(); // one-time credential capture (priority) for accounts made before we asked
+        if (!_credAsked) maybePromptForName(); // returning users who never saved a first+last name
         const _duelLink = /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
         checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
-        if (!_duelLink) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
+        if (!_credAsked && !_duelLink) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
@@ -420,12 +432,40 @@
         const examNudge = (exam == null)
             ? `<div class="mono" style="font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> Add your exam date in your profile to unlock a daily pace plan.</div>`
             : '';
+        // Mastery by domain — the adaptive engine's per-domain ability, as bars
+        // with the difficulty tier it will serve next (our transparency wedge:
+        // the learner sees exactly how the engine reads them). null = not started.
+        const SHORT_DOM = {
+            'Principles of Anesthesia': 'Principles',
+            'Physiology, Pathophysiology & Management': 'Physiology & path',
+            'Instrumentation, Monitoring & Anesthetic Delivery Systems': 'Instrumentation & monitoring',
+            'Subspecialty Care': 'Subspecialty care',
+            'Pharmacology': 'Pharmacology',
+            'Regional Anesthesia & Pain Management': 'Regional & pain',
+        };
+        const domList = p.by_domain || [];
+        let masteryBlock = '';
+        if (domList.some((d) => d.mastery != null)) {
+            const rows = domList.map((d) => {
+                const label = `<span style="flex:0 0 150px;font-size:12px;color:var(--text2);" title="${d.domain}">${SHORT_DOM[d.domain] || d.domain}</span>`;
+                if (d.mastery == null) {
+                    const st = (d.attempts > 0) ? 'building…' : 'not started';
+                    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:.55;">${label}<div class="progress-bar" style="flex:1;"><span style="width:0%;"></span></div><span class="mono" style="flex:0 0 82px;text-align:right;font-size:11px;color:var(--muted);">${st}</span></div>`;
+                }
+                const c = d.mastery >= 75 ? 'var(--accent)' : d.mastery >= 50 ? 'var(--warn)' : 'var(--bad)';
+                const tier = d.target_tier === 'hard' ? 'hard' : d.target_tier === 'easy' ? 'easier' : 'medium';
+                return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">${label}<div class="progress-bar" style="flex:1;"><span style="width:${d.mastery}%;background:${c};"></span></div><span class="mono" style="flex:0 0 82px;text-align:right;font-size:11px;color:var(--text2);">${d.mastery}% · ${tier}</span></div>`;
+            }).join('');
+            masteryBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">Mastery by domain</div>`
+                + `<div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Next questions adapt to each level.</div>${rows}`;
+        }
         el.innerHTML = `<h3>Accuracy &amp; exam plan</h3>
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Accuracy — last 7 active days</div>
             <div style="height:70px;margin-bottom:16px;">${spark}</div>
             ${planLine}
             ${goalLine}
             ${examNudge}
+            ${masteryBlock}
             <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — refresh your readiness score</button>`;
     }
 
@@ -532,9 +572,16 @@
         startFromIds(Array.from(ids), 'review');
     }
 
-    // Recommended session: one obvious primary action. Builds a smart ~20-question
-    // mix — spaced-repetition due cards → missed → weakest areas → domain-balanced
-    // fill — so a returning user never has to configure anything to study well.
+    // Adaptive "Recommended" engine — one primary action, no config. Blends four
+    // signals (in priority; each capped so none dominates the set):
+    //   1. spaced-repetition reviews that are due       (reinforcement)
+    //   2. recent misses not yet re-mastered            (targeted)
+    //   3. weakest domains — NEW questions at a difficulty MATCHED to your
+    //      estimated ability (server Elo per domain, `by_domain[].target`),
+    //      with a slight upward stretch so it ramps as you improve
+    //   4. domain-balanced coverage fill of unseen material
+    // Reinforcement items (1-2) are level-agnostic; new material (3-4) is
+    // difficulty-matched. Degrades gracefully if `by_domain` isn't present yet.
     function startRecommended() {
         const usage = freeUsage();
         const p = state.profile || {};
@@ -542,28 +589,74 @@
         if (!all.length) { toast('Questions are still loading — try again in a moment.'); return; }
         if (!usage.unlimited && usage.remaining < 1) { return startCheckout(); }
         const byId = {}; all.forEach((q) => { byId[q.id] = q; });
-        const target = Math.min(20, all.length);
-        const picked = new Set();
-        const add = (id) => { if (picked.size < target && byId[id] && !picked.has(id)) picked.add(id); };
-        (p.due_ids || []).forEach(add);
-        (p.missed_ids || []).forEach(add);
-        const weak = (p.by_specialty || []).filter((s) => s.accuracy < 70).map((s) => s.category);
-        if (weak.length) all.forEach((q) => { if (weak.includes(q.category || q.domain_name)) add(q.id); });
+        const target = Math.min(20, all.length, usage.unlimited ? Infinity : usage.remaining);
+        const answered = new Set(p.answered_ids || []);
+        const DIFF_RATING = { easy: 900, medium: 1100, hard: 1300 };
+        const domTarget = {}; (p.by_domain || []).forEach((d) => { domTarget[d.domain] = d.target; });
+        const domainOf = (q) => q.domain_name || q.category || 'General';
+        const ratingOf = (q) => DIFF_RATING[String(q.difficulty || 'medium').toLowerCase()] || 1100;
+        // Difficulty "fit": distance from the question's rating to the learner's
+        // per-domain target (smaller = better fit). Unknown domain ~ medium+stretch.
+        const fit = (q) => Math.abs(ratingOf(q) - (domTarget[domainOf(q)] != null ? domTarget[domainOf(q)] : 1140));
         const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+        const picked = new Set();
+        const breakdown = { due: 0, missed: 0, weak: 0, coverage: 0 };
+        const add = (id, bucket) => {
+            if (picked.size >= target || !byId[id] || picked.has(id)) return false;
+            picked.add(id); if (bucket) breakdown[bucket]++; return true;
+        };
+        // 1) Spaced-repetition due — reinforcement, capped so it can't eat the set.
+        const dueCap = Math.max(1, Math.ceil(target * 0.4)); let dueN = 0;
+        for (const id of (p.due_ids || [])) { if (dueN >= dueCap) break; if (add(id, 'due')) dueN++; }
+        // 2) Recent misses still not re-mastered — targeted, level-agnostic.
+        const missCap = Math.max(1, Math.ceil(target * 0.4)); let missN = 0;
+        for (const id of (p.missed_ids || [])) { if (missN >= missCap) break; if (add(id, 'missed')) missN++; }
+        // 3) Weakest domains — new/unseen questions, difficulty matched to level.
+        const weakDomains = [];
         if (picked.size < target) {
-            // domain-balanced round-robin fill (no history needed)
-            const byDom = {}; all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
-            const arrs = Object.values(byDom).map((a) => shuffle(a.slice()));
+            const doms = (p.by_domain || []).slice()
+                .sort((a, b) => ((a.mastery == null ? 40 : a.mastery)) - ((b.mastery == null ? 40 : b.mastery)));
+            const cands = {};
+            doms.forEach((d) => {
+                const list = all.filter((q) => domainOf(q) === d.domain && !picked.has(q.id));
+                list.sort((x, y) => {
+                    const ux = answered.has(x.id) ? 1 : 0, uy = answered.has(y.id) ? 1 : 0;
+                    if (ux !== uy) return ux - uy;      // unseen first
+                    const fx = fit(x), fy = fit(y);
+                    if (fx !== fy) return fx - fy;       // then best difficulty fit
+                    return Math.random() - 0.5;          // random among ties
+                });
+                cands[d.domain] = list;
+            });
+            const perDomainCap = Math.max(2, Math.ceil(target * 0.35));
+            const domCount = {};
             let progressed = true;
             while (picked.size < target && progressed) {
                 progressed = false;
-                for (const arr of arrs) { if (picked.size >= target) break; const q = arr.pop(); if (q) { const b = picked.size; add(q.id); if (picked.size > b) progressed = true; } }
+                for (const d of doms) {
+                    if (picked.size >= target) break;
+                    if ((domCount[d.domain] || 0) >= perDomainCap) continue;
+                    const q = (cands[d.domain] || []).shift();
+                    if (q && add(q.id, 'weak')) { domCount[d.domain] = (domCount[d.domain] || 0) + 1; progressed = true; if (weakDomains.indexOf(d.domain) < 0) weakDomains.push(d.domain); }
+                }
+            }
+        }
+        // 4) Coverage fill — remaining slots, unseen preferred, domain-balanced.
+        if (picked.size < target) {
+            const byDom = {};
+            all.forEach((q) => { if (!picked.has(q.id)) { const d = domainOf(q); (byDom[d] = byDom[d] || []).push(q); } });
+            const arrs = Object.values(byDom).map((a) => a.sort((x, y) => (answered.has(x.id) ? 1 : 0) - (answered.has(y.id) ? 1 : 0) || fit(x) - fit(y)));
+            let progressed = true;
+            while (picked.size < target && progressed) {
+                progressed = false;
+                for (const arr of arrs) { if (picked.size >= target) break; const q = arr.shift(); if (q && add(q.id, 'coverage')) progressed = true; }
             }
         }
         let pool = shuffle(Array.from(picked).map((id) => byId[id]));
         if (!usage.unlimited) pool = pool.slice(0, Math.min(pool.length, usage.remaining));
         if (!pool.length) { toast('No questions available right now.'); return; }
-        track('recommended_start', { size: pool.length });
+        state.lastRecommended = { breakdown, weakDomains };
+        track('recommended_start', { size: pool.length, adaptive: true, due: breakdown.due, missed: breakdown.missed, weak: breakdown.weak });
         beginSession(pool, 'tutor');
     }
 
@@ -573,15 +666,16 @@
         const p = state.profile || {};
         const dueN = (p.due_ids || []).length;
         const missN = (p.missed_ids || []).length;
-        const weakN = (p.by_specialty || []).filter((s) => s.accuracy < 70).length;
-        if (dueN || missN || weakN) {
+        const started = (p.by_domain || []).filter((d) => d.mastery != null);
+        const weakest = started.slice().sort((a, b) => a.mastery - b.mastery)[0];
+        if (dueN || missN || (weakest && weakest.mastery < 85)) {
             const parts = [];
             if (dueN) parts.push(`${dueN} due for review`);
             if (missN) parts.push(`${missN} you missed`);
-            if (weakN) parts.push(`your ${weakN} weakest area${weakN > 1 ? 's' : ''}`);
-            el.textContent = `A focused ~20-question set from ${parts.join(', ')}.`;
+            if (weakest && weakest.mastery < 85) parts.push(`new questions in ${weakest.domain} at your level`);
+            el.textContent = `Adaptive set — ${parts.join(', ')}.`;
         } else {
-            el.textContent = 'A balanced ~20-question set across all 6 exam domains to get you started.';
+            el.textContent = 'A balanced set across all 6 exam domains, adapting to your level as you go.';
         }
     }
 
@@ -705,7 +799,7 @@
     function maybeShowWhatsNewPopup() {
         let seen; try { seen = parseInt(ls('macprep_whatsnew_seen'), 10) || 0; } catch (e) { seen = 0; }
         if (!seen) { try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {} renderWhatsNewDot(); return; } // brand-new user: baseline silently, no popup
-        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen) return;
+        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen) return;
         const rows = WHATS_NEW.slice(0, 4).map((e) => {
             const isFix = e.tag === 'Fix';
             const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
@@ -1692,7 +1786,7 @@
         if (flagged) recStats.push(`<div class="sm-rec-stat"><span class="n">${flagged}</span><span class="l">flagged</span></div>`);
         if (!recStats.length) recStats.push(`<div class="sm-rec-stat"><span class="n">~20</span><span class="l">a smart starter mix</span></div>`);
         const free = !freeUsage().unlimited;
-        const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Your weak spots, due reviews, and recent misses — the highest-impact ~20 questions right now.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
+        const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Adapts to you — due reviews, recent misses, and new questions in your weakest domains at a difficulty matched to your level.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
         const arcCount = free ? (arcadeFreeUsed() ? `${lockSvg(10)} Premium` : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
         // Every study mode shown directly — no fold (Jake: don't hide modes behind a dropdown
@@ -2504,8 +2598,80 @@
         if (p.is_admin) return false; // Jake already has a name; don't nag admins
         return !/\S+\s+\S+/.test(lbStripCred(p.full_name));
     }
+    // ---- Credential capture: SAA (student) vs CAA (certified) --------------
+    // Students add a graduation date; when it passes, the account's effective
+    // credential auto-promotes to CAA (computed server-side) — which will gate the
+    // future CME section to CAAs. Collected at signup, and as a one-time login
+    // pop-up for accounts created before we asked.
+    function onCredChange() {
+        const sel = $('su-cred'), box = $('su-saa-fields');
+        if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
+    }
+    function onCredModalChange() {
+        const sel = $('cp-cred'), box = $('cp-saa');
+        if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
+    }
+    function maybePromptCredential() {
+        if (!state.token || !state.profile || state._credPromptOpen) return false;
+        if (!state.profile.needs_credential) return false;
+        openCredentialPrompt();
+        return true;
+    }
+    function closeCredentialPrompt() { const o = $('cred-prompt-overlay'); if (o) o.remove(); state._credPromptOpen = false; }
+    function openCredentialPrompt() {
+        state._credPromptOpen = true;
+        const p = state.profile || {};
+        const pre = ['SAA', 'CAA'].includes(p.credential) ? p.credential : '';
+        const inp = 'width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin:4px 0 12px;font-size:14px;';
+        const lbl = 'font-size:10.5px;letter-spacing:.5px;color:var(--muted);';
+        const wrap = document.createElement('div');
+        wrap.id = 'cred-prompt-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2850;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="cp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
+            <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
+            <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">One quick question</div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Are you a student (SAA) or a certified CAA? This tailors MACPrep to you — and when a student graduates, your account upgrades to CAA automatically.</div>
+            <label class="mono" style="${lbl}">CREDENTIAL</label>
+            <select id="cp-cred" onchange="MACPrep.onCredModalChange()" style="${inp}">
+                <option value="" ${pre ? '' : 'selected'} disabled>Select…</option>
+                <option value="SAA" ${pre === 'SAA' ? 'selected' : ''}>SAA — Student Anesthesiologist Assistant</option>
+                <option value="CAA" ${pre === 'CAA' ? 'selected' : ''}>CAA — Certified Anesthesiologist Assistant</option>
+            </select>
+            <div id="cp-saa" class="${pre === 'SAA' ? '' : 'hidden'}">
+                <label class="mono" style="${lbl}">EXPECTED GRADUATION DATE</label>
+                <input id="cp-grad" type="date" value="${p.graduation_date || ''}" style="${inp}">
+                <label class="mono" style="${lbl}">EXAM DATE <span style="text-transform:none;letter-spacing:0;">(optional)</span></label>
+                <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
+            </div>
+            <button class="btn" style="width:100%;margin-top:2px;" onclick="MACPrep.saveCredentialPrompt(this)">Save</button>
+            <div id="cp-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    async function saveCredentialPrompt(btn) {
+        const cred = ($('cp-cred') && $('cp-cred').value) || '';
+        const grad = ($('cp-grad') && $('cp-grad').value) || '';
+        const exam = ($('cp-exam') && $('cp-exam').value) || '';
+        const msg = $('cp-msg');
+        if (!cred) { if (msg) msg.textContent = 'Please choose SAA or CAA.'; return; }
+        if (cred === 'SAA' && !grad) { if (msg) msg.textContent = 'Please add your expected graduation date.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        try {
+            const body = { credential: cred, graduation_date: cred === 'SAA' ? grad : null };
+            if (cred === 'SAA' && exam) body.target_exam_date = exam;
+            const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
+            await loadProfile();
+            closeCredentialPrompt();
+            toast('Thanks — you\'re all set.', 'ok');
+        } catch (e) {
+            if (msg) msg.textContent = e.message;
+            if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+        }
+    }
+
     function maybePromptForName() {
-        if (!state.token || !state.profile || state._namePromptOpen) return;
+        if (!state.token || !state.profile || state._namePromptOpen || state._credPromptOpen) return;
         if (!needsNameCapture()) return;
         openNamePrompt();
     }
@@ -3669,6 +3835,8 @@
         $('prof-fullname').value = p.full_name || '';
         $('prof-credential').value = p.credential || '';
         $('prof-program').value = p.training_program || '';
+        if ($('prof-grad')) $('prof-grad').value = p.graduation_date || '';
+        onProfCredChange();
         $('prof-examdate').value = p.target_exam_date || '';
         $('prof-phone').value = p.phone || '';
         refreshRemindersUI();
@@ -3727,13 +3895,20 @@
         finally { if (btn) btn.disabled = false; refreshRemindersUI(); }
     }
 
+    // Show the graduation-date field only for students (SAA) in the profile form.
+    function onProfCredChange() {
+        const sel = $('prof-credential'), w = $('prof-grad-wrap');
+        if (w) w.style.display = (sel && sel.value === 'SAA') ? '' : 'none';
+    }
     async function saveProfile() {
         const btn = $('prof-save-btn'); const msg = $('prof-save-msg');
         btn.disabled = true; msg.textContent = '';
+        const isSAA = $('prof-credential').value === 'SAA';
         const body = {
             full_name: $('prof-fullname').value.trim(),
             credential: $('prof-credential').value,
             training_program: $('prof-program').value.trim(),
+            graduation_date: (isSAA && $('prof-grad')) ? ($('prof-grad').value || '') : null,
             target_exam_date: $('prof-examdate').value || '',
             phone: $('prof-phone').value.trim(),
         };
@@ -4368,6 +4543,7 @@
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
+        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,

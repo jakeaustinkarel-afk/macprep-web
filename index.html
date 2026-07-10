@@ -723,12 +723,17 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                                 <div style="flex:1;"><label>Last name</label><input type="text" id="su-last" autocomplete="family-name" placeholder="Lee" required></div>
                             </div>
                             <div class="sub" style="font-size:11px;margin:4px 0 12px;color:var(--muted);">Shown on the leaderboard as your first name + last initial (e.g. “Jordan L.”).</div>
-                            <div class="form-group"><label>Credential <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label>
-                                <select id="su-cred" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
-                                    <option value="">Prefer not to say</option>
+                            <div class="form-group"><label>Credential</label>
+                                <select id="su-cred" required onchange="MACPrep.onCredChange()" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
+                                    <option value="" disabled selected>Select your credential…</option>
                                     <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
                                     <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
                                 </select>
+                            </div>
+                            <div id="su-saa-fields" class="hidden">
+                                <div class="form-group"><label>Expected graduation date</label><input type="date" id="su-grad"></div>
+                                <div class="form-group"><label>Exam date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label><input type="date" id="su-exam"></div>
+                                <div class="sub" style="font-size:11px;margin:-8px 0 12px;color:var(--muted);">When you graduate, your account automatically becomes a CAA.</div>
                             </div>
                             <div class="form-group"><label>Email</label><input type="email" id="su-email" autocomplete="email" required></div>
                             <div class="form-group"><label>Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="8" placeholder="8+ characters" required></div>
@@ -1166,16 +1171,14 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div class="grid cols-2">
                 <div class="form-group"><label>Full name</label><input id="prof-fullname" type="text" placeholder="Jane Doe, CAA"></div>
                 <div class="form-group"><label>Credential</label>
-                    <select id="prof-credential">
+                    <select id="prof-credential" onchange="MACPrep.onProfCredChange()">
                         <option value="">Select…</option>
-                        <option>SAA (student — preparing for certification)</option>
-                        <option>CAA (certified — preparing for recertification)</option>
-                        <option>Anesthesiologist</option>
-                        <option>SRNA / CRNA</option>
-                        <option>Other</option>
+                        <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
+                        <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Training program / institution</label><input id="prof-program" type="text"></div>
+                <div class="form-group" id="prof-grad-wrap"><label>Expected graduation date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(students)</span></label><input id="prof-grad" type="date"></div>
                 <div class="form-group"><label>Target exam date</label><input id="prof-examdate" type="date"></div>
                 <div class="form-group"><label>Phone (optional)</label><input id="prof-phone" type="tel"></div>
             </div>
