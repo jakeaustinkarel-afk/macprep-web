@@ -31,13 +31,28 @@ store resubmission for web/content/feature changes.
   `capacitor.config.json` or adding a plugin).
 - `npx cap open ios` / `npx cap open android` — open the native project to build/run.
 
-## Roadmap (next, in order)
-1. **Native push notifications** (`@capacitor/push-notifications`) — real APNs/FCM; fixes
-   iOS web-push limits. (This is a *native change* → needs a store build.)
-2. **App icon + splash screen** (`@capacitor/assets`) from the brand mark.
-3. **Native polish**: safe-area insets, theme-aware status bar, Android back button.
-4. **Developer accounts**: Apple Developer ($99/yr), Google Play ($25 once).
-5. **TestFlight / Play internal testing** → store submission.
+## App icon + splash — ✅ DONE
+Generated from the brand pulse-tile mark. Sources in `assets-src/*.svg` → rendered to
+`assets/*.png` → `npx @capacitor/assets generate`. To change the mark later: edit
+`assets-src/`, re-render (`rsvg-convert -w 1024 -h 1024 assets-src/icon-only.svg -o assets/icon-only.png`, etc.),
+then re-run `npx @capacitor/assets generate` and `npx cap sync`.
+
+## Push notifications — the one piece gated on accounts
+Native push needs credentials that must exist **before** the plugin can even build:
+- **iOS:** Apple Developer account → an **APNs auth key (.p8)**, then enable the *Push
+  Notifications* capability in Xcode.
+- **Android:** a **Firebase project** → download **`google-services.json`** into
+  `android/app/`. ⚠️ Until this file exists, do NOT install `@capacitor/push-notifications`
+  — the Android Gradle build fails without it (would break the currently-working app).
+
+Once both exist, wiring is ~20 min: install the plugin, add feature-detected registration
+in the web app (native device token → server), and add the APNs + FCM send path server-side
+(mirrors the existing dormant web-push scaffolding).
+
+## Then
+1. **Developer accounts** — Apple Developer ($99/yr), Google Play ($25 once). Start Apple early.
+2. **Native polish** — safe-area insets, theme-aware status bar, Android hardware back button.
+3. **TestFlight / Play internal testing** → store submission.
 
 ## Payments note
 Apple/Google generally require their in-app-purchase system (15–30%) for digital
