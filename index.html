@@ -180,6 +180,13 @@
         @media (hover: none) { .qpal-cell { width: 42px !important; height: 42px !important; } }
         .elim-x { display: none; }
         @media (hover: none) { .choice-option-node:not(:disabled) .elim-x { display: inline-flex; align-items: center; justify-content: center; float: right; width: 36px; height: 36px; margin: -8px -6px -8px 8px; color: var(--muted); font-size: 14px; border-radius: 8px; border: 1px solid var(--line); } .kbd-hint { display: none; } }
+        /* #14: shared modal entrance so dialogs fade/scale in instead of hard-cutting (level-up keeps its own) */
+        @media (prefers-reduced-motion: no-preference) {
+          [id$="-overlay"]:not(#levelup-overlay) { animation: mScrimIn .16s ease; }
+          [id$="-overlay"]:not(#levelup-overlay) > div { animation: mCardIn .18s cubic-bezier(.2,.8,.2,1); }
+        }
+        @keyframes mScrimIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes mCardIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
         .center-wrapper { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); padding: 24px; }
         #login-form-container { width: 100%; max-width: 440px; }
         .footer-links { text-align: center; color: var(--muted); font-family: inherit; font-size: 12px; margin-top: 24px; }

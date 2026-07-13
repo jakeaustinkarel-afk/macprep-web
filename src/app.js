@@ -2717,6 +2717,7 @@
         const wrap = document.createElement('div');
         wrap.id = 'cred-prompt-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2850;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeCredentialPrompt(); };  // dismissable (re-prompts next login)
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="cp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
             <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">One quick question</div>
@@ -2770,6 +2771,7 @@
         const wrap = document.createElement('div');
         wrap.id = 'name-prompt-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2800;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeNamePrompt(); };
         wrap.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Add your name</div>
             <div class="sub" style="font-size:13px;margin-bottom:16px;">MACPrep now has a leaderboard. You'll appear only as your <strong>first name + last initial</strong> (e.g. &ldquo;Jordan L.&rdquo;) — never your full name or email.</div>
@@ -4688,7 +4690,7 @@
             ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
             ['title-overlay', closeTitlePicker],
-            ['name-prompt-overlay', closeNamePrompt], ['ce-overlay', closeCriticalEvents], ['qsearch-overlay', closeQuestionSearch],
+            ['name-prompt-overlay', closeNamePrompt], ['cred-prompt-overlay', closeCredentialPrompt], ['ce-overlay', closeCriticalEvents], ['qsearch-overlay', closeQuestionSearch],
             ['wn-popup', closeWhatsNewPopup], ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
             ['duel-overlay', closeDuelPicker], ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
             ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
