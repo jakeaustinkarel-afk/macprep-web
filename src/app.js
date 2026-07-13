@@ -774,7 +774,7 @@
         { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
         { tag: 'New', date: 'Jul 5', title: 'Flag questions from the Review', desc: 'The end-of-session Review now has Flag + “+ Card” buttons on every question — even the ones you got right — so you can save anything to revisit, or add it to your flashcards, while you review.' },
         { tag: 'New', date: 'Jul 5', title: '100 achievements — and a title for every one', desc: 'The achievement bank is now 100 strong, and every single achievement unlocks its own title to show by your name — 100 titles to collect. Pick your favorite in Account → Title ★. The new ones span longer streaks, sharper accuracy (up to 99%), full-bank coverage, higher levels, and tougher Arcade runs.' },
-        { tag: 'New', date: 'Jul 4', title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
+        { tag: 'New', date: 'Jul 4', webOnly: true, title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
@@ -806,7 +806,7 @@
         let seen; try { seen = parseInt(ls('macprep_whatsnew_seen'), 10) || 0; } catch (e) { seen = 0; }
         if (!seen) { try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {} renderWhatsNewDot(); return; } // brand-new user: baseline silently, no popup
         if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen) return;
-        const rows = WHATS_NEW.slice(0, 4).map((e) => {
+        const rows = WHATS_NEW.filter((e) => !(e.webOnly && isNativeApp())).slice(0, 4).map((e) => {
             const isFix = e.tag === 'Fix';
             const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
             const pillBg = isFix ? 'color-mix(in srgb,var(--warn) 16%,transparent)' : 'var(--accent-dim)';
@@ -873,7 +873,7 @@
     function openWhatsNew() {
         const body = $('wn-body');
         if (body) {
-            body.innerHTML = WHATS_NEW.map((e) => {
+            body.innerHTML = WHATS_NEW.filter((e) => !(e.webOnly && isNativeApp())).map((e) => {
                 const isFix = e.tag === 'Fix';
                 const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
                 const pillBg = isFix ? 'color-mix(in srgb,var(--warn) 16%,transparent)' : 'var(--accent-dim)';
@@ -3506,6 +3506,25 @@
         closeUpgradeModal();
         const f = PREMIUM_FEATURES[featureKey] || null;
         try { track('upgrade_screen', { feature: featureKey || 'generic' }); } catch (e) {}
+        // App Store 3.1.1: the native store apps must NOT present an external (Stripe) purchase.
+        // Show a compliant "part of full access" notice — no price, no buy button, no external link —
+        // plus the class/cohort code redemption (a code unlock, not a purchase). Web keeps the full flow.
+        if (isNativeApp()) {
+            const wrapN = document.createElement('div');
+            wrapN.id = 'upgrade-overlay';
+            wrapN.style.cssText = 'position:fixed;inset:0;z-index:2700;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+            wrapN.onclick = (e) => { if (e.target === wrapN) closeUpgradeModal(); };
+            const titleN = f ? `${escapeHtml(f.name)} is part of full access` : 'This is a full-access feature';
+            wrapN.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);position:relative;">
+                <button onclick="MACPrep.closeUpgradeModal()" aria-label="Close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;line-height:1;">&times;</button>
+                <div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Full access</div>
+                <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;line-height:1.25;">${titleN}</div>
+                <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access includes the complete question bank, full-length mock exams, flashcards, Critical Events, and progress tracking.</div>
+                <div style="margin-top:16px;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--bg);font-size:13px;line-height:1.7;">Have a class or cohort code? <a href="#redeem" onclick="event.preventDefault(); MACPrep.closeUpgradeModal(); MACPrep.goRedeem();" style="color:var(--accent);">Redeem it here →</a></div>
+            </div>`;
+            document.body.appendChild(wrapN);
+            return;
+        }
         const unlocks = PREMIUM_UNLOCKS.map((u) => `<div style="display:flex;gap:9px;align-items:flex-start;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:3px;" aria-hidden="true"><path d="m5 12 5 5L20 6"/></svg><span>${u}</span></div>`).join('');
         const head = f
             ? `<div style="font-size:34px;line-height:1;margin-bottom:10px;">${f.icon}</div>
@@ -4516,6 +4535,9 @@
     // ---- checkout ---------------------------------------------------------
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
+        // In the native store apps, external (Stripe) purchase is not allowed (App Store 3.1.1)
+        // and a main-frame nav to Stripe is blocked by the WebView anyway — never start checkout.
+        if (isNativeApp()) { try { openUpgradeModal(); } catch (e) {} return; }
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Redirecting…'; }
         track('upgrade_click');
         track('checkout_started');
