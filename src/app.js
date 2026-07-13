@@ -2858,6 +2858,13 @@
         btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);cursor:pointer;border-radius:8px;line-height:1.5;';
         btn.innerHTML = `<span style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:bold;margin-right:15px;">[${letter}]</span> ${escapeHtml(text)}`;
         btn.onclick = () => answer(idx, qid);
+        // Touch affordance to cross out a distractor (phones have no right-click). Its own
+        // tap target + stopPropagation, so it never conflicts with tapping the choice to answer.
+        const elimX = document.createElement('span');
+        elimX.className = 'elim-x'; elimX.textContent = '✕'; elimX.setAttribute('role', 'button');
+        elimX.setAttribute('aria-label', 'Cross out this option');
+        elimX.addEventListener('click', (e) => { e.stopPropagation(); toggleEliminate(idx); });
+        btn.appendChild(elimX);
         return btn;
     }
 
