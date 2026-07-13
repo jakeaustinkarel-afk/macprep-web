@@ -440,8 +440,10 @@ const APNS_BUNDLE_ID = process.env.APNS_BUNDLE_ID || 'org.macprep.app';
 let fcm = null, apnProvider = null;
 if (FCM_ENABLED) {
     try {
-        const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        // Only needed if a secret UI double-escaped the newlines; harmless otherwise.
+        // Accept the service-account JSON either raw or base64 (base64 avoids any
+        // newline mangling when pasting into an env-var UI).
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        const sa = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
         if (sa.private_key && sa.private_key.includes('\\n')) sa.private_key = sa.private_key.replace(/\\n/g, '\n');
         if (!fbGetApps().length) fbInitApp({ credential: fbCert(sa) });
         fcm = fbGetMessaging();
@@ -450,7 +452,10 @@ if (FCM_ENABLED) {
 }
 if (APNS_ENABLED) {
     try {
-        apnProvider = new apn.Provider({ token: { key: process.env.APNS_KEY_P8, keyId: process.env.APNS_KEY_ID, teamId: process.env.APPLE_TEAM_ID }, production: process.env.APNS_PRODUCTION !== 'false' });
+        // Accept the .p8 either as the raw PEM or base64 (base64 sidesteps PEM-newline issues).
+        const p8raw = process.env.APNS_KEY_P8.trim();
+        const p8 = p8raw.includes('BEGIN') ? p8raw : Buffer.from(p8raw, 'base64').toString('utf8');
+        apnProvider = new apn.Provider({ token: { key: p8, keyId: process.env.APNS_KEY_ID, teamId: process.env.APPLE_TEAM_ID }, production: process.env.APNS_PRODUCTION !== 'false' });
         console.log(`[native-push] APNs (iOS) configured (production:${process.env.APNS_PRODUCTION !== 'false'})`);
     } catch (e) { console.error('[native-push] APNs init failed:', e.message); }
 }
