@@ -43,7 +43,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Figtree:wght@800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Figtree:wght@800&display=swap">
     <style>
         .social-ico{color:var(--muted,#6B7280);transition:color .15s ease;}.social-ico:hover{color:var(--accent,#00A86B);}
         :root{--text2:#cbd5e1;--danger-dim:#2a0c0c;--good:#34D399;--warn:#FBBF24;--bad:#F87171;--info:#60A5FA;}
@@ -176,7 +176,7 @@
         a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
             outline: 2px solid var(--accent); outline-offset: 2px;
         }
-        .choice-option-node:hover { border-color: var(--muted) !important; }
+        .choice-option-node:not(:disabled):hover { border-color: var(--accent) !important; background: var(--accent-dim) !important; }
         .center-wrapper { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); padding: 24px; }
         #login-form-container { width: 100%; max-width: 440px; }
         .footer-links { text-align: center; color: var(--muted); font-family: inherit; font-size: 12px; margin-top: 24px; }
@@ -412,9 +412,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 /* floating chips */
 .lp-float{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:11px 14px;box-shadow:0 22px 48px -20px rgba(0,0,0,.5);font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;z-index:2;}
 .lp-float svg{width:18px;height:18px;flex:none;}
-.lp-float.tr{top:-22px;right:-14px;}
+.lp-float.tr{top:-36px;right:-16px;}
 .lp-float.bl{bottom:-22px;left:-18px;}
 @media(max-width:480px){.lp-float.tr{right:4px;}.lp-float.bl{left:0;}}
+@media(max-width:560px){.lp-eyebrow{letter-spacing:1.2px;padding:5px 10px;font-size:10px;}.lp-appmode{display:none;}.lp-appprog{font-size:10px;white-space:nowrap;}.lp-appprog .bar{width:34px;}}
 @media(prefers-reduced-motion:no-preference){.lp-float{animation:lpfloat 5s var(--ease) infinite;}.lp-float.bl{animation-delay:-2.5s;}}
 @keyframes lpfloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
 
@@ -1115,7 +1116,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <button type="button" class="conf-chip" data-conf="high" onclick="MACPrep.setConfidence('high')">Confident</button>
             </div>
             <div id="choices-container"></div>
-            <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:4px;font-size:14px;line-height:1.6;"></div>
+            <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:10px;font-size:14px;line-height:1.6;"></div>
             <div id="quiz-actions" style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                 <button class="btn ghost" id="prev-btn" type="button" onclick="MACPrep.prevQuestion()" style="display:none;">&laquo; Previous</button>
                 <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
@@ -1435,6 +1436,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       .sm-desc{font-size:12px;color:var(--muted);margin-top:3px;}
       .sm-count{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--accent);font-weight:700;margin-top:auto;padding-top:10px;}
       .sm-tag{display:inline-block;font-family:ui-monospace,monospace;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--on-accent,#fff);background:var(--accent);padding:2px 6px;border-radius:5px;vertical-align:middle;margin-left:5px;}
+      .sm-tag.locked{background:transparent;color:var(--muted);border:1px solid var(--line);}
       .sm-rec{grid-column:1/3;grid-row:1/3;background:linear-gradient(160deg,var(--accent-dim),var(--panel));border-color:var(--accent);}
       .sm-rec-breakdown{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:18px;}
       .sm-rec-stat{display:flex;flex-direction:column;gap:2px;}

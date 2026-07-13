@@ -1167,8 +1167,8 @@
             + momLegRow(cReady, 'Readiness', `${readiness}%`, 'readiness') + `</div>`;
         const planTitle = toGoal ? 'Close your rings.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
         const planSub = toGoal
-            ? `${toGoal} more question${toGoal === 1 ? '' : 's'} to hit today's goal${streak ? ` and keep your ${streak}-day streak alive` : ''}.`
-            : `You've hit today's goal${streak ? ` — ${streak}-day streak and counting` : ''}. Keep the momentum going.`;
+            ? `A focused set, matched to your level.`
+            : `You're on a roll — a fresh set whenever you are.`;
         const saved = getSavedSession();
         const ctaLabel = saved ? 'Continue session' : 'Start today\'s set';
         const ctaFn = saved ? 'MACPrep.resumeSession()' : 'MACPrep.startRecommended()';
@@ -1775,7 +1775,7 @@
         }
     }
     function smTile(cls, cat, title, desc, count, onclick, tag) {
-        return `<button type="button" class="sm-tile ${cls}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag">${tag}</span>` : ''}</div>`
+        return `<button type="button" class="sm-tile ${cls}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag${/Premium/.test(tag) ? ' locked' : ''}">${tag}</span>` : ''}</div>`
             + `<div class="sm-title">${title}</div>${desc ? `<div class="sm-desc">${desc}</div>` : ''}${count ? `<div class="sm-count">${count}</div>` : ''}</button>`;
     }
     function renderStudyModes() {
@@ -2854,8 +2854,8 @@
         btn.className = 'choice-option-node';
         btn.dataset.index = String(idx);
         btn.setAttribute('aria-label', `Answer ${letter}: ${text}`);
-        btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);font-family:ui-monospace,monospace;cursor:pointer;border-radius:4px;';
-        btn.innerHTML = `<span style="color:var(--muted);font-weight:bold;margin-right:15px;">[${letter}]</span> ${text}`;
+        btn.style.cssText = 'display:block;width:100%;text-align:left;margin:10px 0;padding:14px;background:var(--bg);border:1px solid var(--line);color:var(--text);cursor:pointer;border-radius:8px;line-height:1.5;';
+        btn.innerHTML = `<span style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:bold;margin-right:15px;">[${letter}]</span> ${escapeHtml(text)}`;
         btn.onclick = () => answer(idx, qid);
         return btn;
     }
@@ -2969,7 +2969,12 @@
             }).join('<br>');
             html += `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Source</div><div style="font-size:13px;">${items}</div></div>`;
         }
-        const ex = $('explanation-pane'); ex.innerHTML = html; ex.classList.remove('hidden');
+        const ex = $('explanation-pane'); ex.innerHTML = html;
+        // Tint the whole panel to match the verdict — green when correct, red when wrong —
+        // so the grade reveal doesn't read as celebratory on a miss.
+        ex.style.background = data.correct ? 'var(--accent-dim)' : 'var(--danger-dim)';
+        ex.style.borderColor = data.correct ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'color-mix(in srgb, var(--danger) 30%, transparent)';
+        ex.classList.remove('hidden');
     }
 
     function renderQuestion() {
@@ -3302,12 +3307,12 @@
                     <div class="mono" style="font-size:11px;color:var(--muted);">${i + 1}. ${r.meta || ''}</div>
                     ${actions}
                 </div>
-                <div style="font-size:14px;margin-bottom:6px;">${r.stem}</div>
+                <div style="font-size:14px;margin-bottom:6px;">${renderRich(r.stem)}</div>
                 <div class="mono" style="font-size:12px;">
                     <span style="color:${r.correct ? 'var(--accent)' : 'var(--bad)'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                     &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
                 </div>
-                ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${r.explanation}</div>` : ''}
+                ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${renderRich(r.explanation)}</div>` : ''}
             </div>`;
         }).join('');
         el.innerHTML = `<h2 style="margin:0 0 6px;">Review</h2><p class="sub">Every question from this session — <strong>Flag</strong> any to revisit later, or <strong>+ Card</strong> to add it to your flashcard deck.</p>${rows}`;
