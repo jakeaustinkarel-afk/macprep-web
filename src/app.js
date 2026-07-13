@@ -763,8 +763,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 23;
+    const WHATS_NEW_VERSION = 24;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 13', title: 'Study reminders', desc: 'Turn on reminders in your Profile to get a gentle nudge when your spaced-repetition reviews come due — so you catch questions right before you’d forget them. Fully opt-in, easy to switch off, and we keep them infrequent. On the installed app it’s a native notification; in your browser it uses web notifications.' },
         { tag: 'Fix', date: 'Jul 12', title: 'You flagged it, we fixed it', desc: 'Thanks to the members who tapped Report. After your feedback we ran two full reviews of all 1,500+ questions and corrected 39 — clunky scenarios, clinical-detail wording, a couple of answer keys, and some stray formatting — so every question reads exactly right. Spot something off in a question? Tap Report on it; we read every single one, and it makes the bank sharper for everyone.' },
         { tag: 'New', date: 'Jul 10', title: 'Search the question bank', desc: 'Remember part of a question? Study Modes → Find a question. Search by keyword to pull up any question in the bank — perfect for reviewing a tricky one or talking it through with a classmate.' },
         { tag: 'New', date: 'Jul 10', title: 'Your Recommended set now adapts to you', desc: 'The “Recommended for you” set now estimates your ability in each of the six exam domains and serves new questions at a difficulty matched to your level — easing in where you’re new and ramping up as you improve, on top of your due spaced-repetition reviews and recent misses. See your new Mastery-by-domain breakdown on the dashboard.' },
