@@ -4700,6 +4700,73 @@
             if (el && !el.classList.contains('hidden')) { e.preventDefault(); try { closers[i][1](); } catch (_) {} return; }
         }
     });
+    // ---- Modal focus management (WCAG 2.4.3 focus order + 2.4.7 focus visible + no keyboard trap):
+    // when a dialog opens, move focus into it; cycle Tab/Shift+Tab inside it; on close, restore
+    // focus to whatever opened it. Central + declarative — every overlay is detected by the shared
+    // "-overlay" id convention plus the known static modal ids, so current AND future modals are
+    // covered with zero per-opener wiring.
+    (function initModalFocusTrap() {
+        const STATIC_IDS = ['wn-popup', 'whatsnew-panel', 'mock-picker', 'specialty-picker', 'cmdk', 'calc-modal', 'labs-modal'];
+        const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+        let activeModal = null, returnFocus = null, lastExternalFocus = null;
+        const visible = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+        function openRoots() {
+            const roots = [];
+            document.querySelectorAll('body > [id$="-overlay"]').forEach((el) => { if (!el.classList.contains('hidden')) roots.push(el); });
+            STATIC_IDS.forEach((id) => { const el = document.getElementById(id); if (el && !el.classList.contains('hidden') && visible(el)) roots.push(el); });
+            return roots;
+        }
+        function topmost(roots) {
+            let best = null, bestZ = -1;
+            roots.forEach((el) => { const z = parseInt(getComputedStyle(el).zIndex, 10) || 0; if (z >= bestZ) { bestZ = z; best = el; } });
+            return best;
+        }
+        const focusables = (root) => Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE), visible);
+        function sync() {
+            const next = topmost(openRoots());
+            if (next === activeModal) return;
+            const opening = next && !activeModal, closing = activeModal && !next;
+            if (opening) {
+                // The trigger is whatever was focused just before the dialog opened. Prefer the
+                // focusin-tracked value; fall back to activeElement (the open runs before the
+                // dialog's own deferred focus). Never restore to something inside the dialog.
+                const cand = lastExternalFocus || document.activeElement;
+                returnFocus = (cand && !next.contains(cand)) ? cand : null;
+            }
+            activeModal = next;
+            if (next) {
+                // defer so an opener that focuses its own field (e.g. the search input) wins
+                setTimeout(() => {
+                    if (activeModal !== next || next.contains(document.activeElement)) return;
+                    const dialog = next.querySelector('[role="dialog"]');
+                    if (dialog) { if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1'); try { dialog.focus({ preventScroll: true }); } catch (_) {} return; }
+                    const t = focusables(next)[0];
+                    if (t && t.focus) { try { t.focus({ preventScroll: true }); } catch (_) {} }
+                }, 50);
+            } else if (closing) {
+                const t = returnFocus; returnFocus = null;
+                if (t && t.isConnected && typeof t.focus === 'function') { try { t.focus({ preventScroll: true }); } catch (_) {} }
+            }
+        }
+        // Track the last focus OUTSIDE any modal — that's the trigger we restore to on close.
+        document.addEventListener('focusin', (e) => { if (!activeModal || !activeModal.contains(e.target)) lastExternalFocus = e.target; });
+        // Tab cycles within the active dialog; boundaries wrap; focus that escaped is pulled back.
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab' || !activeModal) return;
+            const f = focusables(activeModal);
+            if (!f.length) { e.preventDefault(); return; }
+            const first = f[0], last = f[f.length - 1], a = document.activeElement;
+            if (!activeModal.contains(a)) { e.preventDefault(); first.focus({ preventScroll: true }); return; }
+            if (e.shiftKey && a === first) { e.preventDefault(); last.focus({ preventScroll: true }); }
+            else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus({ preventScroll: true }); }
+        });
+        function start() {
+            new MutationObserver(sync).observe(document.body, { childList: true });
+            STATIC_IDS.forEach((id) => { const el = document.getElementById(id); if (el) new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ['class'] }); });
+            sync();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    })();
     document.addEventListener('click', closeNavMenus);
     // "About" footer/nav link → reveal the founder section (works from any view/page).
     function showAboutSection() {
