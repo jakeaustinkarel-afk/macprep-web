@@ -1775,7 +1775,8 @@
         }
     }
     function smTile(cls, cat, title, desc, count, onclick, tag) {
-        return `<button type="button" class="sm-tile ${cls}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag${/Premium/.test(tag) ? ' locked' : ''}">${tag}</span>` : ''}</div>`
+        const locked = /Premium/.test(tag || '');
+        return `<button type="button" class="sm-tile ${cls}${locked ? ' sm-locked' : ''}" onclick="${onclick}"><div class="sm-cat">${cat}${tag ? ` <span class="sm-tag${locked ? ' locked' : ''}">${tag}</span>` : ''}</div>`
             + `<div class="sm-title">${title}</div>${desc ? `<div class="sm-desc">${desc}</div>` : ''}${count ? `<div class="sm-count">${count}</div>` : ''}</button>`;
     }
     function renderStudyModes() {
@@ -2933,6 +2934,16 @@
             const idx = Number(b.dataset.index);
             if (idx === data.correctIndex) { b.style.borderColor = 'var(--accent)'; b.style.background = 'var(--accent-dim)'; }
             else if (idx === selectedIndex) { b.style.borderColor = 'var(--danger)'; b.style.background = 'var(--danger-dim)'; }
+            // Persistent ✓/✗ on the correct answer + your pick, independent of rationales —
+            // so right/wrong never depends on color alone (accessibility / colorblind users).
+            if (idx === data.correctIndex || idx === selectedIndex) {
+                const isC = idx === data.correctIndex;
+                const badge = document.createElement('span');
+                badge.textContent = isC ? '✓' : '✗';
+                badge.setAttribute('aria-label', isC ? ' correct answer' : ' your answer, incorrect');
+                badge.style.cssText = 'float:right;margin-left:10px;font-weight:800;color:' + (isC ? GRADE_GREEN : GRADE_RED) + ';';
+                b.appendChild(badge);
+            }
             let anchor = b;
             if (rationales[idx]) {
                 const r = document.createElement('div');
@@ -3123,7 +3134,7 @@
             else if (answered) { bg = 'var(--line)'; col = 'var(--text)'; }
             const border = (i === s.index) ? 'var(--accent)' : bc;
             const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:var(--warn);font-size:10px;">★</span>' : '';
-            return `<button type="button" aria-label="Question ${i + 1}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:32px;height:32px;border:2px solid ${border};background:${bg};color:${col};border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}</button>`;
+            return `<button type="button" class="qpal-cell" aria-label="Question ${i + 1}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:34px;height:34px;border:2px solid ${border};background:${bg};color:${col};border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}</button>`;
         }).join('');
     }
 
