@@ -341,6 +341,7 @@
         }
         go('dashboard');
         maybeHandleCheckoutReturn();
+        initNativePush(); // native store apps: refresh the push token for already-opted-in users
         const _credAsked = maybePromptCredential(); // one-time credential capture (priority) for accounts made before we asked
         if (!_credAsked) maybePromptForName(); // returning users who never saved a first+last name
         const _duelLink = /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
@@ -3974,19 +3975,78 @@
     async function currentPushSub() {
         try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
     }
+    // ---- Native push (Capacitor store apps) — @capacitor/push-notifications.
+    // iOS surfaces a raw APNs token, Android an FCM token; both POST to the server.
+    // Fully inert in a browser (window.Capacitor absent) so the Web Push path below is untouched.
+    function isNativeApp() { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+    function nativePush() { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null; }
+    let _nativeListenersBound = false;
+    function bindNativePushListeners() {
+        const p = nativePush(); if (!p || _nativeListenersBound) return; _nativeListenersBound = true;
+        try {
+            // Fires after register() and on every APNs/FCM token refresh → keep the server current.
+            p.addListener('registration', (t) => {
+                const token = t && t.value; if (!token) return;
+                const platform = (window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || 'ios';
+                apiJSON('/api/push/register-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ token, platform }) }).catch(() => {});
+            });
+            p.addListener('registrationError', (e) => { console.warn('native push registration error', e); });
+        } catch (e) { /* not a native platform */ }
+    }
+    // On launch, refresh the token for users who already opted in (never auto-registers otherwise).
+    function initNativePush() {
+        if (!isNativeApp() || localStorage.getItem('macprep_reminders_on') !== '1') return;
+        bindNativePushListeners();
+        const p = nativePush(); if (p) p.register().catch(() => {});
+    }
+
     async function refreshRemindersUI() {
         const card = $('reminders-card'); if (!card) return;
+        const btn = $('reminders-btn'), msg = $('reminders-msg');
+        if (isNativeApp()) {
+            const cfg = await pushConfig();
+            if (!cfg.native) { card.classList.add('hidden'); return; } // dormant until native keys are set
+            card.classList.remove('hidden');
+            const on = localStorage.getItem('macprep_reminders_on') === '1';
+            if (btn) btn.textContent = on ? 'Turn off reminders' : 'Enable reminders';
+            if (msg) msg.textContent = on ? 'On — you’ll be nudged when reviews are due.' : '';
+            return;
+        }
         if (!pushSupported()) { card.classList.add('hidden'); return; }
         const cfg = await pushConfig();
         if (!cfg.enabled) { card.classList.add('hidden'); return; } // dormant until VAPID keys are set on the server
         card.classList.remove('hidden');
         const sub = await currentPushSub();
-        const btn = $('reminders-btn'), msg = $('reminders-msg');
         if (btn) btn.textContent = sub ? 'Turn off reminders' : 'Enable reminders';
         if (msg) msg.textContent = sub ? 'On — you’ll be nudged when reviews are due.' : (Notification.permission === 'denied' ? 'Notifications are blocked in your browser settings.' : '');
     }
     async function toggleReminders() {
         const btn = $('reminders-btn'), msg = $('reminders-msg');
+        if (isNativeApp()) {
+            const p = nativePush();
+            const cfg = await pushConfig();
+            if (!p || !cfg.native) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }
+            const on = localStorage.getItem('macprep_reminders_on') === '1';
+            if (btn) btn.disabled = true;
+            try {
+                if (on) {
+                    try { await apiJSON('/api/push/unregister-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({}) }); } catch (e) {}
+                    localStorage.removeItem('macprep_reminders_on');
+                    toast('Study reminders off.');
+                } else {
+                    let st = await p.checkPermissions();
+                    if (st.receive !== 'granted') st = await p.requestPermissions();
+                    if (st.receive !== 'granted') { if (msg) msg.textContent = 'Allow notifications to turn on reminders.'; return; }
+                    bindNativePushListeners();
+                    await p.register(); // fires 'registration' → POST /api/push/register-native
+                    localStorage.setItem('macprep_reminders_on', '1');
+                    toast('Study reminders on ✓');
+                }
+            } catch (e) { if (msg) msg.textContent = 'Could not update reminders: ' + (e.message || e); }
+            finally { if (btn) btn.disabled = false; refreshRemindersUI(); }
+            return;
+        }
+        // ---- Web Push (browsers / installed PWA) ----
         if (!pushSupported()) { if (msg) msg.textContent = 'This browser doesn’t support notifications.'; return; }
         const cfg = await pushConfig();
         if (!cfg.enabled) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }

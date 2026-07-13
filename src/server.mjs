@@ -12,6 +12,9 @@ import Stripe from 'stripe';
 import { randomBytes, createHmac, createHash } from 'crypto';
 import * as Sentry from '@sentry/node';
 import webpush from 'web-push';
+import { initializeApp as fbInitApp, cert as fbCert, getApps as fbGetApps } from 'firebase-admin/app';
+import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
+import apn from '@parse/node-apn';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -425,6 +428,33 @@ if (PUSH_ENABLED) {
     try { webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY); console.log('[push] web-push configured'); }
     catch (e) { console.error('[push] VAPID config failed:', e.message); }
 }
+
+// Native push (App Store / Play Store apps) — SPLIT channel because the iOS project
+// is SPM-only (Firebase's iOS SDK can't cleanly resolve there): iOS APNs tokens are
+// sent with the .p8 via @parse/node-apn; Android FCM tokens via firebase-admin.
+// Both stay dormant until their secrets are set, mirroring the VAPID gate above.
+const FCM_ENABLED = !!process.env.FIREBASE_SERVICE_ACCOUNT;
+const APNS_ENABLED = !!(process.env.APNS_KEY_P8 && process.env.APNS_KEY_ID && process.env.APPLE_TEAM_ID);
+const NATIVE_PUSH_ENABLED = FCM_ENABLED || APNS_ENABLED;
+const APNS_BUNDLE_ID = process.env.APNS_BUNDLE_ID || 'org.macprep.app';
+let fcm = null, apnProvider = null;
+if (FCM_ENABLED) {
+    try {
+        const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        // Only needed if a secret UI double-escaped the newlines; harmless otherwise.
+        if (sa.private_key && sa.private_key.includes('\\n')) sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+        if (!fbGetApps().length) fbInitApp({ credential: fbCert(sa) });
+        fcm = fbGetMessaging();
+        console.log('[native-push] FCM (Android) configured');
+    } catch (e) { console.error('[native-push] FCM init failed:', e.message); }
+}
+if (APNS_ENABLED) {
+    try {
+        apnProvider = new apn.Provider({ token: { key: process.env.APNS_KEY_P8, keyId: process.env.APNS_KEY_ID, teamId: process.env.APPLE_TEAM_ID }, production: process.env.APNS_PRODUCTION !== 'false' });
+        console.log(`[native-push] APNs (iOS) configured (production:${process.env.APNS_PRODUCTION !== 'false'})`);
+    } catch (e) { console.error('[native-push] APNs init failed:', e.message); }
+}
+
 function unsubLink(userId) { return `${BASE_URL}/api/unsubscribe?u=${encodeURIComponent(userId)}&t=${unsubToken(userId)}`; }
 function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -497,22 +527,28 @@ async function sendRetentionNudges(opts) {
     return { sent, eligible, candidates: userIds.length };
 }
 
-// Push reminders — same eligibility as the email nudge (due questions, not active in
-// 18h, ~20h per-subscription throttle), but delivered as a Web Push notification to
-// anyone who enabled reminders. Dormant unless VAPID keys are configured.
-async function sendPushReminders() {
-    if (!PUSH_ENABLED || !supabase) return { error: 'push not configured' };
-    const nowIso = new Date().toISOString();
-    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', nowIso).limit(20000);
+// Shared eligibility for every reminder channel (email / web push / native push):
+// users with due reviews who haven't studied in 18h. Returns per-user due counts
+// plus the inactive user ids. Each channel then applies its own 20h throttle.
+async function computeReminderTargets() {
+    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', new Date().toISOString()).limit(20000);
     const counts = {};
     (due || []).forEach((r) => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
     const targetIds = Object.keys(counts);
-    if (!targetIds.length) return { sent: 0, candidates: 0 };
+    if (!targetIds.length) return { counts, inactive: [] };
     const activeCutoff = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
     const { data: active } = await supabase.from(PROGRESS_TABLE).select('user_id').gte('created_at', activeCutoff).limit(20000);
     const activeSet = new Set((active || []).map((r) => r.user_id));
-    const inactive = targetIds.filter((uid) => !activeSet.has(uid));
-    if (!inactive.length) return { sent: 0, candidates: targetIds.length };
+    return { counts, inactive: targetIds.filter((uid) => !activeSet.has(uid)) };
+}
+function reminderBody(n) { return n ? `${n} question${n === 1 ? '' : 's'} due for review — keep your streak alive.` : 'Time for a quick review session.'; }
+
+// Web Push reminders (installed PWAs + browsers). Dormant unless VAPID keys are set.
+async function sendPushReminders() {
+    if (!PUSH_ENABLED || !supabase) return { error: 'push not configured' };
+    const nowIso = new Date().toISOString();
+    const { counts, inactive } = await computeReminderTargets();
+    if (!inactive.length) return { sent: 0, candidates: Object.keys(counts).length };
     const throttle = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
     const { data: subs } = await supabase.from('push_subscriptions')
         .select('id, user_id, subscription, last_pushed_at')
@@ -521,12 +557,7 @@ async function sendPushReminders() {
     for (const s of (subs || [])) {
         if (s.last_pushed_at && s.last_pushed_at > throttle) continue;
         eligible++;
-        const n = counts[s.user_id] || 0;
-        const payload = JSON.stringify({
-            title: 'MACPrep',
-            body: n ? `${n} question${n === 1 ? '' : 's'} due for review — keep your streak alive.` : 'Time for a quick review session.',
-            url: '/', tag: 'macprep-review',
-        });
+        const payload = JSON.stringify({ title: 'MACPrep', body: reminderBody(counts[s.user_id] || 0), url: '/', tag: 'macprep-review' });
         try {
             await webpush.sendNotification(s.subscription, payload);
             await supabase.from('push_subscriptions').update({ last_pushed_at: nowIso }).eq('id', s.id);
@@ -537,13 +568,77 @@ async function sendPushReminders() {
             else { console.error('[push] send failed:', s.user_id, e.statusCode || e.message); }
         }
     }
-    return { sent, eligible, candidates: targetIds.length };
+    return { sent, eligible, candidates: Object.keys(counts).length };
+}
+
+// One APNs push to a set of the SAME user's iOS token (personalized body).
+async function apnsSendOne(t, body, nowIso) {
+    const note = new apn.Notification();
+    note.topic = APNS_BUNDLE_ID;
+    note.alert = { title: 'MACPrep', body };
+    note.sound = 'default';
+    note.payload = { url: '/' };
+    note.expiry = Math.floor(Date.now() / 1000) + 3600;
+    const res = await apnProvider.send(note, t.token);
+    if (res.sent && res.sent.length) { if (nowIso) await supabase.from('native_device_tokens').update({ last_pushed_at: nowIso }).eq('id', t.id).then(() => {}, () => {}); return true; }
+    for (const f of (res.failed || [])) {
+        const reason = (f.response && f.response.reason) || '';
+        if (['Unregistered', 'BadDeviceToken', 'DeviceTokenNotForTopic'].includes(reason)) await supabase.from('native_device_tokens').delete().eq('id', t.id).then(() => {}, () => {});
+        else console.error('[native-push] apns failed:', reason || (f.error && f.error.message));
+    }
+    return false;
+}
+// One FCM push to the SAME user's Android token (personalized body).
+async function fcmSendOne(t, body, nowIso) {
+    try {
+        await fcm.send({ token: t.token, notification: { title: 'MACPrep', body }, data: { url: '/' }, android: { priority: 'high', notification: { color: '#146A4A' } } });
+        if (nowIso) await supabase.from('native_device_tokens').update({ last_pushed_at: nowIso }).eq('id', t.id).then(() => {}, () => {});
+        return true;
+    } catch (e) {
+        if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-argument') await supabase.from('native_device_tokens').delete().eq('id', t.id).then(() => {}, () => {});
+        else console.error('[native-push] fcm failed:', e.code || e.message);
+        return false;
+    }
+}
+// Native reminders — same eligibility, delivered to store-app devices. iOS via APNs
+// (.p8 / node-apn), Android via FCM (firebase-admin). Dormant unless native env set.
+async function sendNativeReminders() {
+    if (!NATIVE_PUSH_ENABLED || !supabase) return { error: 'native push not configured' };
+    const nowIso = new Date().toISOString();
+    const { counts, inactive } = await computeReminderTargets();
+    if (!inactive.length) return { sent: 0, candidates: Object.keys(counts).length };
+    const throttle = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
+    const { data: toks } = await supabase.from('native_device_tokens')
+        .select('id, user_id, token, platform, last_pushed_at')
+        .in('user_id', inactive.slice(0, 1000));
+    let sent = 0, eligible = 0;
+    for (const t of (toks || [])) {
+        if (t.last_pushed_at && t.last_pushed_at > throttle) continue;
+        const body = reminderBody(counts[t.user_id] || 0);
+        if (t.platform === 'ios' && apnProvider) { eligible++; if (await apnsSendOne(t, body, nowIso)) sent++; }
+        else if (t.platform === 'android' && fcm) { eligible++; if (await fcmSendOne(t, body, nowIso)) sent++; }
+    }
+    return { sent, eligible, candidates: Object.keys(counts).length };
+}
+// One-off test push to a user's OWN native devices (admin test path).
+async function sendNativeTest(userId) {
+    if (!NATIVE_PUSH_ENABLED || !supabase) return 0;
+    const { data: toks } = await supabase.from('native_device_tokens').select('id, token, platform').eq('user_id', userId);
+    let sent = 0;
+    for (const t of (toks || [])) {
+        const body = 'Test push — reminders are working ✓';
+        if (t.platform === 'ios' && apnProvider) { if (await apnsSendOne(t, body, null)) sent++; }
+        else if (t.platform === 'android' && fcm) { if (await fcmSendOne(t, body, null)) sent++; }
+    }
+    return sent;
 }
 
 // Expose the VAPID public key so the client can subscribe (returns enabled:false if keys aren't set).
 app.get('/api/push/vapid-public', (req, res) => {
-    if (!PUSH_ENABLED) return res.json({ enabled: false });
-    res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY });
+    // `native` is surfaced even when VAPID is unset so the store apps can show the
+    // reminders card off the native flag alone.
+    if (!PUSH_ENABLED) return res.json({ enabled: false, native: NATIVE_PUSH_ENABLED });
+    res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY, native: NATIVE_PUSH_ENABLED });
 });
 app.post('/api/push/subscribe', async (req, res) => {
     const user = await getUserFromToken(req);
@@ -564,6 +659,30 @@ app.post('/api/push/unsubscribe', async (req, res) => {
         const endpoint = req.body?.endpoint;
         if (endpoint) await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id);
         else await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+        return res.json({ success: true });
+    } catch (e) { return res.status(500).json({ error: 'Could not remove.' }); }
+});
+
+// Native store-app device tokens (@capacitor/push-notifications): iOS APNs / Android FCM.
+app.post('/api/push/register-native', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    const { token, platform } = req.body || {};
+    if (!token || (platform !== 'ios' && platform !== 'android')) return res.status(400).json({ error: 'Bad token.' });
+    try {
+        await supabase.from('native_device_tokens').upsert({ user_id: user.id, token, platform, updated_at: new Date().toISOString() }, { onConflict: 'token' });
+        return res.json({ success: true });
+    } catch (e) { console.error('[native-push] register failed:', e.message); return res.status(500).json({ error: 'Could not save.' }); }
+});
+app.post('/api/push/unregister-native', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    try {
+        const token = req.body?.token;
+        if (token) await supabase.from('native_device_tokens').delete().eq('token', token).eq('user_id', user.id);
+        else await supabase.from('native_device_tokens').delete().eq('user_id', user.id);
         return res.json({ success: true });
     } catch (e) { return res.status(500).json({ error: 'Could not remove.' }); }
 });
@@ -590,19 +709,23 @@ app.post('/api/admin/run-nudges', async (req, res) => {
         }
         // { pushTest: true } sends a push to the admin's own devices right now (once VAPID keys are set).
         if (req.body?.pushTest) {
-            if (!PUSH_ENABLED) return res.json({ error: 'push not configured — set VAPID keys' });
-            const { data: subs } = await supabase.from('push_subscriptions').select('id, subscription').eq('user_id', admin.id);
-            let sent = 0;
-            for (const s of (subs || [])) {
-                try { await webpush.sendNotification(s.subscription, JSON.stringify({ title: 'MACPrep', body: 'Test push — reminders are working ✓', url: '/', tag: 'macprep-test' })); sent++; }
-                catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => {}, () => {}); }
+            if (!PUSH_ENABLED && !NATIVE_PUSH_ENABLED) return res.json({ error: 'push not configured — set VAPID and/or native keys' });
+            let webSent = 0;
+            if (PUSH_ENABLED) {
+                const { data: subs } = await supabase.from('push_subscriptions').select('id, subscription').eq('user_id', admin.id);
+                for (const s of (subs || [])) {
+                    try { await webpush.sendNotification(s.subscription, JSON.stringify({ title: 'MACPrep', body: 'Test push — reminders are working ✓', url: '/', tag: 'macprep-test' })); webSent++; }
+                    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => {}, () => {}); }
+                }
             }
-            return res.json({ ok: true, push_test_sent: sent, subscriptions: (subs || []).length });
+            const nativeSent = await sendNativeTest(admin.id);
+            return res.json({ ok: true, web_test_sent: webSent, native_test_sent: nativeSent });
         }
         const dry = !!req.body?.dry;
         const email = await sendRetentionNudges({ dry });
         const push = (!dry && PUSH_ENABLED) ? await sendPushReminders() : { skipped: dry ? 'dry-run (no push sent)' : 'push not configured' };
-        res.json({ email, push });
+        const push_native = (!dry && NATIVE_PUSH_ENABLED) ? await sendNativeReminders() : { skipped: dry ? 'dry-run (no native push sent)' : 'native push not configured' };
+        res.json({ email, push, push_native });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -692,7 +815,7 @@ app.get('/api/admin/metrics', async (req, res) => {
 
 // Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
 // a US-morning window; the per-user 20h throttle makes restarts safe.
-if (RESEND_API_KEY || PUSH_ENABLED) {
+if (RESEND_API_KEY || PUSH_ENABLED || NATIVE_PUSH_ENABLED) {
     let _lastNudgeDay = null;
     setInterval(async () => {
         try {
@@ -703,10 +826,11 @@ if (RESEND_API_KEY || PUSH_ENABLED) {
                 _lastNudgeDay = day;
                 if (RESEND_API_KEY) { const r = await sendRetentionNudges(); console.log(`[nudges] daily email run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} due)`); }
                 if (PUSH_ENABLED) { const rp = await sendPushReminders(); console.log(`[push] daily run: sent ${rp.sent}/${rp.eligible} eligible (${rp.candidates} due)`); }
+                if (NATIVE_PUSH_ENABLED) { const rn = await sendNativeReminders(); console.log(`[native-push] daily run: sent ${rn.sent}/${rn.eligible} eligible (${rn.candidates} due)`); }
             }
         } catch (e) { console.error('[nudges] scheduler error:', e.message); }
     }, 30 * 60 * 1000);
-    console.log(`[nudges] daily reminder scheduler active (email:${!!RESEND_API_KEY} push:${PUSH_ENABLED})`);
+    console.log(`[nudges] daily reminder scheduler active (email:${!!RESEND_API_KEY} push:${PUSH_ENABLED} native:${NATIVE_PUSH_ENABLED})`);
 }
 
 // ---------------------------------------------------------------------------
