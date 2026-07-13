@@ -1,160 +1,72 @@
 # Push Notifications — Setup Runbook
 
-MACPrep has **two independent push channels**. They do not overlap, and each
-reaches a different set of users:
+MACPrep has **two independent push channels**, each reaching a different set of users:
 
-| Channel | Reaches | Status | Blocked on |
-| --- | --- | --- | --- |
-| **Web Push (VAPID)** | Installed PWA (iOS 16.4+ home-screen, Android, desktop) + browsers | **Code-complete, dormant** | Two env vars (you) |
-| **Native Push (APNs/FCM)** | App Store & Play Store native apps | **Not built** | Apple Developer + Firebase accounts (you) |
+| Channel | Reaches | Status |
+| --- | --- | --- |
+| **Web Push (VAPID)** | Installed PWA (iOS 16.4+ home-screen, Android, desktop) + browsers | ✅ **LIVE** |
+| **Native Push (APNs + FCM)** | App Store & Play Store native apps | 🔧 Code shipped (gated) — pending accounts + store resubmit |
 
-> **Why two?** The native apps are a Capacitor WebView shell that loads the live
-> site. Web Push (the service-worker Push API) **does not fire inside a WebView**
-> — so anyone who installs the *store app* gets nothing from Web Push. Store apps
-> need the native APNs (Apple) / FCM (Android) path. The installed *PWA* uses Web
-> Push. Most users are covered by one or the other.
+> **Why two?** The native apps are a Capacitor WebView shell. Web Push does **not** fire inside a WebView, so store-app users need the native APNs (iOS) / FCM (Android) path. The installed PWA uses Web Push. Both coexist.
 
 ---
 
-## PART A — Turn on Web Push (do this now · ~10 min · no paid accounts)
+## PART A — Web Push ✅ DONE
 
-Everything is already built: service-worker handlers, the subscribe/unsubscribe
-flow, the `push_subscriptions` table, a daily reminder scheduler, and an admin
-test trigger. It is all gated behind one flag: `PUSH_ENABLED = VAPID keys set`.
+VAPID keys are set on Render, `/api/push/vapid-public` returns `enabled:true`, and the full pipeline (service worker, subscribe flow, `sendPushReminders`, daily scheduler, admin test) is live for installed-PWA/browser users.
 
-### A1. Generate a VAPID keypair
-
-Run this on your own machine (keeps the private key off everyone else's):
-
-```bash
-npx web-push generate-vapid-keys
-```
-
-It prints a `Public Key:` and `Private Key:`. The **private key is a secret** —
-never commit it, never paste it in chat or a ticket.
-
-### A2. Set three env vars on Render
-
-In the Render dashboard → your service → **Environment**:
-
-```
-VAPID_PUBLIC_KEY   = <the Public Key from A1>
-VAPID_PRIVATE_KEY  = <the Private Key from A1>   ← secret
-VAPID_SUBJECT      = mailto:support@macprep.org  (optional; this is the default)
-```
-
-Save → Render redeploys. On boot the log prints `[push] web-push configured`.
-(Names are also documented in `.env.example`.)
-
-### A3. Verify it went live
-
-```bash
-curl -s https://www.macprep.org/api/push/vapid-public
-# before: {"enabled":false}
-# after : {"enabled":true,"publicKey":"B..."}
-```
-
-Then, signed in, open **Profile** — the "Study reminders" card now appears
-(it self-hides while `enabled:false`). Toggle it on → allow the browser prompt →
-a row lands in `push_subscriptions`.
-
-### A4. Send yourself a test push
-
-As an admin (owner-email allowlist), from the browser console while signed in:
-
+**To send yourself a test** (signed-in admin, browser console):
 ```js
-fetch('/api/admin/run-nudges', {
-  method:'POST',
+fetch('/api/admin/run-nudges',{method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.macprep_token},
-  body: JSON.stringify({ pushTest:true })
-}).then(r=>r.json()).then(console.log)
+  body:JSON.stringify({pushTest:true})}).then(r=>r.json()).then(console.log)
+// → { ok:true, web_test_sent:N, native_test_sent:M }
 ```
-
-You should get a notification within a second or two. That proves the entire
-pipeline end-to-end.
-
-> **After A2, tell me and I'll run the end-to-end verification with you** (confirm
-> `enabled:true`, watch the subscribe row land, fire the test).
 
 ---
 
-## PART B — Native Push for the store apps (needs your accounts)
+## PART B — Native Push (store apps)
 
-This is the part that is genuinely blocked. **Do not install the push plugin
-before Firebase is set up** — the Android build breaks without
-`google-services.json`. Order matters; follow it top to bottom.
+**Architecture: SPLIT** (chosen after a research + adversarial-verify pass — the SPM-only iOS project can't cleanly take Firebase's iOS SDK):
 
-### B1. Apple side (iOS) — requires Apple Developer Program ($99/yr)
+- **iOS** → `@capacitor/push-notifications` → raw **APNs** token → server sends via the **`.p8`** (`@parse/node-apn`). **iOS never touches Firebase.**
+- **Android** → same plugin → **FCM** token → server sends via **`firebase-admin`**.
+- One client plugin, two server send paths keyed off `native_device_tokens.platform`. All server/client code is **shipped and gated** — dormant until the env vars below are set.
 
-1. Enroll at <https://developer.apple.com/programs/> (business entity or individual).
-2. **Certificates, Identifiers & Profiles → Identifiers →** register App ID
-   `org.macprep.app` and check **Push Notifications**.
-3. **Keys → +** → create an **APNs Auth Key**. Download the `.p8` (one download
-   only). Record the **Key ID** and your **Team ID**.
+### B1. Firebase — Android only (Jake)
+1. Create the Firebase project (Analytics off is fine).
+2. Add an **Android** app, package `org.macprep.app` → download **`google-services.json`** → place at `mobile/android/app/google-services.json`.
+3. **Project settings → Service accounts → Generate new private key** → save the JSON (secret).
+4. **Do NOT** add an iOS app or upload the `.p8` to Firebase — iOS uses APNs directly.
 
-### B2. Firebase side (Android + optionally iOS) — free
+### B2. Apple (Jake) — already done
+App ID `org.macprep.app` has Push enabled; APNs key `628C32F7L4` created; Team `KHDCN5PKGG`. The `.p8` goes to **Render** (below), not Firebase. In Xcode (Claude will drive): sign with Team `KHDCN5PKGG`, add Push Notifications + Background Modes → Remote notifications.
 
-1. Create a Firebase project at <https://console.firebase.google.com/>.
-2. Add an **Android app** with package name `org.macprep.app` → download
-   **`google-services.json`** → place it at `mobile/android/app/google-services.json`
-   (the Gradle plugin is already pre-wired to pick it up).
-3. (If routing iOS through Firebase too — recommended, one send path for both):
-   **Project settings → Cloud Messaging → Apple app config →** upload the APNs
-   `.p8` from B1 with its Key ID + Team ID.
-4. **Project settings → Service accounts →** generate a private key JSON (this is
-   the server's send credential — a secret, stored as a Render env var, never
-   committed).
+### B3. Render env vars (Jake — Environment tab, then redeploy)
+```
+FIREBASE_SERVICE_ACCOUNT = <the full service-account JSON, minified to one line>   # Android FCM
+APNS_KEY_P8              = <full .p8 contents incl. the -----BEGIN/END PRIVATE KEY----- lines>
+APNS_KEY_ID             = 628C32F7L4
+APPLE_TEAM_ID           = KHDCN5PKGG
+APNS_BUNDLE_ID          = org.macprep.app
+APNS_PRODUCTION         = true      # use "false" while testing a dev build from Xcode; "true" for TestFlight/App Store
+```
+Setting these flips `NATIVE_PUSH_ENABLED` on (mirrors the VAPID gate). `firebase-admin` is pinned to v13, so **no Node-22 requirement** — safe on any Render runtime.
 
-### B3. Google Play — requires Play Console ($25 one-time)
+### B4. Native wiring (Claude does, once B1 files exist)
+- `cd mobile && npm i @capacitor/push-notifications@^8.1.1 && npx cap sync`
+- iOS: Xcode capabilities + signing team + two APNs-forwarding methods in `AppDelegate.swift`
+- Android: `POST_NOTIFICATIONS` (Android 13+) — plugin merges it
+- Then a real-device test → TestFlight / Play internal testing.
 
-Enroll at <https://play.google.com/console/> and reserve `org.macprep.app`
-(permanent once submitted).
-
-### B4. Then I wire the code (~20–30 min, all testable once B1–B2 exist)
-
-Once the accounts + files above are in place, I will:
-
-- `npm i @capacitor/push-notifications` in `mobile/`, `npx cap sync`.
-- iOS: add the Push Notifications capability + `App.entitlements`
-  (`aps-environment`), set the signing team, add APNs registration in
-  `AppDelegate`.
-- Android: `google-services.json` already dropped in → FCM lights up; add
-  `POST_NOTIFICATIONS` handling for Android 13+.
-- Web app: feature-detected native registration (`Capacitor.isNativePlatform()`)
-  that grabs the native token and POSTs it to a new
-  `POST /api/push/register-native` endpoint.
-- Server: a `native_device_tokens` table + a Firebase Admin send path, gated by a
-  `NATIVE_PUSH_ENABLED` flag exactly like the existing `PUSH_ENABLED` pattern.
-- Test on a real device, then hand you the TestFlight / Play internal-testing steps.
-
-> ⚠️ **App Store IAP caveat** (settle before submitting): Apple/Google generally
-> require *their* in-app-purchase system for digital unlocks bought **inside** the
-> app. Current plan keeps Stripe web-only and the apps merely unlock an account
-> that was already purchased on the web. That's an allowed pattern but the app
-> must not show a purchase/upgrade button that leads to Stripe — flag it in review.
+### Gotchas (baked into the code / to remember)
+- **APNs sandbox vs production:** an Xcode-run dev build gets a *sandbox* token that fails against `APNS_PRODUCTION=true` with `BadDeviceToken`. Set `APNS_PRODUCTION=false` for dev testing, `true` for store builds.
+- **Android is silent until `google-services.json` is present** and the app is rebuilt (build stays green without it — guarded apply block).
+- **Native needs a store resubmit** — unlike Web Push, Capacitor OTA doesn't cover new native plugins/capabilities. The server + app.js half is already deployed; native *tokens* only flow after users update the store builds.
+- **IAP:** keep purchases web-only (apps unlock an already-bought account, no in-app "upgrade → Stripe" button) to avoid App Store rejection.
 
 ---
 
 ## Notification policy (recommended defaults)
 
-The audience is working clinicians — **frequency is the brand**. Over-notifying
-is the #1 driver of mutes/uninstalls. Recommended posture:
-
-- **Opt-in, default OFF.** (Already true — users flip the reminders toggle.)
-- **≤ 1 push/day, ≤ 4/week per user.** Merge same-day candidates into one by
-  priority: exam-countdown > spaced-review > streak > quest.
-- **Quiet hours 9pm–8am.** (Current scheduler fires ~US-morning UTC — fine for a
-  US audience; revisit per-user local time before scaling internationally.)
-- **Professional tone**, one emoji max, no fake urgency or shame framing.
-
-**Notification types, by value (build/enable in this order):**
-
-1. **Spaced-review "N due"** — the retention backbone. *Already implemented* —
-   goes live the moment Part A is on.
-2. **Exam-countdown** (30/14/7 days out, keyed to `target_exam_date`) — highest
-   trust-to-annoyance ratio.
-3. **Streak-at-risk** (only for streaks ≥3, on no-activity days).
-4. **Weekly progress recap** (Sunday) — feel-good, low risk.
-5. **Daily-quest / QotD nudge** — gate it; never same day as #1 or #3.
-6. **Re-engagement** for lapsed users (day 7/14/30, then stop).
-7. **Premium/mock-exam** — prefer **in-app**, not push.
+Working-clinician audience — **frequency is the brand.** Opt-in, default OFF (already true). ≤1 push/day, ≤4/week/user; quiet hours 9pm–8am; professional tone. Types by value: (1) spaced-review "N due" *(live)*, (2) exam-countdown, (3) streak-at-risk, (4) weekly recap, (5) daily-quest/QotD, (6) re-engagement (day 7/14/30 then stop), (7) premium — prefer in-app.
