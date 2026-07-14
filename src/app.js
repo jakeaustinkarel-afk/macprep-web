@@ -144,7 +144,7 @@
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
         const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements' }[view];
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements'].forEach((idn) => { const a = $(idn); if (a) a.classList.toggle('nav-active', authed && idn === activeNavId); });
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
         if (authed) { renderSidebarAccount(); applySidebarPref(); }
         // "Redeem code" is only useful to free users (premium/admin already have full access).
         const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
@@ -161,18 +161,48 @@
         if (view === 'leaderboard') loadLeaderboard();
         if (view === 'achievements') renderAchievementsView();
         window.scrollTo(0, 0);
+        a11yEnhanceNav();
+        // A11y (WCAG 2.4.2 / 2.4.3): update the title, announce the route, and move focus into the
+        // new view so VoiceOver/keyboard users aren't stranded on the old control.
+        const _vn = { dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
+        document.title = (authed || view !== 'login') ? `${_vn} — MACPrep` : 'MACPrep — NCCAA Board Review for CAAs & SAAs';
+        try {
+            const _vc = $(view + '-view');
+            if (_vc) { const _h = _vc.querySelector('h1, h2, .view-title') || _vc; if (_h.getAttribute('tabindex') === null) _h.setAttribute('tabindex', '-1'); setTimeout(() => { try { _h.focus({ preventScroll: true }); } catch (e) {} }, 30); }
+        } catch (e) {}
+        try { announce(_vn); } catch (e) {}
     }
 
     // Top-nav dropdown menus (Account / Admin).
     const NAV_MENUS = ['nav-account-menu', 'nav-admin-menu', 'nav-study-menu'];
     function closeNavMenus() {
         NAV_MENUS.forEach((id) => { const m = $(id); if (m) m.classList.add('hidden'); });
+        syncNavExpanded();
     }
     function toggleNavMenu(which, ev) {
         if (ev) ev.stopPropagation();
         const target = 'nav-' + which + '-menu';
         ['theme-menu', 'font-menu'].concat(NAV_MENUS).forEach((id) => { if (id !== target) { const m = $(id); if (m) m.classList.add('hidden'); } });
         const m = $(target); if (m) m.classList.toggle('hidden');
+        syncNavExpanded();
+    }
+    // ---- A11y: make onclick-only nav controls real, keyboard/Voice-Control operable buttons,
+    // and keep aria-expanded on the dropdown triggers in sync (VoiceOver / WCAG 4.1.2).
+    function a11yEnhanceNav() {
+        document.querySelectorAll('.brand-logo, .nav-app, .navdrop a, .nav-acct').forEach((el) => {
+            if (el.tagName === 'A' && el.getAttribute('href')) return; // real links already work
+            if (el.getAttribute('role') === null) el.setAttribute('role', 'button');
+            if (el.getAttribute('tabindex') === null) el.setAttribute('tabindex', '0');
+            if (!el.dataset.kbd) { el.dataset.kbd = '1'; el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }); }
+        });
+        // Items are buttons, not a full arrow-key menu widget — drop the role=menu contract we don't implement.
+        document.querySelectorAll('.navdrop[role="menu"]').forEach((m) => m.removeAttribute('role'));
+    }
+    function syncNavExpanded() {
+        document.querySelectorAll('[aria-haspopup="menu"]').forEach((trig) => {
+            const m = trig.parentElement && trig.parentElement.querySelector('.navdrop');
+            trig.setAttribute('aria-expanded', (m && !m.classList.contains('hidden')) ? 'true' : 'false');
+        });
     }
 
     // ---- auth -------------------------------------------------------------
