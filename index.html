@@ -7,7 +7,7 @@
          affordances, disable external purchase, etc.). Capacitor injects window.Capacitor at document-start. -->
     <script>try{if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())document.documentElement.classList.add('is-native');}catch(e){}</script>
     <script>try{window.__demoQ=fetch('/api/demo/questions').then(function(r){return r.json();}).catch(function(){return null;});}catch(e){}</script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>MACPrep — NCCAA Board Review for CAAs & SAAs</title>
     <meta name="description" content="MACPrep is an in-depth NCCAA board review question bank for student anesthesiologist assistants (SAAs) preparing for the certification exam and Certified Anesthesiologist Assistants (CAAs) reviewing for recertification.">
     <link rel="canonical" href="https://www.macprep.org/">
@@ -1592,6 +1592,16 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed #nav-account-menu{top:auto;bottom:calc(100% + 8px);left:0;right:0;}
         body.app-authed.sidebar-collapsed{padding-left:70px;}
         body.app-authed.sidebar-collapsed .header-bar{width:70px;padding:20px 8px 16px;}
+        /* Edge-to-edge (native, viewport-fit=cover + contentInset:never): the WebView now fills the
+           whole screen, so pad the chrome to clear the notch / Dynamic Island / home indicator.
+           env() insets are 0 on non-notched devices + on the web, so this is a no-op there. */
+        @supports (padding: max(0px)) {
+            body.app-authed .header-bar { padding-top: calc(16px + env(safe-area-inset-top)) !important; }
+            body:not(.app-authed) .header-bar { padding-top: calc(16px + env(safe-area-inset-top)); }
+            body { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+            #quiz-progress-wrap { padding-top: calc(10px + env(safe-area-inset-top)) !important; }
+            #toast { bottom: calc(28px + env(safe-area-inset-bottom)) !important; }
+        }
         body.app-authed.sidebar-collapsed .brand-row{flex-direction:column;gap:12px;margin:0 0 14px;padding:0;justify-content:center;}
         body.app-authed.sidebar-collapsed .brand-logo>span{display:none;}
         body.app-authed.sidebar-collapsed .lbl,body.app-authed.sidebar-collapsed .nav-sec,body.app-authed.sidebar-collapsed .nav-kbd,body.app-authed.sidebar-collapsed .nav-caret,body.app-authed.sidebar-collapsed .nav-acct-meta,body.app-authed.sidebar-collapsed .nav-acct-caret{display:none!important;}
