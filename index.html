@@ -105,6 +105,14 @@
         input, select, textarea { font-size: 16px !important; }
         /* Web-only affordances hidden inside the native shell (no home-screen install in a WebView). */
         html.is-native #pwa-install { display: none !important; }
+        /* On touch (no real hover), :hover latches after a tap and looks "stuck" — neutralize the
+           lift/shadow/brightness; the :active states still provide press feedback. */
+        @media (hover: none) {
+            .btn:hover, .spec-tile:hover, .sm-tile:hover, .pf-card:hover,
+            .choice-option-node:hover, #main-nav a.nav-app:hover {
+                transform: none !important; box-shadow: none !important; filter: none !important;
+            }
+        }
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .tag { font-family: inherit; font-weight: 700; font-size: 11px; color: var(--accent);
             letter-spacing: 2px; text-transform: uppercase; }

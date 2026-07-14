@@ -6,6 +6,13 @@
     "url": "https://www.macprep.org",
     "cleartext": false
   },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#146A4A",
+      "showSpinner": false
+    }
+  },
   "ios": {
     "contentInset": "always",
     "limitsNavigationsToAppBoundDomains": false
