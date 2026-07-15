@@ -545,18 +545,18 @@
             <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — refresh your readiness score</button>`;
     }
 
-    // Refer-a-classmate: a shareable message + the $10-off code (a Stripe promo
+    // Refer-a-classmate: a shareable message + the 20%-off code (a Stripe promo
     // code; checkout already accepts promo codes via allow_promotion_codes).
     const REFERRAL_CODE = 'CLASSMATE10';
     function renderReferral() {
         const el = $('referral-card'); if (!el) return;
         const link = 'https://www.macprep.org/pricing.html';
-        const msg = `Studying for NCCAA boards? MACPrep has cited, CAA-written practice questions — use code ${REFERRAL_CODE} for $10 off at checkout: ${link}`;
+        const msg = `Studying for NCCAA boards? MACPrep has cited, CAA-written practice questions — use code ${REFERRAL_CODE} for 20% off at checkout: ${link}`;
         el.dataset.msg = msg;
         el.className = ''; // slim note, not its own card
         el.style.cssText = 'order:5;margin:0;';
         el.innerHTML = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;">
-                <span>Know a classmate prepping for boards? Share <code style="font-family:ui-monospace,monospace;font-weight:700;color:var(--accent);letter-spacing:.5px;">${REFERRAL_CODE}</code> — they get <strong style="color:var(--text2);">$10 off</strong> at checkout.</span>
+                <span>Know a classmate prepping for boards? Share <code style="font-family:ui-monospace,monospace;font-weight:700;color:var(--accent);letter-spacing:.5px;">${REFERRAL_CODE}</code> — they get <strong style="color:var(--text2);">20% off</strong> at checkout.</span>
                 <a href="#" onclick="event.preventDefault();MACPrep.copyReferral();" style="color:var(--accent);white-space:nowrap;">Copy share message</a>
                 <span id="referral-copied" class="mono" style="font-size:12px;color:var(--accent);"></span>
             </div>`;
@@ -4952,7 +4952,11 @@
                     // in-app browsers (WKWebView) when a visitor opens the site from Instagram/
                     // LinkedIn/Facebook/email — e.g. window.webkit.messageHandlers / sendDataToNative.
                     ignoreErrors: ['Failed to fetch', 'Load failed', 'NetworkError', 'AbortError', 'cancelled',
-                        'messageHandlers', 'window.webkit', 'sendDataToNative', 'sendPageHideMessage'],
+                        'messageHandlers', 'window.webkit', 'sendDataToNative', 'sendPageHideMessage',
+                        // Non-Error promise rejections (empty {}, a CustomEvent, etc.) — Sentry's
+                        // fallback wording is "…captured as promise rejection". These carry no stack
+                        // and are browser-extension / third-party noise, not app bugs. Drop them.
+                        'Non-Error promise rejection captured', 'captured as promise rejection'],
                     denyUrls: [/extension(s)?\//i, /^chrome:\/\//i, /-extension:\/\//i] }); }
                 catch (e) { /* ignore */ }
             };
