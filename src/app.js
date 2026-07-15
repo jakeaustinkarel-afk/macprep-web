@@ -140,8 +140,12 @@
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
-        // "Cohort" (faculty/PD cohort dashboard) — shown to elevated faculty/PD; admins reach it via the Admin menu.
-        $('nav-cohort') && $('nav-cohort').classList.toggle('hidden', !(authed && state.profile && state.profile.can_view_cohort && !isAdmin));
+        $('nav-sec-staff') && $('nav-sec-staff').classList.toggle('hidden', !isAdmin); // "Admin" section header
+        // "My cohort" (faculty/PD cohort dashboard) — its own "Program Director" section;
+        // admins reach the same dashboard via the Admin menu instead.
+        const canCohort = !!(authed && state.profile && state.profile.can_view_cohort && !isAdmin);
+        $('nav-cohort') && $('nav-cohort').classList.toggle('hidden', !canCohort);
+        $('nav-sec-pd') && $('nav-sec-pd').classList.toggle('hidden', !canCohort);
         // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
@@ -1896,11 +1900,32 @@
         if (btn) { btn.setAttribute('aria-expanded', String(open)); btn.classList.toggle('open', open); }
     }
 
+    // Program-director / faculty callout — surfaces the cohort dashboard prominently for
+    // accounts an admin has elevated (never shown to plain students or to admins, who use
+    // the Admin menu). This is the "your cohort" section that appears when a CAA is marked PD.
+    function renderPdCard() {
+        const card = $('dash-pd-card'); if (!card) return;
+        const p = state.profile || {};
+        if (!(p.can_view_cohort && !p.is_admin)) { card.classList.add('hidden'); return; }
+        const prog = p.faculty_program ? escapeHtml(p.faculty_program) : 'your program';
+        const roleLabel = p.is_program_director ? 'program director' : 'faculty member';
+        card.innerHTML = `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+                <div class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:4px;">Program Director</div>
+                <h3 style="margin:0 0 5px;">Your cohort's performance</h3>
+                <p class="sub" style="margin:0;">You're set up as a ${roleLabel} for <strong>${prog}</strong>. See your students' performance by domain, the questions they miss most, and how your cohort compares to all SAAs.</p>
+            </div>
+            <a class="btn" href="/faculty.html" style="white-space:nowrap;">View cohort dashboard →</a>
+        </div>`;
+        card.classList.remove('hidden');
+    }
+
     function renderDashboard() {
         const p = state.profile || {};
         grantAchievementXp(); // award XP for any newly-unlocked achievements (once each)
         $('dash-greeting').textContent = `Welcome${p.full_name ? ', ' + p.full_name.split(' ')[0] : ' back'}`;
         renderMomentum();
+        renderPdCard();
         renderStudyModes();
         renderAchievements();
         renderResumeCard();
@@ -4425,8 +4450,8 @@
     async function reviewQueue() {
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
         go('admin');
-        const t = $('admin-review-title'); if (t) t.textContent = 'Content review';
-        const sub = $('admin-sub'); if (sub) sub.innerHTML = 'One queue for everything awaiting review — new AI-authored questions and proposed answer edits. Publish / Approve applies to the live bank; the original is untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
+        const t = $('admin-review-title'); if (t) { t.style.display = ''; t.textContent = 'Content review'; }
+        const sub = $('admin-sub'); if (sub) { sub.style.display = ''; sub.innerHTML = 'One queue for everything awaiting review — new AI-authored questions and proposed answer edits. Publish / Approve applies to the live bank; the original is untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>'; }
         const an = $('admin-analytics'); if (an) an.classList.add('hidden'); // analytics lives under Metrics only
         loadVouchers();
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
@@ -4711,6 +4736,18 @@
         } catch (e) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; }
     }
 
+    // Admin → "Cohort code generator": jump straight to the voucher generator, with the
+    // content-review queue hidden so it reads as a dedicated cohort-codes screen.
+    async function cohortCodes() {
+        if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
+        go('admin');
+        const t = $('admin-review-title'); if (t) t.style.display = 'none';
+        const sub = $('admin-sub'); if (sub) sub.style.display = 'none';
+        const an = $('admin-analytics'); if (an) an.classList.add('hidden');
+        const body = $('admin-body'); if (body) body.innerHTML = '';
+        await loadVouchers();
+        const v = $('admin-vouchers'); if (v) v.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     async function loadVouchers() {
         const el = $('admin-vouchers'); if (!el) return;
         try {
@@ -4996,7 +5033,7 @@
     window.MACPrep = {
         go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders, setTextSize, toggleContrast, toggleDiffColor,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, flagFromReview, flashcardFromReview, toggleFlashcard, startFlashcardDeck, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
-        smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
+        smartReview, startSample, saveNote, reviewQueue, cohortCodes, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onProfProgramChange,

@@ -631,16 +631,18 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a id="nav-redeem" class="hidden nav-app" onclick="MACPrep.goRedeem()" title="Redeem a class or cohort code" style="color:var(--accent);"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><rect x="2.5" y="7" width="19" height="5" rx="1"></rect><path d="M12 21V7"></path><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg><span class="lbl">Redeem code</span></a>
             <div class="nav-sec sb-only">Updates</div>
             <a id="nav-whatsnew" class="hidden nav-app" onclick="MACPrep.openWhatsNew()" title="What's New" style="position:relative;"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z"></path></svg><span class="lbl">What's New</span><span id="wn-dot" style="display:none;position:absolute;top:50%;right:12px;transform:translateY(-50%);width:7px;height:7px;border-radius:50%;background:var(--accent);"></span></a>
-            <div class="nav-sec sb-only" id="nav-sec-staff">Staff</div>
+            <div class="nav-sec sb-only hidden" id="nav-sec-staff">Admin</div>
             <span id="nav-admin-wrap" class="hidden" style="position:relative;">
                 <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('admin', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('admin', event);}" title="Admin"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4-3 6.9-7 8.5C8 18.9 5 16 5 12V6l7-3z"></path></svg><span class="lbl">Admin</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
-                    <a onclick="MACPrep.reviewQueue()">Review queue</a>
                     <a href="/metrics.html">Metrics</a>
+                    <a onclick="MACPrep.reviewQueue()">Items to review</a>
+                    <a onclick="MACPrep.cohortCodes()">Cohort code generator</a>
                     <a href="/faculty.html">Cohort dashboard</a>
                 </div>
             </span>
-            <a id="nav-cohort" class="hidden nav-app" href="/faculty.html" title="Cohort dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="lbl">Cohort</span></a>
+            <div class="nav-sec sb-only hidden" id="nav-sec-pd">Program Director</div>
+            <a id="nav-cohort" class="hidden nav-app" href="/faculty.html" title="Your cohort's metrics"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="lbl">My cohort</span></a>
             <a class="nav-landing" href="#features" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Features</a>
             <a class="nav-landing" href="#pricing" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Pricing</a>
             <a class="nav-landing" href="/guides/" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Guides</a>
@@ -1049,6 +1051,9 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <p class="sub" id="dash-subtitle">Start a recommended session below — or customize your own.</p>
         <!-- Full-width hero -->
         <div class="card" id="momentum-card" style="order:-10;border-color:var(--accent);"></div>
+
+        <!-- Program-director / faculty callout — cohort metrics (shown only for elevated accounts) -->
+        <div class="card hidden" id="dash-pd-card" style="order:-9;border-color:var(--accent);"></div>
 
         <!-- Full-width action / onboarding cards (shown conditionally by state) -->
         <div class="card hidden" id="resume-card" style="order:-8;border-color:var(--line);"></div>
