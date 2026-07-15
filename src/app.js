@@ -128,6 +128,10 @@
         // while the user was away — contradicting the "you can resume it" promise above.
         if (view !== 'quiz') stopExamTimer();
         if (view !== 'login' && !state.token) view = 'login';
+        // Admin view is owner-only. A program director / faculty (or anyone non-admin) can
+        // never land on it — every admin API 403s them anyway, but this closes the direct
+        // go('admin') path so they never even see the shell.
+        if (view === 'admin' && !(state.profile && state.profile.is_admin)) view = 'dashboard';
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell

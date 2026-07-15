@@ -199,7 +199,16 @@
         C.innerHTML = '<div class="loading"><span class="spinner"></span> Loading metrics…</div>';
         try {
             const r = await fetch('/api/admin/metrics', { headers: { Authorization: 'Bearer ' + TOKEN } });
-            if (r.status === 403) { C.innerHTML = signedOut("This account isn't an admin. Sign in with your founder account."); return; }
+            if (r.status === 403) {
+                // Non-admin. If they're a program director / faculty, bounce them to their OWN
+                // cohort dashboard — they never see admin metrics, only their program analytics.
+                try {
+                    const pr = await fetch('/api/user/profile', { headers: { Authorization: 'Bearer ' + TOKEN } });
+                    if (pr.ok) { const pd = await pr.json(); if (pd && pd.profile && pd.profile.can_view_cohort && !pd.profile.is_admin) { location.replace('/faculty.html'); return; } }
+                } catch (e) {}
+                C.innerHTML = signedOut("This account isn't an admin. Sign in with your founder account.");
+                return;
+            }
             if (!r.ok) throw new Error('HTTP ' + r.status);
             render(await r.json());
         } catch (e) { C.innerHTML = '<div class="center" style="color:var(--bad)">Couldn\'t load metrics: ' + esc(e.message) + '</div>'; }
