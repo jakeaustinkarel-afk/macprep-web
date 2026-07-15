@@ -156,7 +156,7 @@
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         closeNavMenus();
         if (view === 'dashboard') { renderDashboard(); renderDailyQuests(); checkLevelUp(); }
-        if (view === 'profile') renderProfile();
+        if (view === 'profile') { renderProfile(); renderA11yControls(); }
         if (view === 'notebook') loadNotebook();
         if (view === 'leaderboard') loadLeaderboard();
         if (view === 'achievements') renderAchievementsView();
@@ -203,6 +203,18 @@
             const m = trig.parentElement && trig.parentElement.querySelector('.navdrop');
             trig.setAttribute('aria-expanded', (m && !m.classList.contains('hidden')) ? 'true' : 'false');
         });
+    }
+    // ---- Opt-in accessibility controls (Profile → Accessibility). window.setA11y (head script)
+    // persists the pref + sets the <html> data-attr that drives the CSS; these drive the button UI.
+    function setTextSize(v) { if (window.setA11y) window.setA11y('textsize', v); renderA11yControls(); }
+    function toggleContrast() { if (window.setA11y) window.setA11y('contrast', window.getA11y('contrast') === 'high' ? '' : 'high'); renderA11yControls(); }
+    function toggleDiffColor() { if (window.setA11y) window.setA11y('diffcolor', window.getA11y('diffcolor') === 'on' ? '' : 'on'); renderA11yControls(); }
+    function renderA11yControls() {
+        if (!window.getA11y) return;
+        const ts = window.getA11y('textsize') || 'm';
+        document.querySelectorAll('.a11y-ts').forEach((b) => { const on = b.dataset.ts === ts; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+        const cb = $('a11y-contrast-btn'); if (cb) { const on = window.getA11y('contrast') === 'high'; cb.textContent = on ? 'On' : 'Off'; cb.setAttribute('aria-checked', on ? 'true' : 'false'); cb.classList.toggle('active', on); }
+        const db = $('a11y-diff-btn'); if (db) { const on = window.getA11y('diffcolor') === 'on'; db.textContent = on ? 'On' : 'Off'; db.setAttribute('aria-checked', on ? 'true' : 'false'); db.classList.toggle('active', on); }
     }
 
     // ---- auth -------------------------------------------------------------
@@ -3177,7 +3189,11 @@
             else if (answered) { bg = 'var(--line)'; col = 'var(--text)'; }
             const border = (i === s.index) ? 'var(--accent)' : bc;
             const star = flags.has(q.id) ? '<span style="position:absolute;top:-5px;right:-3px;color:var(--warn);font-size:10px;">★</span>' : '';
-            return `<button type="button" class="qpal-cell" aria-label="Question ${i + 1}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:34px;height:34px;border:2px solid ${border};background:${bg};color:${col};border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}</button>`;
+            // State in the aria-label is always on (screen-reader correctness); the visible ✓/✗ cue
+            // only shows when "Differentiate without color" is opted in.
+            const stateLbl = graded ? (graded.correct ? ', correct' : ', incorrect') : (answered ? ', answered' : '');
+            const cue = graded ? `<span class="diff-cue" aria-hidden="true" style="position:absolute;bottom:-5px;right:-4px;font-size:10px;font-weight:800;line-height:1;color:${graded.correct ? 'var(--accent)' : 'var(--bad)'};background:var(--bg);border-radius:6px;padding:0 1px;">${graded.correct ? '✓' : '✗'}</span>` : '';
+            return `<button type="button" class="qpal-cell" aria-label="Question ${i + 1}${stateLbl}" onclick="MACPrep.gotoQuestion(${i})" style="position:relative;width:34px;height:34px;border:2px solid ${border};background:${bg};color:${col};border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer;">${i + 1}${star}${cue}</button>`;
         }).join('');
     }
 
@@ -4842,7 +4858,7 @@
     }
 
     window.MACPrep = {
-        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders,
+        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders, setTextSize, toggleContrast, toggleDiffColor,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, flagFromReview, flashcardFromReview, toggleFlashcard, startFlashcardDeck, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
