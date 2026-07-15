@@ -171,6 +171,15 @@ const ADMIN_EMAILS = new Set(
         .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 );
 const isAdminEmail = (email) => ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
+// App Store / Play review demo accounts — NOT real users. They get full premium
+// browse access (so reviewers can see everything) and are surfaced as program
+// "REVIEW" in admin metrics + exempted from the mandatory program prompt so a
+// reviewer is never blocked by an onboarding gate. Override via REVIEW_EMAILS env.
+const REVIEW_EMAILS = new Set(
+    (process.env.REVIEW_EMAILS || 'applereview@macprep.org')
+        .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+);
+const isReviewEmail = (email) => REVIEW_EMAILS.has(String(email || '').trim().toLowerCase());
 const PROGRESS_TABLE = 'user_progress';
 
 // The legacy mass-generated bank is tagged status='unreviewed'. By default we do
@@ -745,7 +754,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const windowDays = 30;
         const since = new Date(now - windowDays * 86400000).toISOString();
         const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
-            supabase.from(PROFILE_TABLE).select('email, account_tier, credential, target_exam_date, premium_unlocked_at, created_at'),
+            supabase.from(PROFILE_TABLE).select('email, account_tier, credential, target_exam_date, premium_unlocked_at, created_at, training_program, is_program_director'),
             supabase.from('analytics_events').select('name, created_at, meta, user_id').gte('created_at', since).limit(100000),
             supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
@@ -803,9 +812,9 @@ app.get('/api/admin/metrics', async (req, res) => {
 
         // Program (training institution) distribution — how many users belong to each program.
         const progCounts = {};
-        U.forEach((u) => { const p = (u.training_program || '').trim(); if (p) progCounts[p] = (progCounts[p] || 0) + 1; });
+        U.forEach((u) => { const p = isReviewEmail(u.email) ? 'REVIEW' : (u.training_program || '').trim(); if (p) progCounts[p] = (progCounts[p] || 0) + 1; });
         const program_mix = Object.entries(progCounts).map(([program, n]) => ({ program, n })).sort((a, b) => b.n - a.n);
-        const program_unset = U.filter((u) => !(u.training_program || '').trim()).length;
+        const program_unset = U.filter((u) => !isReviewEmail(u.email) && !(u.training_program || '').trim()).length;
 
         res.json({
             generated_at: new Date(now).toISOString(),
@@ -819,7 +828,7 @@ app.get('/api/admin/metrics', async (req, res) => {
             event_counts: ec,
             daily: Object.values(buckets),
             recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
-                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null, program: u.training_program || null })),
+                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null, program: isReviewEmail(u.email) ? 'REVIEW' : (u.training_program || null) })),
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });
@@ -2112,9 +2121,10 @@ app.get('/api/user/profile', async (req, res) => {
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
-                premium_unlocked: profile?.account_tier === 'premium',
+                premium_unlocked: profile?.account_tier === 'premium' || isReviewEmail(profile?.email || user.email),
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
                 is_admin: isAdminEmail(user.email),
+                is_review: isReviewEmail(profile?.email || user.email),
                 full_name: profile?.full_name || '',
                 credential: credCode || '',
                 graduation_date: gradDate || '',
@@ -2194,6 +2204,21 @@ app.post('/api/user/profile', async (req, res) => {
     try {
         const { error } = await supabase.from(PROFILE_TABLE).update(update).eq('user_id', user.id);
         if (error) throw error;
+        // A member picked "Program not listed" and typed a program not yet in the dropdown —
+        // alert the owner (best-effort) + log it so the AA_PROGRAMS roster stays current.
+        if (b.program_unlisted && typeof update.training_program === 'string' && update.training_program.trim()) {
+            const prog = update.training_program.trim();
+            const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            sendEmail({
+                to: Array.from(ADMIN_EMAILS),
+                subject: `MACPrep: new AA program to add — ${prog.slice(0, 80)}`,
+                html: `<p>A member selected <b>Program not listed</b> and entered a program that isn't in the MACPrep dropdown yet:</p>`
+                    + `<p style="font-size:17px;margin:12px 0;"><b>${esc(prog)}</b></p>`
+                    + `<p>Member: ${esc(user.email || user.id)}${update.credential ? ' &middot; ' + esc(update.credential) : ''}</p>`
+                    + `<p style="color:#666;">If it's a real accredited AA program, add it to AA_PROGRAMS in src/app.js (and the outreach roster).</p>`,
+            }).catch((e) => console.error('[program-alert] email failed:', e.message));
+            try { await supabase.from('analytics_events').insert({ name: 'program_not_listed', user_id: user.id, meta: { program: prog } }); } catch (e) { /* non-fatal */ }
+        }
         return res.json({ success: true });
     } catch (err) {
         console.error('Profile update failure:', err.message);

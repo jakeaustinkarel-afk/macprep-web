@@ -2755,29 +2755,83 @@
     function onCredModalChange() {
         const sel = $('cp-cred'), box = $('cp-saa');
         if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
+        const hint = $('cp-prog-hint');
+        if (hint && sel) hint.textContent = sel.value === 'CAA' ? 'Which AA program did you graduate from?' : sel.value === 'SAA' ? 'Which AA program are you attending?' : 'Your AA program.';
     }
-    // Accredited AA training programs (institution-level) for the profile + capture prompt.
+    // Accredited AA training programs, campus-level (multi-campus networks are broken out so
+    // a program/cohort maps to one campus). Keep in sync with the outreach roster
+    // (marketing/program-outreach). "Program not listed" lets a student flag a missing program
+    // → the server emails the owner to add it, keeping this list current as programs open.
+    const PROGRAM_NOT_LISTED = 'Program not listed';
     const AA_PROGRAMS = [
-        'Bluefield University (VCOM)', 'Case Western Reserve University', 'Emory University',
-        'Indiana University', 'Kansas City University', 'Lipscomb University',
-        'Medical College of Wisconsin', 'Northeast Ohio Medical University (NEOMED)',
-        'Nova Southeastern University', 'Ohio Dominican University', 'Saint Louis University',
-        'South University', 'University of Colorado (Anschutz)', 'University of Mary Hardin-Baylor',
-        'University of Missouri–Kansas City', 'University of New Mexico', 'UTHealth Houston (McGovern)',
-        'Other / not listed',
+        'Case Western Reserve University (Cleveland)',
+        'Case Western Reserve University (Houston)',
+        'Case Western Reserve University (Austin)',
+        'Case Western Reserve University (Washington DC)',
+        'Emory University',
+        'Indiana University',
+        'Kansas City University',
+        'Lipscomb University',
+        'Medical College of Wisconsin',
+        'Northeast Ohio Medical University (NEOMED)',
+        'Nova Southeastern University (Fort Lauderdale)',
+        'Nova Southeastern University (Tampa)',
+        'Nova Southeastern University (Orlando)',
+        'Nova Southeastern University (Jacksonville)',
+        'Nova Southeastern University (Denver)',
+        'Nova Southeastern University (Las Vegas)',
+        'Ohio Dominican University',
+        'Saint Louis University',
+        'South University (Savannah)',
+        'South University (West Palm Beach)',
+        'South University (Orlando)',
+        'University of Colorado (Anschutz)',
+        'University of Mary Hardin-Baylor',
+        'University of Missouri–Kansas City',
+        'University of New Mexico',
+        'UTHealth Houston (McGovern)',
+        'VCOM (Auburn)',
+        'VCOM (Carolinas)',
     ];
+    // Old institution-level labels that were split into campuses (or were never a school) —
+    // holders get re-prompted to pick their specific campus on next login.
+    const STALE_PROGRAM_LABELS = new Set([
+        'South University', 'Case Western Reserve University', 'Nova Southeastern University',
+        'Bluefield University (VCOM)', 'Bluefield University', 'Anesthesia Associates of Gainesville',
+        'Other / not listed',
+    ]);
+    function needsProgram(p) {
+        const v = ((p && p.training_program) || '').trim();
+        return !v || STALE_PROGRAM_LABELS.has(v);
+    }
     function programOptions(selected) {
         const cur = selected || '';
-        const extra = (cur && !AA_PROGRAMS.includes(cur)) ? `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>` : '';
-        return `<option value="" ${cur ? '' : 'selected'}>Select your program…</option>` + extra +
-            AA_PROGRAMS.map((pn) => `<option value="${escapeHtml(pn)}" ${pn === cur ? 'selected' : ''}>${escapeHtml(pn)}</option>`).join('');
+        const known = AA_PROGRAMS.includes(cur);
+        // Preserve a genuine custom ("not listed") program so we don't wipe it — but never
+        // resurrect a stale institution-level label (those force a fresh campus pick).
+        const custom = (cur && !known && cur !== PROGRAM_NOT_LISTED && !STALE_PROGRAM_LABELS.has(cur)) ? cur : '';
+        let html = `<option value="" ${cur ? '' : 'selected'}>Select your program…</option>`;
+        html += AA_PROGRAMS.map((pn) => `<option value="${escapeHtml(pn)}" ${pn === cur ? 'selected' : ''}>${escapeHtml(pn)}</option>`).join('');
+        if (custom) html += `<option value="${escapeHtml(custom)}" selected>${escapeHtml(custom)}</option>`;
+        html += `<option value="${PROGRAM_NOT_LISTED}" ${cur === PROGRAM_NOT_LISTED ? 'selected' : ''}>${PROGRAM_NOT_LISTED}</option>`;
+        return html;
+    }
+    // Reveal the "which program?" free-text box when a user picks "Program not listed".
+    function onCpProgramChange() {
+        const sel = $('cp-program'), w = $('cp-other-wrap');
+        if (w) w.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
+    }
+    function onProfProgramChange() {
+        const sel = $('prof-program'), w = $('prof-other-wrap');
+        if (w) w.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
     }
 
     function maybePromptCredential() {
         if (!state.token || !state.profile || state._credPromptOpen) return false;
-        // Prompt if credential is missing OR the training program hasn't been captured yet
-        // (so practicing CAAs who set their credential earlier still get asked their program).
-        if (!state.profile.needs_credential && state.profile.training_program) return false;
+        if (state.profile.is_review) return false;  // never gate the App Review demo account
+        // Prompt if credential is missing OR the training program is missing/stale (so practicing
+        // CAAs, and anyone still on an old institution-level label, get asked their program/campus).
+        if (!state.profile.needs_credential && !needsProgram(state.profile)) return false;
         openCredentialPrompt();
         return true;
     }
@@ -2809,7 +2863,12 @@
                 <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
             </div>
             <label class="mono" style="${lbl}">TRAINING PROGRAM</label>
-            <select id="cp-program" style="${inp}">${programOptions(p.training_program || '')}</select>
+            <div class="sub" id="cp-prog-hint" style="font-size:11px;margin:-2px 0 6px;">${pre === 'CAA' ? 'Which AA program did you graduate from?' : pre === 'SAA' ? 'Which AA program are you attending?' : 'Your AA program.'}</div>
+            <select id="cp-program" onchange="MACPrep.onCpProgramChange()" style="${inp}">${programOptions(p.training_program || '')}</select>
+            <div id="cp-other-wrap" class="hidden">
+                <label class="mono" style="${lbl}">WHICH PROGRAM? <span style="text-transform:none;letter-spacing:0;">(we'll add it)</span></label>
+                <input id="cp-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}">
+            </div>
             <button class="btn" style="width:100%;margin-top:2px;" onclick="MACPrep.saveCredentialPrompt(this)">Save</button>
             <div id="cp-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
         </div>`;
@@ -2819,14 +2878,21 @@
         const cred = ($('cp-cred') && $('cp-cred').value) || '';
         const grad = ($('cp-grad') && $('cp-grad').value) || '';
         const exam = ($('cp-exam') && $('cp-exam').value) || '';
-        const program = ($('cp-program') && $('cp-program').value) || '';
+        let program = ($('cp-program') && $('cp-program').value) || '';
         const msg = $('cp-msg');
         if (!cred) { if (msg) msg.textContent = 'Please choose SAA or CAA.'; return; }
         if (cred === 'SAA' && !grad) { if (msg) msg.textContent = 'Please add your expected graduation date.'; return; }
-        if (!program) { if (msg) msg.textContent = 'Please select your training program (or “Other / not listed”).'; return; }
+        if (!program) { if (msg) msg.textContent = 'Please select your training program.'; return; }
+        let unlisted = false;
+        if (program === PROGRAM_NOT_LISTED) {
+            const other = (($('cp-other') && $('cp-other').value) || '').trim();
+            if (!other) { if (msg) msg.textContent = 'Please type your program name so we can add it.'; return; }
+            program = other; unlisted = true;
+        }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
         try {
             const body = { credential: cred, graduation_date: cred === 'SAA' ? grad : null, training_program: program };
+            if (unlisted) body.program_unlisted = true;
             if (cred === 'SAA' && exam) body.target_exam_date = exam;
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
@@ -4067,7 +4133,7 @@
 
         $('prof-fullname').value = p.full_name || '';
         $('prof-credential').value = p.credential || '';
-        { const _pp = $('prof-program'); if (_pp) _pp.innerHTML = programOptions(p.training_program || ''); }
+        { const _pp = $('prof-program'); if (_pp) _pp.innerHTML = programOptions(p.training_program || ''); const _pw = $('prof-other-wrap'); if (_pw) _pw.classList.add('hidden'); const _po = $('prof-other'); if (_po) _po.value = ''; }
         if ($('prof-grad')) $('prof-grad').value = p.graduation_date || '';
         onProfCredChange();
         $('prof-examdate').value = p.target_exam_date || '';
@@ -4260,14 +4326,22 @@
         const btn = $('prof-save-btn'); const msg = $('prof-save-msg');
         btn.disabled = true; msg.textContent = '';
         const isSAA = $('prof-credential').value === 'SAA';
+        let program = $('prof-program').value;
+        let programUnlisted = false;
+        if (program === PROGRAM_NOT_LISTED) {
+            const other = (($('prof-other') && $('prof-other').value) || '').trim();
+            if (!other) { msg.style.color = 'var(--bad)'; msg.textContent = 'Type your program name so we can add it.'; btn.disabled = false; return; }
+            program = other; programUnlisted = true;
+        }
         const body = {
             full_name: $('prof-fullname').value.trim(),
             credential: $('prof-credential').value,
-            training_program: $('prof-program').value.trim(),
+            training_program: (program || '').trim(),
             graduation_date: (isSAA && $('prof-grad')) ? ($('prof-grad').value || '') : null,
             target_exam_date: $('prof-examdate').value || '',
             phone: $('prof-phone').value.trim(),
         };
+        if (programUnlisted) body.program_unlisted = true;
         try {
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Save failed.');
@@ -4903,7 +4977,7 @@
         smartReview, startSample, saveNote, reviewQueue, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
-        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange,
+        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onProfProgramChange,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
