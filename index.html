@@ -143,6 +143,11 @@
         html[data-diffcolor="on"] .diff-cue { display: inline; }
         /* Active state for the Accessibility toggle controls. */
         .a11y-ts.active, #a11y-contrast-btn.active, #a11y-diff-btn.active { background: var(--accent) !important; color: var(--on-accent) !important; border-color: var(--accent) !important; }
+        /* Minimum 44px touch targets on touch devices (WCAG 2.5.5 / Apple HIG). */
+        @media (hover: none) and (pointer: coarse) {
+            .qpal-cell { min-width: 44px !important; min-height: 44px !important; }
+            .elim-x { min-width: 44px !important; min-height: 44px !important; }
+        }
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .tag { font-family: inherit; font-weight: 700; font-size: 11px; color: var(--accent);
             letter-spacing: 2px; text-transform: uppercase; }
@@ -1448,7 +1453,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div id="sp-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
       </div>
     </div>
-    <div id="lightbox" class="hidden" onclick="this.classList.add('hidden')" style="position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;">
+    <div id="lightbox" class="hidden" role="dialog" aria-modal="true" aria-label="Enlarged figure" onclick="if(event.target===this)MACPrep.closeLightbox()" style="position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;">
+      <button id="lightbox-close" type="button" onclick="MACPrep.closeLightbox()" aria-label="Close enlarged figure" style="position:absolute;top:12px;right:12px;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;font-size:22px;cursor:pointer;">✕</button>
       <img id="lightbox-img" alt="Enlarged figure" style="max-width:95%;max-height:95%;border-radius:6px;">
     </div>
     <footer style="border-top:1px solid var(--line,#1F2937);margin-top:48px;padding:34px 24px 28px;text-align:center;">

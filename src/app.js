@@ -197,6 +197,13 @@
         });
         // Items are buttons, not a full arrow-key menu widget — drop the role=menu contract we don't implement.
         document.querySelectorAll('.navdrop[role="menu"]').forEach((m) => m.removeAttribute('role'));
+        // Associate each stray <label> with its input so VoiceOver/Voice Control can name the field.
+        document.querySelectorAll('label:not([for])').forEach((l) => {
+            if (l.querySelector('input,select,textarea')) return; // already wraps its control
+            const scope = l.closest('.form-group') || l.parentElement;
+            const inp = scope && scope.querySelector('input[id],select[id],textarea[id]');
+            if (inp && inp.id) l.setAttribute('for', inp.id);
+        });
     }
     function syncNavExpanded() {
         document.querySelectorAll('[aria-haspopup="menu"]').forEach((trig) => {
@@ -1035,6 +1042,7 @@
     function showLevelUp(cur, prev) {
         if ($('levelup-overlay')) return;
         try { haptic('heavy'); } catch (e) {}
+        try { announce('Level up! You reached level ' + cur); } catch (e) {}
         let ms = 0;                        // celebrate the highest milestone crossed, else the new level
         Object.keys(LEVEL_MILESTONES).forEach((k) => { const m = +k; if (m > prev && m <= cur) ms = Math.max(ms, m); });
         const info = ms ? LEVEL_MILESTONES[ms] : null;
@@ -1049,6 +1057,8 @@
         const wrap = document.createElement('div');
         wrap.id = 'levelup-overlay';
         wrap.setAttribute('role', 'dialog');
+        wrap.setAttribute('aria-modal', 'true');
+        wrap.setAttribute('aria-label', 'Level up — level ' + (ms || cur));
         wrap.onclick = (e) => { if (e.target === wrap) closeLevelUp(); };
         wrap.innerHTML = `<div class="lu-card">
             <div class="lu-confetti" aria-hidden="true">${confetti}</div>
@@ -2925,11 +2935,16 @@
         s.eliminated[s.index] = Array.from(set);
         saveSession();
     }
-    function zoomImage(src) {
-        const lb = $('lightbox'); if (!lb || !src) return;
-        const img = $('lightbox-img'); if (img) img.src = src;
+    function zoomImage(elOrSrc) {
+        const lb = $('lightbox'); if (!lb) return;
+        let src = elOrSrc, alt = 'Enlarged figure';
+        if (elOrSrc && elOrSrc.tagName) { src = elOrSrc.src; if (elOrSrc.alt) alt = elOrSrc.alt; }
+        if (!src) return;
+        const img = $('lightbox-img'); if (img) { img.src = src; img.alt = alt; }
         lb.classList.remove('hidden');
+        setTimeout(() => { const c = $('lightbox-close'); if (c) try { c.focus(); } catch (e) {} }, 30);
     }
+    function closeLightbox() { const lb = $('lightbox'); if (lb) lb.classList.add('hidden'); }
     function toggleLabs() { const m = $('labs-modal'); if (m) m.classList.toggle('hidden'); }
 
     // ---- In-quiz calculator + medical unit conversions -----------------------
@@ -2993,6 +3008,8 @@
             // so right/wrong never depends on color alone (accessibility / colorblind users).
             if (idx === data.correctIndex || idx === selectedIndex) {
                 const isC = idx === data.correctIndex;
+                b.setAttribute('aria-label', (b.getAttribute('aria-label') || '') + (isC ? '. Correct answer' : '. Your answer, incorrect'));
+                b.setAttribute('aria-disabled', 'true');
                 const badge = document.createElement('span');
                 badge.textContent = isC ? '✓' : '✗';
                 badge.setAttribute('aria-label', isC ? ' correct answer' : ' your answer, incorrect');
@@ -3058,7 +3075,7 @@
         const metaText = (q.category || q.domain_name || '').toUpperCase();
         const reviewedBadge = q.reviewed ? ' <span style="text-transform:none;letter-spacing:0;color:var(--muted);">· <span style="color:var(--accent);">✓</span> Reviewed by a practicing CAA</span>' : '';
         $('question-meta').innerHTML = escapeHtml(metaText) + reviewedBadge;
-        const img = safeUrl(q.image_url) ? `<img src="${escapeHtml(q.image_url)}" alt="Question figure" onclick="MACPrep.zoomImage(this.src)" style="max-width:100%;border:1px solid var(--line);border-radius:4px;margin:12px 0;cursor:zoom-in;">` : '';
+        const img = safeUrl(q.image_url) ? `<button type="button" onclick="MACPrep.zoomImage(this.firstElementChild)" aria-label="Enlarge the question figure" style="display:block;width:100%;border:none;background:none;padding:0;margin:12px 0;cursor:zoom-in;"><img src="${escapeHtml(q.image_url)}" alt="${escapeHtml(q.image_alt || 'Question figure')}" style="max-width:100%;border:1px solid var(--line);border-radius:4px;pointer-events:none;"></button>` : '';
         $('question-stem').innerHTML = renderRich(q.stem) + img;
         // Question-swap motion: slide/fade the card in, but only when navigating to a
         // different question (not on a same-question re-render after grading).
@@ -3379,7 +3396,7 @@
                 </div>
                 <div style="font-size:14px;margin-bottom:6px;">${renderRich(r.stem)}</div>
                 <div class="mono" style="font-size:12px;">
-                    <span style="color:${r.correct ? 'var(--accent)' : 'var(--bad)'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
+                    <span style="color:${r.correct ? 'var(--grade-ok, var(--accent))' : 'var(--grade-bad, var(--bad))'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
                     &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
                 </div>
                 ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${renderRich(r.explanation)}</div>` : ''}
@@ -4837,7 +4854,7 @@
         cmdkList = cmdkAvailable().filter((c) => !f || c.label.toLowerCase().includes(f) || (c.hint || '').toLowerCase().includes(f));
         if (cmdkIdx >= cmdkList.length) cmdkIdx = Math.max(0, cmdkList.length - 1);
         ul.innerHTML = cmdkList.length
-            ? cmdkList.map((c, i) => `<li class="cmdk-row${i === cmdkIdx ? ' sel' : ''}" data-i="${i}" onclick="MACPrep.cmdkRun(${i})"><span class="cmdk-ic">${c.icon}</span><span class="cmdk-lbl">${escapeHtml(c.label)}</span>${c.hint ? `<span class="cmdk-hint">${escapeHtml(c.hint)}</span>` : ''}</li>`).join('')
+            ? cmdkList.map((c, i) => `<li class="cmdk-row${i === cmdkIdx ? ' sel' : ''}" role="option" id="cmdk-opt-${i}" aria-selected="${i === cmdkIdx ? 'true' : 'false'}" data-i="${i}" onclick="MACPrep.cmdkRun(${i})"><span class="cmdk-ic" aria-hidden="true">${c.icon}</span><span class="cmdk-lbl">${escapeHtml(c.label)}</span>${c.hint ? `<span class="cmdk-hint">${escapeHtml(c.hint)}</span>` : ''}</li>`).join('')
             : '<li class="cmdk-empty">No matching commands</li>';
     }
     function openCmdk() {
@@ -4876,7 +4893,7 @@
         startFlashcards, closeFlashcards, flashReveal, flashGrade,
         openDuelPicker, closeDuelPicker, duelCreate, duelRandom, duelJoin, copyDuel,
         saveTitle, openTitlePicker, closeTitlePicker,
-        zoomImage, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
+        zoomImage, closeLightbox, toggleLabs, toggleCalc, calc, calcConv, renderNotebook, practiceOne, downloadExam,
     };
 
     document.addEventListener('keydown', handleQuizKey);
@@ -4893,6 +4910,7 @@
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         const closers = [
+            ['lightbox', closeLightbox],
             ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
             ['title-overlay', closeTitlePicker],
