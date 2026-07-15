@@ -1546,10 +1546,19 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         const program = ctx.program;
         // Cohort = student accounts whose training_program is this program (exclude faculty/PD/review).
         const { data: members, error: mErr } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, email, full_name, credential, is_program_director, is_faculty')
+            .select('user_id, email, full_name, credential, graduation_date, is_program_director, is_faculty')
             .eq('training_program', program);
         if (mErr) throw mErr;
-        const cohort = (members || []).filter((m) => !m.is_program_director && !m.is_faculty && !isReviewEmail(m.email));
+        // Cohort = CURRENT students only. A program director sees SAAs enrolled in their
+        // program — never CAAs (alumni who previously attended). We exclude stored-CAA
+        // accounts AND SAAs whose graduation date has passed (they are effectively CAAs now).
+        const nowMs = Date.now();
+        const cohort = (members || []).filter((m) => {
+            if (m.is_program_director || m.is_faculty || isReviewEmail(m.email)) return false;
+            if (!isSaaCred(m.credential)) return false;
+            if (m.graduation_date) { const g = new Date(m.graduation_date + 'T00:00:00Z'); if (!isNaN(g.getTime()) && g.getTime() <= nowMs) return false; }
+            return true;
+        });
         const perStudent = {};
         const cohortIds = [];
         cohort.forEach((m) => { perStudent[m.user_id] = { attempts: 0, correct: 0, answered: new Set(), last: null }; cohortIds.push(m.user_id); });
