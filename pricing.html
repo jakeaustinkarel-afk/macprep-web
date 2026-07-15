@@ -4,20 +4,20 @@
     <script>(function(){var T=[{id:'light',name:'Daylight',sw:['#f6f7f9','#047857','#111827']},{id:'dark',name:'Terminal',sw:['#0D0E10','#00A86B','#F9FAFB']},{id:'warm',name:'Warm Paper',sw:['#F1E9DA','#1F5D43','#B07A2E']},{id:'sandstone',name:'Sandstone',sw:['#EFE7D8','#0F766E','#2b2418']},{id:'rose',name:'Rose',sw:['#FBF1F2','#0E7C66','#2A1F22']},{id:'bloom',name:'Bloom',sw:['#FDF1F8','#C026D3','#2E1A26']},{id:'sky',name:'Sky',sw:['#F0F6FF','#2563EB','#0f2236']},{id:'lavender',name:'Lavender',sw:['#F5F3FC','#7C3AED','#241f33']},{id:'slate',name:'Slate',sw:['#1B2027','#2DD4BF','#EAEEF3']},{id:'nord',name:'Nord',sw:['#2E3440','#88C0D0','#ECEFF4']},{id:'ocean',name:'Ocean',sw:['#0B1A2B','#38BDF8','#E6F0FA']},{id:'indigo',name:'Indigo',sw:['#14122B','#A78BFA','#ECEAFB']},{id:'contrast',name:'Contrast',sw:['#000000','#00E676','#FFFFFF']},{id:'graphite',name:'Graphite',sw:['#161618','#A1A1AA','#F4F4F5']},{id:'ember',name:'Ember',sw:['#1A1214','#F87171','#FBECEE']},{id:'amber',name:'Amber',sw:['#19150A','#F5B73C','#FBF4E1']},{id:'espresso',name:'Espresso',sw:['#1A1410','#D6A06A','#F5EBDD']},{id:'sunset',name:'Sunset',sw:['#1A1113','#FF8A5B','#FBEBE8']},{id:'forest',name:'Forest',sw:['#0B1410','#34D399','#E6F2EA']},{id:'mist',name:'Mist',sw:['#EFF3F4','#0E7490','#132026']}];var ids=T.map(function(t){return t.id;});function cur(){var c=document.documentElement.getAttribute('data-theme');return ids.indexOf(c)>=0?c:'light';}try{var st=localStorage.getItem('macprep_theme');if(!st||ids.indexOf(st)<0)st='light';document.documentElement.setAttribute('data-theme',st);}catch(e){document.documentElement.setAttribute('data-theme','light');}function render(){var m=document.getElementById('theme-menu');if(!m)return;var c=cur();m.innerHTML=T.map(function(t){var sw=t.sw.map(function(x){return '<span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:'+x+';border:1px solid rgba(127,127,127,.3);"></span>';}).join('');return '<button type="button" data-tid="'+t.id+'" style="display:flex;align-items:center;gap:9px;width:100%;background:'+(t.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:8px 9px;border-radius:6px;font-family:inherit;font-size:13px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;"><span style="display:inline-flex;gap:3px;">'+sw+'</span><span style="flex:1;">'+t.name+'</span>'+(t.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-tid]'),function(b){b.onclick=function(){window.setTheme(b.getAttribute('data-tid'));};});}window.setTheme=function(id){if(ids.indexOf(id)<0)return;document.documentElement.setAttribute('data-theme',id);try{localStorage.setItem('macprep_theme',id);}catch(e){}render();if(typeof window.onThemeChange==='function'){try{window.onThemeChange(id);}catch(e){}}};window.toggleTheme=function(){window.setTheme(cur()==='dark'?'light':'dark');};window._themeMenu=function(e){if(e)e.stopPropagation();var f=document.getElementById('font-menu');if(f)f.classList.add('hidden');var m=document.getElementById('theme-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))render();};var F=[{id:'modern',name:'Modern',ff:'-apple-system,system-ui,sans-serif'},{id:'serif',name:'Serif',ff:'Georgia,serif'},{id:'mono',name:'Mono',ff:'ui-monospace,Menlo,monospace'},{id:'rounded',name:'Rounded',ff:'ui-rounded,system-ui,sans-serif'}];var fids=F.map(function(f){return f.id;});function curF(){var c=document.documentElement.getAttribute('data-font');return fids.indexOf(c)>=0?c:'modern';}try{var sf=localStorage.getItem('macprep_font');if(!sf||fids.indexOf(sf)<0)sf='modern';document.documentElement.setAttribute('data-font',sf);}catch(e){document.documentElement.setAttribute('data-font','modern');}function renderF(){var m=document.getElementById('font-menu');if(!m)return;var c=curF();m.innerHTML=F.map(function(f){return '<button type="button" data-fid="'+f.id+'" style="display:flex;align-items:center;gap:10px;width:100%;background:'+(f.id===c?'rgba(127,127,127,.14)':'transparent')+';border:none;cursor:pointer;padding:9px 10px;border-radius:6px;font-size:15px;color:var(--text);text-align:left;text-transform:none;letter-spacing:normal;font-family:'+f.ff+';"><span style="flex:1;">'+f.name+'</span>'+(f.id===c?'<span style="color:var(--accent);">✓</span>':'')+'</button>';}).join('');Array.prototype.forEach.call(m.querySelectorAll('button[data-fid]'),function(b){b.onclick=function(){window.setFont(b.getAttribute('data-fid'));};});}window.setFont=function(id){if(fids.indexOf(id)<0)return;document.documentElement.setAttribute('data-font',id);try{localStorage.setItem('macprep_font',id);}catch(e){}renderF();if(typeof window.onFontChange==='function'){try{window.onFontChange(id);}catch(e){}}};window._fontMenu=function(e){if(e)e.stopPropagation();var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var m=document.getElementById('font-menu');if(!m)return;m.classList.toggle('hidden');if(!m.classList.contains('hidden'))renderF();};document.addEventListener('click',function(){var t=document.getElementById('theme-menu');if(t)t.classList.add('hidden');var fm=document.getElementById('font-menu');if(fm)fm.classList.add('hidden');});document.addEventListener('DOMContentLoaded',function(){render();renderF();});})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MACPrep Pricing — NCCAA Board Review, One-Time $50 (No Subscription)</title>
+    <title>MACPrep Pricing — NCCAA Board Review, One-Time $100 (No Subscription)</title>
     <link rel="canonical" href="https://www.macprep.org/pricing">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="MACPrep">
-    <meta property="og:title" content="MACPrep Pricing — One-time $50, no subscription">
-    <meta property="og:description" content="Start free, no card required. Full access to the NCCAA board-review question bank is a single one-time $50 — not a subscription, with a 48-hour refund.">
+    <meta property="og:title" content="MACPrep Pricing — One-time $100, no subscription">
+    <meta property="og:description" content="Start free, no card required. Full access to the NCCAA board-review question bank is a single one-time $100 — not a subscription, with a 48-hour refund.">
     <meta property="og:url" content="https://www.macprep.org/pricing">
     <meta property="og:image" content="https://www.macprep.org/og-image.png?v=2">
     <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="MACPrep Pricing — One-time $50, no subscription">
-    <meta name="twitter:description" content="Start free. Full access is a one-time $50 — not a subscription.">
+    <meta name="twitter:title" content="MACPrep Pricing — One-time $100, no subscription">
+    <meta name="twitter:description" content="Start free. Full access is a one-time $100 — not a subscription.">
     <meta name="twitter:image" content="https://www.macprep.org/og-image.png?v=2">
-    <meta name="description" content="MACPrep pricing: start free with no card, then unlock the full NCCAA board-review question bank for a one-time $50 — not a subscription, with a 48-hour refund.">
+    <meta name="description" content="MACPrep pricing: start free with no card, then unlock the full NCCAA board-review question bank for a one-time $100 — not a subscription, with a 48-hour refund.">
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="icon" type="image/svg+xml" href="/brand/macprep-mark.svg">
@@ -156,7 +156,7 @@
                     <tr>
                         <td style="padding:13px 16px;font-weight:700;color:var(--text);border-top:1px solid var(--line);">Cost</td>
                         <td style="padding:13px 16px;color:var(--text2);border-top:1px solid var(--line);">$400+/yr</td>
-                        <td style="padding:13px 16px;font-weight:800;color:var(--text);border-top:1px solid var(--line);background:var(--accent-dim);">$50 once</td>
+                        <td style="padding:13px 16px;font-weight:800;color:var(--text);border-top:1px solid var(--line);background:var(--accent-dim);">$100 once</td>
                     </tr>
                     <tr>
                         <td style="padding:13px 16px;font-weight:700;color:var(--text);border-top:1px solid var(--line);">Model</td>
@@ -205,7 +205,7 @@
             </div>
             <div class="card" style="border-color:var(--accent);">
                 <span class="badge premium">PREMIUM</span>
-                <h2>$50 <span class="mono" style="font-size:13px;color:var(--muted);">one-time</span></h2>
+                <h2>$100 <span class="mono" style="font-size:13px;color:var(--muted);">one-time</span></h2>
                 <p style="color:var(--muted);margin:0 0 14px;">Full access, no subscription.</p>
                 <ul>
                     <li>The entire question bank</li>
@@ -214,7 +214,7 @@
                     <li>Lifetime access</li>
                 </ul>
                 <a href="/index.html#signup-pane" id="cta-premium" class="btn" style="margin-top:16px;">Get full access</a>
-                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-start;text-align:left;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-size:13px;color:var(--text2);line-height:1.5;"><strong style="color:var(--text);">100% Pass Guarantee.</strong> Don't pass the NCCAA boards? Get your $50 back.</span></div>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-start;text-align:left;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span style="font-size:13px;color:var(--text2);line-height:1.5;"><strong style="color:var(--text);">100% Pass Guarantee.</strong> Don't pass the NCCAA boards? Get your $100 back.</span></div>
                 <div class="mono" style="font-size:11px;color:var(--muted);margin-top:10px;">Plus a 48-hour, no-questions-asked refund · secured by Stripe</div>
             </div>
         </div>
@@ -223,15 +223,15 @@
             <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
             <div style="flex:1;min-width:240px;">
                 <div style="font-weight:700;font-size:18px;color:var(--text);">100% Pass Guarantee</div>
-                <p style="margin:5px 0 0;color:var(--text2);font-size:14px;line-height:1.6;">Study with MACPrep and sit the NCCAA boards. If you don't pass, email your proof of purchase and your score report to <a href="mailto:support@macprep.org" style="color:var(--accent);">support@macprep.org</a> and we'll refund your $50 in full . Applies to paid premium purchases only — not free or comped accounts — with no usage requirements.</p>
+                <p style="margin:5px 0 0;color:var(--text2);font-size:14px;line-height:1.6;">Study with MACPrep and sit the NCCAA boards. If you don't pass, email your proof of purchase and your score report to <a href="mailto:support@macprep.org" style="color:var(--accent);">support@macprep.org</a> and we'll refund your $100 in full . Applies to paid premium purchases only — not free or comped accounts — with no usage requirements.</p>
             </div>
         </div>
 
         <div class="pfaq">
             <h2>Pricing questions</h2>
-            <div class="qa"><h3>Is it really one-time?</h3><p>Yes. $50 once unlocks the full question bank for good — no recurring charges, no auto-renew, no "annual" anything.</p></div>
+            <div class="qa"><h3>Is it really one-time?</h3><p>Yes. $100 once unlocks the full question bank for good — no recurring charges, no auto-renew, no "annual" anything.</p></div>
             <div class="qa"><h3>Can I try it before paying?</h3><p>Absolutely. The free tier gives you 25 questions — full explanations and sources included — so you can judge the quality before you decide.</p></div>
-            <div class="qa"><h3>What's the 100% Pass Guarantee?</h3><p>Simple: study with MACPrep, sit the NCCAA certifying exam, and if you don't pass, we refund your $50 in full. Just email your proof of purchase and your official score report to <a href="mailto:support@macprep.org">support@macprep.org</a> within 90 days of your exam . Applies to paid premium purchases only — not free or comped accounts — with no usage requirements. It's separate from (and on top of) the standard 48-hour refund.</p></div>
+            <div class="qa"><h3>What's the 100% Pass Guarantee?</h3><p>Simple: study with MACPrep, sit the NCCAA certifying exam, and if you don't pass, we refund your $100 in full. Just email your proof of purchase and your official score report to <a href="mailto:support@macprep.org">support@macprep.org</a> within 90 days of your exam . Applies to paid premium purchases only — not free or comped accounts — with no usage requirements. It's separate from (and on top of) the standard 48-hour refund.</p></div>
             <div class="qa"><h3>What if it's not for me?</h3><p>48-hour, no-questions-asked refund. Email <a href="mailto:support@macprep.org">support@macprep.org</a> within two days of purchase and we'll refund you in full.</p></div>
             <div class="qa"><h3>Do I keep access as you add questions?</h3><p>Yes — full access includes everything we add. The bank grows every week and you get all of it at no extra cost.</p></div>
         </div>
@@ -280,14 +280,14 @@
   fetch('/api/user/profile',{headers:{Authorization:'Bearer '+tok}}).then(function(r){return r.ok?r.json():null;}).then(function(d){
     var p=d&&(d.profile||d);
     if(p&&(p.premium_unlocked||p.is_admin)){ prem.textContent='✓ You already have full access'; prem.setAttribute('href','/index.html'); return; }
-    prem.textContent='Get full access — $50';
+    prem.textContent='Get full access — $100';
     prem.addEventListener('click',function(e){
       e.preventDefault(); if(prem.dataset.busy) return; prem.dataset.busy='1'; prem.textContent='Redirecting…';
       fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({email:(p&&p.email)||''})})
-        .then(function(r){return r.json();}).then(function(c){ if(c&&c.url){window.location.href=c.url;} else { prem.dataset.busy=''; prem.textContent='Get full access — $50'; alert('Checkout could not start — please try from your dashboard.'); } })
-        .catch(function(){ prem.dataset.busy=''; prem.textContent='Get full access — $50'; });
+        .then(function(r){return r.json();}).then(function(c){ if(c&&c.url){window.location.href=c.url;} else { prem.dataset.busy=''; prem.textContent='Get full access — $100'; alert('Checkout could not start — please try from your dashboard.'); } })
+        .catch(function(){ prem.dataset.busy=''; prem.textContent='Get full access — $100'; });
     });
-  }).catch(function(){ prem.textContent='Get full access — $50'; prem.setAttribute('href','/index.html'); });
+  }).catch(function(){ prem.textContent='Get full access — $100'; prem.setAttribute('href','/index.html'); });
 }catch(e){}})();</script>
 </body>
 </html>

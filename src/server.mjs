@@ -752,7 +752,7 @@ app.get('/api/admin/metrics', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Forbidden' });
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
-        const PRICE = 50;
+        const PRICE = 100;
         const now = Date.now();
         const windowDays = 30;
         const since = new Date(now - windowDays * 86400000).toISOString();

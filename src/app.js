@@ -1954,7 +1954,7 @@
             card.classList.remove('hidden');
             const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
             $('free-allowance-text').textContent =
-                `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining — then it's a one-time $50 for the full 1,500+ bank.`;
+                `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining — then it's a one-time $100 for the full 1,500+ bank.`;
             $('free-allowance-bar').style.width = pct + '%';
         }
 
@@ -3671,16 +3671,17 @@
             + `<span style="color:var(--accent);">✓</span> The entire ${bank ? '<strong>' + bank.toLocaleString() + '+</strong> question ' : ''}bank — every domain &amp; specialty<br>`
             + `<span style="color:var(--accent);">✓</span> Every explanation, rationale &amp; verifiable source<br>`
             + `<span style="color:var(--accent);">✓</span> Progress tracking, weak-spot review &amp; your exam-date plan<br>`
-            + `<span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $50 payment, no subscription`
+            + `<span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $100 payment, no subscription`
             + `</div>`
-            + `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);font-size:13px;color:var(--text);display:flex;gap:8px;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $50 back.</span></div>`
+            + `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);font-size:13px;color:var(--text);display:flex;gap:8px;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $100 back.</span></div>`
+            + `<div style="margin-top:12px;padding:10px 13px;border:1px dashed var(--line);border-radius:9px;background:var(--bg);font-size:12px;color:var(--text2);line-height:1.6;"><strong style="color:var(--text);">$100 once — yours forever.</strong> Vigilant IQ charges <strong>$99 for 30 days</strong> ($299/year, then it's gone). MACPrep never expires.</div>`
             + `</div>`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         if (s && s.log && s.log.length) renderSessionReview(s.log);
         const btn = $('advance-vignette-trigger');
         btn.className = 'btn';
-        btn.textContent = 'Unlock full access — $50 (one-time)';
+        btn.textContent = 'Unlock full access — $100 (one-time)';
         btn.onclick = () => startCheckout(btn);
         let rr = document.getElementById('paywall-refund');
         if (!rr && btn.parentNode) { rr = document.createElement('div'); rr.id = 'paywall-refund'; rr.className = 'mono'; rr.style.cssText = 'font-size:11px;color:var(--muted);margin-top:10px;'; btn.parentNode.insertBefore(rr, btn.nextSibling); }
@@ -3700,7 +3701,7 @@
         flashcards: { icon: '🗂️', name: 'Flashcard Mode', blurb: 'Active recall — hide the choices, type your answer, then flip for the rationale & source.' },
         duel: { icon: '⚔️', name: 'Duels', blurb: 'Challenge a classmate head-to-head on the same question set — share a code and see who wins.' },
     };
-    // The single "what your $50 unlocks" list shown on every upgrade screen.
+    // The single "what your $100 unlocks" list shown on every upgrade screen.
     const PREMIUM_UNLOCKS = [
         'The <strong>entire</strong> question bank — every domain &amp; specialty',
         'Full-length, timed <strong>mock exams</strong> at real NCCAA pace',
@@ -3721,6 +3722,10 @@
         closeUpgradeModal();
         const f = PREMIUM_FEATURES[featureKey] || null;
         try { track('upgrade_screen', { feature: featureKey || 'generic' }); } catch (e) {}
+        // Count every premium-wall encounter as a paywall hit — not just the 25-question 402.
+        // Previously paywall_hit fired only from showPaywall, so clicking a premium mode went
+        // uncounted and the funnel under-reported. This is the fix.
+        try { track('paywall_hit', { feature: featureKey || 'generic', src: 'upgrade_screen' }); } catch (e) {}
         // App Store 3.1.1: the native store apps must NOT present an external (Stripe) purchase.
         // Show a compliant "part of full access" notice — no price, no buy button, no external link —
         // plus the class/cohort code redemption (a code unlock, not a purchase). Web keeps the full flow.
@@ -3756,14 +3761,15 @@
             <button onclick="MACPrep.closeUpgradeModal()" aria-label="Close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;line-height:1;">&times;</button>
             ${head}
             <div style="margin:18px 0 4px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);line-height:1.85;font-size:13.5px;color:var(--text2);">
-                <div class="mono" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">Your $50 unlocks</div>
+                <div class="mono" style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;">Your $100 unlocks</div>
                 <div style="display:flex;flex-direction:column;gap:7px;">${unlocks}</div>
             </div>
             <div style="margin-top:14px;padding:11px 13px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-dim);font-size:12.5px;color:var(--text);display:flex;gap:9px;align-items:center;">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
-                <span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $50 back.</span>
+                <span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $100 back.</span>
             </div>
-            <button class="btn" id="upgrade-cta" style="width:100%;margin-top:16px;" onclick="MACPrep.startCheckout(this)">Unlock full access — $50 (one-time)</button>
+            <div style="margin-top:12px;padding:10px 13px;border:1px dashed var(--line);border-radius:10px;background:var(--bg);font-size:12px;color:var(--text2);line-height:1.6;"><strong style="color:var(--text);">$100 once — yours forever.</strong> Vigilant IQ charges <strong>$99 for 30 days</strong> ($299/year, then it's gone). MACPrep never expires.</div>
+            <button class="btn" id="upgrade-cta" style="width:100%;margin-top:16px;" onclick="MACPrep.startCheckout(this)">Unlock full access — $100 (one-time)</button>
             <div class="mono" style="font-size:11px;color:var(--muted);margin-top:9px;text-align:center;">No subscription · 48-hour refund · secured by Stripe</div>
             <div style="text-align:center;margin-top:8px;"><a href="#redeem" onclick="event.preventDefault(); MACPrep.closeUpgradeModal(); MACPrep.goRedeem();" style="color:var(--accent);font-size:12.5px;">Have a class or cohort code? Redeem it free →</a></div>
         </div>`;
@@ -4849,7 +4855,7 @@
             window.location.href = data.url;
         } catch (err) {
             toast('Checkout could not start: ' + err.message);
-            if (btn) { btn.disabled = false; btn.textContent = btn.dataset.prev || 'Upgrade — $50'; }
+            if (btn) { btn.disabled = false; btn.textContent = btn.dataset.prev || 'Upgrade — $100'; }
         }
     }
 
@@ -4990,7 +4996,7 @@
         { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
         { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
-        { icon: '⭐', label: 'Upgrade to full access — $50', run: () => startCheckout(), auth: true, hidePremium: true },
+        { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true },
         { icon: '🚪', label: 'Sign out', run: () => signOut(), auth: true },
         { icon: '🔑', label: 'Log in', run: () => { window.location.href = '/login.html'; }, guest: true },
     ];
