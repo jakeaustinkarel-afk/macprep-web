@@ -233,15 +233,27 @@
     }
 
     // Admin only: pick which program's cohort to inspect.
-    function renderPicker(d){
+    // Admin-only program switcher: a dropdown to view ANY program's cohort, shown on every
+    // admin response so an admin can jump between programs without leaving the page. Faculty/PD
+    // never get this — the server only sends d.is_admin/d.programs to the site owner.
+    function adminBar(d){
+        if (!d.is_admin) return '';
         const progs = d.programs || [];
-        $('gen-line').textContent = 'Admin view — choose a program to inspect its cohort.';
-        let h = '<div class="card"><h2>Programs</h2><p class="muted" style="margin:8px 0 16px;">' + progs.length + ' program' + (progs.length===1?'':'s') + ' with captured students.</p>';
-        if (!progs.length) h += '<p class="muted">No programs captured yet.</p>';
-        progs.forEach(function(p){ h += '<button class="prog-btn" data-prog="' + esc(p.program) + '">' + esc(p.program) + ' <span class="muted">· ' + p.students + ' student' + (p.students===1?'':'s') + '</span></button>'; });
-        h += '</div>';
+        const opts = '<option value="">— Choose a program —</option>' + progs.map(function(p){ return '<option value="' + esc(p.program) + '"' + (p.program===(d.program||'') ? ' selected' : '') + '>' + esc(p.program) + ' (' + p.students + ')</option>'; }).join('');
+        return '<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:16px;"><span class="mono" style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);white-space:nowrap;">Admin &middot; view program</span><select id="admin-prog" style="flex:1;min-width:220px;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:14px;">' + opts + '</select></div>';
+    }
+    function wireAdminBar(){ const sel = document.getElementById('admin-prog'); if (sel) sel.onchange = function(){ CURRENT_PROGRAM = sel.value; load(); }; }
+
+    // Admin landing (no program chosen yet): the dropdown + a prompt.
+    function renderPicker(d){
+        $('gen-line').textContent = 'Admin — choose a program to view its cohort.';
+        const progs = d.programs || [];
+        let h = adminBar(d);
+        h += progs.length
+            ? '<div class="card center"><p class="muted" style="margin:0;">Choose a program from the dropdown above to view its cohort.</p></div>'
+            : '<div class="card center"><p class="muted" style="margin:0;">No programs have captured students yet. Once members pick their program, they’ll appear here.</p></div>';
         $('content').innerHTML = h;
-        document.querySelectorAll('.prog-btn').forEach(function(b){ b.onclick = function(){ CURRENT_PROGRAM = b.getAttribute('data-prog'); load(); }; });
+        wireAdminBar();
     }
 
     function render(d){
@@ -249,7 +261,7 @@
         $('gen-line').innerHTML = '<b>' + esc(d.program) + '</b> · <span class="muted">' + roleLabel + ' view</span>';
         const s = d.summary || {};
         let h = '';
-        if (d.role==='admin') h += '<p style="margin:-6px 0 16px;"><a class="ghost-btn" style="display:inline-flex;" href="/faculty.html">← All programs</a></p>';
+        if (d.is_admin) h += adminBar(d);
         h += '<div class="kpis">'
            + kpi(d.cohort_size, 'Students in cohort')
            + kpi(s.active_7d==null?'—':s.active_7d, 'Active last 7 days')
@@ -258,7 +270,7 @@
            + '</div>';
         if (!d.cohort_size){
             h += '<div class="card"><h2>No students yet</h2><p class="muted" style="margin:10px 0 0;line-height:1.6;">No MACPrep accounts have selected <b>' + esc(d.program) + '</b> as their program yet. Once your students sign up and choose your program, their aggregate performance shows up here.</p></div>';
-            $('content').innerHTML = h; return;
+            $('content').innerHTML = h; if (d.is_admin) wireAdminBar(); return;
         }
         // Per-domain performance
         h += '<div class="card"><h2>Performance by NCCAA domain</h2><div style="margin-top:14px;">';
@@ -298,8 +310,9 @@
             });
             h += '</tbody></table></div><p class="muted" style="font-size:11.5px;margin:10px 0 0;line-height:1.55;">Ranked by lowest cohort %-correct (≥3 attempts). “Avg time” = time-on-item; “Changed” = share who changed their answer before submitting. Time &amp; change data accrues as students practice.</p></div>';
         }
-        h += '<p class="muted" style="font-size:12px;margin:4px 2px 0;line-height:1.55;">Confidential to your program. Students appear here because they selected ' + esc(d.program) + ' as their MACPrep program. More views (individual-vs-cohort, cohort-vs-all-users, per-question analytics) are coming.</p>';
+        h += '<p class="muted" style="font-size:12px;margin:4px 2px 0;line-height:1.55;">Confidential to your program. Students appear here because they selected ' + esc(d.program) + ' as their MACPrep program.</p>';
         $('content').innerHTML = h;
+        if (d.is_admin) wireAdminBar();
     }
 
     load();

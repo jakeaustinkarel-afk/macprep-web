@@ -1528,14 +1528,20 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
     if (!ctx) return res.status(403).json({ error: 'The cohort dashboard is for program directors and faculty.' });
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
-        // Admin without ?program= → list programs to choose from (faculty always have one).
-        if (!ctx.program) {
+        // For admins: the full program list (with student counts) for the program-switcher
+        // dropdown, attached to EVERY response so an admin can jump between programs without
+        // leaving the page. Faculty/PD never get this — they only ever see their own program.
+        let adminPrograms = null;
+        if (ctx.isAdmin) {
             const { data: rows, error: pErr } = await supabase.from(PROFILE_TABLE).select('training_program');
             if (pErr) throw pErr;
             const counts = {};
             (rows || []).forEach((r) => { const p = (r.training_program || '').trim(); if (p) counts[p] = (counts[p] || 0) + 1; });
-            const programs = Object.entries(counts).map(([program, students]) => ({ program, students })).sort((a, b) => a.program.localeCompare(b.program));
-            return res.json({ role: ctx.role, need_program: true, programs });
+            adminPrograms = Object.entries(counts).map(([program, students]) => ({ program, students })).sort((a, b) => a.program.localeCompare(b.program));
+        }
+        // Admin without ?program= → prompt to pick one (faculty always have their own).
+        if (!ctx.program) {
+            return res.json({ role: ctx.role, is_admin: ctx.isAdmin, need_program: true, programs: adminPrograms || [] });
         }
         const program = ctx.program;
         // Cohort = student accounts whose training_program is this program (exclude faculty/PD/review).
@@ -1548,7 +1554,7 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         const cohortIds = [];
         cohort.forEach((m) => { perStudent[m.user_id] = { attempts: 0, correct: 0, answered: new Set(), last: null }; cohortIds.push(m.user_id); });
         if (!cohortIds.length) {
-            return res.json({ role: ctx.role, program, cohort_size: 0, roster: [], by_domain: [], summary: { attempts: 0, answered: 0, accuracy: null, active_7d: 0 } });
+            return res.json({ role: ctx.role, is_admin: ctx.isAdmin, programs: adminPrograms, program, cohort_size: 0, roster: [], by_domain: [], summary: { attempts: 0, answered: 0, accuracy: null, active_7d: 0 } });
         }
         // Served-bank snapshot: question_id -> NCCAA domain_name (same source of truth as the
         // individual dashboard; keep published-only consistent so student + PD views reconcile).
@@ -1615,7 +1621,7 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
             });
         }
         return res.json({
-            role: ctx.role, program, cohort_size: cohort.length,
+            role: ctx.role, is_admin: ctx.isAdmin, programs: adminPrograms, program, cohort_size: cohort.length,
             summary: { attempts: totAtt, answered: answeredAll, accuracy: totAtt ? Math.round(totCorrect / totAtt * 100) : null, active_7d: active7 },
             by_domain, roster, hardest_items, generated_at: new Date().toISOString(),
         });
