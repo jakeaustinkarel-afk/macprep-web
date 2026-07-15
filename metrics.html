@@ -339,12 +339,29 @@
             '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i class="dot" style="background:var(--warn)"></i>Purchase</span></div>' +
             lineChart(days) + '</div>';
 
+        // Users by program (training institution distribution)
+        const pm = d.program_mix || [];
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Users by program</h2></span>' + (pm.length ? '<span class="pill">' + pm.length + ' programs</span>' : '') + '</div>';
+        if (!pm.length) {
+            html += '<p class="muted" style="margin:0;">No program captured yet. Members pick their program at sign-in and in Profile.</p>';
+        } else {
+            const pmMax = Math.max(1, ...pm.map(x => x.n));
+            html += '<div style="overflow-x:auto;"><table><thead><tr><th>Program</th><th>Users</th></tr></thead><tbody>';
+            pm.forEach(x => {
+                const w = Math.max(8, Math.round((x.n / pmMax) * 120));
+                html += '<tr><td>' + esc(x.program) + '</td><td><span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;height:8px;border-radius:4px;background:var(--accent);width:' + w + 'px;"></span>' + x.n + '</span></td></tr>';
+            });
+            if (d.program_unset) html += '<tr><td class="muted">(not set)</td><td class="muted">' + d.program_unset + '</td></tr>';
+            html += '</tbody></table></div>';
+        }
+        html += '</div>';
+
         // Recent signups
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Recent signups</h2></span><span class="pill">' + t.users.toLocaleString() + ' total</span></div><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Credential</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
-        if (!d.recent_signups.length) html += '<tr><td colspan="5" class="muted">No signups yet.</td></tr>';
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Recent signups</h2></span><span class="pill">' + t.users.toLocaleString() + ' total</span></div><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Credential</th><th>Program</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
+        if (!d.recent_signups.length) html += '<tr><td colspan="6" class="muted">No signups yet.</td></tr>';
         d.recent_signups.forEach(u => {
             const credCls = u.credential==='SAA'?'saa':u.credential==='CAA'?'caa':'none';
-            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + credCls + '">' + esc(u.credential || '—') + '</span></td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
+            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + credCls + '">' + esc(u.credential || '—') + '</span></td><td class="muted">' + esc(u.program || '—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
         });
         html += '</tbody></table></div></div>';
 

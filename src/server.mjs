@@ -801,17 +801,25 @@ app.get('/api/admin/metrics', async (req, res) => {
         const credential_mix = { saa: 0, caa: 0, other: 0, unset: 0 };
         U.forEach((u) => { const c = normCred(u.credential); if (c === 'SAA') credential_mix.saa++; else if (c === 'CAA') credential_mix.caa++; else if (c === 'other') credential_mix.other++; else credential_mix.unset++; });
 
+        // Program (training institution) distribution — how many users belong to each program.
+        const progCounts = {};
+        U.forEach((u) => { const p = (u.training_program || '').trim(); if (p) progCounts[p] = (progCounts[p] || 0) + 1; });
+        const program_mix = Object.entries(progCounts).map(([program, n]) => ({ program, n })).sort((a, b) => b.n - a.n);
+        const program_unset = U.filter((u) => !(u.training_program || '').trim()).length;
+
         res.json({
             generated_at: new Date(now).toISOString(),
             window_days: windowDays,
             totals: { users: U.length, premium, free: U.length - premium, with_exam_date: U.filter((u) => u.target_exam_date).length },
             credential_mix,
+            program_mix,
+            program_unset,
             revenue: { paid_conversions: paid, est_revenue: paid * PRICE, price: PRICE },
             funnel,
             event_counts: ec,
             daily: Object.values(buckets),
             recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
-                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null })),
+                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null, program: u.training_program || null })),
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });

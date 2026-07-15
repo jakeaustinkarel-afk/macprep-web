@@ -2756,9 +2756,28 @@
         const sel = $('cp-cred'), box = $('cp-saa');
         if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
     }
+    // Accredited AA training programs (institution-level) for the profile + capture prompt.
+    const AA_PROGRAMS = [
+        'Bluefield University (VCOM)', 'Case Western Reserve University', 'Emory University',
+        'Indiana University', 'Kansas City University', 'Lipscomb University',
+        'Medical College of Wisconsin', 'Northeast Ohio Medical University (NEOMED)',
+        'Nova Southeastern University', 'Ohio Dominican University', 'Saint Louis University',
+        'South University', 'University of Colorado (Anschutz)', 'University of Mary Hardin-Baylor',
+        'University of Missouri–Kansas City', 'University of New Mexico', 'UTHealth Houston (McGovern)',
+        'Other / not listed',
+    ];
+    function programOptions(selected) {
+        const cur = selected || '';
+        const extra = (cur && !AA_PROGRAMS.includes(cur)) ? `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>` : '';
+        return `<option value="" ${cur ? '' : 'selected'}>Select your program…</option>` + extra +
+            AA_PROGRAMS.map((pn) => `<option value="${escapeHtml(pn)}" ${pn === cur ? 'selected' : ''}>${escapeHtml(pn)}</option>`).join('');
+    }
+
     function maybePromptCredential() {
         if (!state.token || !state.profile || state._credPromptOpen) return false;
-        if (!state.profile.needs_credential) return false;
+        // Prompt if credential is missing OR the training program hasn't been captured yet
+        // (so practicing CAAs who set their credential earlier still get asked their program).
+        if (!state.profile.needs_credential && state.profile.training_program) return false;
         openCredentialPrompt();
         return true;
     }
@@ -2775,8 +2794,8 @@
         wrap.onclick = (e) => { if (e.target === wrap) closeCredentialPrompt(); };  // dismissable (re-prompts next login)
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="cp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
-            <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">One quick question</div>
-            <div class="sub" style="font-size:13px;margin-bottom:16px;">Are you a student (SAA) or a certified CAA? This tailors MACPrep to you — and when a student graduates, your account upgrades to CAA automatically.</div>
+            <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Help us tailor MACPrep</div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Tell us your credential and training program. This tailors MACPrep to you — and when a student graduates, your account upgrades to CAA automatically.</div>
             <label class="mono" style="${lbl}">CREDENTIAL</label>
             <select id="cp-cred" onchange="MACPrep.onCredModalChange()" style="${inp}">
                 <option value="" ${pre ? '' : 'selected'} disabled>Select…</option>
@@ -2789,6 +2808,8 @@
                 <label class="mono" style="${lbl}">EXAM DATE <span style="text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
             </div>
+            <label class="mono" style="${lbl}">TRAINING PROGRAM</label>
+            <select id="cp-program" style="${inp}">${programOptions(p.training_program || '')}</select>
             <button class="btn" style="width:100%;margin-top:2px;" onclick="MACPrep.saveCredentialPrompt(this)">Save</button>
             <div id="cp-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
         </div>`;
@@ -2798,12 +2819,14 @@
         const cred = ($('cp-cred') && $('cp-cred').value) || '';
         const grad = ($('cp-grad') && $('cp-grad').value) || '';
         const exam = ($('cp-exam') && $('cp-exam').value) || '';
+        const program = ($('cp-program') && $('cp-program').value) || '';
         const msg = $('cp-msg');
         if (!cred) { if (msg) msg.textContent = 'Please choose SAA or CAA.'; return; }
         if (cred === 'SAA' && !grad) { if (msg) msg.textContent = 'Please add your expected graduation date.'; return; }
+        if (!program) { if (msg) msg.textContent = 'Please select your training program (or “Other / not listed”).'; return; }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
         try {
-            const body = { credential: cred, graduation_date: cred === 'SAA' ? grad : null };
+            const body = { credential: cred, graduation_date: cred === 'SAA' ? grad : null, training_program: program };
             if (cred === 'SAA' && exam) body.target_exam_date = exam;
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
@@ -4044,7 +4067,7 @@
 
         $('prof-fullname').value = p.full_name || '';
         $('prof-credential').value = p.credential || '';
-        $('prof-program').value = p.training_program || '';
+        { const _pp = $('prof-program'); if (_pp) _pp.innerHTML = programOptions(p.training_program || ''); }
         if ($('prof-grad')) $('prof-grad').value = p.graduation_date || '';
         onProfCredChange();
         $('prof-examdate').value = p.target_exam_date || '';
