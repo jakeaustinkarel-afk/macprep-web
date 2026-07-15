@@ -89,6 +89,9 @@ const demoLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
 // Checkout + payment-verification: generous enough for real buyers, tight enough
 // to stop anyone hammering Stripe session creation or replaying session-id guesses.
 const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
+// Cohort dashboard does a full served-bank + full-cohort scan per call — cap it so a
+// faculty/PD (or admin) can't hammer it into a resource-exhaustion problem.
+const cohortLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -904,6 +907,59 @@ async function getAdminUser(req) {
     return isAdminEmail(user.email) ? user : null;
 }
 
+// Cohort-dashboard authorization — a SEPARATE tier from site-admin. Returns
+// { user, program, role, isAdmin } only if the caller may view a cohort:
+//   • the site owner (admin) may view ANY program, passed explicitly as ?program=
+//   • a faculty/program_director may view ONLY their own assigned faculty_program.
+// The program (tenant key) is resolved from the verified token's DB profile — NEVER
+// from a client-supplied program id for non-admins. This is the multi-tenant boundary;
+// because the service-role client bypasses RLS, this check IS the isolation. Returns
+// null for students and unassigned faculty (→ 403). getFacultyUser is read-only; setting
+// roles/programs stays admin-only (POST /api/admin/faculty).
+async function getFacultyUser(req) {
+    const user = await getUserFromToken(req);
+    if (!user || !supabase) return null;
+    if (isAdminEmail(user.email)) {
+        const requested = typeof req.query?.program === 'string' ? req.query.program.trim() : '';
+        return { user, program: requested || null, role: 'admin', isAdmin: true };
+    }
+    const { data: p } = await supabase.from(PROFILE_TABLE)
+        .select('is_program_director, is_faculty, faculty_program').eq('user_id', user.id).maybeSingle();
+    if (!p) return null;
+    const program = (p.faculty_program || '').trim();
+    if (!(p.is_program_director || p.is_faculty) || !program) return null;
+    return { user, program, role: p.is_program_director ? 'program_director' : 'faculty', isAdmin: false };
+}
+
+// Known program-director accounts from the verified-personal-email rows of the outreach
+// roster (marketing/program-outreach). Used ONLY to SURFACE likely PD signups in the admin
+// faculty panel with their program pre-filled — never to silently auto-elevate (elevation is
+// always an explicit admin action on a confirmed-email account). email → { name, program }.
+const PD_ROSTER = {
+    'leclerc@nova.edu': { name: 'Jermaine Leclerc', program: 'Nova Southeastern University (Fort Lauderdale)' },
+    'ec846@nova.edu': { name: 'Elizabeth Carter', program: 'Nova Southeastern University (Tampa)' },
+    'ashley.tilton@nova.edu': { name: 'Ashley Tilton', program: 'Nova Southeastern University (Orlando)' },
+    'gregg.mastropolo@nova.edu': { name: 'Gregg Mastropolo', program: 'Nova Southeastern University (Jacksonville)' },
+    'jk1087@nova.edu': { name: 'Jason Kotun', program: 'Nova Southeastern University (Denver)' },
+    'lbeaulieu@southuniversity.edu': { name: 'Leon Beaulieu', program: 'South University (West Palm Beach)' },
+    'amills@southuniversity.edu': { name: 'Amanda Mills', program: 'South University (Orlando)' },
+    'carie.twichell@case.edu': { name: 'Carie Twichell', program: 'Case Western Reserve University (Cleveland)' },
+    'cxt12@case.edu': { name: 'Carie Twichell', program: 'Case Western Reserve University (Cleveland)' },
+    'kenneth.maloney@case.edu': { name: 'Kenneth Maloney', program: 'Case Western Reserve University (Houston)' },
+    'khm34@case.edu': { name: 'Kenneth Maloney', program: 'Case Western Reserve University (Houston)' },
+    'ty.townsend@case.edu': { name: 'Ty Townsend', program: 'Case Western Reserve University (Austin)' },
+    'daniel.pistone@case.edu': { name: 'Daniel Pistone', program: 'Case Western Reserve University (Washington DC)' },
+    'nflath@neomed.edu': { name: 'Nathaniel Flath', program: 'Northeast Ohio Medical University (NEOMED)' },
+    'grabovia@ohiodominican.edu': { name: 'Aaron Grabovich', program: 'Ohio Dominican University' },
+    'rbassi@iu.edu': { name: 'Richard Bassi', program: 'Indiana University' },
+    'serena.younes@cuanschutz.edu': { name: 'Serena Younes', program: 'University of Colorado (Anschutz)' },
+    'carterla@umsystem.edu': { name: 'Lance Crawford Carter', program: 'University of Missouri–Kansas City' },
+    'tgoodridge@umhb.edu': { name: 'Timothy Goodridge', program: 'University of Mary Hardin-Baylor' },
+    'todd.christian@lipscomb.edu': { name: 'Todd Christian', program: 'Lipscomb University' },
+    'toddchristiancaa@gmail.com': { name: 'Todd Christian', program: 'Lipscomb University' },
+};
+const pdRosterMatch = (email) => PD_ROSTER[String(email || '').trim().toLowerCase()] || null;
+
 // ---------------------------------------------------------------------------
 // Auth — single real endpoint backed by Supabase Auth.
 // Requires the Email provider to be enabled in Supabase Auth settings.
@@ -1337,6 +1393,153 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
     } catch (err) {
         console.error('Voucher redeem failure:', err.message);
         return res.status(500).json({ error: 'Could not redeem code.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Program-director / faculty COHORT DASHBOARD.
+//   • Admin-only: list current faculty/PD + elevate/assign (POST /api/admin/faculty).
+//   • Faculty/PD-only: read THEIR OWN program's cohort roll-up (GET /api/faculty/cohort).
+// Isolation is enforced entirely in application code (service-role bypasses RLS): the
+// program (tenant key) is resolved from the verified token's DB profile via getFacultyUser,
+// never from a client-supplied program id. Elevation requires a confirmed email.
+// ---------------------------------------------------------------------------
+app.get('/api/admin/faculty', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    if (!supabase) return res.status(500).json({ error: 'no db' });
+    try {
+        const { data: rows } = await supabase.from(PROFILE_TABLE)
+            .select('email, full_name, credential, training_program, is_program_director, is_faculty, faculty_program');
+        const U = rows || [];
+        const faculty = U.filter((u) => u.is_program_director || u.is_faculty)
+            .map((u) => ({ email: u.email, name: u.full_name || null, role: u.is_program_director ? 'program_director' : 'faculty', program: u.faculty_program || null }))
+            .sort((a, b) => (a.program || '').localeCompare(b.program || ''));
+        // Likely PD signups (verified-personal-email roster match) not yet elevated — one-click confirm.
+        const suggestions = U.filter((u) => pdRosterMatch(u.email) && !(u.is_program_director || u.is_faculty))
+            .map((u) => { const m = pdRosterMatch(u.email); return { email: u.email, name: u.full_name || m.name, suggested_program: m.program }; });
+        // Distinct captured programs + student counts (populates the assign dropdown).
+        const progCounts = {};
+        U.forEach((u) => { const p = (u.training_program || '').trim(); if (p) progCounts[p] = (progCounts[p] || 0) + 1; });
+        const programs = Object.entries(progCounts).map(([program, students]) => ({ program, students })).sort((a, b) => a.program.localeCompare(b.program));
+        return res.json({ faculty, suggestions, programs });
+    } catch (err) {
+        console.error('admin/faculty list failure:', err.message);
+        return res.status(500).json({ error: 'Could not load faculty.' });
+    }
+});
+
+app.post('/api/admin/faculty', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    if (!supabase) return res.status(500).json({ error: 'no db' });
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const role = ['program_director', 'faculty', 'none'].includes(req.body?.role) ? req.body.role : null;
+    const program = typeof req.body?.program === 'string' ? req.body.program.trim().slice(0, 200) : '';
+    if (!email || !role) return res.status(400).json({ error: 'email and role are required.' });
+    if (role !== 'none' && !program) return res.status(400).json({ error: 'A program is required to grant faculty/PD access.' });
+    try {
+        // Resolve the target by email server-side (never a client-supplied id).
+        const { data: prof } = await supabase.from(PROFILE_TABLE).select('user_id, email').eq('email', email).maybeSingle();
+        if (!prof) return res.status(404).json({ error: 'No MACPrep account with that email.' });
+        // SECURITY: only elevate a VERIFIED account. Profile rows are created at signup BEFORE
+        // email confirmation, so an email-match alone is an impersonation vector — require a
+        // confirmed auth email before granting access to a cohort's student data.
+        if (role !== 'none') {
+            let confirmed = false;
+            try {
+                const { data: au } = await supabase.auth.admin.getUserById(prof.user_id);
+                confirmed = !!(au && au.user && au.user.email_confirmed_at);
+            } catch (e) { confirmed = false; }
+            if (!confirmed) return res.status(400).json({ error: 'That account has not confirmed its email — cannot grant cohort access until it does.' });
+        }
+        const update = role === 'none'
+            ? { is_program_director: false, is_faculty: false, faculty_program: null }
+            : { is_program_director: role === 'program_director', is_faculty: role === 'faculty', faculty_program: program };
+        update.updated_at = new Date().toISOString();
+        const { error } = await supabase.from(PROFILE_TABLE).update(update).eq('user_id', prof.user_id);
+        if (error) throw error;
+        return res.json({ success: true, email, role, program: role === 'none' ? null : program });
+    } catch (err) {
+        console.error('admin/faculty set failure:', err.message);
+        return res.status(500).json({ error: 'Could not update faculty role.' });
+    }
+});
+
+app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
+    const ctx = await getFacultyUser(req);
+    if (!ctx) return res.status(403).json({ error: 'The cohort dashboard is for program directors and faculty.' });
+    if (!supabase) return res.status(500).json({ error: 'no db' });
+    try {
+        // Admin without ?program= → list programs to choose from (faculty always have one).
+        if (!ctx.program) {
+            const { data: rows, error: pErr } = await supabase.from(PROFILE_TABLE).select('training_program');
+            if (pErr) throw pErr;
+            const counts = {};
+            (rows || []).forEach((r) => { const p = (r.training_program || '').trim(); if (p) counts[p] = (counts[p] || 0) + 1; });
+            const programs = Object.entries(counts).map(([program, students]) => ({ program, students })).sort((a, b) => a.program.localeCompare(b.program));
+            return res.json({ role: ctx.role, need_program: true, programs });
+        }
+        const program = ctx.program;
+        // Cohort = student accounts whose training_program is this program (exclude faculty/PD/review).
+        const { data: members, error: mErr } = await supabase.from(PROFILE_TABLE)
+            .select('user_id, email, full_name, credential, is_program_director, is_faculty')
+            .eq('training_program', program);
+        if (mErr) throw mErr;
+        const cohort = (members || []).filter((m) => !m.is_program_director && !m.is_faculty && !isReviewEmail(m.email));
+        const perStudent = {};
+        const cohortIds = [];
+        cohort.forEach((m) => { perStudent[m.user_id] = { attempts: 0, correct: 0, answered: new Set(), last: null }; cohortIds.push(m.user_id); });
+        if (!cohortIds.length) {
+            return res.json({ role: ctx.role, program, cohort_size: 0, roster: [], by_domain: [], summary: { attempts: 0, answered: 0, accuracy: null, active_7d: 0 } });
+        }
+        // Served-bank snapshot: question_id -> NCCAA domain_name (same source of truth as the
+        // individual dashboard; keep published-only consistent so student + PD views reconcile).
+        const qMeta = {};
+        for (let from = 0; from < 50000; from += 1000) {
+            const { data: chunk, error: qErr } = await applyServedFilter(supabase.from('questions').select('id, domain_name')).range(from, from + 999);
+            if (qErr) throw qErr;
+            if (!chunk || !chunk.length) break;
+            chunk.forEach((q) => { qMeta[q.id] = q.domain_name || 'General'; });
+            if (chunk.length < 1000) break;
+        }
+        // All cohort attempts, PAGINATED (PostgREST caps 1000 rows/request; a cohort exceeds it).
+        const attempts = [];
+        for (let from = 0; from < 500000; from += 1000) {
+            const { data: chunk, error: aErr } = await supabase.from(PROGRESS_TABLE)
+                .select('user_id, question_id, is_correct, created_at').in('user_id', cohortIds).range(from, from + 999);
+            if (aErr) throw aErr;
+            if (!chunk || !chunk.length) break;
+            attempts.push(...chunk);
+            if (chunk.length < 1000) break;
+        }
+        const NCCAA = ['Principles of Anesthesia', 'Physiology, Pathophysiology & Management', 'Instrumentation, Monitoring & Anesthetic Delivery Systems', 'Subspecialty Care', 'Pharmacology', 'Regional Anesthesia & Pain Management'];
+        const domAcc = {}; NCCAA.forEach((d) => { domAcc[d] = { attempts: 0, correct: 0 }; });
+        const now = Date.now(); let active7 = 0;
+        attempts.forEach((r) => {
+            const s = perStudent[r.user_id]; if (!s) return;
+            s.attempts++; if (r.is_correct) s.correct++; s.answered.add(r.question_id);
+            if (!s.last || r.created_at > s.last) s.last = r.created_at;
+            const dom = qMeta[r.question_id];
+            if (dom && domAcc[dom]) { domAcc[dom].attempts++; if (r.is_correct) domAcc[dom].correct++; }
+        });
+        const by_domain = NCCAA.map((d) => ({ domain: d, attempts: domAcc[d].attempts, correct: domAcc[d].correct, accuracy: domAcc[d].attempts ? Math.round(domAcc[d].correct / domAcc[d].attempts * 100) : null }));
+        const roster = cohort.map((m) => {
+            const s = perStudent[m.user_id];
+            if (s.last && (now - new Date(s.last).getTime()) < 7 * 86400000) active7++;
+            return { name: m.full_name || null, email: m.email, credential: m.credential || null, attempts: s.attempts, answered: s.answered.size, accuracy: s.attempts ? Math.round(s.correct / s.attempts * 100) : null, last_active: s.last };
+        }).sort((a, b) => b.attempts - a.attempts);
+        const totAtt = attempts.length;
+        const totCorrect = attempts.reduce((a, r) => a + (r.is_correct ? 1 : 0), 0);
+        const answeredAll = new Set(attempts.map((r) => r.question_id)).size;
+        return res.json({
+            role: ctx.role, program, cohort_size: cohort.length,
+            summary: { attempts: totAtt, answered: answeredAll, accuracy: totAtt ? Math.round(totCorrect / totAtt * 100) : null, active_7d: active7 },
+            by_domain, roster, generated_at: new Date().toISOString(),
+        });
+    } catch (err) {
+        console.error('faculty/cohort failure:', err.message);
+        return res.status(500).json({ error: 'Could not load cohort.' });
     }
 });
 
@@ -1916,7 +2119,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -2125,6 +2328,12 @@ app.get('/api/user/profile', async (req, res) => {
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
                 is_admin: isAdminEmail(user.email),
                 is_review: isReviewEmail(profile?.email || user.email),
+                is_program_director: !!profile?.is_program_director,
+                is_faculty: !!profile?.is_faculty,
+                faculty_program: profile?.faculty_program || null,
+                // Drives the in-app "Cohort dashboard" nav item. Admin (owner) can view any
+                // program; a faculty/PD only if they've been assigned one. Server re-checks on every call.
+                can_view_cohort: isAdminEmail(user.email) || !!((profile?.is_program_director || profile?.is_faculty) && profile?.faculty_program),
                 full_name: profile?.full_name || '',
                 credential: credCode || '',
                 graduation_date: gradDate || '',

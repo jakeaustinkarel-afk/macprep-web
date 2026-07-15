@@ -637,8 +637,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <div id="nav-admin-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.reviewQueue()">Review queue</a>
                     <a href="/metrics.html">Metrics</a>
+                    <a href="/faculty.html">Cohort dashboard</a>
                 </div>
             </span>
+            <a id="nav-cohort" class="hidden nav-app" href="/faculty.html" title="Cohort dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="lbl">Cohort</span></a>
             <a class="nav-landing" href="#features" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Features</a>
             <a class="nav-landing" href="#pricing" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Pricing</a>
             <a class="nav-landing" href="/guides/" onclick="document.getElementById('main-nav').classList.remove('nav-open')">Guides</a>

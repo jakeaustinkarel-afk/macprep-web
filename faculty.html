@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Metrics — MACPrep</title>
+    <title>Cohort Dashboard — MACPrep</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@800&display=swap">
@@ -168,10 +168,25 @@
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
             .hidden{display:none;}
     </style>
+    <style>
+        .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+        .kpi .n{font-size:26px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;}
+        .kpi .l{font-size:12px;color:var(--muted);margin-top:3px;}
+        .drow{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);}
+        .drow:first-child{border-top:none;}
+        .dname{flex:0 0 clamp(130px,32%,280px);font-size:13.5px;}
+        .dtrack{flex:1;height:9px;border-radius:5px;background:var(--bg);border:1px solid var(--line);overflow:hidden;}
+        .dfill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.2,.8,.2,1);}
+        .dpct{flex:0 0 92px;text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:600;}
+        .prog-btn{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;color:var(--text);font-family:inherit;font-size:14px;}
+        .prog-btn:hover{border-color:var(--accent);}
+        .email{color:var(--muted);font-size:11.5px;}
+        .badge.saa{background:var(--info-soft,rgba(96,165,250,.16));color:var(--info);} .badge.caa{background:var(--accent-dim);color:var(--accent);}
+    </style>
 </head>
 <body>
     <div class="topbar">
-        <div class="brand">MAC<span class="dot">Prep</span> <span class="sub">/ metrics</span></div>
+        <div class="brand">MAC<span class="dot">Prep</span> <span class="sub">/ cohort</span></div>
         <div class="topbar-actions">
             <button class="ghost-btn" onclick="load()">↻ Refresh</button>
             <a class="ghost-btn" href="/index.html">← App</a>
@@ -180,283 +195,96 @@
         </div>
     </div>
     <div class="wrap">
-        <h1 class="page-title">Founder Metrics <span class="live">Live</span></h1>
-        <p class="meta" id="gen-line">Funnel &amp; conversion overview.</p>
-        <div id="content"><div class="loading"><span class="spinner"></span> Loading metrics…</div></div>
-        <div id="faculty-mgmt" style="margin-top:8px;"></div>
+        <h1 class="page-title" id="page-title">Cohort Dashboard</h1>
+        <p class="meta" id="gen-line">Your program's aggregate performance — visible only to you and MACPrep.</p>
+        <div id="content"><div class="loading"><span class="spinner"></span> Loading your cohort…</div></div>
     </div>
-
+    <footer style="border-top:1px solid var(--line,#1F2937);padding:18px 24px;text-align:center;font-size:12px;color:var(--muted,#6B7280);margin-top:32px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</footer>
     <script>
     const TOKEN = (function(){ try { return localStorage.getItem('macprep_token'); } catch(e){ return null; } })();
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    const pct = (a,b) => b ? Math.round((a/b)*100) : 0;
-    const fmtDate = (iso) => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'}); } catch(e){ return iso.slice(0,10); } };
+    const fmtDate = (iso) => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'}); } catch(e){ return String(iso).slice(0,10); } };
+    const LOADING = '<div class="loading"><span class="spinner"></span> Loading your cohort…</div>';
+    let CURRENT_PROGRAM = (new URLSearchParams(location.search)).get('program') || '';
+
+    function accTone(a){ if(a==null) return 'var(--muted)'; if(a>=80) return 'var(--good)'; if(a>=65) return 'var(--warn)'; return 'var(--bad)'; }
+    function kpi(n,l){ return '<div class="kpi"><div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div></div>'; }
 
     async function load() {
         const C = $('content');
-        if (!TOKEN) { C.innerHTML = signedOut("You're not signed in. Open the app, sign in as an admin, then return here."); return; }
-        C.innerHTML = '<div class="loading"><span class="spinner"></span> Loading metrics…</div>';
+        if (!TOKEN) { C.innerHTML = signedOut("You're not signed in. Open the MACPrep app, sign in, then return here."); return; }
+        C.innerHTML = LOADING;
         try {
-            const r = await fetch('/api/admin/metrics', { headers: { Authorization: 'Bearer ' + TOKEN } });
-            if (r.status === 403) { C.innerHTML = signedOut("This account isn't an admin. Sign in with your founder account."); return; }
+            const url = '/api/faculty/cohort' + (CURRENT_PROGRAM ? ('?program=' + encodeURIComponent(CURRENT_PROGRAM)) : '');
+            const r = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+            if (r.status === 403) { C.innerHTML = signedOut("This dashboard is for program directors and faculty. If you're a PD and don't have access yet, contact MACPrep and we'll enable your account."); return; }
             if (!r.ok) throw new Error('HTTP ' + r.status);
-            render(await r.json());
-        } catch (e) { C.innerHTML = '<div class="center" style="color:var(--bad)">Couldn\'t load metrics: ' + esc(e.message) + '</div>'; }
+            const d = await r.json();
+            if (d.need_program) { renderPicker(d); return; }
+            render(d);
+        } catch (e) { C.innerHTML = '<div class="center" style="color:var(--bad)">Couldn\'t load your cohort: ' + esc(e.message) + '</div>'; }
     }
 
-    function signedOut(msg) {
-        return '<div class="card center"><div style="margin-bottom:14px;color:var(--muted);"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><p class="muted" style="max-width:420px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
+    function signedOut(msg){
+        return '<div class="card center"><div style="margin-bottom:14px;color:var(--muted);"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><p class="muted" style="max-width:460px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
     }
 
-    // ---- inline SVG icons (stroke-based, no emoji) -----------------------
-    const IC = {
-        users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-        crown:'<path d="M3 18h18"/><path d="M4 8l4 4 4-6 4 6 4-4-1.6 10H5.6z"/>',
-        dollar:'<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-        trend:'<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>',
-        eye:'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
-        userplus:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/>',
-        activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
-        cart:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
-        funnel:'<path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z"/>',
-        chart:'<path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/>',
-        list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
-        msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-    };
-    const svg = (name, w) => '<svg viewBox="0 0 24 24" width="' + (w||18) + '" height="' + (w||18) + '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[name]||'') + '</svg>';
-
-    // ▲/▼ change vs the previous period (percentage when there's a base to compare to).
-    function deltaChip(cur, prev) {
-        if (!prev && !cur) return '<span class="delta flat">—</span>';
-        if (!prev) return '<span class="delta up">▲ new</span>';
-        const p = Math.round(((cur - prev) / prev) * 100);
-        if (p > 0) return '<span class="delta up">▲ ' + p + '%</span>';
-        if (p < 0) return '<span class="delta down">▼ ' + Math.abs(p) + '%</span>';
-        return '<span class="delta flat">0%</span>';
-    }
-
-    function kpi(tone, icon, n, l, delta, s) {
-        return '<div class="kpi"><div class="kpi-top"><span class="ic ' + tone + '">' + svg(icon) + '</span>' + (delta||'') + '</div>' +
-            '<div class="n">' + esc(n) + '</div><div class="l">' + esc(l) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>';
-    }
-    function mini(icon, label, cur, prev) {
-        return '<div class="mini"><div class="ml">' + svg(icon, 14) + esc(label) + '</div>' +
-            '<div class="mrow"><span class="mn">' + cur.toLocaleString() + '</span>' + deltaChip(cur, prev) + '</div></div>';
-    }
-
-    // Responsive SVG area+line chart: area = landing views, line = signups,
-    // dots on the signup line, warm dots on the x-axis mark purchase days.
-    function lineChart(days) {
-        const n = days.length;
-        if (!n) return '<p class="muted" style="margin:0;">No activity yet.</p>';
-        const W = 720, H = 210, padL = 34, padR = 12, padT = 12, padB = 26;
-        const pw = W - padL - padR, ph = H - padT - padB;
-        const rawMax = Math.max(1, ...days.map(x => Math.max(x.visits, x.signups)));
-        const ymax = rawMax <= 5 ? 5 : Math.ceil(rawMax / 5) * 5;
-        const X = i => padL + (n <= 1 ? pw / 2 : (i / (n - 1)) * pw);
-        const Y = v => padT + ph * (1 - v / ymax);
-        const linePath = key => days.map((d, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(d[key]).toFixed(1)).join(' ');
-        const areaPath = key => 'M' + X(0).toFixed(1) + ' ' + (padT + ph) + ' ' + days.map((d, i) => 'L' + X(i).toFixed(1) + ' ' + Y(d[key]).toFixed(1)).join(' ') + ' L' + X(n - 1).toFixed(1) + ' ' + (padT + ph) + ' Z';
-        let grid = '';
-        [0, 0.5, 1].forEach(f => {
-            const gy = (padT + ph * (1 - f)).toFixed(1);
-            grid += '<line x1="' + padL + '" y1="' + gy + '" x2="' + (W - padR) + '" y2="' + gy + '" stroke="var(--line)" stroke-width="1"/>' +
-                '<text x="' + (padL - 7) + '" y="' + (+gy + 3.5) + '" text-anchor="end" fill="var(--muted)" font-size="10" font-family="ui-monospace,monospace">' + Math.round(ymax * f) + '</text>';
-        });
-        let xl = '';
-        days.forEach((d, i) => { if (i % 4 === 0 || i === n - 1) xl += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" fill="var(--muted)" font-size="9.5" font-family="ui-monospace,monospace">' + esc(d.date.slice(5)) + '</text>'; });
-        const sd = days.map((d, i) => '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(d.signups).toFixed(1) + '" r="2.3" fill="var(--accent)"/>').join('');
-        const pk = days.map((d, i) => d.purchases > 0 ? '<circle cx="' + X(i).toFixed(1) + '" cy="' + (padT + ph - 3) + '" r="3.6" fill="var(--warn)"/>' : '').join('');
-        const bw = pw / n;
-        const hb = days.map((d, i) => '<rect class="hb" x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + padT + '" width="' + bw.toFixed(1) + '" height="' + ph + '" fill="transparent"><title>' + esc(d.date) + ' — ' + d.visits + ' views · ' + d.signups + ' signups · ' + d.sessions + ' sessions · ' + d.purchases + ' purchases</title></rect>').join('');
-        return '<svg class="tchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily activity trend, landing views and signups">' +
-            grid +
-            '<path d="' + areaPath('visits') + '" fill="var(--info)" opacity="0.13"/>' +
-            '<path d="' + linePath('visits') + '" fill="none" stroke="var(--info)" stroke-width="2" stroke-linejoin="round"/>' +
-            '<path d="' + linePath('signups') + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>' +
-            sd + pk + xl + hb + '</svg>';
-    }
-
-    function render(d) {
-        $('gen-line').textContent = 'Updated ' + new Date(d.generated_at).toLocaleString() + '  ·  activity + funnel: last ' + d.window_days + ' days  ·  revenue: all-time';
-        const t = d.totals, rev = d.revenue, days = d.daily || [], n = days.length;
-        const rng = (key, a, b) => { let s = 0; for (let i = a; i < b; i++) s += (days[i] && days[i][key]) || 0; return s; };
-        const l7 = k => rng(k, Math.max(0, n - 7), n), p7 = k => rng(k, Math.max(0, n - 14), Math.max(0, n - 7));
-        const convRate = pct(rev.paid_conversions, t.users);
-        const premiumConv = pct(t.premium, t.users);
-        const arpu = t.users ? (rev.est_revenue / t.users) : 0;
-        const dollars = '$' + (rev.est_revenue).toLocaleString();
-
-        // Primary KPIs (all-time), each with a 7-day trend signal
-        let html = '<div class="sec">' + svg('trend', 13) + ' Overview · all-time</div><div class="kpis">' +
-            kpi('', 'users', t.users.toLocaleString(), 'Total users', deltaChip(l7('signups'), p7('signups')), t.premium + ' premium · ' + t.free + ' free') +
-            kpi('warn', 'crown', t.premium.toLocaleString(), 'Premium members', '<span class="delta ' + (premiumConv > 0 ? 'up' : 'flat') + '">' + premiumConv + '%</span>', premiumConv + '% of all users') +
-            kpi('info', 'dollar', dollars, 'Est. revenue', deltaChip(l7('purchases') * rev.price, p7('purchases') * rev.price), '$' + arpu.toFixed(2) + ' per user (ARPU)') +
-            kpi('', 'trend', convRate + '%', 'User → paid', '', rev.paid_conversions + ' paid · $' + rev.price + ' each') +
-            '</div>';
-
-        // Last-7-days activity strip (vs the previous 7 days)
-        html += '<div class="sec">' + svg('activity', 13) + ' Last 7 days · vs previous 7</div><div class="strip">' +
-            mini('eye', 'Landing views', l7('visits'), p7('visits')) +
-            mini('userplus', 'Signups', l7('signups'), p7('signups')) +
-            mini('activity', 'Practice sessions', l7('sessions'), p7('sessions')) +
-            mini('cart', 'Purchases', l7('purchases'), p7('purchases')) +
-            '</div>';
-
-        // Credential mix — SAA (students) vs CAA (certified), so you can watch the split over time
-        const cm = d.credential_mix || { saa: 0, caa: 0, other: 0, unset: 0 };
-        const cmT = cm.saa + cm.caa;
-        const saaPct = cmT ? Math.round((cm.saa / cmT) * 100) : 0;
-        const caaPct = cmT ? 100 - saaPct : 0;
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('users', 15) + '<h2>Credential mix</h2></span><span class="pill">' + cm.saa + ' SAA · ' + cm.caa + ' CAA</span></div>' +
-            '<div class="credbar">' +
-            (cm.saa ? '<div class="credseg saa" style="width:' + saaPct + '%"></div>' : '') +
-            (cm.caa ? '<div class="credseg caa" style="width:' + caaPct + '%"></div>' : '') +
-            (cmT ? '' : '<div class="credseg empty">No credentials recorded yet</div>') +
-            '</div>' +
-            '<div class="credlegend"><span><i class="saa"></i>SAA — students (' + cm.saa + ' · ' + saaPct + '%)</span><span><i class="caa"></i>CAA — certified (' + cm.caa + ' · ' + caaPct + '%)</span>' + ((cm.other + cm.unset) ? '<span class="muted">' + (cm.other + cm.unset) + ' other / not set</span>' : '') + '</div></div>';
-
-        // Funnel — flag the single biggest drop-off + show overall conversion
-        const top = Math.max(1, ...d.funnel.map(f => f.n));
-        let biggest = -1, lostMost = -1;
-        for (let i = 1; i < d.funnel.length; i++) { const prev = d.funnel[i - 1].n; if (prev > 0) { const lost = prev - d.funnel[i].n; if (lost > lostMost) { lostMost = lost; biggest = i; } } }
-        const overall = pct(d.funnel[d.funnel.length - 1].n, d.funnel[0].n);
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('funnel', 15) + '<h2>Conversion funnel · last ' + d.window_days + ' days</h2></span>' +
-            '<span class="pill">Overall <b>' + overall + '%</b> visit → paid</span></div>';
-        d.funnel.forEach((f, i) => {
-            const w = Math.round((f.n / top) * 100);
-            let right;
-            if (i === 0) right = '<span class="pct">top of funnel</span>';
-            else right = '<span class="pct' + (i === biggest ? ' drop' : '') + '">' + pct(f.n, d.funnel[i - 1].n) + '% of prev</span>';
-            html += '<div class="frow' + (i === biggest ? ' biggest' : '') + '"><div class="flabel">' + esc(f.label) + '</div>' +
-                '<div class="ftrack"><div class="ffill' + (f.n === 0 ? ' zero' : '') + '" style="width:' + w + '%;min-width:' + (f.n > 0 ? '6px' : '0') + ';"></div></div>' +
-                '<div class="fnum"><b>' + f.n.toLocaleString() + '</b> ' + right + '</div></div>';
-        });
-        html += '</div>';
-
-        // Daily activity — SVG area + line chart
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('chart', 15) + '<h2>Daily activity · last ' + n + ' days</h2></span></div>' +
-            '<div class="legend"><span><i style="background:var(--info)"></i>Landing views</span><span><i style="background:var(--accent)"></i>Signups</span><span><i class="dot" style="background:var(--warn)"></i>Purchase</span></div>' +
-            lineChart(days) + '</div>';
-
-        // Users by program (training institution distribution)
-        const pm = d.program_mix || [];
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Users by program</h2></span>' + (pm.length ? '<span class="pill">' + pm.length + ' programs</span>' : '') + '</div>';
-        if (!pm.length) {
-            html += '<p class="muted" style="margin:0;">No program captured yet. Members pick their program at sign-in and in Profile.</p>';
-        } else {
-            const pmMax = Math.max(1, ...pm.map(x => x.n));
-            html += '<div style="overflow-x:auto;"><table><thead><tr><th>Program</th><th>Users</th></tr></thead><tbody>';
-            pm.forEach(x => {
-                const w = Math.max(8, Math.round((x.n / pmMax) * 120));
-                html += '<tr><td>' + esc(x.program) + '</td><td><span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;height:8px;border-radius:4px;background:var(--accent);width:' + w + 'px;"></span>' + x.n + '</span></td></tr>';
-            });
-            if (d.program_unset) html += '<tr><td class="muted">(not set)</td><td class="muted">' + d.program_unset + '</td></tr>';
-            html += '</tbody></table></div>';
-        }
-        html += '</div>';
-
-        // Recent signups
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('list', 15) + '<h2>Recent signups</h2></span><span class="pill">' + t.users.toLocaleString() + ' total</span></div><div style="overflow-x:auto;"><table><thead><tr><th>Email</th><th>Credential</th><th>Program</th><th>Tier</th><th>Joined</th><th>Exam date</th></tr></thead><tbody>';
-        if (!d.recent_signups.length) html += '<tr><td colspan="6" class="muted">No signups yet.</td></tr>';
-        d.recent_signups.forEach(u => {
-            const credCls = u.credential==='SAA'?'saa':u.credential==='CAA'?'caa':'none';
-            html += '<tr><td class="email">' + esc(u.email||'—') + '</td><td><span class="badge ' + credCls + '">' + esc(u.credential || '—') + '</span></td><td class="muted">' + esc(u.program || '—') + '</td><td><span class="badge ' + (u.tier==='premium'?'premium':'free') + '">' + esc(u.tier||'free') + '</span></td><td class="muted">' + fmtDate(u.joined) + '</td><td class="muted">' + (u.exam_date? fmtDate(u.exam_date) : '—') + '</td></tr>';
-        });
-        html += '</tbody></table></div></div>';
-
-        // Recent feedback
-        const fb = d.recent_feedback || [];
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('msg', 15) + '<h2>Recent feedback</h2></span>' + (fb.length ? '<span class="pill">' + fb.length + '</span>' : '') + '</div>';
-        if (!fb.length) {
-            html += '<p class="muted" style="margin:0;">No feedback yet. When someone uses the in-app Feedback form, it appears here and emails you a copy.</p>';
-        } else {
-            fb.forEach(f => {
-                const m = /^\[([^\]]+)\]\s*([\s\S]*)$/.exec(f.text || '');
-                const kind = m ? m[1] : 'note';
-                const body = m ? m[2] : (f.text || '');
-                html += '<div class="fb"><div class="fb-head"><span class="badge kind">' + esc(kind) + '</span><span class="fb-meta">' + esc(f.email || 'anonymous') + ' · ' + fmtDate(f.at) + '</span></div><div class="fb-body">' + esc(body) + '</div></div>';
-            });
-        }
-        html += '</div>';
-
-        $('content').innerHTML = html;
-    }
-
-    // ---- Program directors & faculty (admin management) ---------------------
-    async function loadFaculty(){
-        const box = $('faculty-mgmt');
-        if (!TOKEN || !box) return;
-        try {
-            const r = await fetch('/api/admin/faculty', { headers: { Authorization: 'Bearer ' + TOKEN } });
-            if (!r.ok) { box.innerHTML = ''; return; }
-            renderFacultyCard(await r.json());
-        } catch (e) { box.innerHTML = ''; }
-    }
-    function facProgOptions(fd){
-        const set = {};
-        (fd.programs||[]).forEach(p => { if (p.program) set[p.program] = true; });
-        (fd.suggestions||[]).forEach(s => { if (s.suggested_program) set[s.suggested_program] = true; });
-        (fd.faculty||[]).forEach(f => { if (f.program) set[f.program] = true; });
-        return Object.keys(set).sort().map(p => '<option value="' + esc(p) + '"></option>').join('');
-    }
-    function renderFacultyCard(fd){
-        const box = $('faculty-mgmt');
-        const fac = fd.faculty || [], sug = fd.suggestions || [];
-        let h = '<div class="card"><div class="card-h"><span class="hl">' + svg('users',15) + '<h2>Program directors &amp; faculty</h2></span>' + (fac.length ? '<span class="pill">' + fac.length + '</span>' : '') + '</div>';
-        if (sug.length){
-            sug.forEach(function(s){
-                h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 11px;border:1px dashed var(--accent);border-radius:10px;margin-bottom:8px;background:var(--accent-dim);">'
-                   + '<span style="flex:1;min-width:180px;font-size:13px;">⭐ <b>' + esc(s.name||s.email) + '</b> <span class="muted">' + esc(s.email) + '</span><br><span class="muted" style="font-size:12px;">Roster match → ' + esc(s.suggested_program) + '</span></span>'
-                   + '<button class="ghost-btn" data-act="confirm" data-email="' + esc(s.email) + '" data-prog="' + esc(s.suggested_program) + '">Confirm as PD</button></div>';
-            });
-        }
-        if (!fac.length) h += '<p class="muted" style="margin:2px 0 14px;">No program directors or faculty yet. Grant access below.</p>';
-        else {
-            h += '<div style="overflow-x:auto;margin-bottom:14px;"><table><thead><tr><th>Account</th><th>Role</th><th>Program</th><th></th></tr></thead><tbody>';
-            fac.forEach(function(f){
-                h += '<tr><td class="email">' + esc(f.email) + (f.name ? '<div class="muted" style="font-size:11.5px;">' + esc(f.name) + '</div>' : '') + '</td>'
-                   + '<td><span class="badge ' + (f.role==='program_director'?'caa':'saa') + '">' + (f.role==='program_director'?'Program Director':'Faculty') + '</span></td>'
-                   + '<td class="muted">' + esc(f.program||'—') + '</td>'
-                   + '<td style="text-align:right;"><button class="ghost-btn" data-act="remove" data-email="' + esc(f.email) + '">Remove</button></td></tr>';
-            });
-            h += '</tbody></table></div>';
-        }
-        h += '<div style="border-top:1px solid var(--line);padding-top:14px;">'
-           + '<div class="sec" style="margin-bottom:10px;">Grant / assign access</div>'
-           + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
-           + '<input id="fac-email" type="email" placeholder="account email" style="flex:1;min-width:170px;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:13px;">'
-           + '<select id="fac-role" style="padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:13px;"><option value="program_director">Program Director</option><option value="faculty">Faculty</option></select>'
-           + '<input id="fac-prog" list="fac-proglist" placeholder="program (exact)" style="flex:1;min-width:170px;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:13px;">'
-           + '<datalist id="fac-proglist">' + facProgOptions(fd) + '</datalist>'
-           + '<button class="ghost-btn" id="fac-grant">Grant access</button></div>'
-           + '<div id="fac-msg" class="mono" style="font-size:12px;margin-top:8px;color:var(--muted);"></div>'
-           + '<p class="muted" style="font-size:11.5px;margin:8px 0 0;">Only confirmed-email accounts can be granted access. The program must exactly match what students pick (use the suggestions/list).</p></div>';
+    // Admin only: pick which program's cohort to inspect.
+    function renderPicker(d){
+        const progs = d.programs || [];
+        $('gen-line').textContent = 'Admin view — choose a program to inspect its cohort.';
+        let h = '<div class="card"><h2>Programs</h2><p class="muted" style="margin:8px 0 16px;">' + progs.length + ' program' + (progs.length===1?'':'s') + ' with captured students.</p>';
+        if (!progs.length) h += '<p class="muted">No programs captured yet.</p>';
+        progs.forEach(function(p){ h += '<button class="prog-btn" data-prog="' + esc(p.program) + '">' + esc(p.program) + ' <span class="muted">· ' + p.students + ' student' + (p.students===1?'':'s') + '</span></button>'; });
         h += '</div>';
-        box.innerHTML = h;
-        box.querySelectorAll('[data-act="confirm"]').forEach(function(b){ b.onclick = function(){ setFaculty(b.getAttribute('data-email'), 'program_director', b.getAttribute('data-prog')); }; });
-        box.querySelectorAll('[data-act="remove"]').forEach(function(b){ b.onclick = function(){ if (confirm('Remove cohort access for ' + b.getAttribute('data-email') + '?')) setFaculty(b.getAttribute('data-email'), 'none', ''); }; });
-        const g = $('fac-grant'); if (g) g.onclick = function(){ setFaculty(($('fac-email').value||'').trim(), $('fac-role').value, ($('fac-prog').value||'').trim()); };
+        $('content').innerHTML = h;
+        document.querySelectorAll('.prog-btn').forEach(function(b){ b.onclick = function(){ CURRENT_PROGRAM = b.getAttribute('data-prog'); load(); }; });
     }
-    async function setFaculty(email, role, program){
-        const msg = $('fac-msg');
-        if (!email) { if (msg){ msg.style.color='var(--bad)'; msg.textContent='Enter an account email.'; } return; }
-        if (role !== 'none' && !program) { if (msg){ msg.style.color='var(--bad)'; msg.textContent='Pick a program.'; } return; }
-        if (msg){ msg.style.color='var(--muted)'; msg.textContent='Saving…'; }
-        try {
-            const r = await fetch('/api/admin/faculty', { method:'POST', headers:{ Authorization:'Bearer '+TOKEN, 'Content-Type':'application/json' }, body: JSON.stringify({ email, role, program }) });
-            const j = await r.json().catch(()=>({}));
-            if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-            if (msg){ msg.style.color='var(--good)'; msg.textContent = role==='none' ? 'Access removed.' : 'Access granted.'; }
-            loadFaculty();
-        } catch (e){ if (msg){ msg.style.color='var(--bad)'; msg.textContent = e.message; } }
+
+    function render(d){
+        const roleLabel = d.role==='program_director' ? 'Program Director' : d.role==='faculty' ? 'Faculty' : 'Admin';
+        $('gen-line').innerHTML = '<b>' + esc(d.program) + '</b> · <span class="muted">' + roleLabel + ' view</span>';
+        const s = d.summary || {};
+        let h = '';
+        if (d.role==='admin') h += '<p style="margin:-6px 0 16px;"><a class="ghost-btn" style="display:inline-flex;" href="/faculty.html">← All programs</a></p>';
+        h += '<div class="kpis">'
+           + kpi(d.cohort_size, 'Students in cohort')
+           + kpi(s.active_7d==null?'—':s.active_7d, 'Active last 7 days')
+           + kpi((s.attempts||0).toLocaleString(), 'Questions answered')
+           + kpi(s.accuracy==null?'—':(s.accuracy+'%'), 'Cohort accuracy')
+           + '</div>';
+        if (!d.cohort_size){
+            h += '<div class="card"><h2>No students yet</h2><p class="muted" style="margin:10px 0 0;line-height:1.6;">No MACPrep accounts have selected <b>' + esc(d.program) + '</b> as their program yet. Once your students sign up and choose your program, their aggregate performance shows up here.</p></div>';
+            $('content').innerHTML = h; return;
+        }
+        // Per-domain performance
+        h += '<div class="card"><h2>Performance by NCCAA domain</h2><div style="margin-top:14px;">';
+        (d.by_domain||[]).forEach(function(x){
+            const a = x.accuracy; const w = a==null?0:a;
+            h += '<div class="drow"><div class="dname">' + esc(x.domain) + '</div>'
+               + '<div class="dtrack"><div class="dfill" style="width:' + w + '%;background:' + accTone(a) + ';"></div></div>'
+               + '<div class="dpct" style="color:' + accTone(a) + ';">' + (a==null?'—':a+'%') + ' <span class="muted" style="font-weight:400;font-size:11px;">(' + x.attempts + ')</span></div></div>';
+        });
+        h += '</div><p class="muted" style="margin:14px 0 0;font-size:12px;">Parentheses = questions the cohort has answered in that domain; low-count domains are less reliable.</p></div>';
+        // Roster
+        h += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h2>Students</h2><span class="pill">' + d.cohort_size + ' total</span></div>';
+        h += '<div style="overflow-x:auto;margin-top:12px;"><table><thead><tr><th>Student</th><th>Credential</th><th>Answered</th><th>Attempts</th><th>Accuracy</th><th>Last active</th></tr></thead><tbody>';
+        (d.roster||[]).forEach(function(u){
+            const nm = u.name ? esc(u.name) : (u.email ? esc(u.email.split('@')[0]) : '—');
+            const cc = u.credential==='SAA'?'saa':u.credential==='CAA'?'caa':'none';
+            h += '<tr><td>' + nm + '<div class="email">' + esc(u.email||'') + '</div></td>'
+               + '<td>' + (u.credential?('<span class="badge ' + cc + '">' + esc(u.credential) + '</span>'):'<span class="muted">—</span>') + '</td>'
+               + '<td>' + (u.answered||0) + '</td><td>' + (u.attempts||0) + '</td>'
+               + '<td style="color:' + accTone(u.accuracy) + ';font-weight:600;">' + (u.accuracy==null?'—':u.accuracy+'%') + '</td>'
+               + '<td class="muted">' + fmtDate(u.last_active) + '</td></tr>';
+        });
+        h += '</tbody></table></div></div>';
+        h += '<p class="muted" style="font-size:12px;margin:4px 2px 0;line-height:1.55;">Confidential to your program. Students appear here because they selected ' + esc(d.program) + ' as their MACPrep program. More views (individual-vs-cohort, cohort-vs-all-users, per-question analytics) are coming.</p>';
+        $('content').innerHTML = h;
     }
 
     load();
-    loadFaculty();
     </script>
-<footer style="border-top:1px solid var(--line,#1F2937);padding:18px 24px;text-align:center;font-size:12px;color:var(--muted,#6B7280);margin-top:32px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</footer>
-  
-  </body>
+</body>
 </html>

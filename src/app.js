@@ -140,6 +140,8 @@
         if (authed) renderWhatsNewDot();
         const isAdmin = authed && state.profile && state.profile.is_admin;
         $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
+        // "Cohort" (faculty/PD cohort dashboard) — shown to elevated faculty/PD; admins reach it via the Admin menu.
+        $('nav-cohort') && $('nav-cohort').classList.toggle('hidden', !(authed && state.profile && state.profile.can_view_cohort && !isAdmin));
         // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
@@ -2869,6 +2871,7 @@
                 <label class="mono" style="${lbl}">WHICH PROGRAM? <span style="text-transform:none;letter-spacing:0;">(we'll add it)</span></label>
                 <input id="cp-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}">
             </div>
+            <div class="sub" style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;">Faculty at your program may view your MACPrep progress.</div>
             <button class="btn" style="width:100%;margin-top:2px;" onclick="MACPrep.saveCredentialPrompt(this)">Save</button>
             <div id="cp-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
         </div>`;
