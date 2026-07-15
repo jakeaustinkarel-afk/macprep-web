@@ -175,7 +175,8 @@
         .drow{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);}
         .drow:first-child{border-top:none;}
         .dname{flex:0 0 clamp(130px,32%,280px);font-size:13.5px;}
-        .dtrack{flex:1;height:9px;border-radius:5px;background:var(--bg);border:1px solid var(--line);overflow:hidden;}
+        .dtrack{flex:1;height:9px;border-radius:5px;background:var(--bg);border:1px solid var(--line);overflow:hidden;position:relative;}
+        .dmark{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.6;}
         .dfill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.2,.8,.2,1);}
         .dpct{flex:0 0 92px;text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:600;}
         .prog-btn{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;color:var(--text);font-family:inherit;font-size:14px;}
@@ -205,6 +206,7 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const fmtDate = (iso) => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'}); } catch(e){ return String(iso).slice(0,10); } };
+    const fmtMs = (ms) => { if (ms==null) return '—'; const s = ms/1000; return s<60 ? (s<10 ? s.toFixed(1) : Math.round(s)) + 's' : Math.floor(s/60) + 'm ' + Math.round(s%60) + 's'; };
     const LOADING = '<div class="loading"><span class="spinner"></span> Loading your cohort…</div>';
     let CURRENT_PROGRAM = (new URLSearchParams(location.search)).get('program') || '';
 
@@ -261,12 +263,14 @@
         // Per-domain performance
         h += '<div class="card"><h2>Performance by NCCAA domain</h2><div style="margin-top:14px;">';
         (d.by_domain||[]).forEach(function(x){
-            const a = x.accuracy; const w = a==null?0:a;
+            const a = x.accuracy; const w = a==null?0:a; const sa = x.saa_accuracy;
+            const mark = (sa!=null) ? '<span class="dmark" style="left:' + sa + '%;" title="All-SAA average ' + sa + '%"></span>' : '';
+            const cmp = (a!=null && sa!=null) ? (' · <span style="color:' + (a>=sa?'var(--good)':'var(--bad)') + ';">' + (a>=sa?'+':'') + (a-sa) + ' vs SAAs</span>') : '';
             h += '<div class="drow"><div class="dname">' + esc(x.domain) + '</div>'
-               + '<div class="dtrack"><div class="dfill" style="width:' + w + '%;background:' + accTone(a) + ';"></div></div>'
-               + '<div class="dpct" style="color:' + accTone(a) + ';">' + (a==null?'—':a+'%') + ' <span class="muted" style="font-weight:400;font-size:11px;">(' + x.attempts + ')</span></div></div>';
+               + '<div class="dtrack"><div class="dfill" style="width:' + w + '%;background:' + accTone(a) + ';"></div>' + mark + '</div>'
+               + '<div class="dpct" style="color:' + accTone(a) + ';">' + (a==null?'—':a+'%') + ' <span class="muted" style="font-weight:400;font-size:11px;">(' + x.attempts + ')' + cmp + '</span></div></div>';
         });
-        h += '</div><p class="muted" style="margin:14px 0 0;font-size:12px;">Parentheses = questions the cohort has answered in that domain; low-count domains are less reliable.</p></div>';
+        h += '</div><p class="muted" style="margin:14px 0 0;font-size:12px;">The vertical marker on each bar is the all-SAA average; the “vs SAAs” figure is your cohort minus that average. Parentheses = questions the cohort has answered (low-count domains are less reliable).</p></div>';
         // Roster
         h += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h2>Students</h2><span class="pill">' + d.cohort_size + ' total</span></div>';
         h += '<div style="overflow-x:auto;margin-top:12px;"><table><thead><tr><th>Student</th><th>Credential</th><th>Answered</th><th>Attempts</th><th>Accuracy</th><th>Last active</th></tr></thead><tbody>';
@@ -280,6 +284,20 @@
                + '<td class="muted">' + fmtDate(u.last_active) + '</td></tr>';
         });
         h += '</tbody></table></div></div>';
+        // Per-item: the questions the cohort finds hardest (Phase 3).
+        const items = d.hardest_items || [];
+        if (items.length){
+            h += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h2>Questions your cohort finds hardest</h2><span class="pill">' + items.length + '</span></div>';
+            h += '<div style="overflow-x:auto;margin-top:12px;"><table><thead><tr><th>Question</th><th>Domain</th><th>Correct</th><th>Avg time</th><th>Changed</th></tr></thead><tbody>';
+            items.forEach(function(it){
+                h += '<tr><td style="max-width:360px;">' + esc(it.stem||'—') + (it.question_type?' <span class="muted" style="font-size:11px;">[' + esc(it.question_type) + ']</span>':'') + '</td>'
+                   + '<td class="muted" style="font-size:12px;">' + esc(it.domain||'—') + '</td>'
+                   + '<td style="color:' + accTone(it.pct_correct) + ';font-weight:600;">' + it.pct_correct + '% <span class="muted" style="font-weight:400;font-size:11px;">(' + it.attempts + ')</span></td>'
+                   + '<td class="muted">' + fmtMs(it.avg_time_ms) + '</td>'
+                   + '<td class="muted">' + (it.change_rate==null?'—':it.change_rate+'%') + '</td></tr>';
+            });
+            h += '</tbody></table></div><p class="muted" style="font-size:11.5px;margin:10px 0 0;line-height:1.55;">Ranked by lowest cohort %-correct (≥3 attempts). “Avg time” = time-on-item; “Changed” = share who changed their answer before submitting. Time &amp; change data accrues as students practice.</p></div>';
+        }
         h += '<p class="muted" style="font-size:12px;margin:4px 2px 0;line-height:1.55;">Confidential to your program. Students appear here because they selected ' + esc(d.program) + ' as their MACPrep program. More views (individual-vs-cohort, cohort-vs-all-users, per-question analytics) are coming.</p>';
         $('content').innerHTML = h;
     }

@@ -961,6 +961,63 @@ const PD_ROSTER = {
 const pdRosterMatch = (email) => PD_ROSTER[String(email || '').trim().toLowerCase()] || null;
 
 // ---------------------------------------------------------------------------
+// "All SAAs" benchmark — the anonymized aggregate that STUDENTS compare themselves
+// to (per Jake: students see how they stack up against ALL SAAs, never their own
+// cohort; per-cohort analysis stays faculty/PD/admin-only). Cached in-memory with a
+// short TTL since it scans the whole SAA attempt set. Reused by: the student dashboard
+// (you-vs-all-SAAs), per-question grading (SAA peer %), and the faculty cohort
+// dashboard (cohort-vs-all-SAAs). At larger scale, replace with a Postgres RPC/matview.
+// ---------------------------------------------------------------------------
+const SAA_BENCH_TTL = 10 * 60 * 1000;
+let _saaBench = { at: 0, byDomain: {}, saaIds: new Set() };
+const isSaaCred = (c) => String(c || '').trim().toUpperCase().startsWith('SAA');
+async function getSaaBenchmark() {
+    if (_saaBench.at && (Date.now() - _saaBench.at) < SAA_BENCH_TTL) return _saaBench;
+    if (!supabase) return _saaBench;
+    try {
+        const { data: profs, error: pErr } = await supabase.from(PROFILE_TABLE).select('user_id, credential');
+        if (pErr) throw pErr;
+        const saaIds = new Set((profs || []).filter((p) => isSaaCred(p.credential)).map((p) => p.user_id));
+        // Served-bank domain map (published-only-consistent with the individual dashboard).
+        const qMeta = {};
+        for (let from = 0; from < 50000; from += 1000) {
+            const { data: chunk, error } = await applyServedFilter(supabase.from('questions').select('id, domain_name')).range(from, from + 999);
+            if (error) throw error;
+            if (!chunk || !chunk.length) break;
+            chunk.forEach((q) => { qMeta[q.id] = q.domain_name || 'General'; });
+            if (chunk.length < 1000) break;
+        }
+        // Aggregate all SAA attempts by domain. Page ALL progress ordered by PK and filter
+        // to SAA in JS — avoids a giant .in(user_id) URL as the SAA population grows.
+        const byDomain = {};
+        if (saaIds.size) {
+            for (let from = 0; from < 2000000; from += 1000) {
+                const { data: chunk, error } = await supabase.from(PROGRESS_TABLE)
+                    .select('user_id, question_id, is_correct').order('id', { ascending: true }).range(from, from + 999);
+                if (error) throw error;
+                if (!chunk || !chunk.length) break;
+                chunk.forEach((r) => {
+                    if (!saaIds.has(r.user_id)) return;
+                    const dom = qMeta[r.question_id]; if (!dom) return;
+                    const bd = byDomain[dom] || (byDomain[dom] = { a: 0, c: 0 });
+                    bd.a++; if (r.is_correct) bd.c++;
+                });
+                if (chunk.length < 1000) break;
+            }
+        }
+        _saaBench = { at: Date.now(), byDomain, saaIds };
+    } catch (e) { console.error('[saa-benchmark]', e.message); }
+    return _saaBench;
+}
+// Per-domain SAA accuracy %, only where there's enough signal (keeps it an anonymized
+// aggregate, never a stat derived from one or two students).
+function saaDomainBenchmark(bench, minAttempts = 20) {
+    const out = {};
+    Object.entries((bench && bench.byDomain) || {}).forEach(([dom, v]) => { if (v.a >= minAttempts) out[dom] = Math.round((v.c / v.a) * 100); });
+    return out;
+}
+
+// ---------------------------------------------------------------------------
 // Auth — single real endpoint backed by Supabase Auth.
 // Requires the Email provider to be enabled in Supabase Auth settings.
 // ---------------------------------------------------------------------------
@@ -1507,7 +1564,7 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         const attempts = [];
         for (let from = 0; from < 500000; from += 1000) {
             const { data: chunk, error: aErr } = await supabase.from(PROGRESS_TABLE)
-                .select('user_id, question_id, is_correct, created_at').in('user_id', cohortIds).range(from, from + 999);
+                .select('user_id, question_id, is_correct, created_at, time_ms, answer_changed').in('user_id', cohortIds).range(from, from + 999);
             if (aErr) throw aErr;
             if (!chunk || !chunk.length) break;
             attempts.push(...chunk);
@@ -1515,6 +1572,7 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         }
         const NCCAA = ['Principles of Anesthesia', 'Physiology, Pathophysiology & Management', 'Instrumentation, Monitoring & Anesthetic Delivery Systems', 'Subspecialty Care', 'Pharmacology', 'Regional Anesthesia & Pain Management'];
         const domAcc = {}; NCCAA.forEach((d) => { domAcc[d] = { attempts: 0, correct: 0 }; });
+        const perQ = {}; // per-question cohort stats for the per-item ("hardest questions") view
         const now = Date.now(); let active7 = 0;
         attempts.forEach((r) => {
             const s = perStudent[r.user_id]; if (!s) return;
@@ -1522,8 +1580,15 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
             if (!s.last || r.created_at > s.last) s.last = r.created_at;
             const dom = qMeta[r.question_id];
             if (dom && domAcc[dom]) { domAcc[dom].attempts++; if (r.is_correct) domAcc[dom].correct++; }
+            const pq = perQ[r.question_id] || (perQ[r.question_id] = { a: 0, c: 0, tSum: 0, tN: 0, chN: 0, chTot: 0 });
+            pq.a++; if (r.is_correct) pq.c++;
+            if (Number.isFinite(r.time_ms) && r.time_ms > 0) { pq.tSum += r.time_ms; pq.tN++; }
+            if (typeof r.answer_changed === 'boolean') { pq.chTot++; if (r.answer_changed) pq.chN++; }
         });
-        const by_domain = NCCAA.map((d) => ({ domain: d, attempts: domAcc[d].attempts, correct: domAcc[d].correct, accuracy: domAcc[d].attempts ? Math.round(domAcc[d].correct / domAcc[d].attempts * 100) : null }));
+        // Benchmark each domain against ALL SAAs (anonymized aggregate) so a PD sees how
+        // their cohort compares to the whole student population.
+        const saaBench = saaDomainBenchmark(await getSaaBenchmark(), 20);
+        const by_domain = NCCAA.map((d) => ({ domain: d, attempts: domAcc[d].attempts, correct: domAcc[d].correct, accuracy: domAcc[d].attempts ? Math.round(domAcc[d].correct / domAcc[d].attempts * 100) : null, saa_accuracy: (saaBench[d] != null ? saaBench[d] : null) }));
         const roster = cohort.map((m) => {
             const s = perStudent[m.user_id];
             if (s.last && (now - new Date(s.last).getTime()) < 7 * 86400000) active7++;
@@ -1532,10 +1597,27 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         const totAtt = attempts.length;
         const totCorrect = attempts.reduce((a, r) => a + (r.is_correct ? 1 : 0), 0);
         const answeredAll = new Set(attempts.map((r) => r.question_id)).size;
+        // Per-item cohort analytics (Phase 3): the questions the cohort misses most
+        // (lowest %-correct, >=3 cohort attempts) with avg time-on-item + answer-change rate.
+        const ranked = Object.entries(perQ)
+            .filter(([, v]) => v.a >= 3)
+            .map(([qid, v]) => ({ qid, attempts: v.a, pct_correct: Math.round((v.c / v.a) * 100), avg_time_ms: v.tN ? Math.round(v.tSum / v.tN) : null, change_rate: v.chTot ? Math.round((v.chN / v.chTot) * 100) : null }))
+            .sort((a, b) => (a.pct_correct - b.pct_correct) || (b.attempts - a.attempts))
+            .slice(0, 15);
+        let hardest_items = [];
+        if (ranked.length) {
+            const { data: qrows } = await supabase.from('questions').select('id, stem, domain_name, question_type').in('id', ranked.map((x) => x.qid));
+            const qm = {}; (qrows || []).forEach((q) => { qm[q.id] = q; });
+            hardest_items = ranked.map((x) => {
+                const q = qm[x.qid] || {};
+                const stem = String(q.stem || '').replace(/\s+/g, ' ').trim();
+                return { question_id: x.qid, stem: stem.length > 160 ? stem.slice(0, 157) + '…' : stem, domain: q.domain_name || null, question_type: q.question_type || null, attempts: x.attempts, pct_correct: x.pct_correct, avg_time_ms: x.avg_time_ms, change_rate: x.change_rate };
+            });
+        }
         return res.json({
             role: ctx.role, program, cohort_size: cohort.length,
             summary: { attempts: totAtt, answered: answeredAll, accuracy: totAtt ? Math.round(totCorrect / totAtt * 100) : null, active_7d: active7 },
-            by_domain, roster, generated_at: new Date().toISOString(),
+            by_domain, roster, hardest_items, generated_at: new Date().toISOString(),
         });
     } catch (err) {
         console.error('faculty/cohort failure:', err.message);
@@ -1947,7 +2029,11 @@ app.post('/api/gamification', async (req, res) => {
 // answered (user_progress) — never from a client-reported number.
 // ---------------------------------------------------------------------------
 app.post('/api/grade', async (req, res) => {
-    const { questionId, choiceIndex } = req.body || {};
+    const { questionId, choiceIndex, time_ms: timeMsRaw, answer_changed: changedRaw } = req.body || {};
+    // Per-attempt analytics (Phase 3): time-on-item (ms, capped at 30 min to drop
+    // "left the tab open" outliers) + whether the user changed their selection.
+    const timeMs = (Number.isFinite(Number(timeMsRaw)) && Number(timeMsRaw) > 0 && Number(timeMsRaw) <= 1800000) ? Math.round(Number(timeMsRaw)) : null;
+    const answerChanged = (typeof changedRaw === 'boolean') ? changedRaw : null;
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
 
     const user = await getUserFromToken(req);
@@ -2021,6 +2107,8 @@ app.post('/api/grade', async (req, res) => {
             selected_label: String.fromCharCode(65 + selIndex),
             is_correct: isCorrect,
             confidence,
+            time_ms: timeMs,
+            answer_changed: answerChanged,
         });
         if (pErr) {
             // The DB trigger rejects free-tier users who slip past the app-level check
@@ -2046,13 +2134,19 @@ app.post('/api/grade', async (req, res) => {
         let choiceDistribution = null; // [pct per choice index] once enough responses
         let responseCount = 0;
         try {
-            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct, selected_label').eq('question_id', String(questionId));
-            if (rows && rows.length) {
-                responseCount = rows.length;
-                if (rows.length >= 3) peerPct = Math.round((rows.filter((r) => r.is_correct).length / rows.length) * 100);
+            // Peer comparison is scoped to ALL SAAs (students) — never the user's own cohort
+            // (Jake's rule). saaIds comes from the cached SAA benchmark; we filter this
+            // question's responses to SAA accounts before computing %-correct + choice mix.
+            const bench = await getSaaBenchmark();
+            const saaIds = bench.saaIds || new Set();
+            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct, selected_label, user_id').eq('question_id', String(questionId));
+            const saaRows = (rows || []).filter((r) => saaIds.has(r.user_id));
+            if (saaRows.length) {
+                responseCount = saaRows.length;
+                if (saaRows.length >= 3) peerPct = Math.round((saaRows.filter((r) => r.is_correct).length / saaRows.length) * 100);
                 const counts = new Array(choices.length).fill(0);
                 let total = 0;
-                rows.forEach((r) => {
+                saaRows.forEach((r) => {
                     const i = String(r.selected_label || '').toUpperCase().charCodeAt(0) - 65;
                     if (Number.isInteger(i) && i >= 0 && i < choices.length) { counts[i]++; total++; }
                 });
@@ -2077,6 +2171,7 @@ app.post('/api/grade', async (req, res) => {
             rationales,
             references,
             peer_correct_pct: peerPct,
+            peer_group: 'SAA',
             choice_distribution: choiceDistribution,
             response_count: responseCount,
         });
@@ -2320,6 +2415,9 @@ app.get('/api/user/profile', async (req, res) => {
         }
         // Prompt for credential when it's missing, or when an SAA has no graduation date yet.
         const needsCredential = !credCode || (credCode === 'SAA' && !gradDate);
+        // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
+        // students compare to the whole SAA population, never their own cohort).
+        const saa_domain_benchmark = saaDomainBenchmark(await getSaaBenchmark());
 
         return res.json({
             profile: {
@@ -2358,6 +2456,7 @@ app.get('/api/user/profile', async (req, res) => {
                 calibration,
                 coverage,
                 by_domain,
+                saa_domain_benchmark,
                 streak,
                 active_days: Array.from(activeDays),
                 trend,

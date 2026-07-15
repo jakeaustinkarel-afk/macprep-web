@@ -511,6 +511,21 @@
             masteryBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">Mastery by domain</div>`
                 + `<div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Next questions adapt to each level.</div>${rows}`;
         }
+        // You vs all SAAs — per-domain accuracy vs the whole student population (anonymized
+        // peer benchmark). Students compare to ALL SAAs, never a specific cohort.
+        const saaBench = p.saa_domain_benchmark || {};
+        let benchBlock = '';
+        {
+            const brows = domList.filter((d) => d.attempts > 0 && saaBench[d.domain] != null).map((d) => {
+                const you = (d.accuracy != null) ? d.accuracy : (d.attempts ? Math.round((d.correct / d.attempts) * 100) : 0);
+                const avg = saaBench[d.domain];
+                const delta = you - avg;
+                const dc = delta > 0 ? 'var(--accent)' : delta < 0 ? 'var(--bad)' : 'var(--muted)';
+                const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '·';
+                return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px;"><span style="flex:0 0 150px;color:var(--text2);" title="${d.domain}">${SHORT_DOM[d.domain] || d.domain}</span><span class="mono" style="flex:1;color:var(--text2);">You <strong>${you}%</strong> · SAA avg ${avg}%</span><span class="mono" style="flex:0 0 62px;text-align:right;color:${dc};font-weight:700;">${arrow} ${Math.abs(delta)}</span></div>`;
+            }).join('');
+            if (brows) benchBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">You vs all SAAs</div><div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Your accuracy vs every SAA on MACPrep, by domain.</div>${brows}`;
+        }
         el.innerHTML = `<h3>Accuracy &amp; exam plan</h3>
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Accuracy — last 7 active days</div>
             <div style="height:70px;margin-bottom:16px;">${spark}</div>
@@ -518,6 +533,7 @@
             ${goalLine}
             ${examNudge}
             ${masteryBlock}
+            ${benchBlock}
             <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — refresh your readiness score</button>`;
     }
 
@@ -3133,7 +3149,8 @@
         const verdict = data.correct
             ? `<span style="color:${GRADE_GREEN};font-weight:bold;">CORRECT</span>`
             : `<span style="color:${GRADE_RED};font-weight:bold;">INCORRECT</span>`;
-        const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of users got this right</span>` : '';
+        const peerWho = (data.peer_group === 'SAA') ? 'of SAAs' : 'of test-takers';
+        const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% ${peerWho} got this right</span>` : '';
         let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
         const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
         if (refs.length) {
@@ -3161,6 +3178,7 @@
         const ans = s.answers[s.index] || null;
         const graded = ans && ans.graded;
         s.locked = !!graded; // tutor: locked once graded
+        if (!graded) { (s._shownAt = s._shownAt || {})[s.index] = Date.now(); } // Phase 3: time-on-item start
 
         // Only the broad specialty/domain here — never the granular subtopic, which often
         // names the diagnosis/answer and would give away the question (user feedback 2026-07-05).
@@ -3221,6 +3239,7 @@
 
     async function answer(selectedIndex, questionId) {
         const s = state.session; if (!s) return;
+        (s._selCount = s._selCount || {})[s.index] = (s._selCount[s.index] || 0) + 1; // Phase 3: answer-change signal
         // EXAM mode: record the selection only; no feedback, changeable until submit.
         if (s.mode === 'exam') {
             s.answers[s.index] = { selectedIndex };
@@ -3236,7 +3255,7 @@
         try {
             const { resp, data } = await apiJSON('/api/grade', {
                 method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ questionId, choiceIndex: selectedIndex, confidence: state.pendingConfidence || undefined }),
+                body: JSON.stringify({ questionId, choiceIndex: selectedIndex, confidence: state.pendingConfidence || undefined, time_ms: ((s._shownAt && s._shownAt[s.index]) ? Date.now() - s._shownAt[s.index] : undefined), answer_changed: (((s._selCount && s._selCount[s.index]) || 1) > 1) }),
             });
             if (resp.status === 401) { signOut(); return; }
             if (resp.status === 402) { showPaywall(data.limit); return; }
@@ -3333,7 +3352,7 @@
             for (const i of answeredIdx) {
                 const q = s.pool[i]; const sel = s.answers[i].selectedIndex;
                 try {
-                    const { resp, data } = await apiJSON('/api/grade', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, choiceIndex: sel }) });
+                    const { resp, data } = await apiJSON('/api/grade', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, choiceIndex: sel, answer_changed: (((s._selCount && s._selCount[i]) || 1) > 1) }) });
                     if (resp.ok) { s.answers[i].graded = data; if (data.correct) correct++; }
                     else { failed++; }
                 } catch (e) { failed++; }
