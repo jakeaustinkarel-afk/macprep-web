@@ -546,8 +546,15 @@
     }
 
     // Refer-a-classmate: a shareable message + the 20%-off code (a Stripe promo
-    // code; checkout already accepts promo codes via allow_promotion_codes).
-    const REFERRAL_CODE = 'CLASSMATE10';
+    // code; checkout already accepts promo codes via allow_promotion_codes). The code
+    // ROTATES MONTHLY to stay fresh — CLASS20<MMM><YY> (e.g. CLASS20JUL26). We compute
+    // the current month's code here (UTC, identical to the server) as an instant
+    // fallback, and /api/config overrides REFERRAL_CODE with the server's authoritative
+    // value once it loads (see initMonitoring). The server ensures the matching Stripe
+    // promo code exists on the 20% coupon, so whatever we show always redeems.
+    const _REF_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    function currentReferralCode() { const d = new Date(); return `CLASS20${_REF_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(-2)}`; }
+    let REFERRAL_CODE = currentReferralCode();
     function renderReferral() {
         const el = $('referral-card'); if (!el) return;
         const link = 'https://www.macprep.org/pricing.html';
@@ -4941,6 +4948,12 @@
         try {
             const r = await fetch('/api/config');
             const cfg = await r.json();
+            // Adopt the server's authoritative monthly referral code, then refresh the
+            // referral note if it's already on screen (config may resolve after render).
+            if (cfg.referralCode && cfg.referralCode !== REFERRAL_CODE) {
+                REFERRAL_CODE = cfg.referralCode;
+                try { if ($('referral-card')) renderReferral(); } catch (e) {}
+            }
             if (!cfg.sentryDsn) return;
             const s = document.createElement('script');
             s.src = '/sentry.min.js';

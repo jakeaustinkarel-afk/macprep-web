@@ -389,10 +389,44 @@ app.get('/api/health', (req, res) => {
 // Public client config — lets the frontend self-configure error monitoring
 // without hardcoding a DSN. Set SENTRY_BROWSER_DSN on Render to turn it on.
 // (Browser Sentry DSNs are public by design.)
+// ---------------------------------------------------------------------------
+// Referral code — a 20%-off Stripe promo code that ROTATES MONTHLY to stay fresh.
+// The app shows the current month's code (CLASS20<MMM><YY>, e.g. CLASS20JUL26); the
+// server ensures that code exists as a Stripe promotion code on the 20% referral
+// coupon, auto-creating each new month's code on boot, every 6h, and lazily on the
+// first /api/config hit of a new month. Each code carries a ~45-day grace expiry so a
+// code shared near a month boundary keeps working for a few weeks. Idempotent + best-
+// effort — a Stripe hiccup never breaks the app (the code just may lag by minutes).
+// ---------------------------------------------------------------------------
+const STRIPE_REFERRAL_COUPON_ID = process.env.STRIPE_REFERRAL_COUPON_ID || 'nPRELK5j'; // "Classmate Referral 20%"
+const _REF_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const referralCodeFor = (d = new Date()) => `CLASS20${_REF_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(-2)}`;
+let _referralEnsuredKey = null;
+async function ensureReferralCode() {
+    const now = new Date();
+    const key = now.getUTCFullYear() + '-' + now.getUTCMonth();
+    if (_referralEnsuredKey === key || !stripe) return;
+    const code = referralCodeFor(now);
+    try {
+        const found = await stripe.promotionCodes.list({ code, limit: 1 });
+        if (!(found.data && found.data.length)) {
+            await stripe.promotionCodes.create({ coupon: STRIPE_REFERRAL_COUPON_ID, code, expires_at: Math.floor((Date.now() + 45 * 86400000) / 1000) });
+            console.log(`[referral] created monthly 20% code ${code}`);
+        }
+        _referralEnsuredKey = key; // this month handled — no more Stripe calls until it rolls over
+    } catch (e) { console.error('[referral] ensure failed:', e.message); }
+}
+ensureReferralCode();                                 // on boot
+setInterval(ensureReferralCode, 6 * 60 * 60 * 1000);  // every 6h — picks up the month rollover same day
+
+// Public runtime config for the browser (no secrets — browser Sentry DSNs are public
+// by design). Set SENTRY_BROWSER_DSN on Render to turn on error monitoring.
 app.get('/api/config', (req, res) => {
+    ensureReferralCode(); // fire-and-forget; idempotent, creates the new month's code on first hit
     res.json({
         sentryDsn: process.env.SENTRY_BROWSER_DSN || null,
         environment: process.env.NODE_ENV || 'production',
+        referralCode: referralCodeFor(),
     });
 });
 
