@@ -405,7 +405,10 @@
         if (!_credAsked) maybePromptForName(); // returning users who never saved a first+last name
         const _duelLink = /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
         checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
-        if (!_credAsked && !_duelLink) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
+        // Review ask: accounts ≥1 week old that haven't reviewed yet get the same form
+        // as the Reviews tab, at sign-in; "maybe later" re-asks monthly (server decides).
+        const _reviewAsked = !_credAsked && !_duelLink && maybePromptReview();
+        if (!_credAsked && !_duelLink && !_reviewAsked) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
@@ -891,7 +894,7 @@
     function maybeShowWhatsNewPopup() {
         let seen; try { seen = parseInt(ls('macprep_whatsnew_seen'), 10) || 0; } catch (e) { seen = 0; }
         if (!seen) { try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {} renderWhatsNewDot(); return; } // brand-new user: baseline silently, no popup
-        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen) return;
+        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen || state._reviewPromptOpen) return;
         const rows = WHATS_NEW.filter((e) => !(e.webOnly && isNativeApp())).slice(0, 4).map((e) => {
             const isFix = e.tag === 'Fix';
             const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
@@ -3019,6 +3022,71 @@
         } catch (e) { if (msg) msg.textContent = e.message; if (btn) { btn.disabled = false; btn.textContent = 'Save'; } }
     }
 
+    // ---- Review ask ----------------------------------------------------------
+    // Once an account is a week old, ask for a review at sign-in — the SAME form the
+    // Reviews tab uses (same fields, same POST /api/reviews, one review per account,
+    // posts live). The server decides when it's due (profile.review_prompt_due):
+    // never if they've already reviewed; "maybe later" re-asks monthly.
+    function maybePromptReview() {
+        if (!state.token || !state.profile || !state.profile.review_prompt_due) return false;
+        if (state._namePromptOpen || state._credPromptOpen || state._reviewPromptOpen) return false;
+        openReviewPrompt();
+        return true;
+    }
+    function openReviewPrompt() {
+        state._reviewPromptOpen = true;
+        const p = state.profile || {};
+        const inp = 'width:100%;box-sizing:border-box;padding:9px 11px;margin-bottom:8px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:14px;';
+        const wrap = document.createElement('div');
+        wrap.id = 'review-prompt-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2850;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) snoozeReviewPrompt(); }; // dismiss = "maybe later" (monthly re-ask)
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="rvp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
+            <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
+            <div id="rvp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Enjoying MACPrep? Share your experience</div>
+            <div class="sub" style="font-size:13px;margin-bottom:14px;">A quick review helps other SAAs and CAAs find peer-built, cited board prep. It posts on the public <a href="/reviews" target="_blank" rel="noopener">Reviews page</a>.</div>
+            <input id="rvp-name" placeholder="Your name" maxlength="80" value="${escapeHtml(p.full_name || '')}" style="${inp}">
+            <input id="rvp-cred" placeholder="Credential (e.g. SAA, Class of 2026 · or CAA)" maxlength="80" value="${escapeHtml(['SAA', 'CAA'].includes(p.credential) ? p.credential : '')}" style="${inp}">
+            <select id="rvp-rating" style="${inp}"><option value="5">★★★★★ · 5</option><option value="4.5">★★★★½ · 4.5</option><option value="4">★★★★ · 4</option><option value="3.5">★★★½ · 3.5</option><option value="3">★★★ · 3</option><option value="2.5">★★½ · 2.5</option><option value="2">★★ · 2</option><option value="1.5">★½ · 1.5</option><option value="1">★ · 1</option></select>
+            <textarea id="rvp-body" placeholder="How did MACPrep help you prepare for the boards?" rows="4" maxlength="2000" style="${inp}margin-bottom:10px;"></textarea>
+            <div style="display:flex;gap:10px;">
+                <button class="btn" style="flex:1;" onclick="MACPrep.submitReviewPrompt(this)">Submit review</button>
+                <button class="btn ghost" style="flex:0 0 auto;" onclick="MACPrep.snoozeReviewPrompt()">Maybe later</button>
+            </div>
+            <div id="rvp-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div>
+            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:6px;">One review per account — it posts right away, and you can edit it anytime by submitting again on the Reviews page.</div>
+        </div>`;
+        document.body.appendChild(wrap);
+    }
+    function closeReviewPrompt() { const o = $('review-prompt-overlay'); if (o) o.remove(); state._reviewPromptOpen = false; }
+    function snoozeReviewPrompt() {
+        closeReviewPrompt();
+        if (state.profile) state.profile.review_prompt_due = false; // not again this session
+        // Tell the server "maybe later" → it re-asks a month from now (fire-and-forget).
+        try { fetch('/api/user/review-prompt-seen', { method: 'POST', headers: authHeaders(), keepalive: true }).catch(() => {}); } catch (e) {}
+    }
+    async function submitReviewPrompt(btn) {
+        const msg = $('rvp-msg');
+        const body = {
+            author_name: (($('rvp-name') && $('rvp-name').value) || '').trim(),
+            credential: (($('rvp-cred') && $('rvp-cred').value) || '').trim(),
+            rating: ($('rvp-rating') && $('rvp-rating').value) || '5',
+            body: (($('rvp-body') && $('rvp-body').value) || '').trim(),
+        };
+        if (!body.author_name || !body.body) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Please add your name and a review.'; } return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+        try {
+            const { resp, data } = await apiJSON('/api/reviews', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok || !data.success) throw new Error((data && data.error) || 'Could not submit your review.');
+            if (state.profile) state.profile.review_prompt_due = false;
+            if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Thanks! Your review is live. 🎉'; }
+            setTimeout(() => { closeReviewPrompt(); toast('Thanks for the review! 🎉', 'ok'); }, 1200);
+        } catch (e) {
+            if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Submit review'; }
+        }
+    }
+
     async function loadNotebook() {
         const body = $('notebook-body'); if (body) body.innerHTML = skeletonList(4);
         try {
@@ -5068,6 +5136,7 @@
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onProfProgramChange,
+        submitReviewPrompt, snoozeReviewPrompt,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,

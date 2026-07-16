@@ -2265,7 +2265,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state, review_prompt_at')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -2470,6 +2470,23 @@ app.get('/api/user/profile', async (req, res) => {
         // students compare to the whole SAA population, never their own cohort).
         const saa_domain_benchmark = saaDomainBenchmark(await getSaaBenchmark());
 
+        // Review-ask nudge: once an account is a week old, ask for a review at the next
+        // sign-in — unless they already left one (any status; one review per account) or
+        // were asked within the last 30 days ("maybe later" → monthly cadence). The App
+        // Store review account is never nagged. The reviews lookup only runs when the
+        // cheap gates pass, so most profile fetches cost nothing extra.
+        let review_prompt_due = false;
+        try {
+            const acctMs = profile?.created_at ? Date.parse(profile.created_at) : NaN;
+            const oldEnough = Number.isFinite(acctMs) && (Date.now() - acctMs) >= 7 * 86400000;
+            const lastAsk = profile?.review_prompt_at ? Date.parse(profile.review_prompt_at) : 0;
+            const windowOpen = !lastAsk || (Date.now() - lastAsk) >= 30 * 86400000;
+            if (oldEnough && windowOpen && !isReviewEmail(profile?.email || user.email)) {
+                const { count } = await supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+                review_prompt_due = !count;
+            }
+        } catch (e) { /* the nudge is never worth failing a profile fetch over */ }
+
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
@@ -2489,6 +2506,7 @@ app.get('/api/user/profile', async (req, res) => {
                 credential_effective: credentialEffective || '',
                 is_caa: credentialEffective === 'CAA',
                 needs_credential: needsCredential,
+                review_prompt_due,
                 training_program: profile?.training_program || '',
                 target_exam_date: profile?.target_exam_date || '',
                 study_goal: profile?.study_goal || null,
@@ -2935,6 +2953,9 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
             { onConflict: 'user_id' }
         );
         if (error) throw error;
+        // They reviewed — quiet the review-ask nudge for good (belt-and-suspenders; the
+        // due-check also sees the review row itself). Fire-and-forget.
+        supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id).then(() => {}, () => {});
         sendEmail({
             to: 'support@macprep.org',
             subject: held ? `Review HELD for moderation — ${author_name}` : `New MACPrep review (live) — ${author_name}`,
@@ -2948,6 +2969,18 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
         console.error('Review submit failure:', err.message);
         return res.status(500).json({ error: 'Could not submit your review.' });
     }
+});
+
+// "Maybe later" on the in-app review ask — stamps the clock so the prompt waits a
+// month before asking again (and keeps asking monthly until they leave a review).
+app.post('/api/user/review-prompt-seen', async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    try {
+        await supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id);
+        return res.json({ ok: true });
+    } catch (e) { return res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/reviews', async (req, res) => {
