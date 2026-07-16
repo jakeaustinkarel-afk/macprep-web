@@ -865,6 +865,7 @@ app.get('/api/admin/metrics', async (req, res) => {
             ],
             event_counts: m.event_counts,
             daily: m.daily,
+            monthly_signups: m.signups_by_month || [],
             recent_signups: m.recent_signups,
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),

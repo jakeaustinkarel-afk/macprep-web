@@ -298,44 +298,47 @@
         const monthly = rev.monthly || [];
         const fmt$ = v => '$' + Math.round(v || 0).toLocaleString();
         const nowMonth = (d.generated_at || '').slice(0, 7);
-        const prevMonthRow = monthly.find(x => x.month < nowMonth); // sorted newest-first → first older month
-        const monthName = new Date(nowMonth + '-15T12:00:00Z').toLocaleString('en-US', { month: 'long' });
 
-        // Primary KPIs, each with a trend signal. Revenue is what Stripe actually
-        // charged this calendar month (net of refunds) — not purchase count × the
-        // current price, which rewrote history whenever the price changed.
-        let html = '<div class="sec">' + svg('trend', 13) + ' Overview</div><div class="kpis">' +
+        // Time funnels down the page: all-time KPIs → Monthly card → weekly strip.
+        // Revenue everywhere is what Stripe actually charged (net of refunds) — not
+        // purchase count × the current price, which rewrote history on price changes.
+        let html = '<div class="sec">' + svg('trend', 13) + ' Overview · all-time</div><div class="kpis">' +
             kpi('', 'users', t.users.toLocaleString(), 'Total users', deltaChip(l7('signups'), p7('signups')), t.premium + ' premium · ' + t.free + ' free') +
             kpi('warn', 'crown', t.premium.toLocaleString(), 'Premium members', '<span class="delta ' + (premiumConv > 0 ? 'up' : 'flat') + '">' + premiumConv + '%</span>', premiumConv + '% of all users') +
-            kpi('info', 'dollar', fmt$(rev.this_month), 'Revenue · ' + monthName, deltaChip(Math.round(rev.this_month || 0), Math.round((prevMonthRow && prevMonthRow.amount) || 0)), (rev.this_month_count || 0) + (rev.this_month_count === 1 ? ' sale' : ' sales') + ' this month · ' + fmt$(allTime) + ' all-time') +
-            kpi('', 'trend', convRate + '%', 'User → paid', '', rev.paid_conversions + ' paid · avg ' + (rev.avg_price ? fmt$(rev.avg_price) : '—') + '/sale') +
+            kpi('info', 'dollar', fmt$(allTime), 'Revenue · all-time', '', rev.paid_conversions + (rev.paid_conversions === 1 ? ' sale' : ' sales') + ' · avg ' + (rev.avg_price ? fmt$(rev.avg_price) : '—') + '/sale') +
+            kpi('', 'trend', convRate + '%', 'User → paid', '', rev.paid_conversions + ' of ' + t.users + ' users paid') +
             '</div>';
 
-        // Last-7-days activity strip (vs the previous 7 days)
-        html += '<div class="sec">' + svg('activity', 13) + ' Last 7 days · vs previous 7</div><div class="strip">' +
+        // Monthly — new accounts + sales + actual revenue per calendar month, newest first
+        const msign = d.monthly_signups || [];
+        const monthsAll = [...new Set([...monthly.map(x => x.month), ...msign.map(x => x.month)])].sort().reverse();
+        html += '<div class="sec">' + svg('chart', 13) + ' Monthly</div>';
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('dollar', 15) + '<h2>Month by month</h2></span><span class="pill">' + fmt$(allTime) + ' all-time · ' + (rev.paid_conversions || 0) + ' sales</span></div>';
+        if (!monthsAll.length) {
+            html += '<p class="muted" style="margin:0;">Nothing yet.</p>';
+        } else {
+            const rvMax = Math.max(1, ...monthly.map(x => x.amount));
+            html += '<div style="overflow-x:auto;"><table><thead><tr><th>Month</th><th>New users</th><th>Sales</th><th>Revenue</th></tr></thead><tbody>';
+            monthsAll.forEach(mo => {
+                const r = monthly.find(x => x.month === mo);
+                const s = msign.find(x => x.month === mo);
+                const amt = (r && r.amount) || 0;
+                const w = amt ? Math.max(8, Math.round((amt / rvMax) * 120)) : 0;
+                const label = new Date(mo + '-15T12:00:00Z').toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                html += '<tr><td>' + esc(label) + (mo === nowMonth ? ' <span class="muted">(current)</span>' : '') + '</td><td>' + ((s && s.n) || 0) + '</td><td>' + ((r && r.count) || 0) + '</td>' +
+                    '<td><span style="display:inline-flex;align-items:center;gap:8px;">' + (w ? '<span style="display:inline-block;height:8px;border-radius:4px;background:var(--info);width:' + w + 'px;"></span>' : '') + '<b>' + fmt$(amt) + '</b></span></td></tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+        html += '</div>';
+
+        // Weekly — last-7-days activity strip (vs the previous 7 days)
+        html += '<div class="sec">' + svg('activity', 13) + ' Weekly · last 7 days vs previous 7</div><div class="strip">' +
             mini('eye', 'Landing views', l7('visits'), p7('visits')) +
             mini('userplus', 'Signups', l7('signups'), p7('signups')) +
             mini('activity', 'Practice sessions', l7('sessions'), p7('sessions')) +
             mini('cart', 'Purchases', l7('purchases'), p7('purchases')) +
             '</div>';
-
-        // Revenue by month — actual Stripe charge amounts (net of refunds), so the
-        // $50-era and $100-era sales each show at the price really paid.
-        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('dollar', 15) + '<h2>Revenue by month</h2></span><span class="pill">' + fmt$(allTime) + ' all-time · ' + (rev.paid_conversions || 0) + ' sales</span></div>';
-        if (!monthly.length) {
-            html += '<p class="muted" style="margin:0;">No Stripe charges yet.</p>';
-        } else {
-            const rvMax = Math.max(1, ...monthly.map(x => x.amount));
-            html += '<div style="overflow-x:auto;"><table><thead><tr><th>Month</th><th>Sales</th><th>Revenue</th></tr></thead><tbody>';
-            monthly.forEach(x => {
-                const w = Math.max(8, Math.round((x.amount / rvMax) * 120));
-                const label = new Date(x.month + '-15T12:00:00Z').toLocaleString('en-US', { month: 'short', year: 'numeric' });
-                html += '<tr><td>' + esc(label) + (x.month === nowMonth ? ' <span class="muted">(current)</span>' : '') + '</td><td>' + x.count + '</td>' +
-                    '<td><span style="display:inline-flex;align-items:center;gap:8px;"><span style="display:inline-block;height:8px;border-radius:4px;background:var(--info);width:' + w + 'px;"></span><b>' + fmt$(x.amount) + '</b></span></td></tr>';
-            });
-            html += '</tbody></table></div>';
-        }
-        html += '</div>';
 
         // Credential mix — SAA (students) vs CAA (certified), so you can watch the split over time
         const cm = d.credential_mix || { saa: 0, caa: 0, other: 0, unset: 0 };
