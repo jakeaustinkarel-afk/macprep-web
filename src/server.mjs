@@ -843,7 +843,8 @@ app.get('/api/admin/metrics', async (req, res) => {
         res.json({
             generated_at: new Date().toISOString(),
             window_days: windowDays,
-            totals: m.users,
+            // Client contract: totals.users (the SQL rollup names it users.total)
+            totals: { users: m.users.total, premium: m.users.premium, free: m.users.free, with_exam_date: m.users.with_exam_date },
             credential_mix: m.credential_mix,
             program_mix: m.program_mix,
             program_unset: m.program_unset,
