@@ -845,8 +845,12 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 24;
+    const WHATS_NEW_VERSION = 25;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 15', title: 'New Accessibility options', desc: 'Profile → Accessibility adds three opt-in controls: Larger Text (four sizes), High Contrast, and Differentiate Without Color (adds ✓/✗ marks where color alone carried the meaning) — all off by default, so nothing changes unless you switch it on. Plus a deep under-the-hood pass for screen readers and keyboard navigation.' },
+        { tag: 'New', date: 'Jul 15', title: 'See how you stack up', desc: 'Every question now shows the percent of fellow SAAs who got it right, and your dashboard’s new “You vs all SAAs” breakdown compares your accuracy in each exam domain to the whole SAA community — so you can see exactly where you’re ahead and where to focus.' },
+        { tag: 'New', date: 'Jul 15', title: 'Pick your program', desc: 'Your profile now asks which accredited AA program you attend (or graduated from) — choose your specific campus from the list, or “Program not listed” if yours is new and we’ll add it. This tailors MACPrep to you; faculty at your program may see aggregate cohort progress.' },
+        { tag: 'New', date: 'Jul 15', title: 'A fresh referral code every month', desc: 'Refer a classmate and they get 20% off their upgrade — the shareable code on your dashboard now rotates monthly to stay current, and a code shared near the end of a month keeps working a few weeks into the next.' },
         { tag: 'New', date: 'Jul 13', title: 'Study reminders', desc: 'Turn on reminders in your Profile to get a gentle nudge when your spaced-repetition reviews come due — so you catch questions right before you’d forget them. Fully opt-in, easy to switch off, and we keep them infrequent. On the installed app it’s a native notification; in your browser it uses web notifications.' },
         { tag: 'Fix', date: 'Jul 12', title: 'You flagged it, we fixed it', desc: 'Thanks to the members who tapped Report. After your feedback we ran two full reviews of all 1,500+ questions and corrected 39 — clunky scenarios, clinical-detail wording, a couple of answer keys, and some stray formatting — so every question reads exactly right. Spot something off in a question? Tap Report on it; we read every single one, and it makes the bank sharper for everyone.' },
         { tag: 'New', date: 'Jul 10', title: 'Search the question bank', desc: 'Remember part of a question? Study Modes → Find a question. Search by keyword to pull up any question in the bank — perfect for reviewing a tricky one or talking it through with a classmate.' },

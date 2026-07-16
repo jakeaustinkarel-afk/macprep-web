@@ -299,11 +299,10 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 } else {
                     console.log(`Upgraded ${data[0].user_id} to premium.`);
                 }
-                // Funnel analytics: record the purchase server-side (fire-and-forget).
+                // Funnel analytics: record the purchase server-side (fire-and-forget,
+                // deduped — webhook retries must not double-count a sale).
                 const grantedUser = (data && data[0] && data[0].user_id) || userId;
-                if (grantedUser) {
-                    supabase.from('analytics_events').insert({ name: 'purchase', user_id: grantedUser, meta: { via: 'stripe' } }).then(() => {}, () => {});
-                }
+                if (grantedUser) recordPurchaseOnce(grantedUser);
             } catch (dbErr) {
                 console.error(`Webhook DB sync error: ${dbErr.message}`);
                 return res.status(500).send('Database sync failure.');
@@ -780,92 +779,93 @@ app.post('/api/admin/run-nudges', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Admin-only funnel/metrics for the founder dashboard (/metrics.html).
+// Record a Stripe purchase in the funnel exactly once per user — the webhook and the
+// verify-on-return fallback can both fire (and Stripe retries webhooks), which would
+// otherwise double-count a sale. Best-effort, fire-and-forget safe.
+async function recordPurchaseOnce(userId) {
+    if (!userId || !supabase) return;
+    try {
+        const { count } = await supabase.from('analytics_events')
+            .select('id', { count: 'exact', head: true })
+            .eq('name', 'purchase').eq('user_id', userId);
+        if (!count) await supabase.from('analytics_events').insert({ name: 'purchase', user_id: userId, meta: { via: 'stripe' } });
+    } catch (e) { /* analytics is never worth failing a payment path over */ }
+}
+
+// ACTUAL revenue from Stripe — succeeded charges minus refunds, grouped by calendar
+// month (UTC). The old estimate multiplied purchase count by the CURRENT price
+// constant, which rewrote history whenever the price changed ($50-era sales showed
+// as $100). Cached 10 min; on a Stripe hiccup we serve the last good snapshot.
+let _revCache = { at: 0, data: null };
+async function getStripeRevenue() {
+    if (_revCache.data && Date.now() - _revCache.at < 10 * 60 * 1000) return _revCache.data;
+    if (!stripe) return null;
+    try {
+        const byMonth = {};
+        let all_time = 0, paid_count = 0;
+        for await (const ch of stripe.charges.list({ limit: 100 })) {
+            if (ch.status !== 'succeeded') continue;
+            const net = ((ch.amount_captured ?? ch.amount ?? 0) - (ch.amount_refunded || 0)) / 100;
+            if (net <= 0) continue; // fully refunded — not revenue
+            const m = new Date(ch.created * 1000).toISOString().slice(0, 7);
+            byMonth[m] = byMonth[m] || { month: m, amount: 0, count: 0 };
+            byMonth[m].amount += net; byMonth[m].count += 1;
+            all_time += net; paid_count += 1;
+        }
+        const data = { all_time, paid_count, monthly: Object.values(byMonth).sort((a, b) => b.month.localeCompare(a.month)) };
+        _revCache = { at: Date.now(), data };
+        return data;
+    } catch (e) { console.error('[metrics] stripe revenue fetch failed:', e.message); return _revCache.data; }
+}
+
+// Admin-only funnel/metrics for the founder dashboard (/metrics.html). All event
+// aggregation happens in Postgres (founder_metrics function) — the old Node path
+// fetched raw event rows in one request and hit PostgREST's ~1000-row cap, so only
+// the OLDEST ~1000 events of the window survived and every recent day read as zero
+// (the same bug /api/admin/analytics already fixed by paging). Revenue is actual
+// Stripe charge amounts by month, and the funnel's Purchased row shares the same
+// 30-day window as every other row.
 app.get('/api/admin/metrics', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Forbidden' });
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
-        const PRICE = 100;
-        const now = Date.now();
         const windowDays = 30;
-        const since = new Date(now - windowDays * 86400000).toISOString();
-        const [{ data: users }, { data: events }, allPurchases, { data: feedback }] = await Promise.all([
-            supabase.from(PROFILE_TABLE).select('email, account_tier, credential, target_exam_date, premium_unlocked_at, created_at, training_program, is_program_director'),
-            supabase.from('analytics_events').select('name, created_at, meta, user_id').gte('created_at', since).limit(100000),
-            supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('name', 'purchase'),
+        const [rollup, { data: feedback }, rev] = await Promise.all([
+            supabase.rpc('founder_metrics', { p_window_days: windowDays, p_daily_days: 21, p_review_emails: [...REVIEW_EMAILS] }),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
+            getStripeRevenue(),
         ]);
-        const U = users || [], E = events || [];
-        const ec = {};
-        E.forEach((e) => { ec[e.name] = (ec[e.name] || 0) + 1; });
-        const sum = (...names) => names.reduce((a, n) => a + (ec[n] || 0), 0);
-        // Unique anonymous visitors: dedupe landing_view by visitor id (meta.vid). Older
-        // events lacking a vid fall back to created_at (≈ one per event).
-        const visitSet = new Set();
-        E.forEach((e) => { if (e.name === 'landing_view') visitSet.add((e.meta && e.meta.vid) || e.created_at); });
-        const visitCount = visitSet.size;
-        const premium = U.filter((u) => u.account_tier === 'premium').length;
-        const paid = (allPurchases && allPurchases.count) || 0;
-
-        // Count DISTINCT users per stage (events carry user_id once signed in) so the
-        // funnel reads as a real user journey instead of summing raw events (which let
-        // "started practicing" exceed signups).
-        const usersWith = (...names) => {
-            const s = new Set();
-            E.forEach((e) => { if (names.includes(e.name) && e.user_id) s.add(e.user_id); });
-            return s.size;
-        };
-        const funnel = [
-            { key: 'visits', label: 'Landing views', n: visitCount },
-            { key: 'signups', label: 'Signups', n: Math.max(sum('signup'), usersWith('signup')) },
-            { key: 'practiced', label: 'Started practicing', n: usersWith('session_start', 'quiz_start', 'session_complete') },
-            { key: 'paywall', label: 'Hit paywall', n: usersWith('paywall_hit') },
-            { key: 'checkout', label: 'Started checkout', n: usersWith('checkout_started', 'upgrade_click') },
-            { key: 'purchase', label: 'Purchased', n: paid },
-        ];
-
-        const nDays = 21;
-        const buckets = {};
-        for (let i = nDays - 1; i >= 0; i--) {
-            const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
-            buckets[d] = { date: d, visits: 0, signups: 0, sessions: 0, purchases: 0 };
-        }
-        const dayVids = {};
-        E.forEach((e) => {
-            const d = (e.created_at || '').slice(0, 10); const b = buckets[d]; if (!b) return;
-            if (e.name === 'landing_view') { (dayVids[d] = dayVids[d] || new Set()).add((e.meta && e.meta.vid) || e.created_at); }
-            else if (e.name === 'session_start' || e.name === 'quiz_start') b.sessions++;
-            else if (e.name === 'purchase') b.purchases++; // server-authoritative; avoids double-count with client upgrade_success
-        });
-        Object.keys(dayVids).forEach((d) => { if (buckets[d]) buckets[d].visits = dayVids[d].size; });
-        U.forEach((u) => { const d = (u.created_at || '').slice(0, 10); if (buckets[d]) buckets[d].signups++; });
-
-        // Credential mix (SAA students vs CAA certified) — normalized from new codes
-        // and any legacy long labels. "over time" is visible via recent_signups credentials.
-        const normCred = (c) => { if (!c) return null; const u = String(c).trim().toUpperCase(); return u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : 'other'; };
-        const credential_mix = { saa: 0, caa: 0, other: 0, unset: 0 };
-        U.forEach((u) => { const c = normCred(u.credential); if (c === 'SAA') credential_mix.saa++; else if (c === 'CAA') credential_mix.caa++; else if (c === 'other') credential_mix.other++; else credential_mix.unset++; });
-
-        // Program (training institution) distribution — how many users belong to each program.
-        const progCounts = {};
-        U.forEach((u) => { const p = isReviewEmail(u.email) ? 'REVIEW' : (u.training_program || '').trim(); if (p) progCounts[p] = (progCounts[p] || 0) + 1; });
-        const program_mix = Object.entries(progCounts).map(([program, n]) => ({ program, n })).sort((a, b) => b.n - a.n);
-        const program_unset = U.filter((u) => !isReviewEmail(u.email) && !(u.training_program || '').trim()).length;
-
+        if (rollup.error) throw new Error(rollup.error.message);
+        const m = rollup.data;
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const cur = (rev && rev.monthly.find((x) => x.month === thisMonth)) || { amount: 0, count: 0 };
         res.json({
-            generated_at: new Date(now).toISOString(),
+            generated_at: new Date().toISOString(),
             window_days: windowDays,
-            totals: { users: U.length, premium, free: U.length - premium, with_exam_date: U.filter((u) => u.target_exam_date).length },
-            credential_mix,
-            program_mix,
-            program_unset,
-            revenue: { paid_conversions: paid, est_revenue: paid * PRICE, price: PRICE },
-            funnel,
-            event_counts: ec,
-            daily: Object.values(buckets),
-            recent_signups: U.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 12)
-                .map((u) => ({ email: u.email, tier: u.account_tier, credential: normCred(u.credential), joined: u.created_at, exam_date: u.target_exam_date || null, program: isReviewEmail(u.email) ? 'REVIEW' : (u.training_program || null) })),
+            totals: m.users,
+            credential_mix: m.credential_mix,
+            program_mix: m.program_mix,
+            program_unset: m.program_unset,
+            revenue: {
+                paid_conversions: rev ? rev.paid_count : m.purchases_all_time,
+                all_time: rev ? rev.all_time : null,
+                this_month: cur.amount,
+                this_month_count: cur.count,
+                monthly: rev ? rev.monthly : [],
+                avg_price: rev && rev.paid_count ? rev.all_time / rev.paid_count : null,
+            },
+            funnel: [
+                { key: 'visits', label: 'Landing views', n: m.funnel.visits },
+                { key: 'signups', label: 'Signups', n: m.funnel.signups },
+                { key: 'practiced', label: 'Started practicing', n: m.funnel.practiced },
+                { key: 'paywall', label: 'Hit paywall', n: m.funnel.paywall },
+                { key: 'checkout', label: 'Started checkout', n: m.funnel.checkout },
+                { key: 'purchase', label: 'Purchased', n: m.funnel.purchased },
+            ],
+            event_counts: m.event_counts,
+            daily: m.daily,
+            recent_signups: m.recent_signups,
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });
@@ -3082,6 +3082,10 @@ app.post('/api/verify-checkout-session', checkoutLimiter, async (req, res) => {
             return res.json({ premium_unlocked: already });
         }
         await grantPremium(user.id, (session.customer_details?.email || user.email || '').toLowerCase().trim());
+        // The webhook normally records the purchase; when this fallback path is what
+        // unlocked the account (webhook missed/delayed), record it here — deduped, so
+        // whichever path runs second is a no-op and the sale is counted exactly once.
+        recordPurchaseOnce(user.id);
         return res.json({ premium_unlocked: true });
     } catch (err) {
         console.error('verify-checkout-session failure:', err.message);
