@@ -2481,7 +2481,8 @@ app.get('/api/user/profile', async (req, res) => {
             const oldEnough = Number.isFinite(acctMs) && (Date.now() - acctMs) >= 7 * 86400000;
             const lastAsk = profile?.review_prompt_at ? Date.parse(profile.review_prompt_at) : 0;
             const windowOpen = !lastAsk || (Date.now() - lastAsk) >= 30 * 86400000;
-            if (oldEnough && windowOpen && !isReviewEmail(profile?.email || user.email)) {
+            // Never nag the owner/admins (they own the product) or the App Store review account.
+            if (oldEnough && windowOpen && !isAdminEmail(user.email) && !isReviewEmail(profile?.email || user.email)) {
                 const { count } = await supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
                 review_prompt_due = !count;
             }
