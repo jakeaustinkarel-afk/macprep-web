@@ -150,7 +150,9 @@
         const isAdmin = authed && state.profile && state.profile.is_admin;
         const canCohort = !!(authed && state.profile && state.profile.can_view_cohort); // includes admins server-side
         const showAdminSec = isAdmin || canCohort;
-        $('nav-sec-admin') && $('nav-sec-admin').classList.toggle('hidden', !showAdminSec);
+        // Role-aware header: the owner sees "Admin"; a program director/faculty sees "Faculty".
+        const adminSec = $('nav-sec-admin');
+        if (adminSec) { adminSec.classList.toggle('hidden', !showAdminSec); adminSec.textContent = isAdmin ? 'Admin' : 'Faculty'; }
         ['nav-admin-metrics', 'nav-admin-review', 'nav-admin-codes'].forEach((id) => $(id) && $(id).classList.toggle('hidden', !isAdmin));
         $('nav-admin-cohort') && $('nav-admin-cohort').classList.toggle('hidden', !showAdminSec);
         // Tier badge shows for signed-in non-admins; admins get the Admin section instead.
