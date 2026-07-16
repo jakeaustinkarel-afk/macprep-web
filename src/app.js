@@ -1485,27 +1485,69 @@
         const earned = computeAchievements().filter((a) => a.met && TITLE_MAP[a.title]).map((a) => TITLE_MAP[a.title]);
         return [...BASE_TITLES, ...earned];
     }
+    // The most recently EARNED title — the last entry in ach_claimed (claims append in
+    // earn order) that maps to a title and is still unlocked. '' if none earned yet.
+    function mostRecentEarnedTitle() {
+        const claimed = (state.gam && Array.isArray(state.gam.ach_claimed)) ? state.gam.ach_claimed : [];
+        const owned = new Set(unlockedTitles());
+        for (let i = claimed.length - 1; i >= 0; i--) {
+            const t = TITLE_MAP[claimed[i]];
+            if (t && owned.has(t)) return t;
+        }
+        return '';
+    }
+    // Auto-follow: until a user explicitly picks (title_auto === false), their shown title
+    // is the most recently earned one. Once they pick, selected_title is used verbatim.
+    function titleAutoOn() { return !state.profile || state.profile.title_auto !== false; }
     function activeTitle() {
-        const t = state.profile && state.profile.selected_title;
-        return t && unlockedTitles().includes(t) ? t : '';
+        const sel = state.profile && state.profile.selected_title;
+        if (titleAutoOn()) { const auto = mostRecentEarnedTitle(); if (auto) return auto; }
+        return sel && unlockedTitles().includes(sel) ? sel : '';
+    }
+    // In auto mode, persist the current most-recent title so it also shows on the
+    // leaderboard (server-sourced). Fire-and-forget; only writes when it actually changes.
+    function maybeAutoApplyTitle() {
+        if (!state.profile || !titleAutoOn()) return;
+        const auto = mostRecentEarnedTitle();
+        if (!auto || auto === state.profile.selected_title) return;
+        state.profile.selected_title = auto;
+        try { fetch('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: auto, auto: true }), keepalive: true }).catch(() => {}); } catch (e) {}
+        try { renderSidebarAccount(); } catch (e) {}
+        try { if ($('momentum-card')) renderMomentum(); } catch (e) {}
     }
     function titleChip(t, small) {
         if (!t) return '';
         return `<span style="display:inline-flex;align-items:center;font-family:ui-monospace,monospace;font-size:${small ? '10px' : '11px'};font-weight:700;letter-spacing:.3px;color:var(--accent);background:var(--accent-dim);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:20px;padding:${small ? '1px 7px' : '2px 10px'};white-space:nowrap;">${escapeHtml(t)}</span>`;
     }
+    // Explicit pick (a specific title, or '' for "No title") — turns OFF auto-follow so it sticks.
     async function saveTitle(t) {
         closeTitlePicker();
         try {
-            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: t || '' }) });
-            if (state.profile) state.profile.selected_title = t || null;
+            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: t || '', auto: false }) });
+            if (state.profile) { state.profile.selected_title = t || null; state.profile.title_auto = false; }
             renderSidebarAccount(); if ($('momentum-card')) renderMomentum();
             toast(t ? `Title set: ${t}` : 'Title cleared.', 'ok');
+        } catch (e) { toast('Could not save title: ' + e.message); }
+    }
+    // Back to automatic — always show the newest title you earn.
+    async function setTitleAuto() {
+        closeTitlePicker();
+        const auto = mostRecentEarnedTitle();
+        try {
+            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: auto || '', auto: true }) });
+            if (state.profile) { state.profile.title_auto = true; state.profile.selected_title = auto || null; }
+            renderSidebarAccount(); if ($('momentum-card')) renderMomentum();
+            toast(auto ? `Automatic — showing ${auto}` : 'Automatic — your newest title will show here.', 'ok');
         } catch (e) { toast('Could not save title: ' + e.message); }
     }
     function openTitlePicker() {
         closeNavMenus();
         const titles = unlockedTitles();
-        const cur = (state.profile && state.profile.selected_title) || '';
+        const auto = titleAutoOn();
+        // A specific title / "No title" is "active" only when the user has turned OFF
+        // auto-follow; in auto mode the Automatic row is the active one.
+        const cur = (!auto && state.profile && state.profile.selected_title) || '';
+        const recent = mostRecentEarnedTitle();
         const A = computeAchievements();
         const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const rows = titles.map((t) => `<button type="button" onclick="MACPrep.saveTitle('${esc(t)}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:${t === cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${t === cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;"><span style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(t)}</span>${t === cur ? '<span class="mono" style="font-size:10px;color:var(--accent);">ACTIVE</span>' : ''}</button>`).join('');
@@ -1520,9 +1562,10 @@
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;">Your title</div>
                 <button onclick="MACPrep.closeTitlePicker()" aria-label="Close" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;">&times;</button>
             </div>
-            <div class="sub" style="font-size:13px;margin-bottom:6px;">Titles you unlock from achievements. Pick one to show by your name and on the leaderboard.</div>
-            <button type="button" onclick="MACPrep.saveTitle('')" style="display:block;width:100%;text-align:left;background:${!cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:10px 13px;margin-top:8px;cursor:pointer;color:var(--muted);font-size:13px;">No title${!cur ? ' · ACTIVE' : ''}</button>
+            <div class="sub" style="font-size:13px;margin-bottom:6px;">Titles you unlock from achievements, shown by your name and on the leaderboard. Leave it on Automatic to always show your newest, or pin a favorite.</div>
+            <button type="button" onclick="MACPrep.setTitleAuto()" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:${auto ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${auto ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;"><span style="font-weight:700;font-size:14px;color:var(--text);">Automatic <span style="font-weight:400;color:var(--muted);font-size:12px;">· ${recent ? 'newest: ' + escapeHtml(recent) : 'your newest title'}</span></span>${auto ? '<span class="mono" style="font-size:10px;color:var(--accent);">ACTIVE</span>' : ''}</button>
             ${rows}
+            <button type="button" onclick="MACPrep.saveTitle('')" style="display:block;width:100%;text-align:left;background:${!auto && !cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${!auto && !cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:10px 13px;margin-top:8px;cursor:pointer;color:var(--muted);font-size:13px;">No title${!auto && !cur ? ' · ACTIVE' : ''}</button>
             ${lockedRows ? `<div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:16px 0 2px;">Locked — earn these</div>${lockedRows}` : ''}
         </div>`;
         document.body.appendChild(wrap);
@@ -1554,6 +1597,8 @@
             if ($('momentum-card')) renderMomentum();
             try { checkLevelUp(); } catch (e) {}
         }
+        // In auto mode, keep the shown title following the newest one earned (also on load).
+        try { maybeAutoApplyTitle(); } catch (e) {}
     }
     function achIcon(name, met) {
         const P = {
@@ -5136,7 +5181,7 @@
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onProfProgramChange,
-        submitReviewPrompt, snoozeReviewPrompt,
+        submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,

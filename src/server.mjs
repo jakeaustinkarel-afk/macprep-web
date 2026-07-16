@@ -2242,6 +2242,9 @@ app.post('/api/user/cosmetics', async (req, res) => {
     const b = req.body || {};
     const upd = {};
     if ('title' in b) upd.selected_title = String(b.title || '').trim().slice(0, 40) || null;
+    // title_auto: true = keep following the newest earned title; false = the user made an
+    // explicit choice (a specific title or "No title") and it should stick.
+    if ('auto' in b) upd.title_auto = !!b.auto;
     if (!Object.keys(upd).length) return res.status(400).json({ error: 'Nothing to update.' });
     try {
         const { error } = await supabase.from(PROFILE_TABLE).update(upd).eq('user_id', user.id);
@@ -2265,7 +2268,7 @@ app.get('/api/user/profile', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, bonus_xp, ach_claimed, daily_state, review_prompt_at')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, title_auto, bonus_xp, ach_claimed, daily_state, review_prompt_at')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
@@ -2516,6 +2519,8 @@ app.get('/api/user/profile', async (req, res) => {
                 leaderboard_handle: profile?.leaderboard_handle || null,
                 leaderboard_opt_in: !!profile?.leaderboard_opt_in,
                 selected_title: profile?.selected_title || null,
+                title_auto: profile?.title_auto !== false, // default true; false once they pick explicitly
+
                 bonus_xp: Number(profile?.bonus_xp) || 0,
                 ach_claimed: Array.isArray(profile?.ach_claimed) ? profile.ach_claimed : [],
                 daily_state: (profile && profile.daily_state && typeof profile.daily_state === 'object') ? profile.daily_state : {},
