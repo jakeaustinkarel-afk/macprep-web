@@ -142,15 +142,18 @@
         ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger', 'nav-utils'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         if (authed) renderWhatsNewDot();
+        // Admin nav — one flat "Admin" section (no dropdown). Section shows to anyone with
+        // a reason to see it (owner/admin OR a program director/faculty who can view a cohort);
+        // it stays fully invisible to regular students. Within it, the owner-only tools
+        // (Metrics, Items to review, Cohort code generator) gate on is_admin, while the
+        // Cohort dashboard shows to admins AND program directors/faculty.
         const isAdmin = authed && state.profile && state.profile.is_admin;
-        $('nav-admin-wrap') && $('nav-admin-wrap').classList.toggle('hidden', !isAdmin);
-        $('nav-sec-staff') && $('nav-sec-staff').classList.toggle('hidden', !isAdmin); // "Admin" section header
-        // "My cohort" (faculty/PD cohort dashboard) — its own "Program Director" section;
-        // admins reach the same dashboard via the Admin menu instead.
-        const canCohort = !!(authed && state.profile && state.profile.can_view_cohort && !isAdmin);
-        $('nav-cohort') && $('nav-cohort').classList.toggle('hidden', !canCohort);
-        $('nav-sec-pd') && $('nav-sec-pd').classList.toggle('hidden', !canCohort);
-        // Tier badge shows for signed-in non-admins; admins already have the Admin ▾ menu.
+        const canCohort = !!(authed && state.profile && state.profile.can_view_cohort); // includes admins server-side
+        const showAdminSec = isAdmin || canCohort;
+        $('nav-sec-admin') && $('nav-sec-admin').classList.toggle('hidden', !showAdminSec);
+        ['nav-admin-metrics', 'nav-admin-review', 'nav-admin-codes'].forEach((id) => $(id) && $(id).classList.toggle('hidden', !isAdmin));
+        $('nav-admin-cohort') && $('nav-admin-cohort').classList.toggle('hidden', !showAdminSec);
+        // Tier badge shows for signed-in non-admins; admins get the Admin section instead.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
         const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements' }[view];
@@ -184,7 +187,7 @@
     }
 
     // Top-nav dropdown menus (Account / Admin).
-    const NAV_MENUS = ['nav-account-menu', 'nav-admin-menu', 'nav-study-menu'];
+    const NAV_MENUS = ['nav-account-menu', 'nav-study-menu'];
     function closeNavMenus() {
         NAV_MENUS.forEach((id) => { const m = $(id); if (m) m.classList.add('hidden'); });
         syncNavExpanded();
