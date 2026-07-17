@@ -400,7 +400,7 @@
         });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
         if (resp.status === 402) {
-            if (!isNative()) startCheckout();
+            if (!isNativeApp()) startCheckout();
             else openUpgradeModal('studymode');
             throw new Error(data.error || 'Full access is required.');
         }
@@ -601,6 +601,10 @@
     let REFERRAL_CODE = currentReferralCode();
     function renderReferral() {
         const el = $('referral-card'); if (!el) return;
+        if (isNativeApp()) {
+            el.classList.add('hidden');
+            return;
+        }
         const link = 'https://www.macprep.org/pricing.html';
         const msg = `Studying for NCCAA boards? MACPrep has cited, CAA-written practice questions — use code ${REFERRAL_CODE} for 20% off at checkout: ${link}`;
         el.dataset.msg = msg;
@@ -1953,8 +1957,9 @@
         } else {
             card.classList.remove('hidden');
             const pct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
-            $('free-allowance-text').textContent =
-                `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining — then it's a one-time $100 for the full 1,500+ bank.`;
+            $('free-allowance-text').textContent = isNativeApp()
+                ? `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining.`
+                : `${usage.used} of ${usage.limit} free questions used. ${usage.remaining} remaining — then it's a one-time $100 for the full 1,500+ bank.`;
             $('free-allowance-bar').style.width = pct + '%';
         }
 
@@ -2094,7 +2099,11 @@
         const disable = (msg) => { if (startBtn) startBtn.disabled = true; $('session-hint').textContent = msg; };
         if (!pool.total) { return disable('No questions match this filter yet — try another specialty or difficulty.'); }
         if (!usage.unlimited) {
-            if (usage.remaining <= 0) { return disable('You have used all your free questions. Upgrade for full access.'); }
+            if (usage.remaining <= 0) {
+                return disable(isNativeApp()
+                    ? 'You have used all your free questions. Full access is required to continue.'
+                    : 'You have used all your free questions. Upgrade for full access.');
+            }
             if (n > usage.remaining) { n = usage.remaining; capNote = ` (capped at your ${usage.remaining} remaining free questions)`; }
         }
         n = Math.min(n === Infinity ? Math.min(pool.total, 200) : n, pool.total, 200);
@@ -3716,28 +3725,34 @@
         $('question-meta').textContent = "NICE WORK — YOU'VE USED YOUR FREE QUESTIONS";
         const n = limit || state.profile?.free_tier_limit || '';
         const bank = questionBankSize();
+        const native = isNativeApp();
         const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session — momentum worth keeping. ` : '';
         $('question-stem').innerHTML = `You've worked through all <strong>${n}</strong> of your free questions. ${statLine}`
             + `<div style="margin-top:16px;text-align:left;max-width:480px;">Unlock <strong>full access</strong> and get:`
             + `<div style="line-height:2;margin-top:8px;color:var(--text2);">`
             + `<span style="color:var(--accent);">✓</span> The entire ${bank ? '<strong>' + bank.toLocaleString() + '+</strong> question ' : ''}bank — every domain &amp; specialty<br>`
             + `<span style="color:var(--accent);">✓</span> Every explanation, rationale &amp; verifiable source<br>`
-            + `<span style="color:var(--accent);">✓</span> Progress tracking, weak-spot review &amp; your exam-date plan<br>`
-            + `<span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $100 payment, no subscription`
+            + `<span style="color:var(--accent);">✓</span> Progress tracking, weak-spot review &amp; your exam-date plan`
+            + (native ? '' : `<br><span style="color:var(--accent);">✓</span> <strong>Lifetime</strong> access — one $100 payment, no subscription`)
             + `</div>`
-            + `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);font-size:13px;color:var(--text);display:flex;gap:8px;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $100 back.</span></div>`
-            + `<div style="margin-top:12px;padding:10px 13px;border:1px dashed var(--line);border-radius:9px;background:var(--bg);font-size:12px;color:var(--text2);line-height:1.6;"><strong style="color:var(--text);">$100 once — yours forever.</strong> Vigilant IQ charges <strong>$99 for 30 days</strong> ($299/year, then it's gone). MACPrep never expires.</div>`
+            + (native ? '' : `<div style="margin-top:14px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);font-size:13px;color:var(--text);display:flex;gap:8px;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span><strong>100% Pass Guarantee</strong> — pass the NCCAA boards or your $100 back.</span></div>`)
+            + (native ? '' : `<div style="margin-top:12px;padding:10px 13px;border:1px dashed var(--line);border-radius:9px;background:var(--bg);font-size:12px;color:var(--text2);line-height:1.6;"><strong style="color:var(--text);">$100 once — yours forever.</strong> Vigilant IQ charges <strong>$99 for 30 days</strong> ($299/year, then it's gone). MACPrep never expires.</div>`)
             + `</div>`;
         $('choices-container').innerHTML = '';
         $('explanation-pane').classList.add('hidden');
         if (s && s.log && s.log.length) renderSessionReview(s.log);
         const btn = $('advance-vignette-trigger');
         btn.className = 'btn';
-        btn.textContent = 'Unlock full access — $100 (one-time)';
-        btn.onclick = () => startCheckout(btn);
+        btn.textContent = native ? 'About full access' : 'Unlock full access — $100 (one-time)';
+        btn.onclick = () => native ? openUpgradeModal('studymode') : startCheckout(btn);
         let rr = document.getElementById('paywall-refund');
         if (!rr && btn.parentNode) { rr = document.createElement('div'); rr.id = 'paywall-refund'; rr.className = 'mono'; rr.style.cssText = 'font-size:11px;color:var(--muted);margin-top:10px;'; btn.parentNode.insertBefore(rr, btn.nextSibling); }
-        if (rr) rr.innerHTML = '48-hour, no-questions-asked refund &middot; secured by Stripe &middot; instant access<br><a href="#redeem" onclick="event.preventDefault(); MACPrep.goRedeem();" style="color:var(--accent);">Have a class or cohort code? Redeem it free instead &rarr;</a>';
+        if (rr) {
+            rr.classList.toggle('hidden', native);
+            rr.innerHTML = native
+                ? ''
+                : '48-hour, no-questions-asked refund &middot; secured by Stripe &middot; instant access<br><a href="#redeem" onclick="event.preventDefault(); MACPrep.goRedeem();" style="color:var(--accent);">Have a class or cohort code? Redeem it free instead &rarr;</a>';
+        }
     }
 
     // ---- premium gate + upgrade screen ------------------------------------
@@ -3778,9 +3793,8 @@
         // Previously paywall_hit fired only from showPaywall, so clicking a premium mode went
         // uncounted and the funnel under-reported. This is the fix.
         try { track('paywall_hit', { feature: featureKey || 'generic', src: 'upgrade_screen' }); } catch (e) {}
-        // App Store 3.1.1: the native store apps must NOT present an external (Stripe) purchase.
-        // Show a compliant "part of full access" notice — no price, no buy button, no external link —
-        // plus the class/cohort code redemption (a code unlock, not a purchase). Web keeps the full flow.
+        // App Store 3.1.1: the native store apps must NOT present external purchase paths or
+        // independent code-based unlocks. Web keeps the full purchase and cohort-code flow.
         if (isNativeApp()) {
             const wrapN = document.createElement('div');
             wrapN.id = 'upgrade-overlay';
@@ -3792,7 +3806,6 @@
                 <div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Full access</div>
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;line-height:1.25;">${titleN}</div>
                 <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access includes the complete question bank, full-length mock exams, flashcards, Critical Events, and progress tracking.</div>
-                <div style="margin-top:16px;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--bg);font-size:13px;line-height:1.7;">Have a class or cohort code? <a href="#redeem" onclick="event.preventDefault(); MACPrep.closeUpgradeModal(); MACPrep.goRedeem();" style="color:var(--accent);">Redeem it here →</a></div>
             </div>`;
             document.body.appendChild(wrapN);
             return;
@@ -4328,6 +4341,7 @@
     let _nativeShellInit = false;
     function initNativeShell() {
         if (!isNativeApp() || _nativeShellInit) return; _nativeShellInit = true;
+        document.documentElement.classList.add('is-native');
         const SS = capPlugin('SplashScreen'); if (SS) { try { SS.hide(); } catch (e) {} } // web has painted → reveal
         syncNativeStatusBar();
         // Off-domain links (source citations, partners, socials) open in an in-app Safari sheet
@@ -5058,7 +5072,7 @@
         { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
         { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
-        { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true },
+        { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true, hideNative: true },
         { icon: '🚪', label: 'Sign out', run: () => signOut(), auth: true },
         { icon: '🔑', label: 'Log in', run: () => { window.location.href = '/login.html'; }, guest: true },
     ];
@@ -5073,6 +5087,7 @@
             if (c.guest) return !authed;
             if (c.auth && !authed) return false;
             if (c.hidePremium && isPremium) return false;
+            if (c.hideNative && isNativeApp()) return false;
             return true;
         });
     }
