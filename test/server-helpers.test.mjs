@@ -49,7 +49,7 @@ test('PostgREST pagination collects every page and stops after a short page', as
 });
 
 test('database migration contains the service-role-only rollups required by the server', async () => {
-    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717194118_database_contract_and_rollups.sql', import.meta.url)), 'utf8');
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200046_database_contract_and_rollups.sql', import.meta.url)), 'utf8');
     for (const name of ['macprep_saa_benchmark', 'macprep_faculty_cohort_rollup', 'macprep_leaderboard_rollup', 'delete_macprep_account']) {
         assert.match(migration, new RegExp(`function public\\.${name}`));
     }
@@ -57,14 +57,14 @@ test('database migration contains the service-role-only rollups required by the 
 });
 
 test('account-deletion fix uses the deployed suggestions ownership column', async () => {
-    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200533_fix_account_deletion_user_suggestions.sql', import.meta.url)), 'utf8');
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200559_fix_account_deletion_user_suggestions.sql', import.meta.url)), 'utf8');
     assert.match(migration, /user_suggestions\s+where lower\(coalesce\(user_email,/);
     assert.doesNotMatch(migration, /user_suggestions where user_id/);
     assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
 });
 
 test('account-deletion fix casts the legacy voucher claim identifier', async () => {
-    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200634_fix_account_deletion_voucher_claim_type.sql', import.meta.url)), 'utf8');
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200659_fix_account_deletion_voucher_claim_type.sql', import.meta.url)), 'utf8');
     assert.match(migration, /claimed_by_id = p_user::text/);
     assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
 });
