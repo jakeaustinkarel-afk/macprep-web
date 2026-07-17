@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { applyServedFilter, deleteMacprepAccount, getServedQuestionQuery } from '../src/server.mjs';
+import { applyServedFilter, deleteMacprepAccount, getServedQuestionQuery, trustedBaseUrl } from '../src/server.mjs';
 import { fetchAllPostgrestRows } from '../src/lib/postgrest-pagination.mjs';
 
 test('served question lookup applies the published-content filter before grading', () => {
@@ -36,6 +36,12 @@ test('account deletion propagates a database cleanup failure', async () => {
     );
 });
 
+test('redirect bases require an allowlisted HTTPS origin', () => {
+    assert.equal(trustedBaseUrl('https://www.macprep.org/checkout'), 'https://www.macprep.org');
+    assert.equal(trustedBaseUrl('http://www.macprep.org'), '');
+    assert.equal(trustedBaseUrl('https://macprep.org.attacker.example'), '');
+});
+
 test('PostgREST pagination collects every page and stops after a short page', async () => {
     const calls = [];
     const rows = await fetchAllPostgrestRows(async (from, to) => {
@@ -67,4 +73,12 @@ test('account-deletion fix casts the legacy voucher claim identifier', async () 
     const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200659_fix_account_deletion_voucher_claim_type.sql', import.meta.url)), 'utf8');
     assert.match(migration, /claimed_by_id = p_user::text/);
     assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
+});
+
+test('security migration revokes legacy public data access', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717203000_revoke_legacy_public_data_access.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /drop policy if exists "Allow public read access to questions"/);
+    assert.match(migration, /drop policy if exists "Allow open review readings"/);
+    assert.match(migration, /revoke all on table public\.macprep_questions_deprecated from anon, authenticated/);
+    assert.match(migration, /revoke all on table public\.user_reviews from anon, authenticated/);
 });

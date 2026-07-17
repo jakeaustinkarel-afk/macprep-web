@@ -4480,7 +4480,7 @@
     async function changePassword() {
         const current = prompt('Confirm your CURRENT password:');
         if (current == null) return;
-        const pw = prompt('Enter a new password (at least 8 characters):');
+        const pw = prompt('Enter a new password (at least 12 characters):');
         if (pw == null) return;
         if (pw.length < 8) { toast('Password must be at least 8 characters.'); return; }
         try {
@@ -5018,7 +5018,7 @@
             s.src = '/sentry.min.js';
             s.crossOrigin = 'anonymous';
             s.onload = () => {
-                try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0,
+                try { window.Sentry && window.Sentry.init({ dsn: cfg.sentryDsn, environment: cfg.environment || 'production', tracesSampleRate: 0, sendDefaultPii: false,
                     // Filter benign transient network blips (a user's flaky connection, not a bug),
                     // errors thrown by browser extensions, and native bridges injected by iOS
                     // in-app browsers (WKWebView) when a visitor opens the site from Instagram/
@@ -5029,7 +5029,18 @@
                         // fallback wording is "…captured as promise rejection". These carry no stack
                         // and are browser-extension / third-party noise, not app bugs. Drop them.
                         'Non-Error promise rejection captured', 'captured as promise rejection'],
-                    denyUrls: [/extension(s)?\//i, /^chrome:\/\//i, /-extension:\/\//i] }); }
+                    denyUrls: [/extension(s)?\//i, /^chrome:\/\//i, /-extension:\/\//i],
+                    beforeSend: (event) => {
+                        if (event.request) {
+                            delete event.request.cookies;
+                            delete event.request.data;
+                            delete event.request.headers?.authorization;
+                            delete event.request.headers?.cookie;
+                            delete event.request.headers?.['set-cookie'];
+                        }
+                        delete event.user;
+                        return event;
+                    } }); }
                 catch (e) { /* ignore */ }
             };
             document.head.appendChild(s);

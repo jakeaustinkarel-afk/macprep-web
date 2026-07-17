@@ -9,5 +9,17 @@ if (process.env.SENTRY_DSN) {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'development',
         tracesSampleRate: 0,
+        sendDefaultPii: false,
+        beforeSend(event) {
+            if (event.request) {
+                delete event.request.cookies;
+                delete event.request.data;
+                delete event.request.headers?.authorization;
+                delete event.request.headers?.cookie;
+                delete event.request.headers?.['set-cookie'];
+            }
+            delete event.user;
+            return event;
+        },
     });
 }

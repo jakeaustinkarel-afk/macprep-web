@@ -19,8 +19,10 @@ import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 export const app = express();
+app.disable('x-powered-by');
 
 // Behind Render + Cloudflare; trust the proxy so req.ip reflects the real client
 // (needed for rate limiting).
@@ -51,7 +53,15 @@ app.use((req, res, next) => {
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "object-src 'none'",
+        "form-action 'self'",
     ].join('; '));
+    next();
+});
+
+// Authenticated responses can contain progress, profile, and purchase state.
+// Do not let a shared browser or intermediary cache any API response.
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     next();
 });
 
@@ -94,6 +104,10 @@ const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 // faculty/PD (or admin) can't hammer it into a resource-exhaustion problem.
 const cohortLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 const studySessionLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
+const sessionLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
+const gradeLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
+const profileLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
+const pushLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 30 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -102,14 +116,24 @@ const ALLOWED_HOSTS = new Set(
     (process.env.ALLOWED_HOSTS || 'macprep.org,www.macprep.org,localhost:3000')
         .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
 );
-function hostOf(u) { try { return new URL(u).host.toLowerCase(); } catch (e) { return ''; } }
+export function trustedBaseUrl(value) {
+    try {
+        const url = new URL(value);
+        const host = url.host.toLowerCase();
+        const allowLocalHttp = !IS_PROD && url.protocol === 'http:' && url.hostname === 'localhost';
+        if (!ALLOWED_HOSTS.has(host) || (url.protocol !== 'https:' && !allowLocalHttp)) return '';
+        return url.origin;
+    } catch (e) {
+        return '';
+    }
+}
 function safeBaseUrl(req) {
-    const canonical = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
-    const origin = req.headers.origin;
-    if (origin && ALLOWED_HOSTS.has(hostOf(origin))) return origin.replace(/\/$/, '');
+    const origin = trustedBaseUrl(req.headers.origin);
+    if (origin) return origin;
+    const canonical = trustedBaseUrl(process.env.PUBLIC_BASE_URL || '');
     if (canonical) return canonical;
     const host = (req.headers.host || '').toLowerCase();
-    if (ALLOWED_HOSTS.has(host)) return `https://${host}`;
+    if (ALLOWED_HOSTS.has(host)) return !IS_PROD && host === 'localhost:3000' ? `http://${host}` : `https://${host}`;
     return 'https://www.macprep.org';
 }
 // Decode a Supabase JWT's auth-method references (amr) WITHOUT verifying the
@@ -145,6 +169,7 @@ const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKe
 // empty) or — worse — a Stripe TEST key lets real customers "pay" in test mode
 // with no charge. Refuse to boot instead of failing quietly.
 const IS_PROD = process.env.NODE_ENV === 'production';
+const MIN_PASSWORD_LENGTH = 12;
 if (IS_PROD) {
     const missing = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCTION_PRICE_ID',
         'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
@@ -185,6 +210,9 @@ const REVIEW_EMAILS = new Set(
         .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 );
 const isReviewEmail = (email) => REVIEW_EMAILS.has(String(email || '').trim().toLowerCase());
+const hasVerifiedEmail = (user) => Boolean(user?.email && user.email_confirmed_at);
+const isAdminUser = (user) => hasVerifiedEmail(user) && isAdminEmail(user.email);
+const isReviewUser = (user) => hasVerifiedEmail(user) && isReviewEmail(user.email);
 const PROGRESS_TABLE = 'user_progress';
 
 // The legacy mass-generated bank is tagged status='unreviewed'. By default we do
@@ -496,7 +524,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (err) {
         console.error(`Webhook signature verification failed: ${err.message}`);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+        return res.status(400).send('Invalid webhook signature.');
     }
 
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
@@ -515,7 +543,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
             .toLowerCase()
             .trim();
 
-        console.log(`Checkout completed: user_id=${userId || 'n/a'} email=${customerEmail || 'n/a'}`);
+        console.log('Stripe checkout completed.');
 
         if (supabase && (userId || customerEmail)) {
             try {
@@ -540,12 +568,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                         if (customerEmail) up.email = customerEmail;
                         const r = await supabase.from(PROFILE_TABLE).upsert(up, { onConflict: 'user_id' }).select('user_id');
                         if (r.error) throw r.error;
-                        console.log(`Reconciled + upgraded ${userId} to premium (no prior profile row).`);
+                        console.log('Reconciled and upgraded a paid account with no prior profile row.');
                     } else {
-                        console.warn(`PAID-BUT-NO-PROFILE: email=${customerEmail} paid but no ${PROFILE_TABLE} row and no user_id to reconcile.`);
+                        console.warn(`PAID-BUT-NO-PROFILE: no ${PROFILE_TABLE} row and no authenticated buyer id to reconcile.`);
                     }
                 } else {
-                    console.log(`Upgraded ${data[0].user_id} to premium.`);
+                    console.log('Upgraded a paid account to premium.');
                 }
                 // Funnel analytics: record the purchase server-side (fire-and-forget,
                 // deduped — webhook retries must not double-count a sale).
@@ -592,16 +620,25 @@ app.get(/\.html$/i, (req, res, next) => {
 });
 app.use((req, res, next) => {
     if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path === '/' || req.path.startsWith('/api/') || path.extname(req.path)) return next();
-    const file = path.join(__dirname, '../', decodeURIComponent(req.path).replace(/\/+$/, '') + '.html');
+    let requestedPath;
+    try {
+        requestedPath = decodeURIComponent(req.path);
+    } catch (e) {
+        return next();
+    }
+    if (!requestedPath.startsWith('/') || requestedPath.includes('\0')) return next();
+    const file = `${requestedPath.replace(/^\/+|\/+$/g, '')}.html`;
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(file, (err) => { if (err) { res.removeHeader('Cache-Control'); next(); } });
+    res.sendFile(file, { root: PROJECT_ROOT, dotfiles: 'deny' }, (err) => {
+        if (err) { res.removeHeader('Cache-Control'); next(); }
+    });
 });
 
 // ---------------------------------------------------------------------------
 // JSON parsing + static assets for all normal routes
 // ---------------------------------------------------------------------------
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../'), {
+app.use(express.json({ limit: '64kb' }));
+app.use(express.static(PROJECT_ROOT, {
     etag: true,
     setHeaders: (res, filePath) => {
         if (/\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
@@ -822,7 +859,7 @@ async function sendRetentionNudges(opts) {
             await sendEmail({ to: p.email, subject: `${n} ${n === 1 ? 'question' : 'questions'} due for review on MACPrep`, html: nudgeEmailHtml({ name: p.full_name, dueCount: n, unsubUrl: unsubLink(p.user_id) }) });
             await supabase.from(PROFILE_TABLE).update({ last_nudged_at: nowIso }).eq('user_id', p.user_id);
             sent++;
-        } catch (e) { console.error('[nudges] send failed:', p.user_id, e.message); }
+        } catch (e) { console.error('[nudges] send failed:', e.message); }
     }
     return { sent, eligible, candidates: userIds.length };
 }
@@ -865,7 +902,7 @@ async function sendPushReminders() {
         } catch (e) {
             // 404/410 = the subscription is gone (uninstalled / permission revoked) → prune it.
             if (e.statusCode === 404 || e.statusCode === 410) { await supabase.from('push_subscriptions').delete().eq('id', s.id).then(() => {}, () => {}); }
-            else { console.error('[push] send failed:', s.user_id, e.statusCode || e.message); }
+            else { console.error('[push] send failed:', e.statusCode || e.message); }
         }
     }
     return { sent, eligible, candidates: Object.keys(counts).length };
@@ -940,18 +977,31 @@ app.get('/api/push/vapid-public', (req, res) => {
     if (!PUSH_ENABLED) return res.json({ enabled: false, native: NATIVE_PUSH_ENABLED });
     res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY, native: NATIVE_PUSH_ENABLED });
 });
-app.post('/api/push/subscribe', async (req, res) => {
+app.post('/api/push/subscribe', pushLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Please sign in.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const sub = req.body?.subscription;
-    if (!sub || !sub.endpoint) return res.status(400).json({ error: 'Bad subscription.' });
+    const endpoint = typeof sub?.endpoint === 'string' ? sub.endpoint.trim() : '';
+    const serialized = sub && typeof sub === 'object' ? JSON.stringify(sub) : '';
+    if (!endpoint.startsWith('https://') || endpoint.length > 2048 || serialized.length > 8192) {
+        return res.status(400).json({ error: 'Bad subscription.' });
+    }
     try {
-        await supabase.from('push_subscriptions').upsert({ user_id: user.id, endpoint: sub.endpoint, subscription: sub }, { onConflict: 'endpoint' });
+        const { data: existing, error: lookupError } = await supabase
+            .from('push_subscriptions').select('user_id').eq('endpoint', endpoint).maybeSingle();
+        if (lookupError) throw lookupError;
+        if (existing?.user_id && existing.user_id !== user.id) {
+            return res.status(409).json({ error: 'This browser notification subscription belongs to another account.' });
+        }
+        const { error } = await supabase
+            .from('push_subscriptions')
+            .upsert({ user_id: user.id, endpoint, subscription: sub }, { onConflict: 'endpoint' });
+        if (error) throw error;
         return res.json({ success: true });
     } catch (e) { console.error('[push] subscribe failed:', e.message); return res.status(500).json({ error: 'Could not save.' }); }
 });
-app.post('/api/push/unsubscribe', async (req, res) => {
+app.post('/api/push/unsubscribe', pushLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Please sign in.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
@@ -964,18 +1014,30 @@ app.post('/api/push/unsubscribe', async (req, res) => {
 });
 
 // Native store-app device tokens (@capacitor/push-notifications): iOS APNs / Android FCM.
-app.post('/api/push/register-native', async (req, res) => {
+app.post('/api/push/register-native', pushLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Please sign in.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const { token, platform } = req.body || {};
-    if (!token || (platform !== 'ios' && platform !== 'android')) return res.status(400).json({ error: 'Bad token.' });
+    const normalizedToken = typeof token === 'string' ? token.trim() : '';
+    if (!normalizedToken || normalizedToken.length > 4096 || (platform !== 'ios' && platform !== 'android')) {
+        return res.status(400).json({ error: 'Bad token.' });
+    }
     try {
-        await supabase.from('native_device_tokens').upsert({ user_id: user.id, token, platform, updated_at: new Date().toISOString() }, { onConflict: 'token' });
+        const { data: existing, error: lookupError } = await supabase
+            .from('native_device_tokens').select('user_id').eq('token', normalizedToken).maybeSingle();
+        if (lookupError) throw lookupError;
+        if (existing?.user_id && existing.user_id !== user.id) {
+            return res.status(409).json({ error: 'This device notification token belongs to another account.' });
+        }
+        const { error } = await supabase
+            .from('native_device_tokens')
+            .upsert({ user_id: user.id, token: normalizedToken, platform, updated_at: new Date().toISOString() }, { onConflict: 'token' });
+        if (error) throw error;
         return res.json({ success: true });
     } catch (e) { console.error('[native-push] register failed:', e.message); return res.status(500).json({ error: 'Could not save.' }); }
 });
-app.post('/api/push/unregister-native', async (req, res) => {
+app.post('/api/push/unregister-native', pushLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Please sign in.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
@@ -1191,7 +1253,7 @@ async function grantPremium(userId, email) {
 async function getAdminUser(req) {
     const user = await getUserFromToken(req);
     if (!user) return null;
-    return isAdminEmail(user.email) ? user : null;
+    return isAdminUser(user) ? user : null;
 }
 
 // Cohort-dashboard authorization — a SEPARATE tier from site-admin. Returns
@@ -1205,8 +1267,8 @@ async function getAdminUser(req) {
 // roles/programs stays admin-only (POST /api/admin/faculty).
 async function getFacultyUser(req) {
     const user = await getUserFromToken(req);
-    if (!user || !supabase) return null;
-    if (isAdminEmail(user.email)) {
+    if (!user || !supabase || !hasVerifiedEmail(user)) return null;
+    if (isAdminUser(user)) {
         const requested = typeof req.query?.program === 'string' ? req.query.program.trim() : '';
         return { user, program: requested || null, role: 'admin', isAdmin: true };
     }
@@ -1298,6 +1360,9 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
 
     try {
         if (action === 'register') {
+            if (password.length < MIN_PASSWORD_LENGTH) {
+                return res.status(400).json({ success: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+            }
             // Credential is required at signup; students (SAA) must add a graduation
             // date so the account can auto-promote to CAA when they graduate.
             if (!credential) return res.status(400).json({ success: false, error: 'Please select your credential (SAA or CAA).' });
@@ -1347,7 +1412,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
 
 // Exchange a refresh token for a fresh access token so a study session survives
 // the 1-hour access-token TTL instead of abruptly logging the user out.
-app.post('/api/auth/refresh', async (req, res) => {
+app.post('/api/auth/refresh', sessionLimiter, async (req, res) => {
     const refresh_token = req.body?.refresh_token;
     if (!supabaseAuth || !refresh_token) return res.status(400).json({ error: 'Missing refresh token.' });
     try {
@@ -1383,8 +1448,8 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
     const access_token = req.body?.access_token;
     const new_password = req.body?.new_password || '';
     if (!supabase || !supabaseAuth) return res.status(500).json({ error: 'Not configured.' });
-    if (!access_token || new_password.length < 8) {
-        return res.status(400).json({ error: 'A valid reset link and an 8+ character password are required.' });
+    if (!access_token || new_password.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `A valid reset link and a ${MIN_PASSWORD_LENGTH}+ character password are required.` });
     }
     try {
         const { data, error } = await supabaseAuth.auth.getUser(access_token);
@@ -1392,8 +1457,7 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
         // Only honor tokens minted by the email-recovery flow — a normal login/OAuth
         // session token (amr=password/oauth) must not be usable to reset the password.
         const methods = tokenAuthMethods(access_token).map((m) => String(m).toLowerCase());
-        const RECOVERY_OK = ['recovery', 'otp', 'magiclink', 'email', 'email_otp', 'emailotp'];
-        if (methods.length && !methods.some((m) => RECOVERY_OK.includes(m))) {
+        if (!methods.includes('recovery')) {
             return res.status(403).json({ error: 'This action requires a password-reset link. Use the "Forgot password" option to get one.' });
         }
         const { error: upErr } = await supabase.auth.admin.updateUserById(data.user.id, { password: new_password });
@@ -1411,7 +1475,7 @@ app.post('/api/user/change-password', authLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     const current_password = req.body?.current_password || '';
     const new_password = req.body?.new_password || '';
-    if (new_password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    if (new_password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
     if (!current_password) return res.status(400).json({ error: 'Your current password is required.' });
     if (!supabase || !supabaseAuth) return res.status(500).json({ error: 'Not configured.' });
     try {
@@ -2038,7 +2102,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
     const poolMode = ['all', 'new'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
     const questionIds = Array.from(new Set((Array.isArray(req.body?.question_ids) ? req.body.question_ids : [])
         .map((id) => String(id).trim()).filter(Boolean))).slice(0, MAX_STUDY_SESSION_SIZE);
-    const elevated = isAdminEmail(user.email) || isReviewEmail(user.email) || await isUserPremium(user.id);
+    const elevated = isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
 
     try {
         let questions;
@@ -2076,7 +2140,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
     if (!supabase) return res.json({ questions: [] });
-    const elevated = isAdminEmail(user.email) || isReviewEmail(user.email) || await isUserPremium(user.id);
+    const elevated = isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
     if (!elevated) return res.status(402).json({ error: 'Question search is available with full access.', paywall: true, questions: [] });
     const terms = String(req.query.q || '').trim().slice(0, 120);
     const words = terms.split(/\s+/).filter((word) => word.length >= 2).slice(0, 6);
@@ -2257,7 +2321,7 @@ app.post('/api/gamification', async (req, res) => {
 // enforced from the server's own count of distinct questions the user has
 // answered (user_progress) — never from a client-reported number.
 // ---------------------------------------------------------------------------
-app.post('/api/grade', async (req, res) => {
+app.post('/api/grade', gradeLimiter, async (req, res) => {
     const { questionId, choiceIndex, time_ms: timeMsRaw, answer_changed: changedRaw } = req.body || {};
     // Per-attempt analytics (Phase 3): time-on-item (ms, capped at 30 min to drop
     // "left the tab open" outliers) + whether the user changed their selection.
@@ -2434,7 +2498,7 @@ app.post('/api/user/cosmetics', async (req, res) => {
 // Profile — identity is derived from the verified token, never from a
 // client-supplied email (AUDIT.md §2.1).
 // ---------------------------------------------------------------------------
-app.get('/api/user/profile', async (req, res) => {
+app.get('/api/user/profile', profileLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.json({ profile: null });
@@ -2660,7 +2724,7 @@ app.get('/api/user/profile', async (req, res) => {
             const lastAsk = profile?.review_prompt_at ? Date.parse(profile.review_prompt_at) : 0;
             const windowOpen = !lastAsk || (Date.now() - lastAsk) >= 30 * 86400000;
             // Never nag the owner/admins (they own the product) or the App Store review account.
-            if (oldEnough && windowOpen && !isAdminEmail(user.email) && !isReviewEmail(profile?.email || user.email)) {
+            if (oldEnough && windowOpen && !isAdminUser(user) && !isReviewUser(user)) {
                 const { count } = await supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
                 review_prompt_due = !count;
             }
@@ -2669,16 +2733,16 @@ app.get('/api/user/profile', async (req, res) => {
         return res.json({
             profile: {
                 email: profile?.email || user.email || null,
-                premium_unlocked: profile?.account_tier === 'premium' || isReviewEmail(profile?.email || user.email),
+                premium_unlocked: profile?.account_tier === 'premium' || isReviewUser(user),
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
-                is_admin: isAdminEmail(user.email),
-                is_review: isReviewEmail(profile?.email || user.email),
+                is_admin: isAdminUser(user),
+                is_review: isReviewUser(user),
                 is_program_director: !!profile?.is_program_director,
                 is_faculty: !!profile?.is_faculty,
                 faculty_program: profile?.faculty_program || null,
                 // Drives the in-app "Cohort dashboard" nav item. Admin (owner) can view any
                 // program; a faculty/PD only if they've been assigned one. Server re-checks on every call.
-                can_view_cohort: isAdminEmail(user.email) || !!((profile?.is_program_director || profile?.is_faculty) && profile?.faculty_program),
+                can_view_cohort: isAdminUser(user) || (hasVerifiedEmail(user) && !!((profile?.is_program_director || profile?.is_faculty) && profile?.faculty_program)),
                 full_name: profile?.full_name || '',
                 credential: credCode || '',
                 graduation_date: gradDate || '',
@@ -2729,7 +2793,7 @@ app.get('/api/user/profile', async (req, res) => {
 
 // Update the authenticated user's personal profile fields. Premium status and
 // admin flags are NOT writable here — only the user's own descriptive info.
-app.post('/api/user/profile', async (req, res) => {
+app.post('/api/user/profile', profileLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
@@ -3264,7 +3328,7 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
         res.json({ url: session.url });
     } catch (err) {
         console.error('Checkout API failure:', err.message);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Could not start checkout. Please try again.' });
     }
 });
 
@@ -3327,8 +3391,11 @@ Sentry.setupExpressErrorHandler(app);
 // Log (visible in Render logs) and return a clean JSON error instead of leaking a
 // stack trace to the client.
 app.use((err, req, res, next) => {
-    console.error('Unhandled route error:', err && err.stack ? err.stack : err);
     if (res.headersSent) return next(err);
+    if (err?.type === 'entity.too.large' || err?.status === 413) {
+        return res.status(413).json({ error: 'Request body is too large.' });
+    }
+    console.error('Unhandled route error:', err && err.stack ? err.stack : err);
     res.status(500).json({ error: 'Something went wrong.' });
 });
 
