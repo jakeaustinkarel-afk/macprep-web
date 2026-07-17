@@ -221,6 +221,17 @@ const isReviewEmail = (email) => REVIEW_EMAILS.has(String(email || '').trim().to
 const hasVerifiedEmail = (user) => Boolean(user?.email && user.email_confirmed_at);
 const isAdminUser = (user) => hasVerifiedEmail(user) && isAdminEmail(user.email);
 const isReviewUser = (user) => hasVerifiedEmail(user) && isReviewEmail(user.email);
+export function normalizeTrainingProgram(value) {
+    return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 200) : '';
+}
+export function registrationProfileError({ credential, graduationDate, trainingProgram }) {
+    if (!credential) return 'Please select your credential (SAA or CAA).';
+    if (credential === 'SAA' && !graduationDate) return 'Students (SAA) must add a graduation date.';
+    if (!normalizeTrainingProgram(trainingProgram) || normalizeTrainingProgram(trainingProgram).toLowerCase() === 'program not listed') {
+        return 'Please select your AA program.';
+    }
+    return '';
+}
 const PROGRESS_TABLE = 'user_progress';
 
 // The legacy mass-generated bank is tagged status='unreviewed'. By default we do
@@ -1608,6 +1619,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
     const gradDate = isDate(req.body?.graduation_date) ? req.body.graduation_date : null;
     const examDate = isDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
+    const trainingProgram = normalizeTrainingProgram(req.body?.training_program);
 
     if (!supabaseAuth) return res.status(500).json({ success: false, error: 'Auth not configured.' });
     if (!email || !password) return res.status(400).json({ success: false, error: 'Email and password are required.' });
@@ -1617,10 +1629,10 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (password.length < MIN_PASSWORD_LENGTH) {
                 return res.status(400).json({ success: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
             }
-            // Credential is required at signup; students (SAA) must add a graduation
-            // date so the account can auto-promote to CAA when they graduate.
-            if (!credential) return res.status(400).json({ success: false, error: 'Please select your credential (SAA or CAA).' });
-            if (credential === 'SAA' && !gradDate) return res.status(400).json({ success: false, error: 'Students (SAA) must add a graduation date.' });
+            // Credential and program are required at signup; students (SAA) also add a
+            // graduation date so the account can auto-promote to CAA when they graduate.
+            const profileError = registrationProfileError({ credential, graduationDate: gradDate, trainingProgram });
+            if (profileError) return res.status(400).json({ success: false, error: profileError });
             const { data, error } = await supabaseAuth.auth.signUp({
                 email,
                 password,
@@ -1631,10 +1643,14 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             // Create the profile row so the payment webhook has a target to match
             // by email, and so premium status has somewhere to live.
             if (supabase && data.user) {
-                await supabase
+                const { error: pErr } = await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential, graduation_date: gradDate, target_exam_date: examDate }, { onConflict: 'user_id' })
-                    .then(({ error: pErr }) => { if (pErr) console.warn(`Profile create warning: ${pErr.message}`); });
+                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential, training_program: trainingProgram, graduation_date: gradDate, target_exam_date: examDate }, { onConflict: 'user_id' });
+                if (pErr) {
+                    console.error(`Profile create failure: ${pErr.message}`);
+                    await supabase.auth.admin.deleteUser(data.user.id).catch((cleanupError) => console.error(`Failed to remove incomplete signup: ${cleanupError.message}`));
+                    return res.status(500).json({ success: false, error: 'Could not finish creating your account. Please try again.' });
+                }
             }
 
             return res.json({
@@ -2964,6 +2980,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         }
         // Prompt for credential when it's missing, or when an SAA has no graduation date yet.
         const needsCredential = !credCode || (credCode === 'SAA' && !gradDate);
+        const needsProgram = !isReviewUser(user) && !normalizeTrainingProgram(profile?.training_program);
         // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
         // students compare to the whole SAA population, never their own cohort).
         const saa_domain_benchmark = saaDomainBenchmark(await getSaaBenchmark());
@@ -3006,6 +3023,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 credential_effective: credentialEffective || '',
                 is_caa: credentialEffective === 'CAA',
                 needs_credential: needsCredential,
+                needs_program: needsProgram,
                 review_prompt_due,
                 training_program: profile?.training_program || '',
                 target_exam_date: profile?.target_exam_date || '',
@@ -3057,8 +3075,15 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
 
     const b = req.body || {};
     const update = {};
-    for (const f of ['full_name', 'credential', 'training_program', 'phone']) {
+    for (const f of ['full_name', 'credential', 'phone']) {
         if (typeof b[f] === 'string') update[f] = b[f].slice(0, 200);
+    }
+    if (Object.prototype.hasOwnProperty.call(b, 'training_program')) {
+        const trainingProgram = normalizeTrainingProgram(b.training_program);
+        if (!isReviewUser(user) && (!trainingProgram || trainingProgram.toLowerCase() === 'program not listed')) {
+            return res.status(400).json({ error: 'Please select your AA program.' });
+        }
+        update.training_program = trainingProgram;
     }
     if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
     else if (typeof b.target_exam_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.target_exam_date)) {

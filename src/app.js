@@ -290,7 +290,7 @@
     }
 
     function showSignin() { const a = $('signup-pane'), b = $('signin-pane'); if (a) a.classList.add('hidden'); if (b) b.classList.remove('hidden'); const e = $('login-email'); if (e) e.focus(); }
-    function showSignup() { const a = $('signup-pane'), b = $('signin-pane'); if (b) b.classList.add('hidden'); if (a) a.classList.remove('hidden'); const e = $('su-first'); if (e) e.focus(); }
+    function showSignup() { const a = $('signup-pane'), b = $('signin-pane'); if (b) b.classList.add('hidden'); if (a) a.classList.remove('hidden'); syncSignupProgramOptions(); onCredChange(); const e = $('su-first'); if (e) e.focus(); }
 
     // Inline signup on the landing — no page hop, and auto-logs-in when email
     // confirmation is off (then drops the user straight into a warm-up).
@@ -302,6 +302,7 @@
         const credential = ($('su-cred') && $('su-cred').value) || '';
         const gradDate = ($('su-grad') && $('su-grad').value) || '';
         const examDate = ($('su-exam') && $('su-exam').value) || '';
+        let program = ($('su-program') && $('su-program').value) || '';
         const email = ($('su-email').value || '').trim();
         const password = $('su-password').value;
         const btn = $('su-submit'); const msg = $('su-msg');
@@ -309,13 +310,21 @@
         if (!first || !last) { fail('Please enter your first and last name.'); return; }
         if (!credential) { fail('Please select your credential (SAA or CAA).'); return; }
         if (credential === 'SAA' && !gradDate) { fail('Please add your expected graduation date.'); return; }
+        if (!program) { fail('Please select your AA program.'); return; }
+        let programUnlisted = false;
+        if (program === PROGRAM_NOT_LISTED) {
+            const other = (($('su-program-other') && $('su-program-other').value) || '').trim();
+            if (!other) { fail('Please type your program name so we can add it.'); return; }
+            program = other;
+            programUnlisted = true;
+        }
         if (!email || !password) return;
         if ($('su-terms') && !$('su-terms').checked) { fail('Please accept the Terms to continue.'); return; }
         state.signupInFlight = true;
         if (btn) { btn.disabled = true; btn.textContent = 'Creating your account…'; }
         if (msg) msg.textContent = '';
         try {
-            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential, graduation_date: credential === 'SAA' ? gradDate : null, target_exam_date: credential === 'SAA' ? examDate : null }) });
+            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential, training_program: program, program_unlisted: programUnlisted, graduation_date: credential === 'SAA' ? gradDate : null, target_exam_date: credential === 'SAA' ? examDate : null }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
             track('signup');
             if (data.token) {
@@ -2809,14 +2818,19 @@
     // future CME section to CAAs. Collected at signup, and as a one-time login
     // pop-up for accounts created before we asked.
     function onCredChange() {
-        const sel = $('su-cred'), box = $('su-saa-fields');
+        const sel = $('su-cred'), box = $('su-saa-fields'), programWrap = $('su-program-wrap'), hint = $('su-program-hint'), programSelect = $('su-program');
         if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
+        if (programWrap) programWrap.classList.toggle('hidden', !(sel && sel.value));
+        if (programSelect) programSelect.disabled = !(sel && sel.value);
+        if (hint && sel) hint.textContent = sel.value === 'CAA'
+            ? 'Select the AA program where you teach or from which you graduated.'
+            : sel.value === 'SAA' ? 'Select the AA program you attend.' : 'Select your credential first.';
     }
     function onCredModalChange() {
         const sel = $('cp-cred'), box = $('cp-saa');
         if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
         const hint = $('cp-prog-hint');
-        if (hint && sel) hint.textContent = sel.value === 'CAA' ? 'Which AA program did you graduate from?' : sel.value === 'SAA' ? 'Which AA program are you attending?' : 'Your AA program.';
+        if (hint && sel) hint.textContent = sel.value === 'CAA' ? 'Select the AA program where you teach or from which you graduated.' : sel.value === 'SAA' ? 'Select the AA program you attend.' : 'Your AA program.';
     }
     // Accredited AA training programs, campus-level (multi-campus networks are broken out so
     // a program/cohort maps to one campus). Keep in sync with the outreach roster
@@ -2881,6 +2895,17 @@
         const sel = $('cp-program'), w = $('cp-other-wrap');
         if (w) w.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
     }
+    function syncSignupProgramOptions() {
+        const sel = $('su-program');
+        if (!sel) return;
+        const selected = sel.value || '';
+        sel.innerHTML = programOptions(selected);
+        onSignupProgramChange();
+    }
+    function onSignupProgramChange() {
+        const sel = $('su-program'), w = $('su-program-other-wrap');
+        if (w) w.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
+    }
     function onProfProgramChange() {
         const sel = $('prof-program'), w = $('prof-other-wrap');
         if (w) w.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
@@ -2895,7 +2920,10 @@
         openCredentialPrompt();
         return true;
     }
-    function closeCredentialPrompt() { const o = $('cred-prompt-overlay'); if (o) o.remove(); state._credPromptOpen = false; }
+    function closeCredentialPrompt() {
+        if (needsProgram(state.profile || {})) return;
+        const o = $('cred-prompt-overlay'); if (o) o.remove(); state._credPromptOpen = false;
+    }
     function openCredentialPrompt() {
         state._credPromptOpen = true;
         const p = state.profile || {};
@@ -2905,7 +2933,7 @@
         const wrap = document.createElement('div');
         wrap.id = 'cred-prompt-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2850;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
-        wrap.onclick = (e) => { if (e.target === wrap) closeCredentialPrompt(); };  // dismissable (re-prompts next login)
+        wrap.onclick = (e) => { if (e.target === wrap) closeCredentialPrompt(); };
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="cp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
             <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Help us tailor MACPrep</div>
@@ -2922,9 +2950,9 @@
                 <label class="mono" style="${lbl}">EXAM DATE <span style="text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
             </div>
-            <label class="mono" style="${lbl}">TRAINING PROGRAM</label>
-            <div class="sub" id="cp-prog-hint" style="font-size:11px;margin:-2px 0 6px;">${pre === 'CAA' ? 'Which AA program did you graduate from?' : pre === 'SAA' ? 'Which AA program are you attending?' : 'Your AA program.'}</div>
-            <select id="cp-program" onchange="MACPrep.onCpProgramChange()" style="${inp}">${programOptions(p.training_program || '')}</select>
+            <label class="mono" style="${lbl}">AA PROGRAM</label>
+            <div class="sub" id="cp-prog-hint" style="font-size:11px;margin:-2px 0 6px;">${pre === 'CAA' ? 'Select the AA program where you teach or from which you graduated.' : pre === 'SAA' ? 'Select the AA program you attend.' : 'Your AA program.'}</div>
+            <select id="cp-program" onchange="MACPrep.onCpProgramChange()" style="${inp}">${programOptions(p.training_program || p.faculty_program || '')}</select>
             <div id="cp-other-wrap" class="hidden">
                 <label class="mono" style="${lbl}">WHICH PROGRAM? <span style="text-transform:none;letter-spacing:0;">(we'll add it)</span></label>
                 <input id="cp-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}">
@@ -5280,7 +5308,7 @@
         smartReview, startSample, saveNote, reviewQueue, cohortCodes, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
-        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onProfProgramChange,
+        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
@@ -5421,6 +5449,8 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
+        syncSignupProgramOptions();
+        onCredChange();
         syncThemeColor();
         track('page_view');
         if (isNativeApp()) initNativeShell();

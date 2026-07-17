@@ -8,6 +8,8 @@ import {
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
     mobileAccountHash,
+    normalizeTrainingProgram,
+    registrationProfileError,
     normalizeMobileStore,
     selectUnansweredFreePool,
     trustedBaseUrl,
@@ -62,6 +64,14 @@ test('mobile store names are allowlisted', () => {
     assert.equal(normalizeMobileStore('apple'), 'apple');
     assert.equal(normalizeMobileStore('google_play'), 'google_play');
     assert.equal(normalizeMobileStore('stripe'), null);
+});
+
+test('registration requires a real AA program and preserves a clean program label', () => {
+    assert.equal(normalizeTrainingProgram('  Nova   Southeastern University (Tampa)  '), 'Nova Southeastern University (Tampa)');
+    assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: '' }), 'Please select your AA program.');
+    assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: 'Program not listed' }), 'Please select your AA program.');
+    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: null, trainingProgram: 'Emory University' }), 'Students (SAA) must add a graduation date.');
+    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
 });
 
 test('Apple entitlement payload requires the expected app, product, and account token', () => {
