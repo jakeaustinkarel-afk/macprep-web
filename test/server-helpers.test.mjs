@@ -55,3 +55,16 @@ test('database migration contains the service-role-only rollups required by the 
     }
     assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
 });
+
+test('account-deletion fix uses the deployed suggestions ownership column', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200533_fix_account_deletion_user_suggestions.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /user_suggestions\s+where lower\(coalesce\(user_email,/);
+    assert.doesNotMatch(migration, /user_suggestions where user_id/);
+    assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
+});
+
+test('account-deletion fix casts the legacy voucher claim identifier', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717200634_fix_account_deletion_voucher_claim_type.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /claimed_by_id = p_user::text/);
+    assert.match(migration, /grant execute on function public\.delete_macprep_account\(uuid\) to service_role/);
+});

@@ -34,7 +34,7 @@ The test suite is local and does not start a listener, call Stripe, or require a
 
 ## Database Deployment
 
-The server now depends on `supabase/migrations/20260717194118_database_contract_and_rollups.sql`. It adds the indexes and service-role-only database functions used for SAA benchmarks, faculty cohort analytics, leaderboard rollups, and transactional account deletion.
+The server now depends on the 2026-07-17 rollup migration series in `supabase/migrations/`: `20260717194118_database_contract_and_rollups.sql` plus the two `fix_account_deletion_*` follow-ups. Together they add the indexes and service-role-only database functions used for SAA benchmarks, faculty cohort analytics, leaderboard rollups, and transactional account deletion.
 
 Deploy in this order:
 

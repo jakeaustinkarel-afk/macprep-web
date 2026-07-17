@@ -624,7 +624,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         ok: true,
         service: 'macprep',
-        build: 'session-rollups-20260717',
+        build: 'session-rollups-20260717.1',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
         serve_filler: SERVE_FILLER,

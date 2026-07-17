@@ -4,10 +4,10 @@ Last reviewed: 2026-07-17.
 
 ## Ready To Execute
 
-- [ ] Apply `supabase/migrations/20260717194118_database_contract_and_rollups.sql` to the linked Supabase project, then run database advisors and production smoke checks. This must precede the matching server deployment.
+- [x] Applied the 2026-07-17 rollup and account-deletion migration series to the linked Supabase project, deployed matching server build `session-rollups-20260717.1`, and ran database advisors plus production smoke checks.
 - [ ] Pull the reviewed historical Supabase baseline into version control with `supabase db pull`. The live schema predates this repo's migration history; do not fabricate it from code.
 - [ ] Add a protected staging environment with a Stripe test webhook secret and seeded Supabase data, then add an end-to-end signed webhook test.
-- [ ] Capture `EXPLAIN (ANALYZE, BUFFERS)` for the new benchmark, cohort, leaderboard, and session-selection functions after production-like data is available.
+- [x] Captured `EXPLAIN (ANALYZE, BUFFERS)` for benchmark, cohort, leaderboard, and bounded served-question selection on 2026-07-17.
 
 ## Next Engineering Slice
 

@@ -4,7 +4,7 @@ MACPrep uses Supabase Auth plus Postgres. The Express server uses a service-role
 
 ## Source Of Truth
 
-The historical production schema was created before database migrations were committed to this repository. The additive migration at `supabase/migrations/20260717194118_database_contract_and_rollups.sql` is the current versioned performance and safety contract.
+The historical production schema was created before database migrations were committed to this repository. The additive 2026-07-17 migration series in `supabase/migrations/` is the current versioned performance and safety contract; apply every pending migration, including the `fix_account_deletion_*` follow-ups.
 
 Before treating a fresh environment as reproducible, pull and review the existing schema with the Supabase CLI. Do not invent a greenfield baseline from product code or copy production data into source control.
 
