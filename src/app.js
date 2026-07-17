@@ -5,7 +5,9 @@
     const state = {
         token: null,
         profile: null,       // { email, premium_unlocked, is_admin, free_tier_limit, stats, ... }
-        questions: [],       // full bank (stems only, no answers)
+        questions: [],       // only the current/most-recent bounded study set
+        catalog: { total: 0, categories: [] },
+        qotd: null,
         session: null,       // { pool, index, answered, correct, size, domain }
         loginInFlight: false,
     };
@@ -336,7 +338,7 @@
         stopExamTimer();
         setToken(null); setRefresh(null);
         ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
-        state.token = null; state.profile = null; state.questions = []; state.session = null; state.gam = null;
+        state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
         go('login');
     }
 
@@ -385,15 +387,55 @@
     async function loadQuestions() {
         const { resp, data } = await apiJSON('/api/questions', { headers: authHeaders() });
         if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
-        state.questions = Array.isArray(data.questions) ? data.questions : [];
+        state.questions = [];
+        state.catalog = (data && data.catalog) || { total: 0, categories: [] };
         return state.questions;
+    }
+
+    function questionBankSize() { return Number(state.catalog && state.catalog.total) || 0; }
+
+    async function requestStudySession(options) {
+        const { resp, data } = await apiJSON('/api/study-session', {
+            method: 'POST', headers: authHeaders(), body: JSON.stringify(options || {}),
+        });
+        if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
+        if (resp.status === 402) {
+            if (!isNative()) startCheckout();
+            else openUpgradeModal('studymode');
+            throw new Error(data.error || 'Full access is required.');
+        }
+        if (!resp.ok) throw new Error(data.error || 'Could not prepare a study session.');
+        if (data.catalog) state.catalog = data.catalog;
+        return Array.isArray(data.questions) ? data.questions : [];
+    }
+
+    async function beginServerSession(options, mode, onReady) {
+        setLoading(true);
+        try {
+            const pool = await requestStudySession(options);
+            if (!pool.length) { toast('No questions are available for that selection right now.'); return null; }
+            state.questions = pool;
+            beginSession(pool, mode || 'tutor');
+            if (typeof onReady === 'function') onReady(state.session, pool);
+            return state.session;
+        } catch (e) {
+            if (e.status !== 402) toast(e.message || 'Could not start that session.');
+            return null;
+        } finally { setLoading(false); }
+    }
+
+    async function loadQotd() {
+        try {
+            const pool = await requestStudySession({ purpose: 'qotd', size: 1 });
+            state.qotd = pool[0] || null;
+        } catch (e) { state.qotd = null; }
     }
 
     async function bootAuthedSession() {
         state._themeApplied = false;
         state._fontApplied = false;
         setLoading(true);
-        try { await Promise.all([loadProfile(), loadQuestions()]); }
+        try { await Promise.all([loadProfile(), loadQuestions(), loadQotd()]); }
         finally { setLoading(false); }
         // Reflect tier badge
         const badge = $('tier-badge');
@@ -427,13 +469,7 @@
 
     // ---- dashboard --------------------------------------------------------
     function uniqueCategories() {
-        const counts = {};
-        state.questions.forEach((q) => {
-            const c = q.category || q.domain_name || 'General';
-            counts[c] = (counts[c] || 0) + 1;
-        });
-        // Sort by count desc, then alpha — big clinical buckets first.
-        return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+        return (state.catalog?.categories || []).map((entry) => [entry.category, entry.total]);
     }
 
     function freeUsage() {
@@ -477,7 +513,7 @@
                 return `<div title="${t.day}: ${t.accuracy}%" style="flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;"><span style="width:100%;max-width:26px;height:${h}px;background:${c};border-radius:4px 4px 2px 2px;"></span></div>`;
             }).join('') + `</div>`
             : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:100%;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle;flex:none;"><path d="M3 16.5l5.5-5.5 3.5 3.5 8-8"/><path d="M16 6.5h4v4"/></svg> Answer a few questions — your accuracy trend shows up here.</div>';
-        const bank = (state.questions || []).length;
+        const bank = questionBankSize();
         const planLine = (exam != null && exam > 0 && bank > 0)
             ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
             : '';
@@ -642,25 +678,20 @@
         } catch (e) { toast(e.message || 'Could not save.', 'bad'); }
     }
 
-    function startSample() {
+    async function startSample() {
         const sel = $('domain-select'); if (sel) sel.value = 'all';
         const diff = $('difficulty-select'); if (diff) diff.value = 'all';
         const pm = $('pool-mode'); if (pm) pm.value = 'all';
         const chips = $('count-chips'); if (chips) { chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); }
         $('custom-count').value = '5';
-        startSession();
+        await beginServerSession({ purpose: 'sample', size: 5 }, 'tutor');
     }
 
-    function smartReview() {
+    async function smartReview() {
         if (!premiumGate('studymode')) return;
-        // Prioritize missed questions, then fill from weakest specialties.
         const p = state.profile || {};
         const ids = new Set(p.missed_ids || []);
-        const weak = (p.by_specialty || []).filter((s) => s.accuracy < 70).map((s) => s.category);
-        if (ids.size < 20 && weak.length) {
-            state.questions.forEach((q) => { if (weak.includes(q.category || q.domain_name) && ids.size < 20) ids.add(q.id); });
-        }
-        startFromIds(Array.from(ids), 'review');
+        await beginServerSession({ purpose: 'review', size: 20, question_ids: Array.from(ids) }, 'tutor');
     }
 
     // Adaptive "Recommended" engine — one primary action, no config. Blends four
@@ -673,82 +704,12 @@
     //   4. domain-balanced coverage fill of unseen material
     // Reinforcement items (1-2) are level-agnostic; new material (3-4) is
     // difficulty-matched. Degrades gracefully if `by_domain` isn't present yet.
-    function startRecommended() {
+    async function startRecommended() {
         const usage = freeUsage();
-        const p = state.profile || {};
-        const all = state.questions || [];
-        if (!all.length) { toast('Questions are still loading — try again in a moment.'); return; }
         if (!usage.unlimited && usage.remaining < 1) { return startCheckout(); }
-        const byId = {}; all.forEach((q) => { byId[q.id] = q; });
-        const target = Math.min(20, all.length, usage.unlimited ? Infinity : usage.remaining);
-        const answered = new Set(p.answered_ids || []);
-        const DIFF_RATING = { easy: 900, medium: 1100, hard: 1300 };
-        const domTarget = {}; (p.by_domain || []).forEach((d) => { domTarget[d.domain] = d.target; });
-        const domainOf = (q) => q.domain_name || q.category || 'General';
-        const ratingOf = (q) => DIFF_RATING[String(q.difficulty || 'medium').toLowerCase()] || 1100;
-        // Difficulty "fit": distance from the question's rating to the learner's
-        // per-domain target (smaller = better fit). Unknown domain ~ medium+stretch.
-        const fit = (q) => Math.abs(ratingOf(q) - (domTarget[domainOf(q)] != null ? domTarget[domainOf(q)] : 1140));
-        const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-        const picked = new Set();
-        const breakdown = { due: 0, missed: 0, weak: 0, coverage: 0 };
-        const add = (id, bucket) => {
-            if (picked.size >= target || !byId[id] || picked.has(id)) return false;
-            picked.add(id); if (bucket) breakdown[bucket]++; return true;
-        };
-        // 1) Spaced-repetition due — reinforcement, capped so it can't eat the set.
-        const dueCap = Math.max(1, Math.ceil(target * 0.4)); let dueN = 0;
-        for (const id of (p.due_ids || [])) { if (dueN >= dueCap) break; if (add(id, 'due')) dueN++; }
-        // 2) Recent misses still not re-mastered — targeted, level-agnostic.
-        const missCap = Math.max(1, Math.ceil(target * 0.4)); let missN = 0;
-        for (const id of (p.missed_ids || [])) { if (missN >= missCap) break; if (add(id, 'missed')) missN++; }
-        // 3) Weakest domains — new/unseen questions, difficulty matched to level.
-        const weakDomains = [];
-        if (picked.size < target) {
-            const doms = (p.by_domain || []).slice()
-                .sort((a, b) => ((a.mastery == null ? 40 : a.mastery)) - ((b.mastery == null ? 40 : b.mastery)));
-            const cands = {};
-            doms.forEach((d) => {
-                const list = all.filter((q) => domainOf(q) === d.domain && !picked.has(q.id));
-                list.sort((x, y) => {
-                    const ux = answered.has(x.id) ? 1 : 0, uy = answered.has(y.id) ? 1 : 0;
-                    if (ux !== uy) return ux - uy;      // unseen first
-                    const fx = fit(x), fy = fit(y);
-                    if (fx !== fy) return fx - fy;       // then best difficulty fit
-                    return Math.random() - 0.5;          // random among ties
-                });
-                cands[d.domain] = list;
-            });
-            const perDomainCap = Math.max(2, Math.ceil(target * 0.35));
-            const domCount = {};
-            let progressed = true;
-            while (picked.size < target && progressed) {
-                progressed = false;
-                for (const d of doms) {
-                    if (picked.size >= target) break;
-                    if ((domCount[d.domain] || 0) >= perDomainCap) continue;
-                    const q = (cands[d.domain] || []).shift();
-                    if (q && add(q.id, 'weak')) { domCount[d.domain] = (domCount[d.domain] || 0) + 1; progressed = true; if (weakDomains.indexOf(d.domain) < 0) weakDomains.push(d.domain); }
-                }
-            }
-        }
-        // 4) Coverage fill — remaining slots, unseen preferred, domain-balanced.
-        if (picked.size < target) {
-            const byDom = {};
-            all.forEach((q) => { if (!picked.has(q.id)) { const d = domainOf(q); (byDom[d] = byDom[d] || []).push(q); } });
-            const arrs = Object.values(byDom).map((a) => a.sort((x, y) => (answered.has(x.id) ? 1 : 0) - (answered.has(y.id) ? 1 : 0) || fit(x) - fit(y)));
-            let progressed = true;
-            while (picked.size < target && progressed) {
-                progressed = false;
-                for (const arr of arrs) { if (picked.size >= target) break; const q = arr.shift(); if (q && add(q.id, 'coverage')) progressed = true; }
-            }
-        }
-        let pool = shuffle(Array.from(picked).map((id) => byId[id]));
-        if (!usage.unlimited) pool = pool.slice(0, Math.min(pool.length, usage.remaining));
-        if (!pool.length) { toast('No questions available right now.'); return; }
-        state.lastRecommended = { breakdown, weakDomains };
-        track('recommended_start', { size: pool.length, adaptive: true, due: breakdown.due, missed: breakdown.missed, weak: breakdown.weak });
-        beginSession(pool, 'tutor');
+        const target = usage.unlimited ? 20 : Math.min(20, usage.remaining);
+        const session = await beginServerSession({ purpose: 'recommended', size: target, pool_mode: 'new' }, 'tutor');
+        if (session) track('recommended_start', { size: session.size, adaptive: true });
     }
 
     // Reflects what the recommended set will draw from (or a starter message for new users).
@@ -788,21 +749,17 @@
         catch (e) { return shifted.toISOString().slice(0, 10); }
     }
     function questionOfTheDay() {
-        const qs = state.questions || [];
-        if (!qs.length) return null;
-        const key = qotdDayKey();
-        let h = 0; for (let i = 0; i < key.length; i++) { h = (h * 31 + key.charCodeAt(i)) >>> 0; }
-        return qs[h % qs.length];
+        return state.qotd;
     }
     function qotdDoneToday() { return ls('macprep_qotd_done') === qotdDayKey(); }
     // Launches the QotD as a real 1-question tutor session — identical render, grading,
     // rationale, source, and activity tracking as any quiz question.
-    function startQotd() {
+    async function startQotd() {
+        if (!questionOfTheDay()) await loadQotd();
         const q = questionOfTheDay();
         if (!q) { toast('Today\'s question is still loading — try again in a moment.'); return; }
         ls('macprep_qotd_done', qotdDayKey());
-        beginSession([q], 'tutor');
-        if (state.session) state.session.qotd = true;
+        await beginServerSession({ purpose: 'qotd', size: 1, question_ids: [q.id] }, 'tutor', (session) => { session.qotd = true; });
     }
     function renderQotd() {
         const card = $('qotd-card'); if (!card) return;
@@ -1216,7 +1173,7 @@
         const g = $('dash-greeting'); if (g) g.style.display = 'none';
         const sb = $('dash-subtitle'); if (sb) sb.style.display = 'none';
         const p = state.profile || {};
-        const bank = (state.questions || []).length;
+        const bank = questionBankSize();
         const answeredToday = answeredTodayLive();
         let goal = (p.days_to_exam > 0 && bank > 0) ? Math.ceil((bank * 2) / p.days_to_exam) : 10;
         goal = Math.max(5, Math.min(40, goal));
@@ -1368,7 +1325,7 @@
 
         // domain bosses — clear a domain by scoring 80%+ on its mastery challenge
         const bossN = bossesCleared().length;
-        const domTotal = (function () { const set = new Set(); (state.questions || []).forEach((q) => { const d = q.domain_name || q.category; if (d) set.add(d); }); return set.size || 6; })();
+        const domTotal = (state.catalog?.categories || []).length || 6;
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss hunter — beat your first domain', desc: 'Defeat any Domain Boss (80%+ on its challenge).', met: bossN >= 1, pct: bossN >= 1 ? 100 : 0, sub: bossN >= 1 ? 'Unlocked' : 'Beat any Domain Boss' });
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss slayer — every domain', desc: 'Defeat every Domain Boss.', met: bossN >= domTotal, pct: bossN >= domTotal ? 100 : Math.max(0, Math.min(99, Math.round((bossN / domTotal) * 100))), sub: bossN >= domTotal ? 'Unlocked' : `${bossN} / ${domTotal} domains defeated` });
 
@@ -1661,15 +1618,9 @@
         el.style.transition = 'box-shadow .3s ease'; el.style.boxShadow = '0 0 0 3px var(--accent-dim)';
         setTimeout(() => { el.style.boxShadow = ''; }, 1300);
     }
-    function startQuick(n) {
+    async function startQuick(n) {
         if (!premiumGate('studymode')) return;
-        const usage = freeUsage();
-        if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
-        let pool = (state.questions || []).slice();
-        if (!pool.length) { toast('No questions loaded yet — try again in a moment.'); return; }
-        pool = unseenFirst(pool); // fresh questions first, freshly shuffled
-        let k = Math.min(n, pool.length); if (!usage.unlimited) k = Math.min(k, usage.remaining);
-        beginSession(pool.slice(0, k));
+        await beginServerSession({ purpose: 'quick', size: n, pool_mode: 'new' }, 'tutor');
     }
     function openMockPicker() { const m = $('mock-picker'); if (m) m.classList.remove('hidden'); }
     function closeMockPicker() { const m = $('mock-picker'); if (m) m.classList.add('hidden'); }
@@ -1677,8 +1628,7 @@
     // ---- Domain Bosses: score 80%+ on a short mastery challenge to "clear" a domain ----
     const BOSS_THRESHOLD = 80, BOSS_SIZE = 8;
     function uniqueDomains() {
-        const m = {}; (state.questions || []).forEach((q) => { const d = q.domain_name || q.category; if (d) m[d] = (m[d] || 0) + 1; });
-        return Object.entries(m).sort((a, b) => b[1] - a[1]);
+        return uniqueCategories();
     }
     function bossesCleared() { try { return JSON.parse(localStorage.getItem('macprep_bosses') || '[]') || []; } catch (e) { return []; } }
     function markBossCleared(domain) { try { const a = bossesCleared(); if (a.indexOf(domain) < 0) { a.push(domain); localStorage.setItem('macprep_bosses', JSON.stringify(a)); } } catch (e) {} }
@@ -1710,15 +1660,10 @@
         document.body.appendChild(wrap);
     }
     function closeBossPicker() { const o = $('boss-overlay'); if (o) o.remove(); }
-    function startBossFight(domain) {
+    async function startBossFight(domain) {
         closeBossPicker();
-        const all = (state.questions || []).filter((q) => (q.domain_name || q.category) === domain);
-        if (all.length < 5) { toast('Not enough questions in this domain yet.'); return; }
-        const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-        const pool = shuffle(all.slice()).slice(0, Math.min(BOSS_SIZE, all.length));
         try { track('boss_start', { domain }); } catch (e) {}
-        beginSession(pool, 'exam');
-        if (state.session) { state.session.boss = domain; saveSession(); }
+        await beginServerSession({ purpose: 'boss', size: BOSS_SIZE, category: domain, pool_mode: 'new' }, 'exam', (session) => { session.boss = domain; saveSession(); });
     }
 
     // ---- Arcade modes: fast, score-chasing runs with a personal best -------------
@@ -1770,11 +1715,9 @@
     }
     function closeArcadePicker() { const o = $('arcade-overlay'); if (o) o.remove(); }
 
-    function startArcade(type) {
+    async function startArcade(type) {
         closeArcadePicker();
         if (!ARCADE_META[type]) return;
-        const all = state.questions || [];
-        if (all.length < 8) { toast('Questions are still loading — try again in a moment.'); return; }
         // Free users get ONE taste run of Arcade; after that it's part of full access.
         const usage = freeUsage();
         if (!usage.unlimited) {
@@ -1782,17 +1725,16 @@
             markArcadeFreeUsed();
             toast('Your free Arcade run — have fun! Unlimited Arcade is part of full access.', 'ok');
         }
-        const pool = arcadeShuffle(all.slice());
         try { track('arcade_start', { type }); } catch (e) {}
-        beginSession(pool, 'tutor');
-        const s = state.session; if (!s) return;
-        const prevBest = arcadeBest(type);
-        s.arcade = { type, score: 0, streak: 0, best: prevBest, prevBest, over: false };
-        const m = ARCADE_META[type];
-        if (m.lives) { s.arcade.lives = m.lives; s.arcade.maxLives = m.lives; }
-        if (m.seconds) { s.arcade.timeLeft = m.seconds; s.arcade.bonus = m.bonus || 0; startArcadeTimer(); }
-        renderQuestion(); // repaint with arcade chrome (HUD in, tutor extras out)
-        renderArcadeHud();
+        await beginServerSession({ purpose: 'arcade', size: 25, pool_mode: 'new' }, 'tutor', (s) => {
+            const prevBest = arcadeBest(type);
+            s.arcade = { type, score: 0, streak: 0, best: prevBest, prevBest, over: false };
+            const m = ARCADE_META[type];
+            if (m.lives) { s.arcade.lives = m.lives; s.arcade.maxLives = m.lives; }
+            if (m.seconds) { s.arcade.timeLeft = m.seconds; s.arcade.bonus = m.bonus || 0; startArcadeTimer(); }
+            renderQuestion();
+            renderArcadeHud();
+        });
     }
 
     function startArcadeTimer() {
@@ -1842,11 +1784,17 @@
         arcadeAdvanceId = setTimeout(arcadeNext, correct ? 850 : 1650); // linger a beat longer on a miss so the answer registers
     }
 
-    function arcadeNext() {
+    async function arcadeNext() {
         clearArcadeAdvance();
         const s = state.session; if (!s || !s.arcade || s.arcade.over) return;
-        // Endless: extend the pool with a fresh reshuffle of the whole bank when we reach the end.
-        if (s.index >= s.pool.length - 1) { s.pool = s.pool.concat(arcadeShuffle((state.questions || []).slice())); s.size = s.pool.length; }
+        if (s.index >= s.pool.length - 1) {
+            try {
+                const next = await requestStudySession({ purpose: 'arcade', size: 25, pool_mode: 'new' });
+                if (!next.length) return arcadeGameOver('out_of_questions');
+                s.pool = s.pool.concat(next);
+                s.size = s.pool.length;
+            } catch (e) { return arcadeGameOver('load_error'); }
+        }
         s.index++;
         delete s.answers[s.index]; s.locked = false;
         renderQuestion();
@@ -1892,32 +1840,20 @@
 
     // Full-length exam, sampled proportionally to the bank's real domain distribution
     // (honest weighting — not a fabricated official blueprint), run as a timed exam.
-    function startMockExam(count) {
+    async function startMockExam(count) {
         closeMockPicker();
-        const all = state.questions || [];
-        if (all.length < 20) { toast('Not enough questions loaded yet for a mock exam.'); return; }
         const usage = freeUsage();
-        const n = Math.min(count || 100, all.length);
+        const n = Math.min(count || 100, questionBankSize(), 200);
         // Full-length mock exams are premium, period — the board simulation is the hero unlock.
         if (!usage.unlimited) { openUpgradeModal('mock'); return; }
-        const byDom = {};
-        all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
-        const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-        let pool = [];
-        Object.keys(byDom).forEach((d) => { const share = Math.max(1, Math.round(n * (byDom[d].length / all.length))); pool = pool.concat(unseenFirst(byDom[d]).slice(0, share)); }); // fresh questions first per domain
-        const seen = new Set(pool.map((q) => q.id));
-        if (pool.length < n) { pool = pool.concat(unseenFirst(all.filter((q) => !seen.has(q.id))).slice(0, n - pool.length)); }
-        shuffle(pool); pool = pool.slice(0, n);
-        if (!pool.length) { toast('No questions available for a mock exam yet.'); return; }
-        try { track('mock_exam_start', { size: pool.length }); } catch (e) {}
-        beginSession(pool, 'exam');
-        if (state.session) {
-            state.session.mock = true;
+        const session = await beginServerSession({ purpose: 'mock', size: n, pool_mode: 'new' }, 'exam', (s) => {
+            s.mock = true;
             // Match the real NCCAA exam pace: 110 minutes per 90-item block (so a full 180 → 220 minutes).
-            state.session.timeLeft = Math.round((pool.length / 90) * 110 * 60);
+            s.timeLeft = Math.round((s.size / 90) * 110 * 60);
             renderExamTimer(); // repaint immediately so the clock never flashes the pre-override default
             saveSession();
-        }
+        });
+        if (session) { try { track('mock_exam_start', { size: session.size }); } catch (e) {} }
     }
     function smTile(cls, cat, title, desc, count, onclick, tag) {
         const locked = /Premium/.test(tag || '');
@@ -2001,7 +1937,7 @@
         const stats = p.stats || { answered: 0, correct: 0, attempts: 0 };
         $('stat-answered').textContent = stats.answered || 0;
         $('stat-accuracy').textContent = stats.attempts ? Math.round((stats.correct / stats.attempts) * 100) + '%' : '—';
-        $('stat-bank').textContent = state.questions.length.toLocaleString();
+        $('stat-bank').textContent = questionBankSize().toLocaleString();
         renderReadiness();
         renderQotd();
         renderActivityCalendar();
@@ -2138,16 +2074,15 @@
 
     function poolForDomain() {
         const c = $('domain-select').value;
-        const diff = $('difficulty-select') ? $('difficulty-select').value : 'all';
-        let pool = c === 'all'
-            ? state.questions.slice()
-            : state.questions.filter((q) => (q.category || q.domain_name || 'General') === c);
-        if (diff && diff !== 'all') pool = pool.filter((q) => (q.difficulty || '').toLowerCase() === diff);
         const mode = $('pool-mode') ? $('pool-mode').value : 'all';
-        if (mode === 'unused') { const seen = answeredIdSet(); pool = pool.filter((q) => !seen.has(q.id)); }
-        else if (mode === 'incorrect') { const m = new Set((state.profile && state.profile.missed_ids) || []); pool = pool.filter((q) => m.has(q.id)); }
-        else if (mode === 'flagged') { const f = new Set((state.profile && state.profile.flagged_ids) || []); pool = pool.filter((q) => f.has(q.id)); }
-        return pool;
+        const ids = mode === 'incorrect'
+            ? (state.profile?.missed_ids || [])
+            : mode === 'flagged' ? (state.profile?.flagged_ids || []) : [];
+        const hasIdMode = mode === 'incorrect' || mode === 'flagged';
+        const total = hasIdMode ? ids.length : (c === 'all'
+            ? questionBankSize()
+            : (state.catalog?.categories || []).find((entry) => entry.category === c)?.total || 0);
+        return { total, ids, mode };
     }
 
     function updateSessionHint() {
@@ -2157,48 +2092,41 @@
         let n = selectedCount();
         let capNote = '';
         const disable = (msg) => { if (startBtn) startBtn.disabled = true; $('session-hint').textContent = msg; };
-        if (!pool.length) { return disable('No questions match this filter yet — try another specialty or difficulty.'); }
+        if (!pool.total) { return disable('No questions match this filter yet — try another specialty or difficulty.'); }
         if (!usage.unlimited) {
             if (usage.remaining <= 0) { return disable('You have used all your free questions. Upgrade for full access.'); }
             if (n > usage.remaining) { n = usage.remaining; capNote = ` (capped at your ${usage.remaining} remaining free questions)`; }
         }
-        n = Math.min(n === Infinity ? pool.length : n, pool.length);
+        n = Math.min(n === Infinity ? Math.min(pool.total, 200) : n, pool.total, 200);
         if (startBtn) startBtn.disabled = false;
-        $('session-hint').textContent = `This session: ${n} question${n === 1 ? '' : 's'} from ${pool.length} available${capNote}.`;
+        $('session-hint').textContent = `This session: ${n} question${n === 1 ? '' : 's'} from ${pool.total} available${capNote}.`;
     }
 
-    function startSession() {
+    async function startSession() {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
         const pool = poolForDomain();
-        if (!pool.length) { toast('No questions available for that domain yet.'); return; }
+        if (!pool.total) { toast('No questions available for that domain yet.'); return; }
         let n = selectedCount();
-        if (n === Infinity) n = pool.length;
+        if (n === Infinity) n = Math.min(pool.total, 200);
         if (!usage.unlimited) n = Math.min(n, usage.remaining);
-        n = Math.min(n, pool.length);
-
-        beginSession(unseenFirst(pool).slice(0, n)); // fresh questions first, freshly shuffled
+        n = Math.min(n, pool.total, 200);
+        const category = $('domain-select').value;
+        const difficulty = $('difficulty-select') ? $('difficulty-select').value : 'all';
+        await beginServerSession({
+            purpose: usage.unlimited ? 'custom' : 'recommended', size: n, category, difficulty,
+            pool_mode: pool.mode === 'unused' ? 'new' : 'all', question_ids: pool.ids,
+        }, $('mode-select') ? $('mode-select').value : 'tutor');
     }
 
     // Diagnostic / readiness assessment: a balanced sample across the 6 blueprint
     // domains, run as an exam, ending in a predicted-readiness score + the weakest
     // domain to start with.
-    function startDiagnostic() {
+    async function startDiagnostic() {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining < 6) { return startCheckout(); }
-        const all = state.questions || [];
-        if (all.length < 6) { toast('Not enough questions loaded yet — try again in a moment.'); return; }
-        const byDom = {};
-        all.forEach((q) => { const d = q.domain_name || q.category || 'General'; (byDom[d] = byDom[d] || []).push(q); });
-        const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-        let pool = [];
-        Object.values(byDom).forEach((arr) => { pool = pool.concat(shuffle(arr.slice()).slice(0, 4)); });
-        shuffle(pool);
-        if (!usage.unlimited) pool = pool.slice(0, Math.min(pool.length, usage.remaining));
-        if (!pool.length) { toast('No questions available for a diagnostic yet.'); return; }
-        track('diagnostic_start', { size: pool.length });
-        beginSession(pool, 'exam');
-        if (state.session) state.session.diagnostic = true;
+        const session = await beginServerSession({ purpose: 'diagnostic', size: usage.unlimited ? 24 : usage.remaining, pool_mode: 'new' }, 'exam', (s) => { s.diagnostic = true; });
+        if (session) track('diagnostic_start', { size: session.size });
     }
 
     // Persist the in-progress session so a refresh or accidental navigation can be
@@ -2288,32 +2216,24 @@
         if (mode === 'exam') startExamTimer();
     }
 
-    function startFromIds(ids, label) {
-        const set = new Set(ids || []);
-        const pool = state.questions.filter((q) => set.has(q.id));
-        if (!pool.length) { toast(`No ${label} questions available right now.`); return; }
+    async function startFromIds(ids, label) {
+        if (!ids || !ids.length) { toast(`No ${label} questions available right now.`); return; }
         // Every pool here (missed / flagged / due / confident) is questions the user has
         // already seen, and the server lets you re-answer seen questions for free — so do
         // NOT gate these on the free-tier limit.
-        const chosen = pool.slice();
-        for (let i = chosen.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [chosen[i], chosen[j]] = [chosen[j], chosen[i]]; }
-        beginSession(chosen);
+        await beginServerSession({ purpose: label, size: Math.min(ids.length, 200), question_ids: ids }, 'tutor');
     }
 
     function redoMissed() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.missed_ids) || [], 'missed'); }
     function startFlagged() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.flagged_ids) || [], 'flagged'); }
 
     // ---- Search the question bank -----------------------------------------
-    // A student who remembers part of a question can find it fast (to review it,
-    // or pull it up with a classmate). Runs client-side over the loaded bank —
-    // matches stems + choice text, shows only the safe category (never the
-    // answer-giving subtopic). Opening a result starts a single-question tutor
-    // session (answer → full rationale + sources). Available to everyone; the
-    // free-tier limit is still enforced server-side when a new question is graded.
+    // Search is server-side and bounded, so opening the finder never loads the
+    // question bank into the browser.
     function openQuestionSearch() {
         if (state._searchOpen) return;
         state._searchOpen = true;
-        const n = (state.questions || []).length;
+        const n = questionBankSize();
         const wrap = document.createElement('div');
         wrap.id = 'qsearch-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
@@ -2350,18 +2270,25 @@
         });
         return html;
     }
-    function runQuestionSearch() {
+    let questionSearchRequest = 0;
+    async function runQuestionSearch() {
         const box = $('qsearch-results'); if (!box) return;
         const raw = (($('qsearch-input') && $('qsearch-input').value) || '').trim().toLowerCase();
-        const all = state.questions || [];
         if (raw.length < 2) { box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">Start typing to search question stems.</div>'; return; }
-        const terms = raw.split(/\s+/).filter(Boolean);
-        const hits = [];
-        for (const item of all) {
-            const hay = ((item.stem || '') + ' ' + (item.choices || []).map((c) => (c && c.text) || '').join(' ')).toLowerCase();
-            if (terms.every((t) => hay.includes(t))) hits.push(item);
-            if (hits.length >= 40) break;
+        const requestId = ++questionSearchRequest;
+        box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">Searching…</div>';
+        let hits = [];
+        try {
+            const { resp, data } = await apiJSON('/api/questions/search?q=' + encodeURIComponent(raw), { headers: authHeaders() });
+            if (requestId !== questionSearchRequest) return;
+            if (resp.status === 402) { box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">Question search is included with full access.</div>'; return; }
+            if (!resp.ok) throw new Error(data.error || 'Search unavailable.');
+            hits = Array.isArray(data.questions) ? data.questions : [];
+        } catch (e) {
+            if (requestId === questionSearchRequest) box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">Search is temporarily unavailable.</div>';
+            return;
         }
+        const terms = raw.split(/\s+/).filter(Boolean);
         if (!hits.length) { box.innerHTML = '<div style="padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;">No questions match &ldquo;' + escapeHtml(raw) + '&rdquo;.</div>'; return; }
         box.innerHTML = hits.map((item) => {
             const cat = escapeHtml(item.category || item.domain_name || 'General');
@@ -2380,11 +2307,9 @@
             b.onclick = () => searchStartQuestion(b.getAttribute('data-qid'));
         });
     }
-    function searchStartQuestion(id) {
-        const q = (state.questions || []).find((x) => x.id === id);
-        if (!q) return;
+    async function searchStartQuestion(id) {
         closeQuestionSearch();
-        beginSession([q], 'tutor');
+        await beginServerSession({ purpose: 'search', size: 1, question_ids: [id] }, 'tutor');
     }
     // ---- Flag + personal-flashcard-deck actions (from the Review screen + quiz toolbar) ----
     function revFlagInner(on) {
@@ -2534,13 +2459,10 @@
             startDuelSession(data.questionIds, { code: data.code, role: 'opponent', creatorName: data.creatorName });
         } catch (e) { toast('Could not join duel: ' + e.message); }
     }
-    function startDuelSession(ids, duel) {
-        const byId = {}; (state.questions || []).forEach((q) => { byId[q.id] = q; });
-        const ordered = (ids || []).map((id) => byId[id]).filter(Boolean);
-        if (ordered.length < 3) { toast('This duel’s questions aren’t available right now.'); return; }
-        beginSession(ordered, 'tutor');
-        if (state.session) state.session.duel = duel;
-        toast('⚔ Duel started — answer all ' + ordered.length + ', then your score locks in.');
+    async function startDuelSession(ids, duel) {
+        if (!ids || ids.length < 3) { toast('This duel’s questions aren’t available right now.'); return; }
+        const session = await beginServerSession({ purpose: 'duel', size: Math.min(ids.length, 200), question_ids: ids }, 'tutor', (s) => { s.duel = duel; });
+        if (session) toast('⚔ Duel started — answer all ' + session.size + ', then your score locks in.');
     }
     async function finishDuel(s) {
         $('question-meta').textContent = '⚔ DUEL COMPLETE';
@@ -3707,12 +3629,13 @@
 
     // Click a specialty tile → pick a set size → start a category-focused quiz.
     function specialtyPool(cat) {
-        return (state.questions || []).filter((q) => (q.category || q.domain_name || 'General') === cat);
+        const total = (state.catalog?.categories || []).find((entry) => entry.category === cat)?.total || 0;
+        return { total };
     }
     function openSpecialtyPicker(cat) {
         if (!premiumGate('studymode')) return;
         const modal = $('specialty-picker'); if (!modal) return;
-        const avail = specialtyPool(cat).length;
+        const avail = specialtyPool(cat).total;
         if (!avail) { toast('No questions available for that specialty yet.'); return; }
         $('sp-title').textContent = cat;
         $('sp-sub').textContent = `${avail} question${avail === 1 ? '' : 's'} available — pick your set.`;
@@ -3728,19 +3651,19 @@
         modal.classList.remove('hidden');
     }
     function closeSpecialtyPicker() { const m = $('specialty-picker'); if (m) m.classList.add('hidden'); }
-    function startSpecialtyQuiz(cat, count) {
+    async function startSpecialtyQuiz(cat, count) {
         closeSpecialtyPicker();
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
-        const pool = unseenFirst(specialtyPool(cat)); // fresh questions first, freshly shuffled
-        if (!pool.length) { toast('No questions available for that specialty yet.'); return; }
-        let n = (count === 'all') ? pool.length : Math.min(count, pool.length);
+        const available = specialtyPool(cat).total;
+        if (!available) { toast('No questions available for that specialty yet.'); return; }
+        let n = (count === 'all') ? Math.min(available, 200) : Math.min(count, available);
         if (!usage.unlimited) n = Math.min(n, usage.remaining);
-        n = Math.min(n, pool.length);
+        n = Math.min(n, available, 200);
         if (n <= 0) { return startCheckout(); }
         try { track('specialty_quiz_start', { category: cat, count: n }); } catch (e) {}
         const sel = $('domain-select'); if (sel) sel.value = cat;
-        beginSession(pool.slice(0, n));
+        await beginServerSession({ purpose: 'specialty', size: n, category: cat, pool_mode: 'new' }, 'tutor');
     }
 
     function reviewDue() { if (!premiumGate('studymode')) return; startFromIds((state.profile && state.profile.due_ids) || [], 'due'); }
@@ -3792,7 +3715,7 @@
         track('paywall_hit');
         $('question-meta').textContent = "NICE WORK — YOU'VE USED YOUR FREE QUESTIONS";
         const n = limit || state.profile?.free_tier_limit || '';
-        const bank = (state.questions || []).length;
+        const bank = questionBankSize();
         const statLine = s && s.answered ? `You scored <strong>${Math.round((s.correct / s.answered) * 100)}%</strong> on the ${s.answered} you answered this session — momentum worth keeping. ` : '';
         $('question-stem').innerHTML = `You've worked through all <strong>${n}</strong> of your free questions. ${statLine}`
             + `<div style="margin-top:16px;text-align:left;max-width:480px;">Unlock <strong>full access</strong> and get:`

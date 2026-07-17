@@ -24,6 +24,11 @@ Thumbs.db
 macprep_backup_*
 *.log
 
+# Local Claude-to-Codex migration exports. Raw transcripts may contain secrets,
+# private business details, or customer/contact data; distill safe summaries into
+# docs/codex/ instead of committing the raw exports.
+local/claude-export/
+
 # Large seed/ingestion payloads — the Supabase DB is the source of truth.
 # Kept on disk for local seed scripts but not committed (regenerable artifacts).
 data/questions.json
@@ -53,3 +58,6 @@ mobile/ios/App/App/GoogleService-Info.plist
 serviceAccount*.json
 *.p8
 AuthKey_*.p8
+
+# Supabase CLI runtime state. Versioned migrations above this directory are source.
+supabase/.temp/

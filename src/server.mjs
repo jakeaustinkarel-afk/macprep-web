@@ -15,11 +15,12 @@ import webpush from 'web-push';
 import { initializeApp as fbInitApp, cert as fbCert, getApps as fbGetApps } from 'firebase-admin/app';
 import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
 import apn from '@parse/node-apn';
+import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 
 // Behind Render + Cloudflare; trust the proxy so req.ip reflects the real client
 // (needed for rate limiting).
@@ -92,6 +93,7 @@ const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 // Cohort dashboard does a full served-bank + full-cohort scan per call — cap it so a
 // faculty/PD (or admin) can't hammer it into a resource-exhaustion problem.
 const cohortLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
+const studySessionLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -196,8 +198,24 @@ const SERVE_FILLER = String(process.env.SERVE_FILLER || '').toLowerCase() === 't
 // SERVE_PUBLISHED_ONLY=false.
 const SERVE_PUBLISHED_ONLY = String(process.env.SERVE_PUBLISHED_ONLY ?? 'true').toLowerCase() !== 'false';
 const SERVED_STATUSES = SERVE_PUBLISHED_ONLY ? ['published'] : ['sme_review', 'published'];
-function applyServedFilter(query) {
+export function applyServedFilter(query) {
     return SERVE_FILLER ? query : query.in('status', SERVED_STATUSES);
+}
+
+// Use the same publication gate for delivery and grading. A client that guesses
+// an ID must not be able to turn an unpublished item into an answer-key oracle.
+export function getServedQuestionQuery(client, questionId) {
+    return applyServedFilter(
+        client
+            .from('questions')
+            .select('specialty, category, correct_answer, choices, explanation, "references"')
+            .eq('id', questionId)
+    );
+}
+
+export async function deleteMacprepAccount(client, userId) {
+    const { error } = await client.rpc('delete_macprep_account', { p_user: userId });
+    if (error) throw error;
 }
 
 // Free accounts may try a fixed number of NEW questions total (changed 2026-07-06 from
@@ -227,6 +245,236 @@ function parseChoices(raw) {
     }
     if (raw && typeof raw === 'object') return Array.isArray(raw) ? raw : [];
     return [];
+}
+
+function safeQuestionForClient(q) {
+    const { status, ...rest } = q;
+    return {
+        ...rest,
+        reviewed: status === 'published',
+        choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
+            ? { text: c.text ?? c.value ?? '' }
+            : { text: c })),
+    };
+}
+
+const MAX_STUDY_SESSION_SIZE = 200;
+const FREE_STUDY_POOL_SIZE = FREE_TIER_LIMIT;
+const QUESTION_CATALOG_TTL = 10 * 60 * 1000;
+let _questionCatalog = { at: 0, value: { total: 0, categories: [] } };
+
+function applyQuestionFilters(query, { category, difficulty } = {}) {
+    if (category && category !== 'all') {
+        // Legacy rows use domain_name while newer content uses category. Quote the
+        // value for PostgREST's filter grammar before composing the OR expression.
+        const literal = `"${String(category).replace(/[\\"]/g, '\\$&')}"`;
+        query = query.or(`category.eq.${literal},domain_name.eq.${literal}`);
+    }
+    if (difficulty && difficulty !== 'all') query = query.eq('difficulty', difficulty);
+    return query;
+}
+
+async function getQuestionCatalog() {
+    if (_questionCatalog.at && (Date.now() - _questionCatalog.at) < QUESTION_CATALOG_TTL) return _questionCatalog.value;
+    const rows = await fetchAllPostgrestRows((from, to) => applyServedFilter(
+        supabase.from('questions').select('category, domain_name')
+    ).range(from, to));
+    const categories = {};
+    rows.forEach((q) => {
+        const category = q.category || q.domain_name || 'General';
+        categories[category] = (categories[category] || 0) + 1;
+    });
+    const value = {
+        total: rows.length,
+        categories: Object.entries(categories)
+            .map(([category, total]) => ({ category, total }))
+            .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category)),
+    };
+    _questionCatalog = { at: Date.now(), value };
+    return value;
+}
+
+function fixedPoolOffset(userId, total) {
+    if (!total) return 0;
+    return createHash('sha256').update(String(userId)).digest().readUInt32BE(0) % total;
+}
+
+function qotdDayKey(now = new Date()) {
+    const shifted = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(shifted);
+    } catch (error) {
+        return shifted.toISOString().slice(0, 10);
+    }
+}
+
+function qotdOffset(total, now = new Date()) {
+    if (!total) return 0;
+    return createHash('sha256').update(qotdDayKey(now)).digest().readUInt32BE(0) % total;
+}
+
+async function fetchServedQuestionRows({ ids = [], category, difficulty, offset = 0, limit = MAX_STUDY_SESSION_SIZE } = {}) {
+    let query = supabase
+        .from('questions')
+        .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
+        .order('id', { ascending: true });
+    query = applyServedFilter(query);
+    if (ids.length) query = query.in('id', ids);
+    else query = applyQuestionFilters(query, { category, difficulty }).range(offset, offset + limit - 1);
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!ids.length) return data || [];
+    const byId = new Map((data || []).map((q) => [String(q.id), q]));
+    return ids.map((id) => byId.get(String(id))).filter(Boolean);
+}
+
+async function fetchFixedFreePool(userId, size) {
+    const catalog = await getQuestionCatalog();
+    const limit = Math.min(size, FREE_STUDY_POOL_SIZE, catalog.total);
+    if (!limit) return [];
+    const offset = fixedPoolOffset(userId, catalog.total);
+    const first = await fetchServedQuestionRows({ offset, limit });
+    if (first.length >= limit || offset === 0) return first.slice(0, limit);
+    const remainder = await fetchServedQuestionRows({ offset: 0, limit: limit - first.length });
+    return [...first, ...remainder].slice(0, limit);
+}
+
+async function fetchQuestionOfTheDay() {
+    const catalog = await getQuestionCatalog();
+    if (!catalog.total) return [];
+    return fetchServedQuestionRows({ offset: qotdOffset(catalog.total), limit: 1 });
+}
+
+async function countServedQuestions({ category, difficulty } = {}) {
+    let query = supabase.from('questions').select('id', { count: 'exact', head: true });
+    query = applyServedFilter(query);
+    query = applyQuestionFilters(query, { category, difficulty });
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+}
+
+async function fetchPremiumSessionQuestions(userId, {
+    size,
+    category = 'all',
+    difficulty = 'all',
+    questionIds = [],
+    poolMode = 'all',
+    answeredIds,
+}) {
+    if (questionIds.length) return fetchServedQuestionRows({ ids: questionIds.slice(0, size) });
+    const filteredTotal = await countServedQuestions({ category, difficulty });
+    if (!filteredTotal) return [];
+
+    const candidateCount = Math.min(Math.max(size * 4, 100), 500, filteredTotal);
+    const offset = Math.floor(Math.random() * Math.max(1, filteredTotal));
+    const first = await fetchServedQuestionRows({ category, difficulty, offset, limit: candidateCount });
+    const candidates = first.length >= candidateCount || offset === 0
+        ? first
+        : [...first, ...await fetchServedQuestionRows({ category, difficulty, offset: 0, limit: candidateCount - first.length })];
+    if (poolMode !== 'new') return pickRandom(candidates, size);
+
+    const answered = answeredIds || new Set((await fetchAllPostgrestRows((from, to) => supabase
+        .from(PROGRESS_TABLE)
+        .select('question_id')
+        .eq('user_id', userId)
+        .range(from, to))).map((row) => String(row.question_id)));
+    const unseen = candidates.filter((q) => !answered.has(String(q.id)));
+    return pickRandom([...unseen, ...candidates.filter((q) => answered.has(String(q.id)))], size);
+}
+
+function proportionalCategoryAllocations(categories, size) {
+    const total = categories.reduce((sum, category) => sum + category.total, 0);
+    if (!total || !size) return [];
+    const allocations = categories.map((category) => {
+        const exact = (size * category.total) / total;
+        return { ...category, count: Math.floor(exact), remainder: exact % 1 };
+    });
+    let remaining = size - allocations.reduce((sum, category) => sum + category.count, 0);
+    allocations.sort((a, b) => b.remainder - a.remainder || b.total - a.total || a.category.localeCompare(b.category));
+    for (let index = 0; remaining > 0 && allocations.length; index = (index + 1) % allocations.length) {
+        allocations[index].count += 1;
+        remaining -= 1;
+    }
+    return allocations.filter((category) => category.count > 0);
+}
+
+async function fetchBalancedPremiumSessionQuestions(userId, { size, poolMode = 'all' }) {
+    const catalog = await getQuestionCatalog();
+    const allocations = proportionalCategoryAllocations(catalog.categories, Math.min(size, catalog.total));
+    const answeredIds = poolMode === 'new'
+        ? new Set((await fetchAllPostgrestRows((from, to) => supabase
+            .from(PROGRESS_TABLE)
+            .select('question_id')
+            .eq('user_id', userId)
+            .range(from, to))).map((row) => String(row.question_id)))
+        : undefined;
+    const groups = await Promise.all(allocations.map((allocation) => fetchPremiumSessionQuestions(userId, {
+        size: allocation.count,
+        category: allocation.category,
+        poolMode,
+        answeredIds,
+    })));
+    const selected = groups.flat();
+    const selectedIds = new Set(selected.map((question) => String(question.id)));
+    if (selected.length >= size) return pickRandom(selected, size);
+    const fill = await fetchPremiumSessionQuestions(userId, {
+        size: size - selected.length,
+        poolMode,
+        answeredIds,
+    });
+    return [...selected, ...fill.filter((question) => !selectedIds.has(String(question.id)))].slice(0, size);
+}
+
+async function getRecommendedPriorityIds(userId, size) {
+    const dueCap = Math.max(1, Math.ceil(size * 0.4));
+    const missedCap = Math.max(1, Math.ceil(size * 0.4));
+    let due = [];
+    try {
+        const { data, error } = await supabase.from('review_state')
+            .select('question_id')
+            .eq('user_id', userId)
+            .lte('due_at', new Date().toISOString())
+            .order('due_at', { ascending: true })
+            .limit(dueCap);
+        if (error) throw error;
+        due = (data || []).map((row) => String(row.question_id));
+    } catch (error) {
+        console.warn('Recommended-session due lookup:', error.message);
+    }
+
+    const progress = await fetchAllPostgrestRows((from, to) => supabase
+        .from(PROGRESS_TABLE)
+        .select('question_id, is_correct')
+        .eq('user_id', userId)
+        .range(from, to));
+    const everCorrect = new Set(progress.filter((row) => row.is_correct).map((row) => String(row.question_id)));
+    const missed = Array.from(new Set(progress
+        .filter((row) => !row.is_correct && !everCorrect.has(String(row.question_id)))
+        .map((row) => String(row.question_id))))
+        .slice(0, missedCap);
+    return Array.from(new Set([...due, ...missed]));
+}
+
+async function fetchPrioritySessionQuestions(userId, { size, questionIds = [], purpose }) {
+    const priorityIds = purpose === 'recommended'
+        ? await getRecommendedPriorityIds(userId, size)
+        : questionIds;
+    const priority = priorityIds.length
+        ? await fetchServedQuestionRows({ ids: priorityIds.slice(0, size) })
+        : [];
+    if (priority.length >= size) return pickRandom(priority, size);
+    const fill = await fetchPremiumSessionQuestions(userId, {
+        size: Math.max((size - priority.length) * 2, 20),
+        category: 'all',
+        difficulty: 'all',
+        questionIds: [],
+        poolMode: 'new',
+    });
+    const seen = new Set(priority.map((q) => String(q.id)));
+    return [...priority, ...fill.filter((q) => !seen.has(String(q.id)))].slice(0, size);
 }
 
 // ---------------------------------------------------------------------------
@@ -376,7 +624,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         ok: true,
         service: 'macprep',
-        build: 'auth-grading-security',
+        build: 'session-rollups-20260717',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
         serve_filler: SERVE_FILLER,
@@ -415,8 +663,10 @@ async function ensureReferralCode() {
         _referralEnsuredKey = key; // this month handled — no more Stripe calls until it rolls over
     } catch (e) { console.error('[referral] ensure failed:', e.message); }
 }
-ensureReferralCode();                                 // on boot
-setInterval(ensureReferralCode, 6 * 60 * 60 * 1000);  // every 6h — picks up the month rollover same day
+function startReferralCodeScheduler() {
+    ensureReferralCode();                                 // on boot
+    setInterval(ensureReferralCode, 6 * 60 * 60 * 1000);  // every 6h — picks up the month rollover same day
+}
 
 // Public runtime config for the browser (no secrets — browser Sentry DSNs are public
 // by design). Set SENTRY_BROWSER_DSN on Render to turn on error monitoring.
@@ -876,7 +1126,8 @@ app.get('/api/admin/metrics', async (req, res) => {
 
 // Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
 // a US-morning window; the per-user 20h throttle makes restarts safe.
-if (RESEND_API_KEY || PUSH_ENABLED || NATIVE_PUSH_ENABLED) {
+function startReminderScheduler() {
+    if (!(RESEND_API_KEY || PUSH_ENABLED || NATIVE_PUSH_ENABLED)) return;
     let _lastNudgeDay = null;
     setInterval(async () => {
         try {
@@ -1000,48 +1251,23 @@ const pdRosterMatch = (email) => PD_ROSTER[String(email || '').trim().toLowerCas
 // "All SAAs" benchmark — the anonymized aggregate that STUDENTS compare themselves
 // to (per Jake: students see how they stack up against ALL SAAs, never their own
 // cohort; per-cohort analysis stays faculty/PD/admin-only). Cached in-memory with a
-// short TTL since it scans the whole SAA attempt set. Reused by: the student dashboard
+// short TTL. Reused by: the student dashboard
 // (you-vs-all-SAAs), per-question grading (SAA peer %), and the faculty cohort
-// dashboard (cohort-vs-all-SAAs). At larger scale, replace with a Postgres RPC/matview.
+// dashboard (cohort-vs-all-SAAs). The aggregation executes in Postgres so raw
+// progress history never crosses the application boundary.
 // ---------------------------------------------------------------------------
 const SAA_BENCH_TTL = 10 * 60 * 1000;
-let _saaBench = { at: 0, byDomain: {}, saaIds: new Set() };
+let _saaBench = { at: 0, byDomain: {} };
 const isSaaCred = (c) => String(c || '').trim().toUpperCase().startsWith('SAA');
 async function getSaaBenchmark() {
     if (_saaBench.at && (Date.now() - _saaBench.at) < SAA_BENCH_TTL) return _saaBench;
     if (!supabase) return _saaBench;
     try {
-        const { data: profs, error: pErr } = await supabase.from(PROFILE_TABLE).select('user_id, credential');
-        if (pErr) throw pErr;
-        const saaIds = new Set((profs || []).filter((p) => isSaaCred(p.credential)).map((p) => p.user_id));
-        // Served-bank domain map (published-only-consistent with the individual dashboard).
-        const qMeta = {};
-        for (let from = 0; from < 50000; from += 1000) {
-            const { data: chunk, error } = await applyServedFilter(supabase.from('questions').select('id, domain_name')).range(from, from + 999);
-            if (error) throw error;
-            if (!chunk || !chunk.length) break;
-            chunk.forEach((q) => { qMeta[q.id] = q.domain_name || 'General'; });
-            if (chunk.length < 1000) break;
-        }
-        // Aggregate all SAA attempts by domain. Page ALL progress ordered by PK and filter
-        // to SAA in JS — avoids a giant .in(user_id) URL as the SAA population grows.
-        const byDomain = {};
-        if (saaIds.size) {
-            for (let from = 0; from < 2000000; from += 1000) {
-                const { data: chunk, error } = await supabase.from(PROGRESS_TABLE)
-                    .select('user_id, question_id, is_correct').order('id', { ascending: true }).range(from, from + 999);
-                if (error) throw error;
-                if (!chunk || !chunk.length) break;
-                chunk.forEach((r) => {
-                    if (!saaIds.has(r.user_id)) return;
-                    const dom = qMeta[r.question_id]; if (!dom) return;
-                    const bd = byDomain[dom] || (byDomain[dom] = { a: 0, c: 0 });
-                    bd.a++; if (r.is_correct) bd.c++;
-                });
-                if (chunk.length < 1000) break;
-            }
-        }
-        _saaBench = { at: Date.now(), byDomain, saaIds };
+        const { data, error } = await supabase.rpc('macprep_saa_benchmark', {
+            p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+        });
+        if (error) throw error;
+        _saaBench = { at: Date.now(), byDomain: data || {} };
     } catch (e) { console.error('[saa-benchmark]', e.message); }
     return _saaBench;
 }
@@ -1205,14 +1431,12 @@ app.post('/api/user/change-password', authLimiter, async (req, res) => {
 app.post('/api/user/delete', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Account deletion is not configured.' });
     try {
-        await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
-        await supabase.from(PROFILE_TABLE).delete().eq('user_id', user.id);
-        await supabase.from('user_flags').delete().eq('user_id', user.id).then(() => {}, () => {});
-        await supabase.from('user_flashcards').delete().eq('user_id', user.id).then(() => {}, () => {});
-        await supabase.from('user_notes').delete().eq('user_id', user.id).then(() => {}, () => {});
-        const { error } = await supabase.auth.admin.deleteUser(user.id);
-        if (error) throw error;
+        // The database function deletes the public records and auth identity in
+        // one transaction. It is service-role-only and fails the request on any
+        // error, instead of reporting success after partial cleanup.
+        await deleteMacprepAccount(supabase, user.id);
         return res.json({ success: true });
     } catch (err) {
         console.error('Account deletion failure:', err.message);
@@ -1569,106 +1793,28 @@ app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
         // leaving the page. Faculty/PD never get this — they only ever see their own program.
         let adminPrograms = null;
         if (ctx.isAdmin) {
-            const { data: rows, error: pErr } = await supabase.from(PROFILE_TABLE).select('training_program');
+            const { data: rows, error: pErr } = await supabase.rpc('macprep_program_counts');
             if (pErr) throw pErr;
-            const counts = {};
-            (rows || []).forEach((r) => { const p = (r.training_program || '').trim(); if (p) counts[p] = (counts[p] || 0) + 1; });
-            adminPrograms = Object.entries(counts).map(([program, students]) => ({ program, students })).sort((a, b) => a.program.localeCompare(b.program));
+            adminPrograms = Array.isArray(rows) ? rows : [];
         }
         // Admin without ?program= → prompt to pick one (faculty always have their own).
         if (!ctx.program) {
             return res.json({ role: ctx.role, is_admin: ctx.isAdmin, need_program: true, programs: adminPrograms || [] });
         }
         const program = ctx.program;
-        // Cohort = student accounts whose training_program is this program (exclude faculty/PD/review).
-        const { data: members, error: mErr } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, email, full_name, credential, graduation_date, is_program_director, is_faculty')
-            .eq('training_program', program);
-        if (mErr) throw mErr;
-        // Cohort = CURRENT students only. A program director sees SAAs enrolled in their
-        // program — never CAAs (alumni who previously attended). We exclude stored-CAA
-        // accounts AND SAAs whose graduation date has passed (they are effectively CAAs now).
-        const nowMs = Date.now();
-        const cohort = (members || []).filter((m) => {
-            if (m.is_program_director || m.is_faculty || isReviewEmail(m.email)) return false;
-            if (!isSaaCred(m.credential)) return false;
-            if (m.graduation_date) { const g = new Date(m.graduation_date + 'T00:00:00Z'); if (!isNaN(g.getTime()) && g.getTime() <= nowMs) return false; }
-            return true;
+        const { data: rollup, error: rollupError } = await supabase.rpc('macprep_faculty_cohort_rollup', {
+            p_program: program,
+            p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+            p_excluded_emails: [...REVIEW_EMAILS],
         });
-        const perStudent = {};
-        const cohortIds = [];
-        cohort.forEach((m) => { perStudent[m.user_id] = { attempts: 0, correct: 0, answered: new Set(), last: null }; cohortIds.push(m.user_id); });
-        if (!cohortIds.length) {
-            return res.json({ role: ctx.role, is_admin: ctx.isAdmin, programs: adminPrograms, program, cohort_size: 0, roster: [], by_domain: [], summary: { attempts: 0, answered: 0, accuracy: null, active_7d: 0 } });
-        }
-        // Served-bank snapshot: question_id -> NCCAA domain_name (same source of truth as the
-        // individual dashboard; keep published-only consistent so student + PD views reconcile).
-        const qMeta = {};
-        for (let from = 0; from < 50000; from += 1000) {
-            const { data: chunk, error: qErr } = await applyServedFilter(supabase.from('questions').select('id, domain_name')).range(from, from + 999);
-            if (qErr) throw qErr;
-            if (!chunk || !chunk.length) break;
-            chunk.forEach((q) => { qMeta[q.id] = q.domain_name || 'General'; });
-            if (chunk.length < 1000) break;
-        }
-        // All cohort attempts, PAGINATED (PostgREST caps 1000 rows/request; a cohort exceeds it).
-        const attempts = [];
-        for (let from = 0; from < 500000; from += 1000) {
-            const { data: chunk, error: aErr } = await supabase.from(PROGRESS_TABLE)
-                .select('user_id, question_id, is_correct, created_at, time_ms, answer_changed').in('user_id', cohortIds).range(from, from + 999);
-            if (aErr) throw aErr;
-            if (!chunk || !chunk.length) break;
-            attempts.push(...chunk);
-            if (chunk.length < 1000) break;
-        }
-        const NCCAA = ['Principles of Anesthesia', 'Physiology, Pathophysiology & Management', 'Instrumentation, Monitoring & Anesthetic Delivery Systems', 'Subspecialty Care', 'Pharmacology', 'Regional Anesthesia & Pain Management'];
-        const domAcc = {}; NCCAA.forEach((d) => { domAcc[d] = { attempts: 0, correct: 0 }; });
-        const perQ = {}; // per-question cohort stats for the per-item ("hardest questions") view
-        const now = Date.now(); let active7 = 0;
-        attempts.forEach((r) => {
-            const s = perStudent[r.user_id]; if (!s) return;
-            s.attempts++; if (r.is_correct) s.correct++; s.answered.add(r.question_id);
-            if (!s.last || r.created_at > s.last) s.last = r.created_at;
-            const dom = qMeta[r.question_id];
-            if (dom && domAcc[dom]) { domAcc[dom].attempts++; if (r.is_correct) domAcc[dom].correct++; }
-            const pq = perQ[r.question_id] || (perQ[r.question_id] = { a: 0, c: 0, tSum: 0, tN: 0, chN: 0, chTot: 0 });
-            pq.a++; if (r.is_correct) pq.c++;
-            if (Number.isFinite(r.time_ms) && r.time_ms > 0) { pq.tSum += r.time_ms; pq.tN++; }
-            if (typeof r.answer_changed === 'boolean') { pq.chTot++; if (r.answer_changed) pq.chN++; }
-        });
-        // Benchmark each domain against ALL SAAs (anonymized aggregate) so a PD sees how
-        // their cohort compares to the whole student population.
-        const saaBench = saaDomainBenchmark(await getSaaBenchmark(), 20);
-        const by_domain = NCCAA.map((d) => ({ domain: d, attempts: domAcc[d].attempts, correct: domAcc[d].correct, accuracy: domAcc[d].attempts ? Math.round(domAcc[d].correct / domAcc[d].attempts * 100) : null, saa_accuracy: (saaBench[d] != null ? saaBench[d] : null) }));
-        const roster = cohort.map((m) => {
-            const s = perStudent[m.user_id];
-            if (s.last && (now - new Date(s.last).getTime()) < 7 * 86400000) active7++;
-            return { name: m.full_name || null, email: m.email, credential: m.credential || null, attempts: s.attempts, answered: s.answered.size, accuracy: s.attempts ? Math.round(s.correct / s.attempts * 100) : null, last_active: s.last };
-        }).sort((a, b) => b.attempts - a.attempts);
-        const totAtt = attempts.length;
-        const totCorrect = attempts.reduce((a, r) => a + (r.is_correct ? 1 : 0), 0);
-        const answeredAll = new Set(attempts.map((r) => r.question_id)).size;
-        // Per-item cohort analytics (Phase 3): the questions the cohort misses most
-        // (lowest %-correct, >=3 cohort attempts) with avg time-on-item + answer-change rate.
-        const ranked = Object.entries(perQ)
-            .filter(([, v]) => v.a >= 3)
-            .map(([qid, v]) => ({ qid, attempts: v.a, pct_correct: Math.round((v.c / v.a) * 100), avg_time_ms: v.tN ? Math.round(v.tSum / v.tN) : null, change_rate: v.chTot ? Math.round((v.chN / v.chTot) * 100) : null }))
-            .sort((a, b) => (a.pct_correct - b.pct_correct) || (b.attempts - a.attempts))
-            .slice(0, 15);
-        let hardest_items = [];
-        if (ranked.length) {
-            const { data: qrows } = await supabase.from('questions').select('id, stem, domain_name, question_type').in('id', ranked.map((x) => x.qid));
-            const qm = {}; (qrows || []).forEach((q) => { qm[q.id] = q; });
-            hardest_items = ranked.map((x) => {
-                const q = qm[x.qid] || {};
-                const stem = String(q.stem || '').replace(/\s+/g, ' ').trim();
-                return { question_id: x.qid, stem: stem.length > 160 ? stem.slice(0, 157) + '…' : stem, domain: q.domain_name || null, question_type: q.question_type || null, attempts: x.attempts, pct_correct: x.pct_correct, avg_time_ms: x.avg_time_ms, change_rate: x.change_rate };
-            });
-        }
+        if (rollupError) throw rollupError;
         return res.json({
-            role: ctx.role, is_admin: ctx.isAdmin, programs: adminPrograms, program, cohort_size: cohort.length,
-            summary: { attempts: totAtt, answered: answeredAll, accuracy: totAtt ? Math.round(totCorrect / totAtt * 100) : null, active_7d: active7 },
-            by_domain, roster, hardest_items, generated_at: new Date().toISOString(),
+            role: ctx.role,
+            is_admin: ctx.isAdmin,
+            programs: adminPrograms,
+            program,
+            ...(rollup || {}),
+            generated_at: new Date().toISOString(),
         });
     } catch (err) {
         console.error('faculty/cohort failure:', err.message);
@@ -1742,27 +1888,20 @@ app.get('/api/leaderboard', async (req, res) => {
     try {
         const weekStart = lbWeekStartUTC();
         const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
-        // Board = opted-in players who have added a real name (a "First L." to show).
-        const { data: players } = await supabase.from(PROFILE_TABLE)
-            .select('user_id, full_name, selected_title')
-            .eq('leaderboard_opt_in', true).not('full_name', 'is', null);
-        const playerList = (players || []).filter((p) => lbShortName(p.full_name));
-        const allIds = Array.from(new Set([...playerList.map((p) => p.user_id), user.id])).slice(0, 2000);
-        const weekAtt = {}, weekCorrect = {}, daysByUser = {};
-        if (allIds.length) {
-            const { data: wp } = await supabase.from(PROGRESS_TABLE)
-                .select('user_id, is_correct').in('user_id', allIds).gte('created_at', weekStart.toISOString());
-            (wp || []).forEach((r) => { weekAtt[r.user_id] = (weekAtt[r.user_id] || 0) + 1; if (r.is_correct) weekCorrect[r.user_id] = (weekCorrect[r.user_id] || 0) + 1; });
-            const since = new Date(Date.now() - 120 * 86400000).toISOString();
-            const { data: ap } = await supabase.from(PROGRESS_TABLE)
-                .select('user_id, created_at').in('user_id', allIds).gte('created_at', since);
-            (ap || []).forEach((r) => { (daysByUser[r.user_id] = daysByUser[r.user_id] || new Set()).add(lbDayKey(r.created_at)); });
-        }
-        const stat = (uid) => {
-            const attempts = weekAtt[uid] || 0, correct = weekCorrect[uid] || 0;
-            return { weekly: attempts, correct, attempts, accuracy: attempts ? Math.round((correct / attempts) * 1000) / 10 : 0, streak: lbStreak(daysByUser[uid] || new Set()) };
+        const { data: rollup, error: rollupError } = await supabase.rpc('macprep_leaderboard_rollup', {
+            p_current_user: user.id,
+            p_week_start: weekStart.toISOString(),
+            p_since: new Date(Date.now() - 120 * 86400000).toISOString(),
+        });
+        if (rollupError) throw rollupError;
+        const playerList = (Array.isArray(rollup?.players) ? rollup.players : []).filter((p) => lbShortName(p.full_name));
+        const stat = (player) => {
+            const attempts = Number(player?.weekly) || 0;
+            const correct = Number(player?.correct) || 0;
+            const days = new Set(Array.isArray(player?.study_days) ? player.study_days : []);
+            return { weekly: attempts, correct, attempts, accuracy: attempts ? Math.round((correct / attempts) * 1000) / 10 : 0, streak: lbStreak(days) };
         };
-        const enriched = playerList.map((p) => ({ user_id: p.user_id, name: lbShortName(p.full_name), title: p.selected_title || '', is_me: p.user_id === user.id, ...stat(p.user_id) }));
+        const enriched = playerList.map((p) => ({ user_id: p.user_id, name: lbShortName(p.full_name), title: p.selected_title || '', is_me: p.user_id === user.id, ...stat(p) }));
         const rankBoard = (metric, tiebreak, filterFn) => enriched
             .filter(filterFn || (() => true))
             .sort((a, b) => (b[metric] - a[metric]) || (b[tiebreak] - a[tiebreak]) || a.name.localeCompare(b.name))
@@ -1775,15 +1914,10 @@ app.get('/api/leaderboard', async (req, res) => {
         };
         const rankIn = (b) => { const r = boards[b].find((x) => x.is_me); return r ? r.rank : null; };
         // My own opt-in + name, even if I haven't made the board (e.g. no name yet).
-        let myOptIn = true, myName = null;
-        const mine = playerList.find((p) => p.user_id === user.id);
-        if (mine) { myOptIn = true; myName = lbShortName(mine.full_name); }
-        else {
-            const { data: mp } = await supabase.from(PROFILE_TABLE).select('leaderboard_opt_in, full_name').eq('user_id', user.id).maybeSingle();
-            myOptIn = mp ? !!mp.leaderboard_opt_in : true;
-            myName = mp && lbShortName(mp.full_name) ? lbShortName(mp.full_name) : null;
-        }
-        const mv = stat(user.id);
+        const mine = rollup?.me || {};
+        const myOptIn = mine.user_id ? !!mine.leaderboard_opt_in : true;
+        const myName = lbShortName(mine.full_name) || null;
+        const mv = stat(mine);
         return res.json({
             week_resets_at: weekResetsAt,
             min_accuracy_qs: LB_MIN_ACCURACY_QS,
@@ -1876,49 +2010,93 @@ app.post('/api/demo/grade', demoLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Questions — authenticated. Answers/explanations are NEVER sent here; grading
-// happens server-side via /api/grade.
+// Question catalog and bounded study sessions. Answers/explanations are NEVER
+// sent here; grading happens server-side via /api/grade. The browser no longer
+// receives the full proprietary bank at sign-in.
 // ---------------------------------------------------------------------------
 app.get('/api/questions', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
         if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
-        if (!supabase) return res.json({ questions: [] });
-
-        // PostgREST caps each request at ~1000 rows, so page through the full
-        // bank (3,500+ items) instead of silently truncating it.
-        const PAGE = 1000;
-        let data = [];
-        for (let from = 0; ; from += PAGE) {
-            let query = supabase
-                .from('questions')
-                .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
-                .order('id', { ascending: true })
-                .range(from, from + PAGE - 1);
-            query = applyServedFilter(query);
-            const { data: page, error } = await query;
-            if (error) throw error;
-            data = data.concat(page || []);
-            if (!page || page.length < PAGE) break;
-        }
-
-        // choices may be a JSON string or native array. Normalize, then strip any
-        // correctness flags so answers never reach the client.
-        const safe = (data || []).map((q) => {
-            const { status, ...rest } = q;
-            return {
-                ...rest,
-                reviewed: status === 'published', // CAA-signed-off; surfaced as a trust badge
-                choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
-                    ? { text: c.text ?? c.value ?? '' }
-                    : { text: c })),
-            };
-        });
-
-        return res.json({ questions: safe });
+        if (!supabase) return res.json({ questions: [], catalog: { total: 0, categories: [] } });
+        return res.json({ questions: [], catalog: await getQuestionCatalog() });
     } catch (err) {
         console.error('Questions route failure:', err.message);
-        return res.status(500).json({ error: 'Database communication failure', questions: [] });
+        return res.status(500).json({ error: 'Database communication failure', questions: [], catalog: { total: 0, categories: [] } });
+    }
+});
+
+app.post('/api/study-session', studySessionLimiter, async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+
+    const requested = Math.min(Math.max(parseInt(req.body?.size, 10) || 10, 1), MAX_STUDY_SESSION_SIZE);
+    const purpose = String(req.body?.purpose || 'custom');
+    const category = typeof req.body?.category === 'string' ? req.body.category.slice(0, 160) : 'all';
+    const difficulty = ['easy', 'medium', 'hard', 'all'].includes(req.body?.difficulty) ? req.body.difficulty : 'all';
+    const poolMode = ['all', 'new'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
+    const questionIds = Array.from(new Set((Array.isArray(req.body?.question_ids) ? req.body.question_ids : [])
+        .map((id) => String(id).trim()).filter(Boolean))).slice(0, MAX_STUDY_SESSION_SIZE);
+    const elevated = isAdminEmail(user.email) || isReviewEmail(user.email) || await isUserPremium(user.id);
+
+    try {
+        let questions;
+        if (purpose === 'qotd') {
+            // Ignore a caller-supplied id: every account receives the same 7 AM ET QotD.
+            questions = await fetchQuestionOfTheDay();
+        } else if (!elevated) {
+            if (!['sample', 'recommended', 'qotd', 'arcade', 'diagnostic'].includes(purpose)) {
+                return res.status(402).json({ error: 'Full study modes are available with full access.', paywall: true });
+            }
+            // A free account has a stable, bounded preview pool. This prevents
+            // repeated session requests from becoming a content-harvesting API.
+            questions = await fetchFixedFreePool(user.id, Math.min(requested, FREE_STUDY_POOL_SIZE));
+        } else {
+            questions = ['recommended', 'review'].includes(purpose)
+                ? await fetchPrioritySessionQuestions(user.id, { size: requested, questionIds, purpose })
+                : ['mock', 'diagnostic'].includes(purpose)
+                    ? await fetchBalancedPremiumSessionQuestions(user.id, { size: requested, poolMode })
+                : await fetchPremiumSessionQuestions(user.id, {
+                    size: requested,
+                    category,
+                    difficulty,
+                    questionIds,
+                    poolMode,
+                });
+        }
+        return res.json({ questions: questions.map(safeQuestionForClient), catalog: await getQuestionCatalog() });
+    } catch (err) {
+        console.error('Study session failure:', err.message);
+        return res.status(500).json({ error: 'Could not build a study session.' });
+    }
+});
+
+app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
+    if (!supabase) return res.json({ questions: [] });
+    const elevated = isAdminEmail(user.email) || isReviewEmail(user.email) || await isUserPremium(user.id);
+    if (!elevated) return res.status(402).json({ error: 'Question search is available with full access.', paywall: true, questions: [] });
+    const terms = String(req.query.q || '').trim().slice(0, 120);
+    const words = terms.split(/\s+/).filter((word) => word.length >= 2).slice(0, 6);
+    if (!words.length) return res.json({ questions: [] });
+    try {
+        let query = supabase
+            .from('questions')
+            .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
+            .order('id', { ascending: true })
+            .limit(40);
+        words.forEach((word) => {
+            query = query.ilike('stem', `%${word.replace(/[%_]/g, '\\$&')}%`);
+        });
+        query = applyServedFilter(query);
+        const { data, error } = await query;
+        if (error) throw error;
+        return res.json({ questions: (data || []).map(safeQuestionForClient) });
+    } catch (err) {
+        console.error('Question search failure:', err.message);
+        return res.status(500).json({ error: 'Could not search questions.', questions: [] });
     }
 });
 
@@ -2117,11 +2295,7 @@ app.post('/api/grade', async (req, res) => {
             }
         }
 
-        const { data: q, error } = await supabase
-            .from('questions')
-            .select('specialty, category, correct_answer, choices, explanation, "references"')
-            .eq('id', questionId)
-            .maybeSingle();
+        const { data: q, error } = await getServedQuestionQuery(supabase, questionId).maybeSingle();
         if (error) throw error;
         if (!q) return res.status(404).json({ error: 'Question not found.' });
 
@@ -2274,11 +2448,12 @@ app.get('/api/user/profile', async (req, res) => {
         if (error) throw error;
 
         // Derive study stats from recorded progress, including accuracy by specialty.
-        const { data: progress } = await supabase
+        const progress = await fetchAllPostgrestRows((from, to) => supabase
             .from(PROGRESS_TABLE)
             .select('question_id, is_correct, category, created_at, confidence')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .range(from, to));
 
         const answeredIds = new Set((progress || []).map((r) => r.question_id));
         const correct = (progress || []).filter((r) => r.is_correct).length;
@@ -3171,10 +3346,24 @@ process.on('uncaughtException', (err) => {
 });
 
 // ---------------------------------------------------------------------------
-// Start server (all routes are declared above this line)
+// Start server (all routes are declared above this line). Keeping startup out of
+// module evaluation lets the local node:test suite import and exercise helpers
+// without opening a listener or requiring live Supabase/Stripe credentials.
 // ---------------------------------------------------------------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`MACPrep server running on port ${PORT}`);
-    console.log(`Supabase: ${supabase ? 'CONNECTED (service role)' : 'OFFLINE'} | Auth: ${supabaseAuth ? 'ready' : 'OFFLINE'}`);
-});
+let backgroundJobsStarted = false;
+function startBackgroundJobs() {
+    if (backgroundJobsStarted) return;
+    backgroundJobsStarted = true;
+    startReferralCodeScheduler();
+    startReminderScheduler();
+}
+
+export function startServer(port = process.env.PORT || 3000) {
+    startBackgroundJobs();
+    return app.listen(port, () => {
+        console.log(`MACPrep server running on port ${port}`);
+        console.log(`Supabase: ${supabase ? 'CONNECTED (service role)' : 'OFFLINE'} | Auth: ${supabaseAuth ? 'ready' : 'OFFLINE'}`);
+    });
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) startServer();

@@ -5,7 +5,8 @@
   "main": "src/server.mjs",
   "scripts": {
     "start": "node src/server.mjs",
-    "build": "echo 'No custom client-side compile compilation steps required for vanilla broadsheet layers.'"
+    "build": "echo 'No custom client-side compile compilation steps required for vanilla broadsheet layers.'",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@parse/node-apn": "^8.1.0",
@@ -15,8 +16,11 @@
     "cors": "^2.8.6",
     "dotenv": "^16.4.0",
     "express": "^4.22.2",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.2.0",
     "stripe": "^14.10.0",
     "web-push": "^3.6.7"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

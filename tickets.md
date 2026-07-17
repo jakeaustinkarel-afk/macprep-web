@@ -1,0 +1,23 @@
+# MACPrep Backlog
+
+Last reviewed: 2026-07-17.
+
+## Ready To Execute
+
+- [ ] Apply `supabase/migrations/20260717194118_database_contract_and_rollups.sql` to the linked Supabase project, then run database advisors and production smoke checks. This must precede the matching server deployment.
+- [ ] Pull the reviewed historical Supabase baseline into version control with `supabase db pull`. The live schema predates this repo's migration history; do not fabricate it from code.
+- [ ] Add a protected staging environment with a Stripe test webhook secret and seeded Supabase data, then add an end-to-end signed webhook test.
+- [ ] Capture `EXPLAIN (ANALYZE, BUFFERS)` for the new benchmark, cohort, leaderboard, and session-selection functions after production-like data is available.
+
+## Next Engineering Slice
+
+- [ ] Split `src/server.mjs` by responsibility: auth/billing, question delivery/grading, profile/learning analytics, faculty reporting, and notifications.
+- [ ] Split `src/app.js` into feature modules after validating the session-delivery API on staging. Preserve its no-full-bank-in-browser rule.
+- [ ] Move the server-side proportional mock sampler into a database function once live query plans justify it, while preserving the no-full-bank-in-browser rule.
+
+## Maintenance
+
+- [ ] Deploy the Firebase Admin major upgrade and validate Android push in staging before promoting to production.
+- [ ] Review Capacitor patch releases and run `npx cap sync` plus native build checks before store submission.
+- [ ] Re-run `npm audit --omit=dev` after every dependency update and keep lockfiles committed.
+- [ ] Revisit `node_modules/.package-lock.json` only when installing dependencies; it is generated state, not a source artifact.
