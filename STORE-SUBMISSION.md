@@ -142,6 +142,9 @@ Contact: support@macprep.org
 
 ### 3.8 Build / TestFlight
 - Xcode → Product → **Archive** (Release) → Distribute → App Store Connect → Upload.
+- The repository includes `mobile/ios/App/ExportOptions-AppStore.plist` for a repeatable
+  App Store Connect export. The Mac running the export must be signed in to an App Store
+  Connect account with access to `org.macprep.app` so Xcode can obtain the distribution profile.
 - The build config selects **development** APNs for Debug and **production** APNs for Release. Set **`APNS_PRODUCTION=true`** on Render before TestFlight/App Store push testing.
 - Optional but recommended: enable **TestFlight** and install on your own phone first.
 

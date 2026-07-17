@@ -53,7 +53,9 @@ delivery becomes available only after the Firebase file is present and the app i
 2. **Create the matching store products** — `org.macprep.app.full_access`, a one-time non-consumable on Apple and one-time managed product on Google Play. Set the initial US price to $99.99 (marketed as $100 lifetime access).
 3. **Deploy the server migration and credentials** — apply `supabase/migrations/20260717225318_mobile_purchase_entitlements.sql`, then set the native-purchase environment variables from `.env.example` in Render.
 4. **Test on real devices** — verify sign-in, study flow, a sandbox purchase, restore purchases, web-to-app access, and opt-in reminders.
-5. **TestFlight / Play internal testing** → store submission.
+5. **TestFlight / Play internal testing** → store submission. For iOS, archive with an Xcode
+   account that can access `org.macprep.app`; `ios/App/ExportOptions-AppStore.plist` supplies
+   the App Store Connect export settings.
 
 ## Payments note
 The native bridge uses each store's billing system for its one-time full-access product.
