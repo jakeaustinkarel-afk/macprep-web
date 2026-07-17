@@ -2,7 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { applyServedFilter, deleteMacprepAccount, getServedQuestionQuery, trustedBaseUrl } from '../src/server.mjs';
+import {
+    applyServedFilter,
+    deleteMacprepAccount,
+    getServedQuestionQuery,
+    isFreeTrialSessionPurpose,
+    mobileAccountHash,
+    normalizeMobileStore,
+    selectUnansweredFreePool,
+    trustedBaseUrl,
+    validateAppleTransactionPayload,
+    validateGooglePurchasePayload,
+} from '../src/server.mjs';
 import { fetchAllPostgrestRows } from '../src/lib/postgrest-pagination.mjs';
 
 test('served question lookup applies the published-content filter before grading', () => {
@@ -26,6 +37,81 @@ test('served filter keeps the query chain intact', () => {
     const query = { in(column, values) { this.args = [column, values]; return this; } };
     assert.equal(applyServedFilter(query), query);
     assert.deepEqual(query.args, ['status', ['published']]);
+});
+
+test('the signed-in trial only permits the recommended session', () => {
+    assert.equal(isFreeTrialSessionPurpose('recommended'), true);
+    for (const purpose of ['sample', 'qotd', 'arcade', 'diagnostic', 'mock', 'custom', 'review']) {
+        assert.equal(isFreeTrialSessionPurpose(purpose), false);
+    }
+});
+
+test('a resumed trial serves only unanswered questions from its fixed pool', () => {
+    const pool = [{ id: 'question-1' }, { id: 'question-2' }, { id: 'question-3' }];
+    assert.deepEqual(
+        selectUnansweredFreePool(pool, ['question-1'], 25).map((question) => question.id),
+        ['question-2', 'question-3']
+    );
+    assert.deepEqual(
+        selectUnansweredFreePool(pool, ['question-1', 'question-2', 'question-3'], 25),
+        []
+    );
+});
+
+test('mobile store names are allowlisted', () => {
+    assert.equal(normalizeMobileStore('apple'), 'apple');
+    assert.equal(normalizeMobileStore('google_play'), 'google_play');
+    assert.equal(normalizeMobileStore('stripe'), null);
+});
+
+test('Apple entitlement payload requires the expected app, product, and account token', () => {
+    const userId = 'd2f6e72f-8f53-4a06-a5d0-f89126774399';
+    const payload = {
+        transactionId: '2000001234567890',
+        originalTransactionId: '2000001234567890',
+        bundleId: 'org.macprep.app',
+        productId: 'org.macprep.app.full_access',
+        type: 'Non-Consumable',
+        appAccountToken: userId,
+        environment: 'Sandbox',
+        purchaseDate: 1760000000000,
+    };
+    const entitlement = validateAppleTransactionPayload(payload, { userId, transactionId: payload.transactionId });
+    assert.equal(entitlement.store, 'apple');
+    assert.equal(entitlement.transactionId, payload.originalTransactionId);
+    assert.equal(entitlement.productId, payload.productId);
+
+    assert.throws(
+        () => validateAppleTransactionPayload({ ...payload, appAccountToken: '8b8bbd37-9c0d-4b0e-8f6a-fd0b891afb49' }, { userId, transactionId: payload.transactionId }),
+        /different MACPrep account/
+    );
+    assert.throws(
+        () => validateAppleTransactionPayload({ ...payload, productId: 'org.macprep.app.other' }, { userId, transactionId: payload.transactionId }),
+        /not MACPrep full access/
+    );
+});
+
+test('Google entitlement payload requires a completed account-bound purchase', () => {
+    const userId = 'd2f6e72f-8f53-4a06-a5d0-f89126774399';
+    const payload = {
+        purchaseStateContext: { purchaseState: 'PURCHASED' },
+        productLineItem: [{ productId: 'org.macprep.app.full_access' }],
+        obfuscatedExternalAccountId: mobileAccountHash(userId),
+        purchaseCompletionTime: '2026-07-17T20:00:00Z',
+    };
+    const entitlement = validateGooglePurchasePayload(payload, { userId });
+    assert.equal(entitlement.store, 'google_play');
+    assert.equal(entitlement.environment, 'production');
+    assert.equal(mobileAccountHash(userId), mobileAccountHash(userId.toUpperCase()));
+
+    assert.throws(
+        () => validateGooglePurchasePayload({ ...payload, purchaseStateContext: { purchaseState: 'PENDING' } }, { userId }),
+        /not complete/
+    );
+    assert.throws(
+        () => validateGooglePurchasePayload({ ...payload, obfuscatedExternalAccountId: mobileAccountHash('8b8bbd37-9c0d-4b0e-8f6a-fd0b891afb49') }, { userId }),
+        /different MACPrep account/
+    );
 });
 
 test('account deletion propagates a database cleanup failure', async () => {
@@ -81,4 +167,13 @@ test('security migration revokes legacy public data access', async () => {
     assert.match(migration, /drop policy if exists "Allow open review readings"/);
     assert.match(migration, /revoke all on table public\.macprep_questions_deprecated from anon, authenticated/);
     assert.match(migration, /revoke all on table public\.user_reviews from anon, authenticated/);
+});
+
+test('mobile purchase migration makes the server-only receipt ledger replay-safe', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717225318_mobile_purchase_entitlements.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /create table if not exists public\.mobile_purchase_entitlements/);
+    assert.match(migration, /unique \(store, store_transaction_id\)/);
+    assert.match(migration, /enable row level security/);
+    assert.match(migration, /revoke all on table public\.mobile_purchase_entitlements from public, anon, authenticated/);
+    assert.match(migration, /delete from public\.mobile_purchase_entitlements where user_id = p_user/);
 });

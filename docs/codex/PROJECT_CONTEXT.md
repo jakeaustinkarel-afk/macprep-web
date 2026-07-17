@@ -27,14 +27,43 @@ Defensible wedge:
 - Low-friction pricing compared with subscription competitors.
 
 Current price stance:
-- Exam-prep access is a one-time $50 lifetime web purchase.
+- Exam-prep access is a one-time $100 lifetime web purchase.
 - There is a rotating 20 percent referral/promo code path in the server.
-- Native apps should reflect already-paid account status and must not send users to external Stripe checkout.
-- Do not introduce a subscription by default. Jake prefers a one-time purchase; testing a higher lifetime price, such as $100, is a future business decision rather than a current pricing change.
+- Native apps support a one-time Store purchase and reflect account premium status, but must not send users to external Stripe checkout.
+- Do not introduce a subscription by default. Jake prefers the current one-time $100 lifetime price.
+
+Entitlement and trial contract:
+- Premium is an account entitlement, not a device purchase. The canonical `user_profiles.account_tier='premium'` flag grants full access on web, iOS, and Android when the user signs into the same MACPrep account.
+- Before account creation, visitors may complete the public three-question demo. A signed-in free account may complete one recommended session totaling 25 distinct questions; all other study modes and premium features are locked.
+- A web purchase, voucher, program-granted premium access, or verified Store purchase must unlock the same account on every platform without a second charge. Native apps must not offer Stripe or an external checkout path.
 
 Support/contact:
 - Support email used throughout docs and app copy: `support@macprep.org`.
 - Public domain: `https://www.macprep.org`.
+
+## Paid-App Product Principles
+
+Use the July 2026 paid-App-Store benchmark as a product-design lens, not as a pricing formula. Its broad Top Paid cohort is a demand signal across many categories, not evidence that a specialist clinical board-review product should be priced below $10.
+
+MACPrep's sharp job:
+- When an SAA or CAA has a small study window, MACPrep helps them identify and close the most important NCCAA knowledge gap with cited, CAA-specific practice, without generic anesthesia-prep material or opaque answer keys.
+
+Design hierarchy:
+- **Now:** show the next best study action, current readiness, and a clear progress signal in under two seconds.
+- **Plan:** let learners choose a blueprint domain, exam date, and session type without putting setup in the way of their first question.
+- **Power:** keep deep analytics, history, flashcards, settings, exports, and other specialist controls available but out of the first-session path.
+
+Product decisions:
+- A new user should reach a visible first-session win within five minutes: complete a short baseline session, see a domain-level result, and receive a concrete next-study recommendation.
+- Make the educational outcome visible before explaining the full feature inventory. Store screenshots and marketing proof should be labeled with outcomes such as "Know what to study next," "Practice under exam conditions," and "Understand every answer."
+- Build native-only value deliberately around mobile moments: a short daily session, timely reminders, widget/shortcut entry points, and fast resumption. Do not add native features merely to mirror the web interface.
+- Protect paid conversion with a complete core outcome, price clarity, and an explicit value comparison to recurring competitors. Do not introduce a maze of upgrades or a subscription by default.
+- Lead trust claims with clinician review, NCCAA blueprint mapping, citations, per-choice rationales, and a plain-language account of data/privacy practices. Each claim must remain verifiable.
+- Treat responsive support, guides, release notes, and thoughtful review requests as product quality signals. Ask for a review after demonstrated value, not account age alone; account age can remain a guardrail but should be paired with meaningful study activity.
+
+What not to infer:
+- Do not lower the $100 lifetime price solely because the benchmark's median paid-app price is $5.99. MACPrep's willingness to pay depends on its credible exam outcome, quality proof, and professional specialization.
+- Do not add broad AI features, generic study tools, or feature volume to imitate consumer apps. Focused clinical utility and transparent quality are the differentiators.
 
 ## Architecture
 
@@ -50,6 +79,7 @@ Backend services:
 - Supabase Postgres for profiles, questions, progress, review state, vouchers, feedback, analytics, notifications, and related product state.
 - Stripe Checkout for web purchases.
 - Stripe webhook: `POST /api/webhooks/stripe`, registered before JSON parsing.
+- Store purchases: StoreKit 2 on iOS and Google Play Billing on Android send a transaction token to `POST /api/mobile-purchases/verify`; the server verifies it with the relevant store and records a replay-protected entitlement before granting premium.
 - Render hosts the production server.
 - Sentry is optional and controlled by env vars.
 - Resend email nudges are dormant unless `RESEND_API_KEY` is configured.
@@ -190,9 +220,10 @@ Competitor:
 ## App Store And Play Store Constraints
 
 Native app purchase rule:
-- Hide upgrade/pricing CTAs in native apps.
+- Present the store-native one-time purchase only through the Capacitor purchase bridge. The current product ID is `org.macprep.app.full_access`; its app-store prices are configured in App Store Connect and Play Console, not hard-coded in the app.
 - Do not open Stripe from the native app.
-- Free users can use the free tier; locked premium features should not include external purchase paths in native.
+- Free users can use the free tier; locked premium features may open the store-native purchase sheet but must not include external purchase paths or code-based unlocks in native.
+- Deploy `20260717225318_mobile_purchase_entitlements.sql` and configure the store-verification environment variables before allowing a native purchase. The server, not the client, is the entitlement authority.
 
 Submission needs:
 - Demo account with premium unlocked.
@@ -200,6 +231,7 @@ Submission needs:
 - Support URL selected and working.
 - Privacy answers match actual data collection.
 - `APNS_PRODUCTION=true` for TestFlight/App Store production push tokens.
+- Real-device validation of sign-in, study sessions, reminders, and push delivery after APNs/FCM credentials are configured.
 
 ## Common Commands
 

@@ -49,7 +49,7 @@ For a greenfield Supabase project, first obtain a reviewed schema snapshot from 
 
 - Serve only published questions in production (`SERVE_PUBLISHED_ONLY=true`, `SERVE_FILLER=false`).
 - Never expose answer correctness before `/api/grade` has graded a submission.
-- Native apps must not open Stripe checkout or display external purchase flows.
+- Native apps must not open Stripe checkout or display external purchase flows; native upgrades use the server-verified Store purchase bridge.
 - Clinical content remains cited and clinician-reviewed before publication.
 - Program director/faculty access is not site-admin access.
 

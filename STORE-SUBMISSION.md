@@ -9,9 +9,9 @@ Bundle / App ID: **`org.macprep.app`** · Version **1.0** · Build **1** · Cate
 
 | Item | Status |
 | --- | --- |
-| iOS build runs + native push verified on device | ✅ done |
-| **IAP compliance** — no in-app Upgrade→Stripe path in the native app | 🔧 Claude implementing (see §1) |
-| Native-feel polish (safe areas, status bar, links, no PWA banner in-app) | 🔧 Claude implementing |
+| iOS build + native push verified on a real device | **validate before submission** |
+| Native IAP source integration | ✅ implemented; create products, deploy the ledger migration and configure credentials before testing |
+| Native-feel polish (safe areas, status bar, links, no PWA banner or web-commerce UI in-app) | ✅ implemented; validate on devices |
 | Store listings + metadata | ✅ below |
 | Screenshots | **you capture — see §4** |
 | Reviewer demo account | **you create — see §3.7** |
@@ -22,13 +22,30 @@ Bundle / App ID: **`org.macprep.app`** · Version **1.0** · Build **1** · Cate
 
 ## 1. In-app purchase compliance (the #1 rejection risk)
 
-Apple **Guideline 3.1.1**: an app may not send users to an external purchase (Stripe) for digital unlocks, nor "encourage" it. Our model = **buy on the web, the app only unlocks an already-paid account**. So in the **native app** we:
+MACPrep implements the store-billing release path. Create the following matching products before testing or submission:
 
-- **Hide every "Upgrade"/pricing CTA** and the upgrade screen
-- **Neutralize `startCheckout()`** (it must never open Stripe in the app)
-- Free users still use the free tier; locked features simply show as Premium with **no purchase path in-app** (no button, no price, no link, no "buy on our site" nudge)
+| Store | Product ID | Type | Initial US price |
+| --- | --- | --- | --- |
+| App Store Connect | `org.macprep.app.full_access` | Non-consumable in-app purchase | $99.99 |
+| Play Console | `org.macprep.app.full_access` | One-time managed product | $99.99 |
 
-*(Claude implements this behind an `is-native` flag; web/PWA keep the normal upgrade flow.)* Same approach satisfies Google Play; Play is more lenient but consistency is cleaner.
+The app loads localized price text from the store. On a completed purchase, the device sends
+only the Apple transaction ID or Google Play purchase token to `POST /api/mobile-purchases/verify`.
+The server verifies it directly with the relevant store, checks the product, app, purchase
+state, and bound MACPrep account, writes a replay-protected server-only ledger entry, then sets
+`user_profiles.account_tier='premium'`. A browser-initiated Stripe purchase, voucher, or
+program grant uses that same account entitlement, so it unlocks the apps without a second
+charge. A completed store purchase unlocks the web when the learner signs into the same account.
+
+Before enabling the purchase button, deploy
+`supabase/migrations/20260717225318_mobile_purchase_entitlements.sql` and configure the Apple
+and Google credentials documented in `.env.example` on Render. Test an Apple Sandbox purchase
+in TestFlight and a Google license-test purchase in Play Internal testing. The native restore
+action revalidates an owned purchase; do not transfer a store purchase to another MACPrep
+account.
+
+The web/PWA keeps Stripe checkout and class/cohort-code redemption. The native shell must never
+route a user to Stripe, web checkout, or a code-based unlock.
 
 ---
 
@@ -104,7 +121,7 @@ Answers to the toggles:
 - Account deletion available: **Yes** (Account → Delete account)
 
 ### 3.6 Encryption / export compliance
-- **ITSAppUsesNonExemptEncryption = NO** *(app only uses standard HTTPS)* — Claude will add this to Info.plist so App Store Connect stops asking every build.
+- **ITSAppUsesNonExemptEncryption = NO** is set in `mobile/ios/App/App/Info.plist` because the app uses standard HTTPS only.
 
 ### 3.7 App Review notes (paste into "Notes") — **critical, include a demo account**
 ```
@@ -116,7 +133,8 @@ DEMO ACCOUNT (full access enabled for review):
 
 Notes:
 - The app is a native iOS app (Capacitor) that also delivers native push notifications ("Study reminders" under Profile → Enable reminders).
-- Purchases are handled on our website; the app does not sell anything and contains no external purchase links. Premium is simply reflected for accounts that already have it.
+- `org.macprep.app.full_access` is a one-time non-consumable in-app purchase that unlocks complete board-review access for the signed-in MACPrep account. The native upgrade sheet includes Restore purchases.
+- Web-purchased, voucher, and program-granted premium accounts unlock here automatically after sign-in. The app never links to external checkout.
 - Content is professional exam-prep material; no user-directed medical advice.
 Contact: support@macprep.org
 ```
@@ -124,7 +142,7 @@ Contact: support@macprep.org
 
 ### 3.8 Build / TestFlight
 - Xcode → Product → **Archive** (Release) → Distribute → App Store Connect → Upload.
-- Automatic signing switches `aps-environment` to **production** for the archive → so also set **`APNS_PRODUCTION=true`** on Render for the store build to receive push.
+- The build config selects **development** APNs for Debug and **production** APNs for Release. Set **`APNS_PRODUCTION=true`** on Render before TestFlight/App Store push testing.
 - Optional but recommended: enable **TestFlight** and install on your own phone first.
 
 ---
@@ -154,26 +172,29 @@ Play needs **phone screenshots** (min 2; 1080×1920 or similar) — reuse the sa
 - **Data safety form** (mirror §3.5): collects Email, Name, User ID, App activity; purpose App functionality + Account management; **encrypted in transit**; **no** data sold/shared; users **can request deletion** (support@macprep.org / in-app).
 - **Target audience:** 18+ (professional/clinical) — avoids the "designed for families" flow.
 - **Pricing:** Free · **Countries:** your choice (US at minimum).
-- **Build:** Android Studio → Build → Generate Signed **App Bundle (.aab)** → upload to an **Internal testing** track first, then promote to Production.
+- **Build:** configure the ignored `mobile/android/keystore.properties` (see `mobile/android/keystore.properties.example`), then generate a signed **App Bundle (.aab)** → upload to an **Internal testing** track first, then promote to Production.
 
 ---
 
 ## 6. Submission runbook (order of operations)
 
 **iOS**
-1. (Claude) IAP + native-feel fixes land + you pull them into the app (`git pull` + `npx cap sync`).
-2. Set `APNS_PRODUCTION=true` on Render.
-3. App Store Connect → **My Apps → +** → New App → pick bundle `org.macprep.app`, name **MACPrep**, language English (U.S.).
-4. Fill Description/Keywords/URLs/Category from §2–§3, upload screenshots (§4).
-5. App Privacy (§3.5), Age rating (§3.4), Review notes + **demo account** (§3.7).
-6. Xcode Archive → upload build → select it in App Store Connect.
-7. **Submit for Review.** (Apple: ~1–3 days.)
+1. Create the non-consumable product in §1, then make its TestFlight Sandbox configuration available for the build.
+2. Apply the mobile-purchase Supabase migration and configure the Apple IAP verification variables on Render.
+3. Set `APNS_PRODUCTION=true` on Render.
+4. App Store Connect → **My Apps → +** → New App → pick bundle `org.macprep.app`, name **MACPrep**, language English (U.S.).
+5. Fill Description/Keywords/URLs/Category from §2–§3, upload screenshots (§4).
+6. App Privacy (§3.5), Age rating (§3.4), Review notes + **demo account** (§3.7).
+7. Archive → upload build → TestFlight on a real device: complete a Sandbox purchase, restore it, verify web-to-app and app-to-web entitlement sync, then select the build in App Store Connect.
+8. **Submit for Review.** (Apple: ~1–3 days.)
 
 **Android**
-1. Play Console → **Create app** → MACPrep, Education, Free, accept declarations.
-2. Store listing (§5) + screenshots + feature graphic.
-3. Content rating, Data safety, Target audience, App access (give the **demo account** here too).
-4. Upload the `.aab` to Internal testing → test → **promote to Production → submit.**
+1. Create the managed product in §1 and grant Android Publisher API access to the service account used on Render.
+2. Apply the mobile-purchase Supabase migration and configure the Google Play verification variable on Render.
+3. Play Console → **Create app** → MACPrep, Education, Free, accept declarations.
+4. Store listing (§5) + screenshots + feature graphic.
+5. Content rating, Data safety, Target audience, App access (give the **demo account** here too).
+6. Upload the `.aab` to Internal testing, verify a license-test purchase and restore, then **promote to Production → submit.**
 
 ---
 
@@ -181,4 +202,4 @@ Play needs **phone screenshots** (min 2; 1080×1920 or similar) — reuse the sa
 - **Guideline 4.2 (minimum functionality):** native push + full study feature set + offline install = well past a "thin web wrapper." The review notes lead with the native push.
 - **`APNS_PRODUCTION`**: `false` for Xcode dev builds (sandbox), **`true`** for the store build. Don't forget to flip it.
 - **Demo account is mandatory** for both stores (login-walled app).
-- **Purchases stay on the web** — the native app shows no price, no upgrade button, no external link.
+- **Do not submit before the server can verify purchases.** The UI alone is not enough: create the matching store product, deploy the ledger migration, set server credentials, and complete the real-device purchase/restore checks first.

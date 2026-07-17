@@ -11,7 +11,7 @@ Excluded from this document: account contact details, personal finance, family a
 - Jake is MACPrep's founder and a practicing Certified Anesthesiologist Assistant (CAA).
 - MACPrep serves student anesthesiologist assistants and CAAs with anesthesia board preparation.
 - Product credibility must come from AA-specific clinical judgment, cited sources, and reviewed question quality, not from an undifferentiated volume of AI-generated content.
-- Jake prefers a one-time purchase rather than a subscription. The current product price remains $50 lifetime; a higher lifetime price is an option for a future explicit decision.
+- Jake prefers a one-time purchase rather than a subscription. The current product price is $100 lifetime.
 
 ## Strategic Direction Under Consideration
 

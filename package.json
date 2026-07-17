@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^3.1.0",
     "@parse/node-apn": "^8.1.0",
     "@sentry/node": "^10.59.0",
     "@supabase/supabase-js": "^2.39.0",
@@ -17,6 +18,7 @@
     "dotenv": "^16.4.0",
     "express": "^4.22.2",
     "firebase-admin": "^14.2.0",
+    "googleapis": "^173.0.0",
     "stripe": "^14.10.0",
     "web-push": "^3.6.7"
   },

@@ -53,17 +53,16 @@ APNS_PRODUCTION         = true      # use "false" while testing a dev build from
 ```
 Setting these flips `NATIVE_PUSH_ENABLED` on (mirrors the VAPID gate). `firebase-admin` is pinned to v13, so **no Node-22 requirement** — safe on any Render runtime.
 
-### B4. Native wiring (Claude does, once B1 files exist)
-- `cd mobile && npm i @capacitor/push-notifications@^8.1.1 && npx cap sync`
-- iOS: Xcode capabilities + signing team + two APNs-forwarding methods in `AppDelegate.swift`
-- Android: `POST_NOTIFICATIONS` (Android 13+) — plugin merges it
-- Then a real-device test → TestFlight / Play internal testing.
+### B4. Native wiring (implemented; validate once B1 files exist)
+- `@capacitor/push-notifications`, APNs token forwarding in `AppDelegate.swift`, native-device token registration, and server-side APNs/FCM delivery are implemented.
+- Android's `POST_NOTIFICATIONS` permission is merged by the plugin.
+- Rebuild the native apps after adding Firebase configuration, then perform a real-device reminder and push-delivery test before TestFlight / Play internal testing.
 
 ### Gotchas (baked into the code / to remember)
 - **APNs sandbox vs production:** an Xcode-run dev build gets a *sandbox* token that fails against `APNS_PRODUCTION=true` with `BadDeviceToken`. Set `APNS_PRODUCTION=false` for dev testing, `true` for store builds.
 - **Android is silent until `google-services.json` is present** and the app is rebuilt (build stays green without it — guarded apply block).
 - **Native needs a store resubmit** — unlike Web Push, Capacitor OTA doesn't cover new native plugins/capabilities. The server + app.js half is already deployed; native *tokens* only flow after users update the store builds.
-- **IAP:** keep purchases web-only (apps unlock an already-bought account, no in-app "upgrade → Stripe" button) to avoid App Store rejection.
+- **Store payments:** blocking Stripe in the native shell is required, but it does not itself establish approval eligibility for paid digital study content. Complete the selected store-billing or approved-program path before submission; see `STORE-SUBMISSION.md`.
 
 ---
 

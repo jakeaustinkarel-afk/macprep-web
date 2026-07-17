@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { randomBytes, createHmac, createHash } from 'crypto';
+import { AppStoreServerAPIClient, Environment, SignedDataVerifier, Type as AppleProductType } from '@apple/app-store-server-library';
+import { google } from 'googleapis';
 import * as Sentry from '@sentry/node';
 import webpush from 'web-push';
 import { initializeApp as fbInitApp, cert as fbCert, getApps as fbGetApps } from 'firebase-admin/app';
@@ -108,6 +110,7 @@ const sessionLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 const gradeLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const profileLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 const pushLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 30 });
+const mobilePurchaseLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 25 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -190,6 +193,11 @@ if (IS_PROD) {
 // ('free' | 'premium') and links to the auth user via `user_id` (NOT `id`, which
 // is the row's own gen_random_uuid). There is no `is_premium` column.
 const PROFILE_TABLE = 'user_profiles';
+const MOBILE_PURCHASE_TABLE = 'mobile_purchase_entitlements';
+// This product identifier is intentionally shared by both stores. It must match the
+// non-consumable / managed product created in App Store Connect and Play Console.
+const MOBILE_PREMIUM_PRODUCT_ID = process.env.MOBILE_PREMIUM_PRODUCT_ID || 'org.macprep.app.full_access';
+const MOBILE_APP_BUNDLE_ID = process.env.MOBILE_APP_BUNDLE_ID || 'org.macprep.app';
 
 // Site admin is an explicit allowlist of account emails — the OWNER only. This is
 // deliberately decoupled from the `is_program_director` profile flag: a program
@@ -249,7 +257,10 @@ export async function deleteMacprepAccount(client, userId) {
 // Free accounts may try a fixed number of NEW questions total (changed 2026-07-06 from
 // 10% of the bank to a flat 25 — clearer for users, and it doesn't balloon as the bank grows).
 const FREE_TIER_LIMIT = 25;
-let _freeCeilingCache = { value: 50, at: 0 };
+export function isFreeTrialSessionPurpose(purpose) {
+    return purpose === 'recommended';
+}
+let _freeCeilingCache = { value: FREE_TIER_LIMIT, at: 0 };
 async function getFreeTierCeiling() {
     const now = Date.now();
     if (now - _freeCeilingCache.at < 5 * 60 * 1000) return _freeCeilingCache.value;
@@ -358,15 +369,28 @@ async function fetchServedQuestionRows({ ids = [], category, difficulty, offset 
     return ids.map((id) => byId.get(String(id))).filter(Boolean);
 }
 
+export function selectUnansweredFreePool(pool, answeredIds, size) {
+    const answered = new Set((answeredIds || []).map(String));
+    return pool.filter((question) => !answered.has(String(question.id))).slice(0, size);
+}
+
 async function fetchFixedFreePool(userId, size) {
     const catalog = await getQuestionCatalog();
-    const limit = Math.min(size, FREE_STUDY_POOL_SIZE, catalog.total);
-    if (!limit) return [];
+    const poolSize = Math.min(FREE_STUDY_POOL_SIZE, catalog.total);
+    if (!poolSize) return [];
     const offset = fixedPoolOffset(userId, catalog.total);
-    const first = await fetchServedQuestionRows({ offset, limit });
-    if (first.length >= limit || offset === 0) return first.slice(0, limit);
-    const remainder = await fetchServedQuestionRows({ offset: 0, limit: limit - first.length });
-    return [...first, ...remainder].slice(0, limit);
+    const first = await fetchServedQuestionRows({ offset, limit: poolSize });
+    const pool = first.length >= poolSize || offset === 0
+        ? first.slice(0, poolSize)
+        : [...first, ...(await fetchServedQuestionRows({ offset: 0, limit: poolSize - first.length }))].slice(0, poolSize);
+    const ids = pool.map((question) => String(question.id));
+    const { data: attempts, error } = await supabase
+        .from(PROGRESS_TABLE)
+        .select('question_id')
+        .eq('user_id', userId)
+        .in('question_id', ids);
+    if (error) throw error;
+    return selectUnansweredFreePool(pool, (attempts || []).map((attempt) => attempt.question_id), size);
 }
 
 async function fetchQuestionOfTheDay() {
@@ -1091,22 +1115,21 @@ app.post('/api/admin/run-nudges', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Record a Stripe purchase in the funnel exactly once per user — the webhook and the
-// verify-on-return fallback can both fire (and Stripe retries webhooks), which would
-// otherwise double-count a sale. Best-effort, fire-and-forget safe.
-async function recordPurchaseOnce(userId) {
+// Record a successful purchase in the funnel exactly once per user. Webhook retries,
+// checkout-return verification, and Store restore attempts must never double-count it.
+async function recordPurchaseOnce(userId, via = 'stripe') {
     if (!userId || !supabase) return;
     try {
         const { count } = await supabase.from('analytics_events')
             .select('id', { count: 'exact', head: true })
             .eq('name', 'purchase').eq('user_id', userId);
-        if (!count) await supabase.from('analytics_events').insert({ name: 'purchase', user_id: userId, meta: { via: 'stripe' } });
+        if (!count) await supabase.from('analytics_events').insert({ name: 'purchase', user_id: userId, meta: { via } });
     } catch (e) { /* analytics is never worth failing a payment path over */ }
 }
 
 // ACTUAL revenue from Stripe — succeeded charges minus refunds, grouped by calendar
 // month (UTC). The old estimate multiplied purchase count by the CURRENT price
-// constant, which rewrote history whenever the price changed ($50-era sales showed
+// constant, which rewrote history whenever the price changed (older sales showed
 // as $100). Cached 10 min; on a Stripe hiccup we serve the last good snapshot.
 let _revCache = { at: 0, data: null };
 async function getStripeRevenue() {
@@ -1245,6 +1268,237 @@ async function grantPremium(userId, email) {
         if (insErr) throw insErr;
     }
     return true;
+}
+
+class MobilePurchaseError extends Error {
+    constructor(message, status = 400) {
+        super(message);
+        this.status = status;
+    }
+}
+
+export function normalizeMobileStore(store) {
+    return store === 'apple' || store === 'google_play' ? store : null;
+}
+
+export function mobileAccountHash(userId) {
+    return createHash('sha256').update(String(userId || '').toLowerCase()).digest('hex');
+}
+
+function validUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+function configuredMobileProductId() {
+    return MOBILE_PREMIUM_PRODUCT_ID;
+}
+
+function assertMobilePurchase(condition, message) {
+    if (!condition) throw new MobilePurchaseError(message);
+}
+
+// The decoded payload comes from Apple's SignedDataVerifier, never directly from
+// the device. Keeping the semantic checks pure makes transaction rules testable.
+export function validateAppleTransactionPayload(payload, { userId, transactionId, bundleId = MOBILE_APP_BUNDLE_ID, productId = configuredMobileProductId() }) {
+    assertMobilePurchase(payload && typeof payload === 'object', 'Apple did not return a valid transaction.');
+    assertMobilePurchase(validUuid(userId), 'A valid MACPrep account is required.');
+    assertMobilePurchase(payload.bundleId === bundleId, 'This Apple transaction belongs to a different app.');
+    assertMobilePurchase(payload.productId === productId, 'This Apple transaction is not MACPrep full access.');
+    assertMobilePurchase(payload.type === AppleProductType.NON_CONSUMABLE, 'This Apple transaction is not a permanent entitlement.');
+    assertMobilePurchase(String(payload.transactionId || '') === String(transactionId), 'Apple returned a mismatched transaction.');
+    assertMobilePurchase(!payload.revocationDate, 'This Apple purchase has been revoked or refunded.');
+    assertMobilePurchase(
+        String(payload.appAccountToken || '').toLowerCase() === String(userId).toLowerCase(),
+        'This Apple purchase belongs to a different MACPrep account.'
+    );
+    return {
+        store: 'apple',
+        transactionId: String(payload.originalTransactionId || payload.transactionId),
+        originalTransactionId: String(payload.originalTransactionId || payload.transactionId),
+        productId,
+        purchasedAt: Number.isFinite(Number(payload.purchaseDate)) ? new Date(Number(payload.purchaseDate)).toISOString() : null,
+        environment: String(payload.environment || ''),
+    };
+}
+
+// Google returns this object from the authenticated Android Publisher API. The
+// purchase token is verified by Google, while the account hash prevents a token
+// from being attached to a different MACPrep account.
+export function validateGooglePurchasePayload(payload, { userId, productId = configuredMobileProductId() }) {
+    assertMobilePurchase(payload && typeof payload === 'object', 'Google Play did not return a valid purchase.');
+    assertMobilePurchase(validUuid(userId), 'A valid MACPrep account is required.');
+    assertMobilePurchase(payload.purchaseStateContext?.purchaseState === 'PURCHASED', 'This Google Play purchase is not complete.');
+    assertMobilePurchase(
+        Array.isArray(payload.productLineItem) && payload.productLineItem.some((item) => item?.productId === productId),
+        'This Google Play purchase is not MACPrep full access.'
+    );
+    assertMobilePurchase(
+        payload.obfuscatedExternalAccountId === mobileAccountHash(userId),
+        'This Google Play purchase belongs to a different MACPrep account.'
+    );
+    return {
+        store: 'google_play',
+        productId,
+        purchasedAt: payload.purchaseCompletionTime || null,
+        environment: payload.testPurchaseContext ? 'test' : 'production',
+    };
+}
+
+function appleCredentials() {
+    const privateKey = String(process.env.APPLE_IAP_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    const keyId = String(process.env.APPLE_IAP_KEY_ID || '').trim();
+    const issuerId = String(process.env.APPLE_IAP_ISSUER_ID || '').trim();
+    if (!privateKey || !keyId || !issuerId) {
+        throw new MobilePurchaseError('Apple purchase verification is not configured yet.', 503);
+    }
+    return { privateKey, keyId, issuerId };
+}
+
+function appleRootCertificates() {
+    const raw = String(process.env.APPLE_IAP_ROOT_CERTIFICATES_BASE64 || '').trim();
+    if (!raw) throw new MobilePurchaseError('Apple purchase verification is not configured yet.', 503);
+    try {
+        const entries = JSON.parse(raw);
+        const certs = Array.isArray(entries)
+            ? entries.map((entry) => Buffer.from(String(entry), 'base64')).filter((cert) => cert.length > 0)
+            : [];
+        if (!certs.length) throw new Error('No certificates');
+        return certs;
+    } catch (e) {
+        throw new MobilePurchaseError('Apple purchase verification is not configured yet.', 503);
+    }
+}
+
+function appleVerifier(environment) {
+    const appAppleId = environment === Environment.PRODUCTION ? Number(process.env.APPLE_IAP_APP_ID) : undefined;
+    if (environment === Environment.PRODUCTION && (!Number.isSafeInteger(appAppleId) || appAppleId <= 0)) {
+        throw new MobilePurchaseError('Apple purchase verification is not configured yet.', 503);
+    }
+    return new SignedDataVerifier(
+        appleRootCertificates(),
+        true,
+        environment,
+        MOBILE_APP_BUNDLE_ID,
+        appAppleId
+    );
+}
+
+async function verifyApplePurchase(userId, transactionId) {
+    assertMobilePurchase(/^\d{1,64}$/.test(String(transactionId || '')), 'Invalid Apple transaction.');
+    const credentials = appleCredentials();
+    let lastError = null;
+    const productionAppId = Number(process.env.APPLE_IAP_APP_ID);
+    const canVerifyProduction = Number.isSafeInteger(productionAppId) && productionAppId > 0;
+    // TestFlight uses Apple's sandbox environment while production purchases use
+    // production. The client never chooses the environment; the server safely tries both.
+    const environments = canVerifyProduction
+        ? [Environment.PRODUCTION, Environment.SANDBOX]
+        : [Environment.SANDBOX];
+    for (const environment of environments) {
+        try {
+            const client = new AppStoreServerAPIClient(
+                credentials.privateKey,
+                credentials.keyId,
+                credentials.issuerId,
+                MOBILE_APP_BUNDLE_ID,
+                environment
+            );
+            const response = await client.getTransactionInfo(transactionId);
+            const payload = await appleVerifier(environment).verifyAndDecodeTransaction(response.signedTransactionInfo);
+            return validateAppleTransactionPayload(payload, { userId, transactionId });
+        } catch (error) {
+            if (error instanceof MobilePurchaseError && error.status === 503) throw error;
+            lastError = error;
+        }
+    }
+    if (!canVerifyProduction) {
+        throw new MobilePurchaseError('Apple production purchase verification is not configured yet.', 503);
+    }
+    console.warn('[mobile-purchase] Apple transaction verification failed:', lastError?.message || 'unknown error');
+    throw new MobilePurchaseError('We could not verify this Apple purchase.', 422);
+}
+
+function googlePublisherClient() {
+    const raw = String(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || '').trim();
+    if (!raw) throw new MobilePurchaseError('Google Play purchase verification is not configured yet.', 503);
+    let credentials;
+    try {
+        credentials = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+        if (!credentials.client_email || !credentials.private_key) throw new Error('Missing service account values');
+        credentials.private_key = String(credentials.private_key).replace(/\\n/g, '\n');
+    } catch (e) {
+        throw new MobilePurchaseError('Google Play purchase verification is not configured yet.', 503);
+    }
+    const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/androidpublisher'],
+    });
+    return google.androidpublisher({ version: 'v3', auth });
+}
+
+async function verifyGooglePlayPurchase(userId, purchaseToken) {
+    assertMobilePurchase(/^[A-Za-z0-9._~-]{16,2048}$/.test(String(purchaseToken || '')), 'Invalid Google Play purchase.');
+    const publisher = googlePublisherClient();
+    let purchase;
+    try {
+        const response = await publisher.purchases.productsv2.getproductpurchasev2({
+            packageName: MOBILE_APP_BUNDLE_ID,
+            token: purchaseToken,
+        });
+        purchase = response.data;
+    } catch (error) {
+        console.warn('[mobile-purchase] Google Play purchase verification failed:', error?.message || 'unknown error');
+        throw new MobilePurchaseError('We could not verify this Google Play purchase.', 422);
+    }
+    const entitlement = validateGooglePurchasePayload(purchase, { userId });
+    return { ...entitlement, transactionId: String(purchaseToken), publisher, acknowledgementState: purchase.acknowledgementState };
+}
+
+async function claimMobileEntitlement(userId, entitlement) {
+    if (!supabase) throw new MobilePurchaseError('Purchases are temporarily unavailable.', 503);
+    const row = {
+        store: entitlement.store,
+        store_transaction_id: entitlement.transactionId,
+        original_transaction_id: entitlement.originalTransactionId || null,
+        product_id: entitlement.productId,
+        user_id: userId,
+        environment: entitlement.environment || null,
+        purchased_at: entitlement.purchasedAt || null,
+        verified_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from(MOBILE_PURCHASE_TABLE).insert(row);
+    if (!error) return { alreadyClaimed: false };
+    if (error.code !== '23505') throw error;
+
+    const { data: existing, error: lookupError } = await supabase
+        .from(MOBILE_PURCHASE_TABLE)
+        .select('user_id')
+        .eq('store', entitlement.store)
+        .eq('store_transaction_id', entitlement.transactionId)
+        .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!existing || existing.user_id !== userId) {
+        throw new MobilePurchaseError('This store purchase is already linked to another MACPrep account.', 409);
+    }
+    return { alreadyClaimed: true };
+}
+
+async function acknowledgeGooglePlayPurchase(publisher, purchaseToken, acknowledgementState) {
+    if (acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED') return true;
+    try {
+        await publisher.purchases.products.acknowledge({
+            packageName: MOBILE_APP_BUNDLE_ID,
+            productId: configuredMobileProductId(),
+            token: purchaseToken,
+            requestBody: {},
+        });
+        return true;
+    } catch (error) {
+        // The user already has the server-recorded entitlement. A later restore retries
+        // acknowledgement, avoiding accidental loss of purchased access on a transient API error.
+        console.error('[mobile-purchase] Google Play acknowledgement failed:', error?.message || 'unknown error');
+        return false;
+    }
 }
 
 // Returns the authenticated user only if their (verified) account email is on the
@@ -2106,16 +2360,18 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
 
     try {
         let questions;
-        if (purpose === 'qotd') {
-            // Ignore a caller-supplied id: every account receives the same 7 AM ET QotD.
-            questions = await fetchQuestionOfTheDay();
-        } else if (!elevated) {
-            if (!['sample', 'recommended', 'qotd', 'arcade', 'diagnostic'].includes(purpose)) {
+        if (!elevated) {
+            // The signed-in trial is intentionally one bounded, recommended
+            // 25-question session. Every other study mode is premium-only.
+            if (!isFreeTrialSessionPurpose(purpose)) {
                 return res.status(402).json({ error: 'Full study modes are available with full access.', paywall: true });
             }
             // A free account has a stable, bounded preview pool. This prevents
             // repeated session requests from becoming a content-harvesting API.
             questions = await fetchFixedFreePool(user.id, Math.min(requested, FREE_STUDY_POOL_SIZE));
+        } else if (purpose === 'qotd') {
+            // Ignore a caller-supplied id: every account receives the same 7 AM ET QotD.
+            questions = await fetchQuestionOfTheDay();
         } else {
             questions = ['recommended', 'review'].includes(purpose)
                 ? await fetchPrioritySessionQuestions(user.id, { size: requested, questionIds, purpose })
@@ -2732,6 +2988,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
 
         return res.json({
             profile: {
+                user_id: user.id,
                 email: profile?.email || user.email || null,
                 premium_unlocked: profile?.account_tier === 'premium' || isReviewUser(user),
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
@@ -3282,6 +3539,46 @@ app.post('/api/admin/review', async (req, res) => {
     } catch (err) {
         console.error('Admin review action failure:', err.message);
         return res.status(500).json({ error: 'Could not update review.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Native one-time purchases. The device only supplies a store transaction token;
+// entitlement is granted after server-to-server verification, never by trusting a
+// client-side premium flag. Both stores resolve to the same account_tier contract
+// already used by Stripe, vouchers, and program grants.
+// ---------------------------------------------------------------------------
+app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    const store = normalizeMobileStore(req.body?.store);
+    if (!store) return res.status(400).json({ error: 'Unsupported mobile store.' });
+
+    try {
+        let entitlement;
+        if (store === 'apple') {
+            entitlement = await verifyApplePurchase(user.id, String(req.body?.transaction_id || '').trim());
+        } else {
+            entitlement = await verifyGooglePlayPurchase(user.id, String(req.body?.purchase_token || '').trim());
+        }
+
+        await claimMobileEntitlement(user.id, entitlement);
+        await grantPremium(user.id, (user.email || '').toLowerCase().trim());
+        recordPurchaseOnce(user.id, store);
+
+        let acknowledged = true;
+        if (store === 'google_play') {
+            acknowledged = await acknowledgeGooglePlayPurchase(
+                entitlement.publisher,
+                entitlement.transactionId,
+                entitlement.acknowledgementState
+            );
+        }
+        return res.json({ premium_unlocked: true, store, acknowledged });
+    } catch (error) {
+        if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
+        console.error('[mobile-purchase] entitlement sync failed:', error?.message || 'unknown error');
+        return res.status(500).json({ error: 'Could not verify this purchase.' });
     }
 });
 

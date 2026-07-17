@@ -10,14 +10,14 @@ Core positioning:
 - Built for CAAs/SAAs, not recycled nurse-anesthesia content.
 - Every published question should be clinician-reviewed, blueprint-tagged, and cited.
 - The strongest differentiation is verifiable sourcing, per-choice rationales, and transparent CAA review.
-- The exam-prep product is currently positioned as a one-time $50 lifetime web purchase. Native apps unlock accounts that already purchased on web; do not add Stripe purchase paths inside native apps.
+- The exam-prep product is currently positioned as a one-time $100 lifetime purchase. Web uses Stripe; native apps use the approved one-time Store product with server-side verification. Both grant the same account entitlement. Do not add Stripe purchase paths inside native apps.
 
 ## Stack
 
 - Backend: Express in `src/server.mjs`.
 - Frontend: vanilla HTML/CSS/JS, mainly `index.html`, `styles.css`, and `src/app.js`.
 - Database/auth: Supabase Auth and Postgres.
-- Payments: Stripe Checkout plus a single webhook route at `POST /api/webhooks/stripe`.
+- Payments: Stripe Checkout plus a single webhook route at `POST /api/webhooks/stripe`; verified native Store purchases use `POST /api/mobile-purchases/verify`.
 - Hosting: Render for the web server.
 - Mobile: Capacitor app in `mobile/` that loads `https://www.macprep.org`.
 - Monitoring: Sentry if `SENTRY_DSN` and `SENTRY_BROWSER_DSN` are configured.

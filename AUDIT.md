@@ -42,7 +42,7 @@ A second pass introspected the **live** schema and fixed the items below. Two pr
 ## Severity 1 — Critical (product-breaking / revenue-losing / legal exposure)
 
 ### 1.1 Paying customers are never upgraded — webhook writes to a non-existent table **[VERIFIED]**
-`src/server.mjs` reads and writes a table called `profiles` (webhook handler and both profile endpoints). The live database has **no `profiles` table** — the equivalent table is `user_profiles`. Result: when Stripe fires `checkout.session.completed`, the `UPDATE/INSERT ... profiles` call errors, the handler returns HTTP 500, and the user's `is_premium` flag is never set. **A customer can pay $50 and get nothing.** This is both a revenue bug and a chargeback/consumer-protection risk.
+`src/server.mjs` reads and writes a table called `profiles` (webhook handler and both profile endpoints). The live database has **no `profiles` table** — the equivalent table is `user_profiles`. Result: when Stripe fires `checkout.session.completed`, the `UPDATE/INSERT ... profiles` call errors, the handler returns HTTP 500, and the user's `is_premium` flag is never set. **A customer can pay and get nothing.** This is both a revenue bug and a chargeback/consumer-protection risk.
 **Fix:** point all profile reads/writes at `user_profiles`, key them on the Supabase Auth user id (not email), and add a reconciliation path so a paid-but-not-upgraded user can be repaired.
 
 ### 1.2 Login is impossible — the endpoint doesn't exist **[VERIFIED]**
@@ -86,7 +86,7 @@ The code references four different tables inconsistently:
 There are effectively **two question tables** and the seed scripts disagree on which is canonical. Pick one source of truth for questions and one profile table, and delete/rename the rest.
 
 ### 3.2 Two conflicting payment paths **[VERIFIED]**
-The paywall button in `app.js` hardcodes a Stripe Payment Link (`buy.stripe.com/...$50`), while `server.mjs` also exposes `POST /api/create-checkout-session` using `STRIPE_PRODUCTION_PRICE_ID` — an env var that isn't documented in `.env.example`. Decide on one checkout method so price changes and webhooks stay consistent.
+The paywall button in `app.js` hardcodes a Stripe Payment Link, while `server.mjs` also exposes `POST /api/create-checkout-session` using `STRIPE_PRODUCTION_PRICE_ID` — an env var that isn't documented in `.env.example`. Decide on one checkout method so price changes and webhooks stay consistent.
 
 ### 3.3 Routes defined after `app.listen()` **[VERIFIED]**
 `/api/create-checkout-session`, the second webhook, and `/api/auth/register` are declared after the server starts listening (line ~180). It works in Express but is disorganized and error-prone. Define all routes before `listen()`.

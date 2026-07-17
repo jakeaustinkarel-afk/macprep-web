@@ -425,6 +425,7 @@
     }
 
     async function loadQotd() {
+        if (!freeUsage().unlimited) { state.qotd = null; return; }
         try {
             const pool = await requestStudySession({ purpose: 'qotd', size: 1 });
             state.qotd = pool[0] || null;
@@ -435,7 +436,10 @@
         state._themeApplied = false;
         state._fontApplied = false;
         setLoading(true);
-        try { await Promise.all([loadProfile(), loadQuestions(), loadQotd()]); }
+        try {
+            await loadProfile();
+            await Promise.all([loadQuestions(), loadQotd()]);
+        }
         finally { setLoading(false); }
         // Reflect tier badge
         const badge = $('tier-badge');
@@ -628,6 +632,12 @@
         const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
         if (answered > 0) { el.classList.add('hidden'); return; }
         el.classList.remove('hidden');
+        if (!freeUsage().unlimited) {
+            el.innerHTML = `<h3>Welcome to MACPrep 👋</h3>
+                <p class="sub" style="margin:0 0 12px;">Your free account includes one <strong>25-question recommended session</strong>, with the same explanations and sources as full access.</p>
+                <button class="btn" onclick="MACPrep.startRecommended()">Start your 25-question session</button>`;
+            return;
+        }
         el.innerHTML = `<h3>Welcome to MACPrep 👋</h3>
             <p class="sub" style="margin:0 0 12px;">New here? Take a quick <strong>diagnostic</strong> — a short set across all six blueprint domains that gives you a predicted readiness score and shows exactly which domain to start with. Or jump straight in with a warm-up.</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -683,12 +693,9 @@
     }
 
     async function startSample() {
-        const sel = $('domain-select'); if (sel) sel.value = 'all';
-        const diff = $('difficulty-select'); if (diff) diff.value = 'all';
-        const pm = $('pool-mode'); if (pm) pm.value = 'all';
-        const chips = $('count-chips'); if (chips) { chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('active')); }
-        $('custom-count').value = '5';
-        await beginServerSession({ purpose: 'sample', size: 5 }, 'tutor');
+        // Kept as the onboarding entry point; authenticated trial users always
+        // receive the complete recommended session, not a separate warm-up.
+        await startRecommended();
     }
 
     async function smartReview() {
@@ -711,7 +718,7 @@
     async function startRecommended() {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining < 1) { return startCheckout(); }
-        const target = usage.unlimited ? 20 : Math.min(20, usage.remaining);
+        const target = usage.unlimited ? 20 : usage.remaining;
         const session = await beginServerSession({ purpose: 'recommended', size: target, pool_mode: 'new' }, 'tutor');
         if (session) track('recommended_start', { size: session.size, adaptive: true });
     }
@@ -719,6 +726,11 @@
     // Reflects what the recommended set will draw from (or a starter message for new users).
     function renderRecommendedSub() {
         const el = $('recommended-sub'); if (!el) return;
+        const usage = freeUsage();
+        if (!usage.unlimited) {
+            el.textContent = `${usage.remaining} of ${usage.limit} trial questions remaining in your recommended session.`;
+            return;
+        }
         const p = state.profile || {};
         const dueN = (p.due_ids || []).length;
         const missN = (p.missed_ids || []).length;
@@ -759,6 +771,7 @@
     // Launches the QotD as a real 1-question tutor session — identical render, grading,
     // rationale, source, and activity tracking as any quiz question.
     async function startQotd() {
+        if (!premiumGate('qotd')) return;
         if (!questionOfTheDay()) await loadQotd();
         const q = questionOfTheDay();
         if (!q) { toast('Today\'s question is still loading — try again in a moment.'); return; }
@@ -1626,7 +1639,10 @@
         if (!premiumGate('studymode')) return;
         await beginServerSession({ purpose: 'quick', size: n, pool_mode: 'new' }, 'tutor');
     }
-    function openMockPicker() { const m = $('mock-picker'); if (m) m.classList.remove('hidden'); }
+    function openMockPicker() {
+        if (!premiumGate('mock')) return;
+        const m = $('mock-picker'); if (m) m.classList.remove('hidden');
+    }
     function closeMockPicker() { const m = $('mock-picker'); if (m) m.classList.add('hidden'); }
 
     // ---- Domain Bosses: score 80%+ on a short mastery challenge to "clear" a domain ----
@@ -1666,6 +1682,7 @@
     function closeBossPicker() { const o = $('boss-overlay'); if (o) o.remove(); }
     async function startBossFight(domain) {
         closeBossPicker();
+        if (!premiumGate('studymode')) return;
         try { track('boss_start', { domain }); } catch (e) {}
         await beginServerSession({ purpose: 'boss', size: BOSS_SIZE, category: domain, pool_mode: 'new' }, 'exam', (session) => { session.boss = domain; saveSession(); });
     }
@@ -1688,12 +1705,10 @@
     function arcadeBest(type) { try { return parseInt(localStorage.getItem('macprep_arcade_' + type) || '0', 10) || 0; } catch (e) { return 0; } }
     function setArcadeBest(type, v) { try { localStorage.setItem('macprep_arcade_' + type, String(v)); } catch (e) {} }
     function bumpArcadePlays(type) { try { const k = 'macprep_arcade_' + type + '_plays'; localStorage.setItem(k, String((parseInt(localStorage.getItem(k) || '0', 10) || 0) + 1)); } catch (e) {} }
-    // Free users get ONE taste run of Arcade, then it's part of full access.
-    function arcadeFreeUsed() { try { return !!localStorage.getItem('macprep_arcade_free_used'); } catch (e) { return false; } }
-    function markArcadeFreeUsed() { try { localStorage.setItem('macprep_arcade_free_used', '1'); } catch (e) {} }
     function arcadeShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
     function openArcadePicker() {
+        if (!premiumGate('arcade')) return;
         const rows = Object.keys(ARCADE_META).map((type) => {
             const m = ARCADE_META[type], best = arcadeBest(type);
             return `<button type="button" onclick="MACPrep.startArcade('${type}')" style="display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-top:11px;cursor:pointer;transition:border-color .15s ease,transform .15s ease;" onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='var(--line)';this.style.transform='none';">
@@ -1722,13 +1737,7 @@
     async function startArcade(type) {
         closeArcadePicker();
         if (!ARCADE_META[type]) return;
-        // Free users get ONE taste run of Arcade; after that it's part of full access.
-        const usage = freeUsage();
-        if (!usage.unlimited) {
-            if (arcadeFreeUsed()) { openUpgradeModal('arcade'); return; }
-            markArcadeFreeUsed();
-            toast('Your free Arcade run — have fun! Unlimited Arcade is part of full access.', 'ok');
-        }
+        if (!premiumGate('arcade')) return;
         try { track('arcade_start', { type }); } catch (e) {}
         await beginServerSession({ purpose: 'arcade', size: 25, pool_mode: 'new' }, 'tutor', (s) => {
             const prevBest = arcadeBest(type);
@@ -1876,9 +1885,14 @@
         if (flagged) recStats.push(`<div class="sm-rec-stat"><span class="n">${flagged}</span><span class="l">flagged</span></div>`);
         if (!recStats.length) recStats.push(`<div class="sm-rec-stat"><span class="n">~20</span><span class="l">a smart starter mix</span></div>`);
         const free = !freeUsage().unlimited;
-        const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">Recommended for you</div><div class="sm-title" style="font-size:21px;">Today's focused set</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">Adapts to you — due reviews, recent misses, and new questions in your weakest domains at a difficulty matched to your level.</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">Start focused set <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
+        if (free) {
+            const usage = freeUsage();
+            recStats.length = 0;
+            recStats.push(`<div class="sm-rec-stat"><span class="n">${usage.remaining}</span><span class="l">trial questions left</span></div>`);
+        }
+        const recTile = `<button type="button" class="sm-tile sm-rec" onclick="MACPrep.startRecommended()"><div class="sm-cat">${free ? 'Your free trial' : 'Recommended for you'}</div><div class="sm-title" style="font-size:21px;">${free ? '25-question recommended session' : "Today's focused set"}</div><div class="sm-desc" style="max-width:280px;margin-top:5px;">${free ? 'A single, guided set that lets you experience the full question-and-rationale flow.' : 'Adapts to you — due reviews, recent misses, and new questions in your weakest domains at a difficulty matched to your level.'}</div><div class="sm-rec-breakdown">${recStats.join('')}</div><div class="sm-rec-cta">${free ? 'Start your trial session' : 'Start focused set'} <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></button>`;
         const arcTop = Math.max(0, ...Object.keys(ARCADE_META).map((k) => arcadeBest(k)));
-        const arcCount = free ? (arcadeFreeUsed() ? `${lockSvg(10)} Premium` : '1 free run') : (arcTop ? `Best ${arcTop}` : 'Set a high score');
+        const arcCount = free ? `${lockSvg(10)} Premium` : (arcTop ? `Best ${arcTop}` : 'Set a high score');
         // Every study mode shown directly — no fold (Jake: don't hide modes behind a dropdown
         // when the grid isn't even full). Ordered by usefulness for board prep; Mock stays
         // prominent up top. rec (2x2) + Mock (wide) + the singles tile a clean 4-col bento.
@@ -2114,6 +2128,7 @@
     async function startSession() {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
+        if (!usage.unlimited) return startRecommended();
         const pool = poolForDomain();
         if (!pool.total) { toast('No questions available for that domain yet.'); return; }
         let n = selectedCount();
@@ -2133,8 +2148,8 @@
     // domain to start with.
     async function startDiagnostic() {
         const usage = freeUsage();
-        if (!usage.unlimited && usage.remaining < 6) { return startCheckout(); }
-        const session = await beginServerSession({ purpose: 'diagnostic', size: usage.unlimited ? 24 : usage.remaining, pool_mode: 'new' }, 'exam', (s) => { s.diagnostic = true; });
+        if (!usage.unlimited) { openUpgradeModal('diagnostic'); return; }
+        const session = await beginServerSession({ purpose: 'diagnostic', size: 24, pool_mode: 'new' }, 'exam', (s) => { s.diagnostic = true; });
         if (session) track('diagnostic_start', { size: session.size });
     }
 
@@ -2240,6 +2255,7 @@
     // Search is server-side and bounded, so opening the finder never loads the
     // question bank into the browser.
     function openQuestionSearch() {
+        if (!premiumGate('search')) return;
         if (state._searchOpen) return;
         state._searchOpen = true;
         const n = questionBankSize();
@@ -2317,6 +2333,7 @@
         });
     }
     async function searchStartQuestion(id) {
+        if (!premiumGate('search')) return;
         closeQuestionSearch();
         await beginServerSession({ purpose: 'search', size: 1, question_ids: [id] }, 'tutor');
     }
@@ -2469,6 +2486,7 @@
         } catch (e) { toast('Could not join duel: ' + e.message); }
     }
     async function startDuelSession(ids, duel) {
+        if (!premiumGate('duel')) return;
         if (!ids || ids.length < 3) { toast('This duel’s questions aren’t available right now.'); return; }
         const session = await beginServerSession({ purpose: 'duel', size: Math.min(ids.length, 200), question_ids: ids }, 'tutor', (s) => { s.duel = duel; });
         if (session) toast('⚔ Duel started — answer all ' + session.size + ', then your score locks in.');
@@ -3662,8 +3680,8 @@
     function closeSpecialtyPicker() { const m = $('specialty-picker'); if (m) m.classList.add('hidden'); }
     async function startSpecialtyQuiz(cat, count) {
         closeSpecialtyPicker();
+        if (!premiumGate('studymode')) return;
         const usage = freeUsage();
-        if (!usage.unlimited && usage.remaining <= 0) { return startCheckout(); }
         const available = specialtyPool(cat).total;
         if (!available) { toast('No questions available for that specialty yet.'); return; }
         let n = (count === 'all') ? Math.min(available, 200) : Math.min(count, available);
@@ -3679,6 +3697,7 @@
 
     // Printable take-home exam → opens a clean print-to-PDF window (premium).
     async function downloadExam(btn) {
+        if (!premiumGate('printableExam')) return;
         const n = selectedCount(); const count = (n === Infinity || !n) ? 50 : n;
         const cat = $('domain-select') ? $('domain-select').value : 'all';
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Building…'; }
@@ -3761,12 +3780,16 @@
     // returns true when the user already has access, otherwise it shows the
     // screen and returns false — so callers read as: `if (!premiumGate('mock')) return;`
     const PREMIUM_FEATURES = {
-        studymode: { icon: '🎯', name: 'This study mode', blurb: 'Free accounts get the recommended session — 25 questions to try MACPrep. Upgrade to unlock every study mode (Quick sets, Smart Review, Focused quizzes by specialty, Custom sessions) plus flashcards, mock exams, duels, and the full 1,500+ question bank.' },
+        studymode: { icon: '🎯', name: 'This study mode', blurb: 'Free accounts get one recommended 25-question trial session. Upgrade to unlock every study mode (Quick sets, Smart Review, Focused quizzes by specialty, Custom sessions) plus flashcards, mock exams, duels, and the full question bank.' },
         arcade: { icon: '🕹️', name: 'Arcade', blurb: 'Unlimited high-score runs — Survival, Sudden Death, Time Attack & Blitz.' },
+        diagnostic: { icon: '📊', name: 'The diagnostic', blurb: 'Get a readiness score and a domain-level starting point after a balanced assessment.' },
+        search: { icon: '🔎', name: 'Question search', blurb: 'Search the full question bank by keyword and jump directly into a question.' },
+        printableExam: { icon: '📄', name: 'Printable exams', blurb: 'Create a clean take-home exam to print or save as a PDF.' },
         mock: { icon: '📝', name: 'The Full-Length Mock Exam', blurb: 'A board-length, timed simulation of the real NCCAA exam — the closest thing to sitting the boards.' },
         critical: { icon: '🚨', name: 'Critical Event Cards', blurb: 'Clinician-reviewed rapid-response cards for every anesthesia crisis — searchable and printable.' },
         flashcards: { icon: '🗂️', name: 'Flashcard Mode', blurb: 'Active recall — hide the choices, type your answer, then flip for the rationale & source.' },
         duel: { icon: '⚔️', name: 'Duels', blurb: 'Challenge a classmate head-to-head on the same question set — share a code and see who wins.' },
+        qotd: { icon: '☀️', name: 'Question of the Day', blurb: 'Build a daily study habit with a fresh, clinically reviewed question.' },
     };
     // The single "what your $100 unlocks" list shown on every upgrade screen.
     const PREMIUM_UNLOCKS = [
@@ -3793,8 +3816,8 @@
         // Previously paywall_hit fired only from showPaywall, so clicking a premium mode went
         // uncounted and the funnel under-reported. This is the fix.
         try { track('paywall_hit', { feature: featureKey || 'generic', src: 'upgrade_screen' }); } catch (e) {}
-        // App Store 3.1.1: the native store apps must NOT present external purchase paths or
-        // independent code-based unlocks. Web keeps the full purchase and cohort-code flow.
+        // Native apps use StoreKit / Google Play Billing only. Web keeps Stripe and
+        // cohort-code redemption; native never presents an external purchase path.
         if (isNativeApp()) {
             const wrapN = document.createElement('div');
             wrapN.id = 'upgrade-overlay';
@@ -3805,9 +3828,13 @@
                 <button onclick="MACPrep.closeUpgradeModal()" aria-label="Close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;line-height:1;">&times;</button>
                 <div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Full access</div>
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;line-height:1.25;">${titleN}</div>
-                <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access includes the complete question bank, full-length mock exams, flashcards, Critical Events, and progress tracking.</div>
+                <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access is tied to your MACPrep account. A purchase made here, on the web, or on another device unlocks this same account everywhere.</div>
+                <div id="native-purchase-actions" style="margin-top:18px;"><div class="mono" style="font-size:11px;color:var(--muted);text-align:center;">Checking store availability...</div></div>
+                <button class="btn ghost" type="button" onclick="MACPrep.restoreNativePurchases()" style="width:100%;margin-top:10px;">Restore purchases</button>
+                <button class="btn ghost" type="button" onclick="MACPrep.refreshAccess()" style="width:100%;margin-top:8px;">Refresh account access</button>
             </div>`;
             document.body.appendChild(wrapN);
+            renderNativePurchaseActions();
             return;
         }
         const unlocks = PREMIUM_UNLOCKS.map((u) => `<div style="display:flex;gap:9px;align-items:flex-start;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:3px;" aria-hidden="true"><path d="m5 12 5 5L20 6"/></svg><span>${u}</span></div>`).join('');
@@ -3841,6 +3868,125 @@
         document.body.appendChild(wrap);
     }
     function closeUpgradeModal() { const o = $('upgrade-overlay'); if (o) o.remove(); }
+
+    const NATIVE_PREMIUM_PRODUCT_ID = 'org.macprep.app.full_access';
+    let _nativePremiumProduct = null;
+
+    function nativePurchasePlugin() { return capPlugin('MacprepPurchases'); }
+    function nativePurchasePlatform() {
+        const platform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+        return platform === 'ios' || platform === 'android' ? platform : null;
+    }
+
+    async function loadNativePremiumProduct() {
+        if (_nativePremiumProduct) return _nativePremiumProduct;
+        const plugin = nativePurchasePlugin();
+        if (!plugin) throw new Error('This app version needs to be updated before in-app purchase is available.');
+        const data = await plugin.getProducts({ productId: NATIVE_PREMIUM_PRODUCT_ID });
+        const product = Array.isArray(data?.products)
+            ? data.products.find((item) => item && item.productId === NATIVE_PREMIUM_PRODUCT_ID)
+            : null;
+        if (!product) throw new Error('Full access is not available in this store yet.');
+        _nativePremiumProduct = product;
+        return product;
+    }
+
+    async function renderNativePurchaseActions() {
+        const target = $('native-purchase-actions');
+        if (!target) return;
+        try {
+            const product = await loadNativePremiumProduct();
+            const price = product.displayPrice ? ' - ' + escapeHtml(product.displayPrice) : '';
+            target.innerHTML = `<button class="btn" type="button" onclick="MACPrep.startNativePurchase(this)" style="width:100%;">Unlock full access${price}</button>`;
+        } catch (error) {
+            target.innerHTML = `<div class="mono" style="font-size:11px;line-height:1.6;color:var(--muted);text-align:center;">${escapeHtml(error.message || 'Store purchase is unavailable right now.')}</div>`;
+        }
+    }
+
+    async function verifyNativePurchase(platform, transaction) {
+        if (platform === 'ios') {
+            if (!transaction?.transactionId) throw new Error('Apple did not return a transaction.');
+            const { resp, data } = await apiJSON('/api/mobile-purchases/verify', {
+                method: 'POST', headers: authHeaders(),
+                body: JSON.stringify({ store: 'apple', transaction_id: transaction.transactionId }),
+            });
+            if (!resp.ok || !data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Apple purchase.');
+            return data;
+        }
+        if (!transaction?.purchaseToken) throw new Error('Google Play did not return a purchase.');
+        const { resp, data } = await apiJSON('/api/mobile-purchases/verify', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ store: 'google_play', purchase_token: transaction.purchaseToken }),
+        });
+        if (!resp.ok || !data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Google Play purchase.');
+        return data;
+    }
+
+    async function startNativePurchase(btn) {
+        if (!state.token || !state.profile?.user_id) { toast('Sign in before purchasing full access.', 'bad'); return; }
+        if (state.profile.premium_unlocked) { closeUpgradeModal(); toast('This account already has full access.', 'ok'); return; }
+        const plugin = nativePurchasePlugin();
+        const platform = nativePurchasePlatform();
+        if (!plugin || !platform) { toast('In-app purchase is unavailable in this app version.', 'bad'); return; }
+        if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Waiting for store...'; }
+        try {
+            const transaction = await plugin.purchase({
+                productId: NATIVE_PREMIUM_PRODUCT_ID,
+                appAccountToken: state.profile.user_id,
+            });
+            if (transaction?.status === 'cancelled') return;
+            if (transaction?.status === 'pending') { toast('Your purchase is pending. Return after Google Play completes it.', 'ok'); return; }
+            if (btn) btn.textContent = 'Verifying purchase...';
+            await verifyNativePurchase(platform, transaction);
+            await loadProfile();
+            closeUpgradeModal();
+            renderDashboard();
+            track('upgrade_success', { via: platform });
+            toast('Full access is unlocked on every device using this MACPrep account.', 'ok');
+        } catch (error) {
+            toast(error.message || 'Could not complete this purchase.', 'bad');
+        } finally {
+            if (btn && document.body.contains(btn)) { btn.disabled = false; btn.textContent = btn.dataset.prev || 'Unlock full access'; }
+        }
+    }
+
+    async function restoreNativePurchases() {
+        if (!state.token || !state.profile?.user_id) { toast('Sign in before restoring purchases.', 'bad'); return; }
+        const plugin = nativePurchasePlugin();
+        const platform = nativePurchasePlatform();
+        if (!plugin || !platform) { toast('In-app purchase is unavailable in this app version.', 'bad'); return; }
+        try {
+            const result = await plugin.restorePurchases();
+            const transactions = Array.isArray(result?.transactions) ? result.transactions : [];
+            for (const transaction of transactions) await verifyNativePurchase(platform, transaction);
+            await loadProfile();
+            if (state.profile?.premium_unlocked) {
+                closeUpgradeModal();
+                renderDashboard();
+                toast('Full access restored to this device.', 'ok');
+            } else {
+                toast('No Store purchase was found for this MACPrep account. Web and program access can be restored with Refresh account access.', 'bad');
+            }
+        } catch (error) {
+            toast(error.message || 'Could not restore purchases.', 'bad');
+        }
+    }
+
+    async function refreshAccess() {
+        if (!state.token) { toast('Sign in to refresh your account access.', 'bad'); return; }
+        try {
+            await loadProfile();
+            if (!state.profile?.premium_unlocked) {
+                toast('No full-access entitlement was found for this account. Sign in with the account that received access.', 'bad');
+                return;
+            }
+            closeUpgradeModal();
+            renderDashboard();
+            toast('Full access restored to this device.', 'ok');
+        } catch (e) {
+            toast('Could not refresh account access. Please try again.', 'bad');
+        }
+    }
 
     // ---- Critical Events (premium) ----------------------------------------
     // Browse-first emergency reference: an index of the 26 events (grouped by
@@ -4906,9 +5052,9 @@
     // ---- checkout ---------------------------------------------------------
     async function startCheckout(btn) {
         if (btn && btn.disabled) return;
-        // In the native store apps, external (Stripe) purchase is not allowed (App Store 3.1.1)
-        // and a main-frame nav to Stripe is blocked by the WebView anyway — never start checkout.
-        if (isNativeApp()) { try { openUpgradeModal(); } catch (e) {} return; }
+        // Native store apps use StoreKit / Google Play Billing only. The web keeps
+        // Stripe Checkout; neither app ever opens an external purchase flow.
+        if (isNativeApp()) return startNativePurchase(btn);
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Redirecting…'; }
         track('upgrade_click');
         track('checkout_started');
@@ -5129,7 +5275,7 @@
     }
 
     window.MACPrep = {
-        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, submitFeedback, toggleReminders, setTextSize, toggleContrast, toggleDiffColor,
+        go, goRedeem, startQotd, login, signupInline, showSignin, showSignup, signOut, startSession, startDiagnostic, advance, saveProfile, setExamDate, setStudyGoal, startCheckout, startNativePurchase, restoreNativePurchases, submitFeedback, toggleReminders, setTextSize, toggleContrast, toggleDiffColor, refreshAccess,
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, flagFromReview, flashcardFromReview, toggleFlashcard, startFlashcardDeck, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, cohortCodes, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
