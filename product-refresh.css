@@ -63,6 +63,20 @@ body.public-page.public-about {
   border-color: color-mix(in srgb, var(--accent) 38%, var(--line)) !important;
   border-radius: 8px !important;
   background: color-mix(in srgb, var(--accent) 7%, var(--panel)) !important;
+  text-align: center !important;
+}
+
+.public-pricing .pricing-code > strong {
+  display: block;
+  text-align: center;
+}
+
+.public-pricing .pricing-code > .sub {
+  max-width: 620px;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  text-align: center !important;
+  text-wrap: balance;
 }
 
 .public-pricing .pricing-comparison {
