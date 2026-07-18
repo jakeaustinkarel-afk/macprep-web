@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
-  <rect width="2732" height="2732" fill="#146A4A"/>
-  <g transform="translate(1366 1270) scale(1.28) translate(-256 -256)">
+  <rect width="2732" height="2732" fill="#0E1512"/>
+  <rect x="128" y="128" width="2476" height="2476" fill="none" stroke="#B7E9CF" stroke-opacity="0.18" stroke-width="2"/>
+  <rect x="1010" y="785" width="712" height="712" rx="188" fill="#146A4A" stroke="#B7E9CF" stroke-opacity="0.34" stroke-width="4"/>
+  <g transform="translate(1366 1141) scale(1.48) translate(-256 -256)">
     <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="1366" y="1776" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="190" font-weight="700" text-anchor="middle">MACPrep</text>
+  <text x="1366" y="1772" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="700" text-anchor="middle"><tspan fill="#F5F7F5">MAC</tspan><tspan fill="#4FCC8E">Prep</tspan></text>
+  <text x="1366" y="1888" fill="#B7E9CF" font-family="Courier New, monospace" font-size="42" font-weight="700" letter-spacing="9" text-anchor="middle">NCCAA BOARD REVIEW</text>
 </svg>
