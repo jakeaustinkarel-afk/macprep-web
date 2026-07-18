@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
     applyServedFilter,
+    analyticsPlatformFromMeta,
     deleteMacprepAccount,
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
@@ -12,6 +13,7 @@ import {
     registrationProfileError,
     normalizeMobileStore,
     selectUnansweredFreePool,
+    summarizeProductUsage,
     trustedBaseUrl,
     validateAppleTransactionPayload,
     validateGooglePurchasePayload,
@@ -64,6 +66,31 @@ test('mobile store names are allowlisted', () => {
     assert.equal(normalizeMobileStore('apple'), 'apple');
     assert.equal(normalizeMobileStore('google_play'), 'google_play');
     assert.equal(normalizeMobileStore('stripe'), null);
+});
+
+test('product analytics keeps native, web, and legacy events separate', () => {
+    const now = new Date('2026-07-17T12:00:00Z');
+    const rows = [
+        { name: 'app_open', user_id: 'ios-user', meta: { platform: 'ios' }, created_at: '2026-07-17T11:00:00Z' },
+        { name: 'mock_exam_start', user_id: 'ios-user', meta: { platform: 'ios' }, created_at: '2026-07-17T11:01:00Z' },
+        { name: 'session_start', user_id: 'web-user', meta: { platform: 'web' }, created_at: '2026-07-15T12:00:00Z' },
+        { name: 'session_complete', user_id: 'web-user', meta: { platform: 'web' }, created_at: '2026-07-15T12:10:00Z' },
+        { name: 'critical_events_open', user_id: 'legacy-user', meta: {}, created_at: '2026-07-01T12:00:00Z' },
+    ];
+    const usage = summarizeProductUsage(rows, now);
+    const ios = usage.platforms.find((row) => row.platform === 'ios');
+    const web = usage.platforms.find((row) => row.platform === 'web');
+    const untagged = usage.platforms.find((row) => row.platform === 'untagged');
+    const mock = usage.feature_usage.find((row) => row.name === 'mock_exam_start');
+    const critical = usage.feature_usage.find((row) => row.name === 'critical_events_open');
+
+    assert.deepEqual(ios, { platform: 'ios', active_30d: 1, active_7d: 1, entries: 1, sessions: 0, completed: 0 });
+    assert.deepEqual(web, { platform: 'web', active_30d: 1, active_7d: 1, entries: 0, sessions: 1, completed: 1 });
+    assert.equal(untagged.active_30d, 1);
+    assert.deepEqual(mock.by_platform, { web: 0, ios: 1, android: 0, untagged: 0 });
+    assert.deepEqual(critical.by_platform, { web: 0, ios: 0, android: 0, untagged: 1 });
+    assert.equal(analyticsPlatformFromMeta({ platform: 'android' }), 'android');
+    assert.equal(analyticsPlatformFromMeta({ platform: 'desktop' }), 'untagged');
 });
 
 test('registration requires a real AA program and preserves a clean program label', () => {

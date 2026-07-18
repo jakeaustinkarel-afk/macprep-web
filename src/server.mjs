@@ -1177,10 +1177,16 @@ app.get('/api/admin/metrics', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
         const windowDays = 30;
-        const [rollup, { data: feedback }, rev] = await Promise.all([
+        const now = new Date();
+        const usageSince = new Date(now.getTime() - windowDays * 86400000).toISOString();
+        const [rollup, { data: feedback }, rev, analyticsRows] = await Promise.all([
             supabase.rpc('founder_metrics', { p_window_days: windowDays, p_daily_days: 21, p_review_emails: [...REVIEW_EMAILS] }),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
             getStripeRevenue(),
+            fetchAnalyticsEventsSince(usageSince).catch((error) => {
+                console.error('[metrics] analytics usage fetch failed:', error.message);
+                return [];
+            }),
         ]);
         if (rollup.error) throw new Error(rollup.error.message);
         const m = rollup.data;
@@ -1211,6 +1217,7 @@ app.get('/api/admin/metrics', async (req, res) => {
                 { key: 'purchase', label: 'Purchased', n: m.funnel.purchased },
             ],
             event_counts: m.event_counts,
+            product_usage: summarizeProductUsage(analyticsRows, now),
             daily: m.daily,
             monthly_signups: m.signups_by_month || [],
             recent_signups: m.recent_signups,
@@ -1837,7 +1844,88 @@ const ANALYTICS_EVENTS = new Set([
     'page_view', 'landing_view', 'signup', 'login', 'session_start', 'quiz_start',
     'session_complete', 'demo_started', 'demo_completed', 'paywall_hit',
     'checkout_started', 'upgrade_click', 'upgrade_success', 'feedback_submitted',
+    'app_open', 'app_foreground', 'recommended_start', 'diagnostic_start',
+    'specialty_quiz_start', 'mock_exam_start', 'flashcards_start', 'flashcards_done',
+    'critical_events_open', 'arcade_start', 'arcade_over', 'boss_start',
+    'progress_reset', 'upgrade_screen',
 ]);
+const ANALYTICS_PLATFORM_KEYS = ['web', 'ios', 'android', 'untagged'];
+const FEATURE_EVENT_LABELS = new Map([
+    ['recommended_start', 'Recommended set'],
+    ['diagnostic_start', 'Diagnostic'],
+    ['specialty_quiz_start', 'Focused quiz'],
+    ['mock_exam_start', 'Mock Exam'],
+    ['flashcards_start', 'Flashcards'],
+    ['critical_events_open', 'Critical Events'],
+    ['arcade_start', 'Arcade'],
+    ['boss_start', 'Boss Fight'],
+]);
+
+export function analyticsPlatformFromMeta(meta) {
+    const platform = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta.platform : null;
+    return platform === 'web' || platform === 'ios' || platform === 'android' ? platform : 'untagged';
+}
+
+async function fetchAnalyticsEventsSince(since) {
+    const PAGE = 1000;
+    let rows = [];
+    for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase.from('analytics_events')
+            .select('name, user_id, meta, created_at')
+            .gte('created_at', since)
+            .order('created_at', { ascending: false })
+            .range(from, from + PAGE - 1);
+        if (error) throw error;
+        rows = rows.concat(data || []);
+        if (!data || data.length < PAGE) return rows;
+    }
+}
+
+export function summarizeProductUsage(rows, now = new Date()) {
+    const buckets = Object.fromEntries(ANALYTICS_PLATFORM_KEYS.map((platform) => [platform, {
+        active30: new Set(), active7: new Set(), entries: 0, sessions: 0, completed: 0,
+    }]));
+    const featureUsage = Object.fromEntries([...FEATURE_EVENT_LABELS.keys()].map((name) => [name, {
+        total: 0,
+        byPlatform: Object.fromEntries(ANALYTICS_PLATFORM_KEYS.map((platform) => [platform, 0])),
+    }]));
+    const weekAgo = now.getTime() - 7 * 86400000;
+
+    for (const row of rows || []) {
+        const platform = analyticsPlatformFromMeta(row?.meta);
+        const bucket = buckets[platform];
+        const createdAt = new Date(row?.created_at || 0).getTime();
+        if (row?.user_id) {
+            bucket.active30.add(row.user_id);
+            if (createdAt >= weekAgo) bucket.active7.add(row.user_id);
+        }
+        if (row?.name === 'page_view' || row?.name === 'app_open' || row?.name === 'app_foreground') bucket.entries++;
+        if (row?.name === 'session_start') bucket.sessions++;
+        if (row?.name === 'session_complete') bucket.completed++;
+        if (featureUsage[row?.name]) {
+            featureUsage[row.name].total++;
+            featureUsage[row.name].byPlatform[platform]++;
+        }
+    }
+
+    return {
+        platforms: ANALYTICS_PLATFORM_KEYS.map((platform) => ({
+            platform,
+            active_30d: buckets[platform].active30.size,
+            active_7d: buckets[platform].active7.size,
+            entries: buckets[platform].entries,
+            sessions: buckets[platform].sessions,
+            completed: buckets[platform].completed,
+        })),
+        feature_usage: [...FEATURE_EVENT_LABELS.entries()].map(([name, label]) => ({
+            name,
+            label,
+            total: featureUsage[name].total,
+            by_platform: featureUsage[name].byPlatform,
+        })),
+    };
+}
+
 app.post('/api/event', eventLimiter, async (req, res) => {
     if (!supabase) return res.json({ ok: true });
     const name = String(req.body?.name || '');
@@ -1858,21 +1946,9 @@ app.get('/api/admin/analytics', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
         const since = new Date(Date.now() - 30 * 86400000).toISOString();
-        // PostgREST caps a request at ~1000 rows, so page through the full 30-day
-        // window instead of silently seeing only the oldest 1000 events (which made
-        // every "last 7 days" count read ~0).
-        const PAGE = 1000;
-        let rows = [];
-        for (let from = 0; ; from += PAGE) {
-            const { data, error } = await supabase.from('analytics_events')
-                .select('name, user_id, created_at')
-                .gte('created_at', since)
-                .order('created_at', { ascending: false })
-                .range(from, from + PAGE - 1);
-            if (error) throw error;
-            rows = rows.concat(data || []);
-            if (!data || data.length < PAGE) break;
-        }
+        // PostgREST caps a request at ~1000 rows, so use the shared paginated
+        // reader and never quietly drop recent activity from the admin summary.
+        const rows = await fetchAnalyticsEventsSince(since);
         const total = {}; const last7 = {};
         const weekAgo = Date.now() - 7 * 86400000;
         rows.forEach((r) => {

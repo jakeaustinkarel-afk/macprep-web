@@ -340,6 +340,31 @@
             mini('cart', 'Purchases', l7('purchases'), p7('purchases')) +
             '</div>';
 
+        // Native and web events share the same self-hosted store. Historical
+        // events stay explicitly untagged instead of being guessed as web usage.
+        const usage = d.product_usage || { platforms: [], feature_usage: [] };
+        const platformLabels = { web: 'Web', ios: 'iOS', android: 'Android', untagged: 'Legacy / untagged' };
+        const platformRows = usage.platforms || [];
+        html += '<div class="sec">' + svg('activity', 13) + ' Platform adoption · last 30 days</div>';
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('users', 15) + '<h2>Where members study</h2></span><span class="pill">Account-based</span></div>' +
+            '<p class="muted" style="margin:0 0 13px;">Native entries include app opens and returns from the background. Web entries are page views. Older events remain separate until they age out of this window.</p>' +
+            '<div style="overflow-x:auto;"><table><thead><tr><th>Platform</th><th>Active · 30d</th><th>Active · 7d</th><th>Entries</th><th>Sessions</th><th>Completed</th></tr></thead><tbody>';
+        if (!platformRows.length) html += '<tr><td colspan="6" class="muted">No activity yet.</td></tr>';
+        platformRows.forEach(row => {
+            html += '<tr><td><b>' + esc(platformLabels[row.platform] || row.platform) + '</b></td><td>' + (row.active_30d || 0).toLocaleString() + '</td><td>' + (row.active_7d || 0).toLocaleString() + '</td><td>' + (row.entries || 0).toLocaleString() + '</td><td>' + (row.sessions || 0).toLocaleString() + '</td><td>' + (row.completed || 0).toLocaleString() + '</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+
+        const featureUsage = usage.feature_usage || [];
+        html += '<div class="card"><div class="card-h"><span class="hl">' + svg('chart', 15) + '<h2>Feature use · last 30 days</h2></span><span class="pill">Starts and opens</span></div>' +
+            '<div style="overflow-x:auto;"><table><thead><tr><th>Feature</th><th>Total</th><th>Web</th><th>iOS</th><th>Android</th><th>Legacy</th></tr></thead><tbody>';
+        if (!featureUsage.length) html += '<tr><td colspan="6" class="muted">No feature activity yet.</td></tr>';
+        featureUsage.forEach(row => {
+            const byPlatform = row.by_platform || {};
+            html += '<tr><td>' + esc(row.label) + '</td><td><b>' + (row.total || 0).toLocaleString() + '</b></td><td>' + (byPlatform.web || 0).toLocaleString() + '</td><td>' + (byPlatform.ios || 0).toLocaleString() + '</td><td>' + (byPlatform.android || 0).toLocaleString() + '</td><td class="muted">' + (byPlatform.untagged || 0).toLocaleString() + '</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+
         // Credential mix — SAA (students) vs CAA (certified), so you can watch the split over time
         const cm = d.credential_mix || { saa: 0, caa: 0, other: 0, unset: 0 };
         const cmT = cm.saa + cm.caa;

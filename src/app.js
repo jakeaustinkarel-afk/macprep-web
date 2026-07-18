@@ -89,10 +89,21 @@
         return { resp, data };
     }
 
+    function analyticsPlatform() {
+        const platform = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform();
+        return platform === 'ios' || platform === 'android' ? platform : 'web';
+    }
+
     // Privacy-friendly analytics ping (best-effort, never blocks).
     function track(name, meta) {
         try {
-            fetch('/api/event', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ name, meta: meta || {} }), keepalive: true }).catch(() => {});
+            const details = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta : {};
+            fetch('/api/event', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ name, meta: { ...details, platform: analyticsPlatform() } }),
+                keepalive: true,
+            }).catch(() => {});
         } catch (e) { /* ignore */ }
     }
 
@@ -4515,6 +4526,7 @@
         } catch (e) {}
     }
     let _nativeShellInit = false;
+    let _nativeAppWasBackgrounded = false;
     function initNativeShell() {
         if (!isNativeApp() || _nativeShellInit) return; _nativeShellInit = true;
         document.documentElement.classList.add('is-native');
@@ -4543,6 +4555,13 @@
                 const overlay = document.querySelector('body > [id$="-overlay"]');
                 if (overlay) { try { overlay.remove(); } catch (_) {} return; }
                 if (typeof go === 'function') { try { go('dashboard'); } catch (_) {} }
+            });
+            App.addListener('appStateChange', ({ isActive }) => {
+                if (!isActive) { _nativeAppWasBackgrounded = true; return; }
+                if (_nativeAppWasBackgrounded) {
+                    _nativeAppWasBackgrounded = false;
+                    track('app_foreground');
+                }
             });
         }
     }
@@ -5471,7 +5490,6 @@
         syncSignupProgramOptions();
         onCredChange();
         syncThemeColor();
-        track('page_view');
         if (isNativeApp()) initNativeShell();
         // Email-confirmation links land here with the new session in the URL hash.
         const hash = new URLSearchParams((location.hash || '').slice(1));
@@ -5481,6 +5499,8 @@
             history.replaceState({}, '', '/');
         }
         state.token = getToken();
+        track('page_view');
+        if (isNativeApp()) track('app_open');
         // Opening the theme/font picker should also dismiss any open nav dropdown.
         ['theme-toggle', 'font-toggle'].forEach((id) => { const b = $(id); if (b) b.addEventListener('click', closeNavMenus); });
         $('domain-select') && $('domain-select').addEventListener('change', updateSessionHint);
