@@ -256,27 +256,17 @@
         /* The native OS splash covers the first paint; this picks up the moment the
            web shell becomes available, so a slow profile/session fetch never exposes a blank page. */
         #native-boot { display: none; }
-        html.is-native #native-boot { position: fixed; inset: 0; z-index: 7000; display: grid; place-items: center; overflow: hidden; isolation: isolate; background: #0E1512; color: #F5F7F5; transition: opacity .32s ease, visibility .32s ease; }
-        html.is-native #native-boot::before, html.is-native #native-boot::after { content: ''; position: absolute; left: -12vw; right: -12vw; height: 1px; background: #1F7A58; opacity: .38; z-index: -1; }
-        html.is-native #native-boot::before { top: 35%; }
-        html.is-native #native-boot::after { bottom: 29%; }
+        html.is-native #native-boot { position: fixed; inset: 0; z-index: 7000; display: grid; place-items: center; background: #146A4A; color: #FFFFFF; transition: opacity .28s ease, visibility .28s ease; }
         html.is-native #native-boot.is-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
-        .native-boot-stage { width: min(82vw, 356px); display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .native-boot-monitor { width: min(118vw, 610px); height: auto; margin: 0 -20vw -13px; overflow: visible; }
-        .native-boot-monitor path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-        .native-boot-monitor .native-boot-trace-base { stroke: #1F7A58; stroke-width: 3; }
-        .native-boot-monitor .native-boot-trace-live { stroke: #4FCC8E; stroke-width: 3; stroke-dasharray: 68 590; stroke-dashoffset: 658; animation: nativeTrace 2.15s linear infinite; }
-        .native-boot-mark { width: 104px; height: 104px; margin: -13px 0 17px; display: grid; place-items: center; border-radius: 24px; background: #146A4A; animation: nativeMarkPulse 2.15s ease-in-out infinite; }
+        .native-boot-stage { width: min(76vw, 280px); display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .native-boot-mark { width: 72px; height: 72px; margin: 0 0 18px; display: grid; place-items: center; }
         .native-boot-mark svg { width: 72px; height: 72px; }
-        .native-boot-wordmark { font-family: 'Figtree', ui-monospace, system-ui, sans-serif; font-size: 31px; font-weight: 800; letter-spacing: 0; line-height: 1; }
-        .native-boot-wordmark span:last-child { color: #4FCC8E; }
-        .native-boot-label { margin: 11px 0 18px; color: #B7E9CF; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 700; letter-spacing: 1.55px; text-transform: uppercase; }
-        .native-boot-progress { width: 132px; height: 3px; overflow: hidden; background: #1F7A58; }
-        .native-boot-progress::before { content: ''; display: block; width: 44%; height: 100%; background: #4FCC8E; animation: nativeProgress 1.35s ease-in-out infinite; }
-        @keyframes nativeTrace { to { stroke-dashoffset: 0; } }
-        @keyframes nativeMarkPulse { 0%,100% { transform: scale(1); } 48% { transform: scale(1.045); } 58% { transform: scale(1); } }
-        @keyframes nativeProgress { 0% { transform: translateX(-120%); } 55%,100% { transform: translateX(270%); } }
-        @media (prefers-reduced-motion: reduce) { .native-boot-monitor .native-boot-trace-live, .native-boot-mark, .native-boot-progress::before { animation: none !important; } .native-boot-progress::before { transform: translateX(78%); } }
+        .native-boot-wordmark { font-family: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: 0; line-height: 1; }
+        .native-boot-label { margin: 13px 0 20px; color: #D9F1E4; font-size: 13px; font-weight: 500; line-height: 1.4; }
+        .native-boot-progress { width: 104px; height: 2px; overflow: hidden; background: rgba(255,255,255,.28); }
+        .native-boot-progress::before { content: ''; display: block; width: 42%; height: 100%; background: #FFFFFF; animation: nativeProgress 1.3s ease-in-out infinite; }
+        @keyframes nativeProgress { 0% { transform: translateX(-125%); } 56%,100% { transform: translateX(270%); } }
+        @media (prefers-reduced-motion: reduce) { .native-boot-progress::before { animation: none !important; transform: translateX(75%); } }
         @keyframes flamePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
         @keyframes explReveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         #explanation-pane:not(.hidden) { animation: explReveal .35s cubic-bezier(.2,.8,.2,1); }
@@ -611,14 +601,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <div id="global-loading" class="hidden" aria-hidden="true"><div class="spinner"></div></div>
     <div id="native-boot" role="status" aria-label="MACPrep is preparing your study space">
         <div class="native-boot-stage">
-            <svg class="native-boot-monitor" viewBox="0 0 640 118" aria-hidden="true">
-                <path class="native-boot-trace-base" d="M0 62H104l28-28 28 56 42-82 40 106 42-74 30 22h326" />
-                <path class="native-boot-trace-live" d="M0 62H104l28-28 28 56 42-82 40 106 42-74 30 22h326" />
-            </svg>
             <div class="native-boot-mark" aria-hidden="true">
                 <svg viewBox="0 0 512 512"><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <div class="native-boot-wordmark"><span>MAC</span><span>Prep</span></div>
+            <div class="native-boot-wordmark">MACPrep</div>
             <p class="native-boot-label">Preparing your study space</p>
             <div class="native-boot-progress" aria-hidden="true"></div>
         </div>
