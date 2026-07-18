@@ -886,8 +886,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 34;
+    const WHATS_NEW_VERSION = 35;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 18', title: 'Repeat review answers grade normally', desc: 'Questions you have practiced before can now be answered again in Recommended, Review, Tutor, Arcade, and later mock-exam sessions without a grading error. Repeat attempts still update your spaced review and progress, while retry-safe exam submissions remain protected. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Safer accounts, steadier study progress', desc: 'Sign-in now stays in protected browser cookies, password protections are stronger, mock-exam submissions retry safely, and purchases, refunds, and cohort codes reconcile more reliably. Practice estimates and SAA comparisons now use clearer sample rules and labels. Available on the web and current MACPrep mobile shell. An older open tab may ask you to sign in once.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A simpler path to study', desc: 'The public site now makes it easier to start with the right account setup, scan pricing on a phone, browse guides, and find answers without wading through long pages. Available on the web and the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Clearer cohort-code guidance', desc: 'The pricing page now centers the cohort-code instructions, making it easier to spot the right next step when your class or program gave you a code. Available on the web and current MACPrep mobile shell.' },

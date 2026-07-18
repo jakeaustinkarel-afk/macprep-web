@@ -902,7 +902,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         ok: true,
         service: 'macprep',
-        build: 'security-entitlements-20260718.1',
+        build: 'repeat-grading-20260718.1',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
         serve_filler: SERVE_FILLER,

@@ -299,6 +299,15 @@ test('exam submission migration makes batch retries idempotent', async () => {
     assert.match(migration, /\(user_id, submission_id, question_id\)/);
 });
 
+test('repeat-attempt migration removes only the legacy per-question uniqueness rule', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718192649_allow_repeat_question_attempts.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /drop constraint if exists unique_user_question/);
+    assert.match(migration, /drop index if exists public\.unique_user_question/);
+    assert.match(migration, /create index if not exists idx_user_progress_user_question/);
+    assert.doesNotMatch(migration, /create unique index if not exists idx_user_progress_user_question/);
+    assert.doesNotMatch(migration, /drop index if exists public\.idx_user_progress_submission_question/);
+});
+
 test('account entitlement migration makes every grant server-only and replay-safe', async () => {
     const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718201718_account_entitlement_ledger.sql', import.meta.url)), 'utf8');
     assert.match(migration, /create table if not exists public\.account_entitlements/);
