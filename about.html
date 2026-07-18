@@ -126,8 +126,9 @@
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.macprep.org/#organization","name":"MACPrep","url":"https://www.macprep.org/","logo":"https://www.macprep.org/icon-512.png","description":"NCCAA board-review question bank for CAAs and SAAs — a cited source and a full rationale on every question.","sameAs":["https://www.facebook.com/profile.php?id=61591253695681","https://www.instagram.com/macprep_/","https://www.linkedin.com/company/130213953/","https://x.com/MACPrep_"]}</script>
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.macprep.org/"},{"@type":"ListItem","position":2,"name":"About","item":"https://www.macprep.org/about"}]}</script>
     <link rel="stylesheet" href="/public-shell.css">
+    <link rel="stylesheet" href="/product-refresh.css">
 </head>
-<body class="public-page">
+<body class="public-page public-about">
     <div class="header-bar">
         <a href="/index.html" class="brand-logo" style="display:inline-flex;align-items:center;gap:9px;"><svg width="24" height="24" viewBox="0 0 512 512" style="flex:none;" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="var(--on-accent)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg><span>MAC<span class="accent">Prep</span></span></a>
         <button class="nav-toggle" aria-label="Menu" aria-controls="site-nav" onclick="document.getElementById('site-nav').classList.toggle('nav-open')">☰</button>
@@ -146,26 +147,32 @@
         <h1>NCCAA board review, built by a practicing CAA</h1>
         <p class="sub">MACPrep isn't a content mill, and it isn't a nurse-anesthesia bank retrofitted for CAAs. It's the board-prep resource I wanted for my own exams — and the one I now use to teach the students I precept.</p>
 
-        <div style="max-width:720px;margin:36px auto 0;display:flex;gap:22px;align-items:center;flex-wrap:wrap;text-align:left;">
-            <div style="flex:none;width:92px;height:92px;border-radius:50%;overflow:hidden;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;position:relative;">
+        <div class="about-founder" style="max-width:720px;margin:36px auto 0;display:flex;gap:22px;align-items:center;flex-wrap:wrap;text-align:left;">
+            <div class="about-founder-photo" style="flex:none;width:92px;height:92px;border-radius:50%;overflow:hidden;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;position:relative;">
                 <span style="font-family:'Figtree',ui-monospace,sans-serif;font-weight:800;font-size:29px;color:var(--accent);">JK</span>
                 <img src="/founder.jpg" alt="Jake Karel, CAA — founder of MACPrep" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
             </div>
-            <div style="flex:1;min-width:240px;">
+            <div class="about-founder-copy" style="flex:1;min-width:240px;">
                 <h2 style="margin:0 0 4px;">Hi — I'm Jake Karel, CAA.</h2>
                 <p style="color:var(--muted);margin:0;font-size:14px;">Certified Anesthesiologist Assistant · Founder, MACPrep LLC</p>
             </div>
         </div>
 
-        <div style="max-width:720px;margin:24px auto 0;text-align:left;font-size:16px;line-height:1.75;color:var(--text2);">
+        <div class="about-copy" style="max-width:720px;margin:24px auto 0;text-align:left;font-size:16px;line-height:1.75;color:var(--text2);">
             <p>I'm a Certified Anesthesiologist Assistant in active clinical practice. I built MACPrep because, when I went looking for board prep in our field, what I found was outdated, uncited, or overpriced — and a lot of it was really nurse-anesthesia material with "CAA" stamped on the cover.</p>
             <p>So I built the thing I wished existed: a question bank written from the ground up for the NCCAA exam, where <strong style="color:var(--text);">every answer choice</strong> has a rationale and <strong style="color:var(--text);">every question</strong> links to a source you can open and verify yourself. Nothing goes live until a practicing clinician has signed off on it. That's not a tagline — it's the whole point.</p>
             <p>It's the resource I wish I'd had for my own boards, and it's the tool I use to teach the SAAs I precept between cases. In medicine, you should be able to trust — and check — every answer you study. MACPrep is built so you always can.</p>
             <p>Whether you're an SAA sitting for certification or a CAA due for recertification, I hope it helps you walk in ready. And if something's ever wrong, tell me — <a href="mailto:support@macprep.org" style="color:var(--accent);">support@macprep.org</a> comes straight to me.</p>
         </div>
 
-        <div style="max-width:720px;margin:26px auto 0;text-align:left;">
+        <div class="about-trust-link" style="max-width:720px;margin:26px auto 0;text-align:left;">
             <a href="/why-trust-us" style="color:var(--accent);font-weight:600;text-decoration:none;">See exactly how every question is written, cited &amp; reviewed →</a>
+        </div>
+
+        <div class="about-proof-grid" aria-label="MACPrep quality standards">
+            <div><span>01</span><strong>CAA-specific</strong><p>Built for the NCCAA blueprint and real AA practice.</p></div>
+            <div><span>02</span><strong>Cited sources</strong><p>Every published question points to a source you can check.</p></div>
+            <div><span>03</span><strong>Per-choice rationales</strong><p>Understand why every option is right or wrong.</p></div>
         </div>
 
         <div class="cta">

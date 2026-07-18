@@ -849,8 +849,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 30;
+    const WHATS_NEW_VERSION = 31;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'A clearer study command center', desc: 'Your dashboard now puts readiness, your daily goal, and the recommended set first. Exam pace, domain mastery, review work, and study modes are easier to scan, while every saved theme and font choice still applies. The landing page, pricing, FAQ, and About page now share the same warmer, more focused presentation. Available on the web and the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A clearer place to start', desc: 'The MACPrep landing page now leads with a cleaner study path: try real questions, see your next focus, and understand full access without digging through the page. The study workspace keeps every saved theme and font choice. Available on the web and in the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A more cohesive MACPrep', desc: 'The landing page, pricing, guides, trust pages, and signed-in study views now share a warmer, calmer visual system that keeps the focus on your next study step. Your saved theme and font still shape the learning workspace. Available on the web and in the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A dashboard that feels like yours', desc: 'Your dashboard now has calmer surfaces, clearer study feedback, and friendlier ways to scan what matters next. Every theme and font choice stays yours: Warm Paper, Mist, bright palettes, and dark workspaces all carry the refreshed design. Available on the web and the current mobile shell.' },
@@ -1258,8 +1259,8 @@
         const rings = `<div class="dash-momentum-rings">`
             + `<svg id="mom-rings" width="150" height="150" viewBox="0 0 150 150" role="group" aria-label="Momentum rings — hover a ring for detail" style="display:block;overflow:visible;">`
             + ringMeta.map(ringGroup).join('')
-            + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);pointer-events:none;">${toGoal || '✓'}</text>`
-            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">${toGoal ? 'TO GOAL' : 'DONE'}</text></svg>`
+            + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);pointer-events:none;">${readiness}%</text>`
+            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">READINESS</text></svg>`
             + `<div id="mom-tip" role="status" aria-live="polite" style="display:none;position:absolute;left:0;top:156px;width:210px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;box-shadow:0 8px 24px rgba(0,0,0,.14);"></div>`
             + `</div>`;
         const legend = `<div class="dash-momentum-legend">`

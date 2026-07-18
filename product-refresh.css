@@ -1,0 +1,407 @@
+/*
+ * July 2026 product-surface refresh.
+ * This file intentionally sits after the legacy page styles so the public pages and
+ * signed-in dashboard share a clear hierarchy without changing their data or actions.
+ */
+
+/* Public pages ----------------------------------------------------------- */
+body.public-page.public-pricing,
+body.public-page.public-faq,
+body.public-page.public-about {
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+}
+
+.public-page.public-pricing .wrap,
+.public-page.public-faq .wrap,
+.public-page.public-about .wrap {
+  width: min(100% - 48px, 1120px);
+  padding-top: 58px;
+  padding-bottom: 76px;
+}
+
+.public-page.public-pricing .wrap > h1,
+.public-page.public-faq .wrap > h1,
+.public-page.public-about .wrap > h1 {
+  font-family: var(--public-display);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.02;
+}
+
+.public-page.public-pricing .wrap > h1,
+.public-page.public-faq .wrap > h1 {
+  max-width: 720px;
+  margin: 14px auto 12px;
+  text-align: center;
+  font-size: clamp(40px, 6vw, 64px);
+}
+
+.public-page.public-pricing .wrap > .sub,
+.public-page.public-faq .wrap > .sub {
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.public-page.public-pricing .tag,
+.public-page.public-faq .tag,
+.public-page.public-about .tag {
+  display: inline-flex;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 6px 11px;
+}
+
+.public-pricing .pricing-code {
+  max-width: 760px !important;
+  margin-top: 26px !important;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line)) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel)) !important;
+}
+
+.public-pricing .pricing-comparison {
+  max-width: 900px !important;
+  border-radius: 8px !important;
+  background: var(--panel);
+  box-shadow: 0 22px 42px -38px color-mix(in srgb, var(--text) 42%, transparent);
+}
+
+.public-pricing .anchor-line {
+  max-width: 680px;
+  margin: 34px auto 0;
+  color: var(--text);
+  font-family: var(--public-display);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 600;
+  line-height: 1.17;
+  text-align: center;
+}
+
+.public-pricing .value {
+  max-width: 840px;
+  margin: 30px auto;
+  padding: 24px 26px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+
+.public-pricing .value h3 {
+  font-family: var(--public-display);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.public-pricing .pricing-plans {
+  max-width: 760px;
+  margin: 34px auto 0;
+  gap: 16px;
+}
+
+.public-pricing .pricing-plans .card {
+  display: flex;
+  min-height: 430px;
+  flex-direction: column;
+  padding: 28px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 20px 34px -34px color-mix(in srgb, var(--text) 50%, transparent);
+}
+
+.public-pricing .pricing-plans .card:last-child {
+  border-color: var(--accent) !important;
+  box-shadow: 0 24px 44px -34px color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
+.public-pricing .pricing-plans h2 {
+  margin-top: 18px;
+  font-family: var(--public-display);
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.public-pricing .pricing-plans ul { padding-left: 18px; line-height: 1.65; }
+.public-pricing .pricing-plans li::marker { color: var(--accent); }
+.public-pricing .pfaq { max-width: 840px; margin: 64px auto 0; }
+.public-pricing .pfaq > h2 { font-family: var(--public-display); font-weight: 600; letter-spacing: 0; }
+
+.public-pricing .pfaq .qa,
+.public-faq .qa {
+  margin-top: 0;
+  padding: 20px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.public-pricing .pfaq .qa h3,
+.public-faq .qa h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  font-size: 17px;
+}
+
+.public-pricing .pfaq .qa h3::after,
+.public-faq .qa h3::after {
+  content: "+";
+  flex: none;
+  color: var(--accent);
+  font-family: ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.public-pricing .pfaq .qa p,
+.public-faq .qa p { max-width: 820px; margin: 10px 38px 0 0; line-height: 1.68; }
+
+.public-faq .wrap { max-width: 940px; }
+.public-faq .wrap > .tag { display: flex; width: fit-content; margin: 0 auto; }
+.public-faq .faq-topicbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+  margin: 30px auto 12px;
+}
+.public-faq .faq-topicbar a {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text2);
+  padding: 9px 12px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.public-faq .faq-topicbar a:first-child,
+.public-faq .faq-topicbar a:hover { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.public-faq .qa { padding: 22px 4px; }
+.public-faq .qa:first-of-type { border-top: 1px solid var(--line); margin-top: 38px; }
+
+.public-about .wrap { max-width: 980px; }
+.public-about .wrap > div:first-of-type { text-align: left !important; }
+.public-about .wrap > h1 { max-width: 690px; margin: 14px 0 14px; font-size: clamp(42px, 5vw, 64px); }
+.public-about .wrap > .sub { max-width: 640px; margin: 0; font-size: 18px; line-height: 1.65; }
+
+.public-about .about-founder {
+  max-width: none !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(260px, .92fr);
+  gap: clamp(30px, 6vw, 76px) !important;
+  align-items: start !important;
+  margin-top: 52px !important;
+  padding: 30px 0 34px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.public-about .about-founder-photo {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  background: var(--accent-dim) !important;
+}
+
+.public-about .about-founder-copy { align-self: center; }
+.public-about .about-founder-copy h2 { font-family: var(--public-display); font-size: 30px; font-weight: 600; letter-spacing: 0; }
+.public-about .about-copy { max-width: 720px !important; margin: 32px 0 0 !important; font-size: 17px !important; }
+.public-about .about-trust-link { max-width: 720px !important; margin: 26px 0 0 !important; }
+.public-about .about-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  max-width: 940px;
+  margin: 50px 0 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.public-about .about-proof-grid > div { padding: 24px 24px 24px 0; }
+.public-about .about-proof-grid > div + div { padding-left: 24px; border-left: 1px solid var(--line); }
+.public-about .about-proof-grid span { display: block; color: var(--accent); font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+.public-about .about-proof-grid strong { display: block; margin-top: 8px; color: var(--text); font-size: 17px; }
+.public-about .about-proof-grid p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.public-about .cta { text-align: left; margin: 38px 0 0; }
+
+/* Landing --------------------------------------------------------------- */
+body:not(.app-authed) #login-view .lp-proof-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 540px;
+  margin: 22px 0 2px;
+}
+
+body:not(.app-authed) #login-view .lp-proof-points span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+body:not(.app-authed) #login-view .lp-proof-points span::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 50%;
+  background: var(--accent-dim);
+  box-shadow: inset 0 0 0 3px var(--panel);
+}
+
+body:not(.app-authed) #login-view .lp-hero-path > div > span:not(.lp-path-num) {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Views move focus to their heading for assistive technology. That is useful for
+ * screen readers, but the heading itself is not an interactive control. */
+body h1:focus-visible,
+body h2:focus-visible,
+body h3:focus-visible { outline: none; }
+
+/* Signed-in dashboard --------------------------------------------------- */
+body.app-authed #dashboard-view:not(.hidden) {
+  width: min(100% - 44px, 1260px);
+  max-width: 1260px;
+  gap: 18px;
+  padding-top: 30px;
+  padding-bottom: 58px;
+}
+
+body.app-authed #dashboard-view > .card,
+body.app-authed #dashboard-view .dash-col > .card {
+  border-radius: 8px;
+  box-shadow: 0 16px 28px -30px color-mix(in srgb, var(--text) 56%, transparent);
+}
+
+body.app-authed #momentum-card.dash-hero {
+  padding: clamp(22px, 3vw, 34px);
+  background: color-mix(in srgb, var(--accent-dim) 74%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line)) !important;
+  box-shadow: 0 26px 46px -42px color-mix(in srgb, var(--accent) 76%, transparent);
+}
+
+body.app-authed .dash-hero-head { margin-bottom: 24px; }
+body.app-authed .dash-hero-title { font-size: clamp(28px, 3vw, 38px); font-weight: 700; }
+body.app-authed .dash-hero-layout { grid-template-columns: minmax(245px, .78fr) minmax(330px, 1.22fr); gap: clamp(26px, 5vw, 64px); }
+body.app-authed .dash-hero-progress { gap: 22px; }
+body.app-authed .dash-momentum-rings svg { width: 176px; height: 176px; }
+body.app-authed .dash-hero-action { padding-left: clamp(24px, 4vw, 52px); }
+body.app-authed .dash-hero-action-title { font-size: clamp(22px, 2.5vw, 30px); }
+body.app-authed .dash-focus-grid { margin-top: 24px; padding-top: 18px; }
+body.app-authed .dash-focus-stat { padding: 0 clamp(10px, 1.4vw, 20px); }
+body.app-authed .dash-focus-stat .n { font-size: 22px; }
+
+body.app-authed #dashboard-view > .grid.cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 6px !important;
+  order: -7 !important;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+body.app-authed #dashboard-view > .grid.cols-3 .stat {
+  min-height: 94px;
+  padding: 18px 22px;
+  text-align: left;
+  background: transparent;
+}
+
+body.app-authed #dashboard-view > .grid.cols-3 .stat + .stat { border-left: 1px solid var(--line); }
+body.app-authed #dashboard-view > .grid.cols-3 .stat .n { color: var(--accent); font-size: 30px; }
+body.app-authed #dashboard-view > .grid.cols-3 .stat .l { margin-top: 4px; }
+
+body.app-authed #studymodes-card.dash-study-modes {
+  order: -5 !important;
+  padding: clamp(20px, 2.5vw, 28px);
+  background: color-mix(in srgb, var(--info) 6%, var(--panel));
+}
+
+body.app-authed .sm-bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+body.app-authed .sm-tile { min-height: 142px; padding: 15px; border-radius: 8px; }
+body.app-authed .sm-rec { min-height: 294px; }
+body.app-authed .sm-mock { min-height: 142px; }
+
+body.app-authed .dash-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.34fr) minmax(310px, .78fr);
+  gap: 18px;
+  margin: 0 0 6px;
+}
+
+body.app-authed .dash-col { gap: 18px; }
+body.app-authed #readiness { padding: clamp(22px, 2.8vw, 30px); }
+body.app-authed #readiness > h3,
+body.app-authed #activity-card h3,
+body.app-authed #achievements-card h3 { font-family: var(--font); font-size: 20px; letter-spacing: 0; }
+body.app-authed #dailyquests-card { background: color-mix(in srgb, var(--good) 7%, var(--panel)); }
+body.app-authed #qotd-card { background: color-mix(in srgb, var(--warn) 8%, var(--panel)); }
+body.app-authed #activity-card { background: color-mix(in srgb, var(--accent) 4%, var(--panel)); }
+body.app-authed #achievements-card { background: color-mix(in srgb, var(--info) 5%, var(--panel)); }
+body.app-authed #specialty-perf { padding: 2px; }
+body.app-authed #free-allowance-card { order: 5 !important; }
+
+@media (max-width: 900px) {
+  body.app-authed #dashboard-view:not(.hidden) { width: min(100% - 28px, 760px); padding-top: 22px; }
+  body.app-authed .dash-hero-layout { grid-template-columns: 1fr; gap: 22px; }
+  body.app-authed .dash-hero-action { border-top: 1px solid var(--line); border-left: 0; padding: 22px 0 0; }
+  body.app-authed .dash-cols { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .public-page.public-pricing .wrap,
+  .public-page.public-faq .wrap,
+  .public-page.public-about .wrap { width: min(100% - 32px, 1120px); padding-top: 38px; }
+  .public-page.public-pricing .wrap > h1,
+  .public-page.public-faq .wrap > h1,
+  .public-page.public-about .wrap > h1 { font-size: 40px; }
+  .public-pricing .pricing-comparison { margin-left: -16px !important; margin-right: -16px !important; }
+  .public-pricing .pricing-plans { grid-template-columns: 1fr; }
+  .public-pricing .pricing-plans .card { min-height: 0; }
+  .public-about .about-founder { grid-template-columns: 1fr; gap: 24px !important; }
+  .public-about .about-founder-photo { max-width: 440px; }
+  .public-about .about-proof-grid { grid-template-columns: 1fr; }
+  .public-about .about-proof-grid > div,
+  .public-about .about-proof-grid > div + div { padding: 18px 0; border-left: 0; border-top: 1px solid var(--line); }
+  .public-about .about-proof-grid > div:first-child { border-top: 0; }
+  body:not(.app-authed) #login-view .lp-proof-points { grid-template-columns: 1fr; gap: 7px; }
+  body.app-authed #dashboard-view > .grid.cols-3 { grid-template-columns: 1fr; }
+  body.app-authed #dashboard-view > .grid.cols-3 .stat + .stat { border-top: 1px solid var(--line); border-left: 0; }
+  body.app-authed #dashboard-view > .grid.cols-3 .stat { min-height: auto; padding: 15px 16px; }
+  body.app-authed .dash-hero-progress { align-items: flex-start; flex-direction: column; }
+  body.app-authed .dash-momentum-rings svg { width: 160px; height: 160px; }
+  body.app-authed .dash-focus-grid { grid-template-columns: 1fr; gap: 12px; }
+  body.app-authed .dash-focus-stat,
+  body.app-authed .dash-focus-stat + .dash-focus-stat { padding: 0; border-left: 0; }
+  body.app-authed .sm-bento { grid-template-columns: 1fr 1fr; }
+  body.app-authed .sm-rec,
+  body.app-authed .sm-mock { grid-column: 1 / -1; grid-row: auto; min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.app-authed .dash-level-progress > span { transition: none; }
+}

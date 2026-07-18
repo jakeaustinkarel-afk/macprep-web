@@ -713,6 +713,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <span class="lp-eyebrow">NCCAA board review · for SAAs &amp; CAAs</span>
                     <h1 class="lp-h1">Make your next<br>study step <span class="grad-text">obvious.</span></h1>
                     <p class="lp-lead" style="max-width:34ch;"><strong style="color:var(--text);">1,500+ clinician-written questions</strong> — a rationale for <em>every</em> answer, a verifiable journal citation, progress tracking, and a <strong style="color:var(--text);">100% Pass Guarantee</strong>.</p>
+                    <div class="lp-proof-points" aria-label="MACPrep quality standards">
+                        <span>CAA-specific blueprint</span>
+                        <span>Clinician-reviewed</span>
+                        <span>Cited explanations</span>
+                    </div>
                     <div class="lp-ctarow">
                         <a href="#signup-pane" class="lp-btn lp-btn-primary lp-btn-lg">Start free →</a>
                         <a href="#demo-card" class="lp-btn lp-btn-ghost lp-btn-lg">See sample questions</a>
@@ -1812,6 +1817,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       @keyframes luFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(360px) rotate(var(--luRot,360deg));opacity:0}}
       @media(prefers-reduced-motion:reduce){#levelup-overlay{animation:none;}#levelup-overlay .lu-num{animation:none;}#levelup-overlay .lu-confetti{display:none;}}
     </style>
+    <link rel="stylesheet" href="/product-refresh.css">
     <script src="/src/app.js"></script>
     <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
     <!-- Landing social proof: pull real approved reviews and reveal the section only if there are any. -->
