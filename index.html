@@ -1331,14 +1331,33 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         </div>
     </div>
 
-    <!-- ADMIN REVIEW QUEUE (program directors / SMEs only) -->
+    <!-- ADMIN REVIEW MODERATION (owner-only utility) -->
     <div class="wrap hidden" id="admin-view">
         <h2 class="view-title">Admin</h2>
         <div class="card hidden" id="admin-analytics"></div>
-        <div class="card hidden" id="admin-vouchers"></div>
         <h2 id="admin-review-title" style="margin-top:8px;">Content review</h2>
         <p class="sub" id="admin-sub">Vet each question, edit if needed, then Publish (clinician-approved) or Reject. <span id="admin-counts" class="mono" style="color:var(--muted);"></span></p>
         <div id="admin-body"></div>
+    </div>
+
+    <!-- Standalone review operations page. It deliberately shares no DOM with cohort codes. -->
+    <div class="wrap hidden" id="review-queue-view">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+            <div>
+                <div class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Admin operations</div>
+                <h2 class="view-title" style="margin:0;">Items to review</h2>
+                <p class="sub" style="margin:7px 0 0;max-width:700px;">Review new question drafts, proposed answer edits, and held user reviews. Nothing reaches the live product until you approve it.</p>
+            </div>
+            <button class="btn ghost" type="button" onclick="MACPrep.reviewQueue()">Refresh queue</button>
+        </div>
+        <div id="review-queue-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin-bottom:18px;"></div>
+        <div id="review-queue-body"><div class="mono" style="color:var(--muted);">Loading review queue...</div></div>
+    </div>
+
+    <!-- Cohort codes are isolated from the review queue so the two admin jobs cannot overlap. -->
+    <div class="wrap hidden" id="cohort-codes-view">
+        <h2 class="view-title">Cohort code generator</h2>
+        <div class="card" id="admin-vouchers"></div>
     </div>
 
     <div class="wrap hidden" id="leaderboard-view">

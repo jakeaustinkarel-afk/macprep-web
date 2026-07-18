@@ -9,6 +9,7 @@
         catalog: { total: 0, categories: [] },
         qotd: null,
         session: null,       // { pool, index, answered, correct, size, domain }
+        adminSurface: null,  // keeps async admin panels from rendering over one another
         loginInFlight: false,
     };
 
@@ -111,7 +112,7 @@
         return h + '</div>';
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
+    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'review-queue-view', 'cohort-codes-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -133,7 +134,8 @@
         // Admin view is owner-only. A program director / faculty (or anyone non-admin) can
         // never land on it — every admin API 403s them anyway, but this closes the direct
         // go('admin') path so they never even see the shell.
-        if (view === 'admin' && !(state.profile && state.profile.is_admin)) view = 'dashboard';
+        if ((view === 'admin' || view === 'review-queue' || view === 'cohort-codes') && !(state.profile && state.profile.is_admin)) view = 'dashboard';
+        if (view !== 'admin' && view !== 'review-queue' && view !== 'cohort-codes') state.adminSurface = null;
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
         document.body.classList.toggle('app-authed', authed); // drives the desktop sidebar shell
@@ -160,8 +162,8 @@
         // Tier badge shows for signed-in non-admins; admins get the Admin section instead.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
-        const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements' }[view];
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
+        const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements', 'review-queue': 'nav-admin-review', 'cohort-codes': 'nav-admin-codes' }[view];
+        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-admin-review', 'nav-admin-codes'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
         if (authed) { renderSidebarAccount(); applySidebarPref(); }
         // "Redeem code" is only useful to free users (premium/admin already have full access).
         const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
@@ -4699,12 +4701,10 @@
 
     async function reviewQueue() {
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
-        go('admin');
-        const t = $('admin-review-title'); if (t) { t.style.display = ''; t.textContent = 'Content review'; }
-        const sub = $('admin-sub'); if (sub) { sub.style.display = ''; sub.innerHTML = 'One queue for everything awaiting review — new AI-authored questions and proposed answer edits. Publish / Approve applies to the live bank; the original is untouched until you do. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>'; }
-        const an = $('admin-analytics'); if (an) an.classList.add('hidden'); // analytics lives under Metrics only
-        loadVouchers();
-        const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue…</div>';
+        state.adminSurface = 'review';
+        go('review-queue');
+        const summary = $('review-queue-summary'); if (summary) summary.innerHTML = '';
+        const wrap = $('review-queue-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue...</div>';
         try {
             const [qr, er, rr] = await Promise.all([
                 apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() }).catch(() => ({ data: {} })),
@@ -4716,6 +4716,7 @@
             // Flagged user reviews (auto-held for language) land in the same queue as questions/edits.
             const flaggedReviews = ((rr.data && rr.data.reviews) || []).filter((rv) => rv.status === 'pending');
             const qc = (qr.data && qr.data.counts) || {}, ec = (er.data && er.data.counts) || {};
+            if (state.adminSurface !== 'review') return;
             state.review = {
                 list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e })), ...flaggedReviews.map((rv) => ({ kind: 'review', rv }))],
                 index: 0,
@@ -4723,16 +4724,32 @@
             };
             renderReview();
         } catch (e) {
-            if (wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`;
+            if (state.adminSurface === 'review' && wrap) wrap.innerHTML = `<div class="mono" style="color:var(--bad);">${escapeHtml(e.message)}</div>`;
         }
     }
 
-    function renderReview() {
-        const r = state.review; const wrap = $('admin-body'); if (!r || !wrap) return;
+    function reviewQueueBody() { return $('review-queue-body'); }
+    function renderReviewSummary() {
+        const r = state.review; const summary = $('review-queue-summary'); if (!r || !summary) return;
         const c = r.counts || {};
-        const cnt = $('admin-counts'); if (cnt) cnt.textContent = `${c.sme_review || 0} new · ${c.editsPending || 0} edits · ${c.flaggedReviews || 0} flagged reviews · ${c.published || 0} published · ${c.rejected || 0} rejected`;
+        const stats = [
+            ['Question drafts', c.sme_review || 0],
+            ['Answer edits', c.editsPending || 0],
+            ['Held reviews', c.flaggedReviews || 0],
+            ['Published', c.published || 0],
+            ['Rejected', c.rejected || 0],
+        ];
+        summary.innerHTML = stats.map(([label, value]) => `<div style="border:1px solid var(--line);background:var(--panel);padding:12px 14px;border-radius:6px;min-width:0;">
+            <div style="font-size:22px;font-weight:700;line-height:1;">${value}</div>
+            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.5px;">${label}</div>
+        </div>`).join('');
+    }
+
+    function renderReview() {
+        const r = state.review; const wrap = reviewQueueBody(); if (!r || !wrap) return;
+        renderReviewSummary();
         if (!r.list.length || r.index >= r.list.length) {
-            wrap.innerHTML = '<div class="card"><h3>All caught up 🎉</h3><div class="mono" style="color:var(--muted);">Nothing awaiting review — new questions, proposed edits, and flagged reviews all land here.</div></div>';
+            wrap.innerHTML = '<div style="border:1px solid var(--line);padding:24px;border-radius:6px;background:var(--panel);"><h3 style="margin-top:0;">Queue clear</h3><div class="mono" style="color:var(--muted);">Nothing is awaiting review. New questions, proposed edits, and held reviews will appear here.</div></div>';
             return;
         }
         const item = r.list[r.index];
@@ -4742,7 +4759,7 @@
     }
 
     function renderQuestionCard(q) {
-        const r = state.review; const wrap = $('admin-body');
+        const r = state.review; const wrap = reviewQueueBody(); if (!wrap) return;
         const choices = (q.choices || []).map((ch, i) => {
             const letter = String.fromCharCode(65 + i);
             const correct = (q.correct_answer || '').toUpperCase() === letter || ch.correct === true;
@@ -4777,7 +4794,8 @@
 
     function collectReviewEdits() {
         const r = state.review; const q = r.list[r.index].q;
-        const get = (sel) => { const el = $('admin-body').querySelector(`[data-edit="${sel}"]`); return el ? el.value : undefined; };
+        const body = reviewQueueBody();
+        const get = (sel) => { const el = body && body.querySelector(`[data-edit="${sel}"]`); return el ? el.value : undefined; };
         const choices = (q.choices || []).map((ch, i) => ({
             ...ch,
             text: get(`choice-text-${i}`) ?? ch.text,
@@ -4813,7 +4831,7 @@
     // the same Content review queue as questions/edits. Approve publishes it to the
     // public Reviews page; Remove takes it down. Removal is confirmed (never one-click).
     function renderReviewCard(rv) {
-        const r = state.review; const wrap = $('admin-body'); if (!wrap) return;
+        const r = state.review; const wrap = reviewQueueBody(); if (!wrap) return;
         const rating = rv.rating || 5;
         const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(Math.max(0, 5 - Math.round(rating)));
         wrap.innerHTML = `
@@ -4852,7 +4870,7 @@
     // above (no separate tab). Approve applies the proposed choices to the live
     // question; the original is untouched until then.
     function renderEditCard(e) {
-        const r = state.review; const wrap = $('admin-body'); if (!wrap) return;
+        const r = state.review; const wrap = reviewQueueBody(); if (!wrap) return;
         const GREEN = '#16a34a';
         const q = e.question || {};
         const orig = e.original_choices || [], prop = e.proposed_choices || [];
@@ -4889,16 +4907,18 @@
     }
 
     function _editLen(i) {
-        const inp = $('admin-body').querySelector(`[data-ptext="${i}"]`);
-        const span = $('admin-body').querySelector(`[data-len="${i}"]`);
+        const body = reviewQueueBody(); if (!body) return;
+        const inp = body.querySelector(`[data-ptext="${i}"]`);
+        const span = body.querySelector(`[data-len="${i}"]`);
         if (inp && span) span.textContent = (inp.value || '').length;
     }
 
     function collectEditChoices() {
         const r = state.review; const e = r.list[r.index].e; const prop = e.proposed_choices || [];
+        const body = reviewQueueBody();
         return prop.map((p, i) => {
-            const t = $('admin-body').querySelector(`[data-ptext="${i}"]`);
-            const ra = $('admin-body').querySelector(`[data-prat="${i}"]`);
+            const t = body && body.querySelector(`[data-ptext="${i}"]`);
+            const ra = body && body.querySelector(`[data-prat="${i}"]`);
             return { ...p, text: t ? t.value : p.text, rationale: ra ? ra.value : p.rationale };
         });
     }
@@ -4922,10 +4942,11 @@
     // ---- Reviews moderation (admin): approve/reject submissions + add curated ----
     async function reviewMod() {
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
+        state.adminSurface = 'reviews';
         go('admin');
         const t = $('admin-review-title'); if (t) t.textContent = 'Reviews';
         const sub = $('admin-sub'); if (sub) sub.innerHTML = 'Approve or reject submitted reviews, or paste in a testimonial someone sent you. Approved reviews show on the public <a href="/reviews" target="_blank" rel="noopener">Reviews page</a>. <span id="admin-counts" class="mono" style="color:var(--muted);"></span>';
-        ['admin-analytics', 'admin-vouchers'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
+        const analytics = $('admin-analytics'); if (analytics) analytics.classList.add('hidden');
         const wrap = $('admin-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading reviews…</div>';
         try {
             const { resp, data } = await apiJSON('/api/admin/reviews', { headers: authHeaders() });
@@ -4986,23 +5007,21 @@
         } catch (e) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; }
     }
 
-    // Admin → "Cohort code generator": jump straight to the voucher generator, with the
-    // content-review queue hidden so it reads as a dedicated cohort-codes screen.
+    // Admin → "Cohort code generator": this is a standalone view, not an admin-panel state.
     async function cohortCodes() {
         if (!(state.profile && state.profile.is_admin)) { go('dashboard'); return; }
-        go('admin');
-        const t = $('admin-review-title'); if (t) t.style.display = 'none';
-        const sub = $('admin-sub'); if (sub) sub.style.display = 'none';
-        const an = $('admin-analytics'); if (an) an.classList.add('hidden');
-        const body = $('admin-body'); if (body) body.innerHTML = '';
+        state.adminSurface = 'cohort-codes';
+        go('cohort-codes');
+        const v = $('admin-vouchers');
+        if (v) v.innerHTML = '<div class="mono" style="color:var(--muted);">Loading cohort codes...</div>';
         await loadVouchers();
-        const v = $('admin-vouchers'); if (v) v.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     async function loadVouchers() {
+        if (state.adminSurface !== 'cohort-codes') return;
         const el = $('admin-vouchers'); if (!el) return;
         try {
             const { resp, data } = await apiJSON('/api/admin/vouchers', { headers: authHeaders() });
-            if (!resp.ok) return;
+            if (!resp.ok || state.adminSurface !== 'cohort-codes') return;
             const fmtDate = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
             const vs = data.vouchers || [];
             // group by cohort label so two cohorts never get intermixed (unlabeled sorts last)
@@ -5256,7 +5275,7 @@
         { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
         { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
-        { icon: '🛠', label: 'Admin review queue', run: () => go('admin'), admin: true },
+        { icon: '🛠', label: 'Admin review queue', run: () => reviewQueue(), admin: true },
         { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true, hideNative: true },
         { icon: '🚪', label: 'Sign out', run: () => signOut(), auth: true },
         { icon: '🔑', label: 'Log in', run: () => { window.location.href = '/login.html'; }, guest: true },
