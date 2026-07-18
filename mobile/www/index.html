@@ -28,9 +28,9 @@
     var SITE = 'https://www.macprep.org';
     function go(){ location.href = SITE; }
     // With server.url set in capacitor.config.json, Capacitor loads the live site
-    // directly and this screen is skipped. It only shows if the site is unreachable
-    // (e.g. first-ever launch with no network — after one successful load the site's
-    // service worker caches the app shell for offline use).
+    // directly and this screen is skipped. It only shows if the site is unreachable,
+    // including a launch without a network connection. Study sessions require a
+    // connection because question and grading API responses are never cached.
     function check(){
       fetch(SITE, { mode: 'no-cors' }).then(go).catch(function(){
         document.getElementById('spin').style.display = 'none';

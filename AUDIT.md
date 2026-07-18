@@ -1,8 +1,23 @@
 # MACPrep — Technical & Product Audit
 
-_Prepared June 19, 2026. Based on a full read of the codebase in `macprep-web` and read-only introspection of the live Supabase database._
+_Original audit prepared June 19, 2026. Current remediation status added July 18, 2026 after code, database, and live Supabase configuration checks._
 
 This document is the master list of what's broken and how to fix it, ranked by severity. Items marked **[VERIFIED]** were confirmed directly against the live database or by reading the executing code path, not inferred.
+
+## Current status — July 18, 2026
+
+The June findings below are retained as historical evidence, not a description of the current production architecture. The original critical failures are resolved: authentication exists; profiles use the canonical `user_profiles` table; the browser does not receive answer keys before grading; public files are explicitly allowlisted; server-side entitlements reconcile Stripe and verified Store purchases; and mock submissions, voucher claims, review edits, and learning updates use database transactions or idempotency keys.
+
+This hardening pass also moved browser sessions to HttpOnly cookies with origin checks on cookie-authenticated mutations, added shared database rate limits for sensitive routes, enabled Supabase leaked-password and current-password protections, established minimum peer-sample thresholds, and added CI plus HTTP-surface regression tests. The Supabase security advisor reports no warnings; its remaining informational notices are deliberate RLS-with-no-policy tables that deny browser access and are used only through the service-role server.
+
+**Residual engineering risks:**
+- There is still no protected staging environment with seeded Supabase data and a signed Stripe webhook end-to-end test.
+- `src/server.mjs` and `src/app.js` remain large modules. Responsibility-based extraction is still the next engineering slice.
+- The Content Security Policy still permits inline scripts/styles because the legacy frontend contains inline handlers. Session credentials are no longer JavaScript-readable, but removing `unsafe-inline` remains worthwhile defense in depth.
+- Native purchase, notification, and recovery behavior still requires device-level validation for each App Store/Play build; a passing web suite is not a native release claim.
+- Security is an ongoing control process, not a one-time claim. Dependency audits, provider advisories, RLS checks, restore drills, and authorization tests remain release gates.
+
+---
 
 ---
 
@@ -134,4 +149,4 @@ The question bank is the product. A credible board-prep bank for SAAs/CAAs needs
 ## Notes on testing & deployment
 
 - The local `.env` contains only `SUPABASE_URL` and `SUPABASE_ANON_KEY`. The `SUPABASE_SERVICE_ROLE_KEY` and Stripe keys live only on Render, so payment/admin flows can't be fully tested from a local checkout.
-- No code in this audit has been deployed. Changes should be reviewed and tested in a staging context before pushing to GitHub/Render.
+- Historical June 19 note: no code from the original audit had been deployed at that time. See the July 18 current-status section above for the present remediation state and remaining staging gap.

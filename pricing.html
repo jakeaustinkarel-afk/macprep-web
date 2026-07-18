@@ -304,24 +304,24 @@
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
 
-<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_signed_in"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
 <script>/*pricingcta-v1*/(function(){try{
-  var tok=localStorage.getItem('macprep_token'); if(!tok) return;
-  var have=document.getElementById('cta-have-account'); if(have) have.style.display='none';
-  ['cta-free','cta-bottom'].forEach(function(id){var el=document.getElementById(id); if(el){el.textContent='Go to your dashboard'; el.setAttribute('href','/index.html');}});
+  function ah(json){return json?{'Content-Type':'application/json'}:{};}
   var prem=document.getElementById('cta-premium'); if(!prem) return;
-  prem.setAttribute('href','#'); prem.textContent='Checking your account…';
-  fetch('/api/user/profile',{headers:{Authorization:'Bearer '+tok}}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+  fetch('/api/user/profile',{headers:ah(false)}).then(function(r){return r.ok?r.json():null;}).then(function(d){
     var p=d&&(d.profile||d);
+    if(!p){throw new Error('not signed in');}
+    var have=document.getElementById('cta-have-account'); if(have) have.style.display='none';
+    ['cta-free','cta-bottom'].forEach(function(id){var el=document.getElementById(id); if(el){el.textContent='Go to your dashboard'; el.setAttribute('href','/index.html');}});
     if(p&&(p.premium_unlocked||p.is_admin)){ prem.textContent='✓ You already have full access'; prem.setAttribute('href','/index.html'); return; }
     prem.textContent='Get full access — $100';
     prem.addEventListener('click',function(e){
       e.preventDefault(); if(prem.dataset.busy) return; prem.dataset.busy='1'; prem.textContent='Redirecting…';
-      fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({email:(p&&p.email)||''})})
+      fetch('/api/create-checkout-session',{method:'POST',headers:ah(true),body:JSON.stringify({email:(p&&p.email)||''})})
         .then(function(r){return r.json();}).then(function(c){ if(c&&c.url){window.location.href=c.url;} else { prem.dataset.busy=''; prem.textContent='Get full access — $100'; alert('Checkout could not start — please try from your dashboard.'); } })
         .catch(function(){ prem.dataset.busy=''; prem.textContent='Get full access — $100'; });
     });
-  }).catch(function(){ prem.textContent='Get full access — $100'; prem.setAttribute('href','/index.html'); });
+  }).catch(function(){});
 }catch(e){}})();</script>
 </body>
 </html>

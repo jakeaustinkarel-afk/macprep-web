@@ -1,8 +1,8 @@
 // MACPrep service worker — installable PWA with an app-shell cache.
-// Strategy: network-first for HTML + app.js (so deploys land immediately, with an
-// offline fallback to the cached shell), stale-while-revalidate for static assets
+// Strategy: network-first for HTML + app.js (so deploys land immediately, with a
+// clear offline page for navigation), stale-while-revalidate for static assets
 // (icons/fonts/images load instantly), and API calls always go to the network.
-const CACHE = 'macprep-v5';
+const CACHE = 'macprep-v6';
 const OFFLINE = '/offline.html';
 const SHELL = ['/', '/src/app.js', OFFLINE, '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest'];
 
@@ -27,11 +27,13 @@ function networkFirst(req) {
       caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
     }
     return res;
-  }).catch(() => caches.match(req).then((m) => {
+  }).catch(() => {
+    if (req.mode === 'navigate') return caches.match(OFFLINE);
+    return caches.match(req).then((m) => {
     if (m) return m;
-    if (req.mode === 'navigate') return caches.match('/').then((s) => s || caches.match(OFFLINE));
     return Response.error();
-  }));
+    });
+  });
 }
 
 function staleWhileRevalidate(req) {
@@ -53,8 +55,8 @@ self.addEventListener('fetch', (e) => {
   // API responses are never cached — always fresh (offline studying is a later phase).
   if (url.origin === location.origin && url.pathname.startsWith('/api/')) return;
 
-  // HTML shell + app logic → network-first so a deploy is picked up right away;
-  // falls back to the cached shell (then the offline page) when there's no network.
+  // HTML shell + app logic -> network-first so a deploy is picked up right away;
+  // navigation falls back to an explicit offline page when there's no network.
   if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname === '/src/app.js') {
     e.respondWith(networkFirst(req));
     return;

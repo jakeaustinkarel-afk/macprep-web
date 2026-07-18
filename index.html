@@ -42,7 +42,7 @@
          marketing landing would just capture the landing page, not the app. The manifest
          (which is what makes the browser show "Install"/"Open in app") is therefore added
          only when an auth token is present. */
-      try { if (localStorage.getItem('macprep_token')) { var _m = document.createElement('link'); _m.rel = 'manifest'; _m.href = '/manifest.webmanifest'; document.head.appendChild(_m); } } catch (e) {}
+      try { if (localStorage.getItem('macprep_signed_in')) { var _m = document.createElement('link'); _m.rel = 'manifest'; _m.href = '/manifest.webmanifest'; document.head.appendChild(_m); } } catch (e) {}
     </script>
     <meta name="theme-color" content="#146A4A">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -853,6 +853,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                                     <label>Program name</label>
                                     <input type="text" id="su-program-other" maxlength="120" autocomplete="organization" placeholder="Program / institution name">
                                 </div>
+                                <div class="sub" style="font-size:11px;margin:7px 0 0;color:var(--muted);">Verified faculty or program directors assigned to your selected program may view your name, email, credential, study activity, and performance in their cohort dashboard. <a href="/privacy.html" target="_blank" rel="noopener">Privacy details</a></div>
                             </div>
                             <div class="form-group"><label>Email</label><input type="email" id="su-email" autocomplete="email" required></div>
                             <div class="form-group"><label>Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="12" placeholder="12+ characters" required></div>
@@ -1273,7 +1274,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <!-- PROFILE -->
     <div class="wrap hidden" id="profile-view">
         <h2 class="view-title">Your Profile</h2>
-        <p class="sub">Manage your account details and subscription.</p>
+        <p class="sub">Manage your account details and access.</p>
 
         <div class="card">
             <h2>Account</h2>
@@ -1299,7 +1300,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                         <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
                     </select>
                 </div>
-                <div class="form-group"><label for="prof-program">Training program / institution</label><select id="prof-program" onchange="MACPrep.onProfProgramChange()"></select></div>
+                <div class="form-group"><label for="prof-program">Training program / institution</label><select id="prof-program" onchange="MACPrep.onProfProgramChange()"></select><div class="sub" style="font-size:11px;margin:7px 0 0;color:var(--muted);">Verified faculty or program directors assigned to this program may view your name, email, credential, study activity, and performance. <a href="/privacy.html" target="_blank" rel="noopener">Privacy details</a></div></div>
                 <div class="form-group hidden" id="prof-other-wrap"><label for="prof-other">Which program? <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(we'll add it)</span></label><input id="prof-other" type="text" maxlength="120" placeholder="Program / institution name"></div>
                 <div class="form-group" id="prof-grad-wrap"><label>Expected graduation date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(students)</span></label><input id="prof-grad" type="date"></div>
                 <div class="form-group"><label>Target exam date</label><input id="prof-examdate" type="date"></div>
@@ -1844,7 +1845,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7"/><path d="m9 11 3 3 3-3"/></svg>
       <div style="min-width:0;">
         <div style="font-weight:700;font-size:13.5px;color:var(--text);">Install MACPrep</div>
-        <div id="pwa-install-sub" style="font-size:12px;color:var(--muted);">Study offline and get streak reminders.</div>
+        <div id="pwa-install-sub" style="font-size:12px;color:var(--muted);">Open full-screen and enable optional streak reminders.</div>
       </div>
       <button id="pwa-install-btn" class="btn" style="padding:8px 14px;font-size:12px;flex:none;">Install</button>
       <button id="pwa-install-x" aria-label="Dismiss" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;">✕</button>
@@ -1880,7 +1881,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       if(!card) return;
       function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
       function vid(){try{var v=localStorage.getItem('macprep_vid');if(!v){v=Date.now().toString(36)+Math.random().toString(36).slice(2,10);localStorage.setItem('macprep_vid',v);}return v;}catch(e){return 'na';}}
-      function ev(n){try{if(localStorage.getItem('macprep_token'))return;fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true}).catch(function(){});}catch(e){}}
+      function ev(n){try{if(localStorage.getItem('macprep_signed_in'))return;fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,meta:{vid:vid()}}),keepalive:true}).catch(function(){});}catch(e){}}
       var qs=[],idx=0,sel=null,started=false;
       function showFail(){
         card.innerHTML='<div class="mono" style="font-size:13px;color:var(--muted);margin-bottom:14px;">The sample didn\'t load — could be a slow connection.</div><button type="button" id="demo-retry" class="btn" style="font-size:13px;">Try again</button> <a href="#signup-pane" style="margin-left:10px;font-size:14px;">or create a free account →</a>';

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { randomBytes, createHmac, createHash } from 'crypto';
-import { AppStoreServerAPIClient, Environment, SignedDataVerifier, Type as AppleProductType } from '@apple/app-store-server-library';
+import { AppStoreServerAPIClient, Environment, NotificationTypeV2, SignedDataVerifier, Type as AppleProductType } from '@apple/app-store-server-library';
 import { google } from 'googleapis';
 import * as Sentry from '@sentry/node';
 import webpush from 'web-push';
@@ -18,6 +18,7 @@ import { initializeApp as fbInitApp, cert as fbCert, getApps as fbGetApps } from
 import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
 import apn from '@parse/node-apn';
 import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
+import { validateQuestionForPublication } from './lib/question-validation.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,9 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline'",
@@ -68,40 +72,80 @@ app.use('/api', (req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
-// Lightweight in-memory rate limiter (per-IP sliding window). Single Render
-// instance, so a Map is sufficient; protects against password brute-forcing
-// and feedback spam without a new dependency.
+// Fast in-process rate limiting protects each instance. Critical auth/payment
+// routes also consume an atomic Postgres bucket, so horizontal scaling cannot
+// multiply their limits. Only hashes, never emails/tokens/addresses, reach the
+// shared table.
 // ---------------------------------------------------------------------------
-function rateLimit({ windowMs, max }) {
+let lastSharedLimitWarningAt = 0;
+function rateLimit({ windowMs, max, identity, sharedBucket }) {
     const hits = new Map();
-    return (req, res, next) => {
+    return async (req, res, next) => {
         const now = Date.now();
-        // Cloudflare fronts Render and sets CF-Connecting-IP to the true client IP
-        // (overwriting any client-supplied value), so it can't be spoofed the way a
-        // raw X-Forwarded-For prepend can. Fall back to the proxy-resolved req.ip —
-        // never the raw header.
-        const ip = req.headers['cf-connecting-ip'] || req.ip || 'unknown';
-        const arr = (hits.get(ip) || []).filter((t) => now - t < windowMs);
-        if (arr.length >= max) {
-            res.setHeader('Retry-After', Math.ceil(windowMs / 1000));
-            return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.' });
+        // Keep the proxy-resolved address and Cloudflare's address as independent
+        // ceilings when both are present. Account/cookie identity is a third key.
+        const addresses = new Set([String(req.ip || 'unknown').slice(0, 96)]);
+        const cfAddress = String(req.headers['cf-connecting-ip'] || '').trim().slice(0, 96);
+        if (cfAddress) addresses.add(cfAddress);
+        const identityValue = typeof identity === 'function' ? identity(req) : '';
+        const keys = Array.from(addresses, (address) => `ip:${address}`);
+        if (identityValue) {
+            keys.push(`id:${createHash('sha256').update(String(identityValue).toLowerCase()).digest('hex').slice(0, 32)}`);
         }
-        arr.push(now);
-        hits.set(ip, arr);
+        for (const key of keys) {
+            const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
+            if (arr.length >= max) {
+                res.setHeader('Retry-After', Math.ceil(windowMs / 1000));
+                return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.' });
+            }
+        }
+
+        if (sharedBucket && supabase) {
+            try {
+                for (const key of keys) {
+                    const identityHash = createHash('sha256').update(key).digest('hex');
+                    const { data, error } = await supabase.rpc('consume_macprep_rate_limit', {
+                        p_bucket: sharedBucket,
+                        p_identity_hash: identityHash,
+                        p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+                        p_max_hits: max,
+                    });
+                    if (error) throw error;
+                    if (data?.allowed === false) {
+                        res.setHeader('Retry-After', Math.max(1, Number(data.retry_after) || Math.ceil(windowMs / 1000)));
+                        return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.' });
+                    }
+                }
+            } catch (error) {
+                // Keep the per-instance ceiling available during a database incident;
+                // the underlying route will still perform its normal database checks.
+                if (now - lastSharedLimitWarningAt > 60000) {
+                    lastSharedLimitWarningAt = now;
+                    console.warn(`[rate-limit] shared limiter unavailable: ${error.message}`);
+                }
+            }
+        }
+
+        for (const key of keys) {
+            const arr = (hits.get(key) || []).filter((t) => now - t < windowMs);
+            arr.push(now);
+            hits.set(key, arr);
+        }
         if (hits.size > 5000) { // crude memory bound
             for (const [k, v] of hits) { if (!v.some((t) => now - t < windowMs)) hits.delete(k); }
         }
         next();
     };
 }
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8 });
-const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+const requestIdentity = (req) => req.body?.email || req.body?.access_token || req.headers.authorization || authCookie(req, ACCESS_COOKIE) || '';
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, identity: requestIdentity, sharedBucket: 'auth' });
+const feedbackLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 8, identity: requestIdentity, sharedBucket: 'feedback' });
+const voucherLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, identity: requestIdentity, sharedBucket: 'voucher' });
 const eventLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const demoLimiter = rateLimit({ windowMs: 60 * 1000, max: 40 });
 // Checkout + payment-verification: generous enough for real buyers, tight enough
 // to stop anyone hammering Stripe session creation or replaying session-id guesses.
-const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
+const checkoutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, identity: requestIdentity, sharedBucket: 'checkout' });
 // Cohort dashboard does a full served-bank + full-cohort scan per call — cap it so a
 // faculty/PD (or admin) can't hammer it into a resource-exhaustion problem.
 const cohortLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
@@ -110,7 +154,7 @@ const sessionLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 const gradeLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const profileLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 const pushLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 30 });
-const mobilePurchaseLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 25 });
+const mobilePurchaseLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 25, identity: requestIdentity, sharedBucket: 'mobile_purchase' });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -161,11 +205,12 @@ if (supabaseUrl.endsWith('/')) supabaseUrl = supabaseUrl.slice(0, -1);
 // Service-role client: trusted server-side operations (webhook upgrades, grading).
 // RLS is bypassed with this key, which is why all writes below run through it.
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, serviceKey) : null;
+const SERVER_AUTH_OPTIONS = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
+const supabase = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, serviceKey, SERVER_AUTH_OPTIONS) : null;
 
 // Anon client: used for Supabase Auth (sign-up / sign-in) on behalf of users.
 const anonKey = process.env.SUPABASE_ANON_KEY || '';
-const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKey) : null;
+const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKey, SERVER_AUTH_OPTIONS) : null;
 
 // --- Fail fast on missing/incorrect critical config -----------------------
 // In production a missing key silently degrades (checkout 500s, grading returns
@@ -173,6 +218,76 @@ const supabaseAuth = (supabaseUrl && anonKey) ? createClient(supabaseUrl, anonKe
 // with no charge. Refuse to boot instead of failing quietly.
 const IS_PROD = process.env.NODE_ENV === 'production';
 const MIN_PASSWORD_LENGTH = 12;
+const ACCESS_COOKIE = 'macprep_access';
+const REFRESH_COOKIE = 'macprep_refresh';
+export function readCookieHeader(header, name) {
+    const prefix = `${name}=`;
+    for (const part of String(header || '').split(';')) {
+        const value = part.trim();
+        if (value.startsWith(prefix)) {
+            try { return decodeURIComponent(value.slice(prefix.length)); } catch (e) { return ''; }
+        }
+    }
+    return '';
+}
+function authCookie(req, name) {
+    return readCookieHeader(req.headers.cookie, name);
+}
+function authCookieLine(name, value, maxAge) {
+    const secure = IS_PROD ? '; Secure' : '';
+    return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+function setAuthCookies(res, session) {
+    if (!session?.access_token || !session?.refresh_token) return;
+    const accessAge = Math.max(60, Math.min(86400, Number(session.expires_in) || 3600));
+    res.setHeader('Set-Cookie', [
+        authCookieLine(ACCESS_COOKIE, session.access_token, accessAge),
+        authCookieLine(REFRESH_COOKIE, session.refresh_token, 30 * 86400),
+    ]);
+}
+function clearAuthCookies(res) {
+    res.setHeader('Set-Cookie', [
+        authCookieLine(ACCESS_COOKIE, '', 0),
+        authCookieLine(REFRESH_COOKIE, '', 0),
+    ]);
+}
+class AuthPasswordUpdateError extends Error {
+    constructor(message, status = 400) {
+        super(message);
+        this.name = 'AuthPasswordUpdateError';
+        this.status = status;
+    }
+}
+async function updatePasswordWithAccessToken(accessToken, password, currentPassword = '') {
+    const response = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            password,
+            ...(currentPassword ? { current_password: currentPassword } : {}),
+        }),
+    });
+    let body = {};
+    try { body = await response.json(); } catch (error) { /* map below */ }
+    if (response.ok) return body;
+
+    const code = String(body?.code || body?.error_code || '').toLowerCase();
+    const detail = String(body?.msg || body?.message || body?.error_description || '').toLowerCase();
+    if (code === 'weak_password' || /weak|pwn|breach|security requirements/.test(detail)) {
+        throw new AuthPasswordUpdateError('Choose a different 12+ character password that has not appeared in a known breach.');
+    }
+    if (code === 'same_password' || /same password/.test(detail)) {
+        throw new AuthPasswordUpdateError('Choose a password you have not used for this account.');
+    }
+    if (/current password/.test(detail)) {
+        throw new AuthPasswordUpdateError('Current password is incorrect.', 403);
+    }
+    throw new AuthPasswordUpdateError('Password did not meet the account security requirements.', response.status >= 400 && response.status < 500 ? response.status : 400);
+}
 if (IS_PROD) {
     const missing = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRODUCTION_PRICE_ID',
         'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
@@ -222,11 +337,18 @@ const hasVerifiedEmail = (user) => Boolean(user?.email && user.email_confirmed_a
 const isAdminUser = (user) => hasVerifiedEmail(user) && isAdminEmail(user.email);
 const isReviewUser = (user) => hasVerifiedEmail(user) && isReviewEmail(user.email);
 export function normalizeTrainingProgram(value) {
-    return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').slice(0, 200) : '';
+    return typeof value === 'string'
+        ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().replace(/\s+/g, ' ').slice(0, 200)
+        : '';
+}
+export function isValidProfileDate(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 export function registrationProfileError({ credential, graduationDate, trainingProgram }) {
-    if (!credential) return 'Please select your credential (SAA or CAA).';
-    if (credential === 'SAA' && !graduationDate) return 'Students (SAA) must add a graduation date.';
+    if (!['SAA', 'CAA'].includes(credential)) return 'Please select your credential (SAA or CAA).';
+    if (credential === 'SAA' && !isValidProfileDate(graduationDate)) return 'Students (SAA) must add a valid graduation date.';
     if (!normalizeTrainingProgram(trainingProgram) || normalizeTrainingProgram(trainingProgram).toLowerCase() === 'program not listed') {
         return 'Please select your AA program.';
     }
@@ -295,6 +417,62 @@ function parseChoices(raw) {
     }
     if (raw && typeof raw === 'object') return Array.isArray(raw) ? raw : [];
     return [];
+}
+
+export function resolveCorrectChoiceIndex(question) {
+    const choices = parseChoices(question?.choices);
+    const flagged = choices
+        .map((choice, index) => (choice && typeof choice === 'object' && choice.correct === true ? index : -1))
+        .filter((index) => index >= 0);
+    if (flagged.length > 1) return -1;
+    if (flagged.length === 1) return flagged[0];
+    if (typeof question?.correct_answer !== 'string' || !question.correct_answer.trim()) return -1;
+    const index = question.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
+    return Number.isInteger(index) && index >= 0 && index < choices.length ? index : -1;
+}
+
+function normalizeGradeInput(question, answer = {}) {
+    const choices = parseChoices(question?.choices);
+    const correctIndex = resolveCorrectChoiceIndex(question);
+    if (correctIndex < 0) {
+        const error = new Error('This question could not be scored and has been flagged for review.');
+        error.status = 422;
+        throw error;
+    }
+    const selectedIndex = Number(answer.choiceIndex);
+    if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= choices.length) {
+        const error = new Error('Invalid answer choice.');
+        error.status = 400;
+        throw error;
+    }
+    const timeValue = Number(answer.time_ms);
+    const timeMs = Number.isFinite(timeValue) && timeValue > 0 && timeValue <= 1800000
+        ? Math.round(timeValue)
+        : null;
+    const answerChanged = typeof answer.answer_changed === 'boolean' ? answer.answer_changed : null;
+    const confidence = ['low', 'medium', 'high'].includes(answer.confidence) ? answer.confidence : null;
+    const isCorrect = selectedIndex === correctIndex;
+    let references = question.references;
+    if (typeof references === 'string') {
+        try { references = JSON.parse(references); } catch (error) { references = []; }
+    }
+    if (!Array.isArray(references)) references = [];
+    return {
+        selectedIndex,
+        correctIndex,
+        isCorrect,
+        confidence,
+        timeMs,
+        answerChanged,
+        choices,
+        result: {
+            correct: isCorrect,
+            correctIndex,
+            explanation: question.explanation || '',
+            rationales: choices.map((choice) => (choice && typeof choice === 'object' ? (choice.rationale || '') : '')),
+            references,
+        },
+    };
 }
 
 function safeQuestionForClient(q) {
@@ -562,85 +740,104 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         return res.status(400).send('Invalid webhook signature.');
     }
 
-    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-        const session = event.data.object;
-        // Only unlock once the payment has actually settled. Async payment methods can
-        // fire 'completed' while still 'unpaid' — never grant premium in that state.
-        if (session.payment_status && session.payment_status !== 'paid') {
-            console.log(`Checkout completed but payment_status=${session.payment_status}; deferring unlock.`);
-            return res.json({ received: true });
-        }
-        // Prefer the authenticated user_id we attached at checkout (robust even if
-        // the buyer pays with a different email than their account); fall back to
-        // email matching for any legacy/Payment-Link purchases.
-        const userId = session.client_reference_id || session.metadata?.user_id || null;
-        const customerEmail = (session.customer_details?.email || session.customer_email || '')
-            .toLowerCase()
-            .trim();
-
-        console.log('Stripe checkout completed.');
-
-        if (supabase && (userId || customerEmail)) {
-            try {
-                const upgrade = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
-                let data = null;
-                if (userId) {
-                    const r = await supabase.from(PROFILE_TABLE).update(upgrade).eq('user_id', userId).select('user_id');
-                    if (r.error) throw r.error;
-                    data = r.data;
-                }
-                if ((!data || data.length === 0) && customerEmail) {
-                    const r = await supabase.from(PROFILE_TABLE).update(upgrade).eq('email', customerEmail).select('user_id');
-                    if (r.error) throw r.error;
-                    data = r.data;
-                }
-                if (!data || data.length === 0) {
-                    // Auto-reconcile: nothing matched, but we have the verified buyer id
-                    // from checkout — upsert their profile so a paid user is never left
-                    // without access.
-                    if (userId) {
-                        const up = { user_id: userId, ...upgrade };
-                        if (customerEmail) up.email = customerEmail;
-                        const r = await supabase.from(PROFILE_TABLE).upsert(up, { onConflict: 'user_id' }).select('user_id');
-                        if (r.error) throw r.error;
-                        console.log('Reconciled and upgraded a paid account with no prior profile row.');
-                    } else {
-                        console.warn(`PAID-BUT-NO-PROFILE: no ${PROFILE_TABLE} row and no authenticated buyer id to reconcile.`);
-                    }
-                } else {
-                    console.log('Upgraded a paid account to premium.');
-                }
-                // Funnel analytics: record the purchase server-side (fire-and-forget,
-                // deduped — webhook retries must not double-count a sale).
-                const grantedUser = (data && data[0] && data[0].user_id) || userId;
-                if (grantedUser) recordPurchaseOnce(grantedUser);
-            } catch (dbErr) {
-                console.error(`Webhook DB sync error: ${dbErr.message}`);
-                return res.status(500).send('Database sync failure.');
+    try {
+        if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+            const session = event.data.object;
+            if (session.payment_status !== 'paid') {
+                console.log(`Checkout completed but payment_status=${session.payment_status}; deferring unlock.`);
+                return res.json({ received: true });
             }
+            const lineItem = await verifyStripeCheckoutProduct(session);
+            const customerEmail = (session.customer_details?.email || session.customer_email || '').toLowerCase().trim();
+            let userId = session.client_reference_id || session.metadata?.user_id || null;
+            if (!validUuid(userId) && customerEmail && supabase) {
+                const { data: profile, error } = await supabase
+                    .from(PROFILE_TABLE)
+                    .select('user_id')
+                    .eq('email', customerEmail)
+                    .maybeSingle();
+                if (error) throw error;
+                userId = profile?.user_id || null;
+            }
+            if (!validUuid(userId)) {
+                console.error('PAID-BUT-NO-PROFILE: verified Stripe checkout has no resolvable MACPrep account.');
+                return res.json({ received: true });
+            }
+            const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+            await grantEntitlement({
+                userId,
+                email: customerEmail,
+                source: 'stripe',
+                sourceReference: session.id,
+                externalPaymentId: paymentIntent || null,
+                productId: lineItem.price.id,
+                amountTotal: session.amount_total,
+                currency: session.currency,
+                metadata: { checkout_event_id: event.id, livemode: !!event.livemode },
+            });
+            recordPurchaseOnce(userId);
+        } else if (event.type === 'charge.refunded') {
+            const charge = event.data.object;
+            if (charge.refunded === true) {
+                const paymentIntent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+                if (paymentIntent) await setEntitlementStatus({ source: 'stripe', externalPaymentId: paymentIntent, status: 'refunded' });
+            }
+        } else if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+            const dispute = event.data.object;
+            const paymentIntent = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
+            const status = event.type === 'charge.dispute.closed' && dispute.status === 'won' ? 'active' : 'disputed';
+            if (paymentIntent) await setEntitlementStatus({ source: 'stripe', externalPaymentId: paymentIntent, status });
         }
+    } catch (syncError) {
+        console.error(`Webhook entitlement sync error: ${syncError.message}`);
+        return res.status(500).send('Entitlement sync failure.');
     }
 
     res.json({ received: true });
 });
 
-// ---------------------------------------------------------------------------
-// Static-asset guard. express.static below is rooted at the project directory,
-// which would otherwise serve source (server.mjs, *.mjs scripts), the answer
-// bank (questions.json), and internal docs (AUDIT.md, BLUEPRINT.md) to anyone.
-// Block those file types up front; only HTML/CSS/JS/images/fonts fall through.
-// ---------------------------------------------------------------------------
-// Note: .txt is intentionally NOT blocked so /robots.txt is served. Answer-key
-// generators (.sql/.cjs/.cts/.mts) and the whole seeds/ dir are blocked outright.
-const BLOCKED_STATIC = /\.(mjs|cjs|cts|mts|ts|tsx|json|md|rtf|lock|sh|ya?ml|env|sql|pdf|csv|xlsx?|docx?|pem|key|crt|cer|p12|pfx)$/i;
-app.use((req, res, next) => {
-    const p = req.path.toLowerCase();
-    if (p.startsWith('/api/')) return next();
-    if (BLOCKED_STATIC.test(p) || p.startsWith('/data/') || p.startsWith('/seeds/') || p.startsWith('/.')) {
-        return res.status(404).end();
+// Public delivery is allowlist-only. The deployment contains server code,
+// migrations, native projects, and private operational documents; none of those
+// should become web assets merely because a new file extension was overlooked.
+const PUBLIC_HTML_FILES = new Set([
+    'index.html', '404.html', 'about.html', 'cookies.html', 'faculty.html',
+    'faq.html', 'login.html', 'metrics.html', 'offline.html', 'pricing.html',
+    'privacy.html', 'register.html', 'reset.html', 'reviews.html', 'terms.html',
+    'updates.html', 'why-trust-us.html',
+    'guides/index.html', 'guides/caa-recertification-guide.html',
+    'guides/caa-vs-crna-board-exams.html', 'guides/high-yield-topics-nccaa-exam.html',
+    'guides/how-long-to-study-for-the-nccaa-exam.html',
+    'guides/how-to-pass-the-nccaa-certification-exam.html',
+    'guides/nccaa-exam-pass-rates.html',
+]);
+const PUBLIC_ASSET_FILES = new Set([
+    'public-shell.css', 'product-refresh.css', 'guide-tools.js', 'sentry.min.js',
+    'src/app.js', 'sw.js', 'manifest.webmanifest', 'robots.txt', 'sitemap.xml',
+    'apple-touch-icon.png', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png',
+    'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
+    'logo.png', 'og-image.png', 'founder.jpg', 'partner-bagmask.png',
+    'partner-caa-discord.png', 'partner-cmeforcaas.png', 'brand/macprep-mark.svg',
+    'img/anes-machine.jpg', 'img/or-scene.jpg',
+]);
+
+function normalizedPublicPath(requestPath) {
+    try {
+        const decoded = decodeURIComponent(requestPath);
+        if (!decoded.startsWith('/') || decoded.includes('\0') || decoded.includes('\\')) return '';
+        const relative = decoded.replace(/^\/+/, '');
+        return relative.split('/').some((part) => part === '..' || part === '.') ? '' : relative;
+    } catch (error) {
+        return '';
     }
-    next();
-});
+}
+
+function htmlFileForCleanPath(requestPath) {
+    if (requestPath === '/') return 'index.html';
+    const relative = normalizedPublicPath(requestPath).replace(/\/+$/, '');
+    if (!relative) return 'index.html';
+    const candidate = relative === 'guides' ? 'guides/index.html' : `${relative}.html`;
+    return PUBLIC_HTML_FILES.has(candidate) ? candidate : '';
+}
 
 // ---------------------------------------------------------------------------
 // Clean URLs — 301 /foo.html → /foo (canonical, shareable, SEO-friendly) and
@@ -649,20 +846,16 @@ app.use((req, res, next) => {
 // ---------------------------------------------------------------------------
 app.get(/\.html$/i, (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
+    const relative = normalizedPublicPath(req.path);
+    if (!PUBLIC_HTML_FILES.has(relative)) return next();
     const clean = req.path.replace(/\/index\.html$/i, '/').replace(/\.html$/i, '') || '/';
     const qs = req.originalUrl.slice(req.path.length);
     res.redirect(301, clean + qs);
 });
 app.use((req, res, next) => {
-    if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path === '/' || req.path.startsWith('/api/') || path.extname(req.path)) return next();
-    let requestedPath;
-    try {
-        requestedPath = decodeURIComponent(req.path);
-    } catch (e) {
-        return next();
-    }
-    if (!requestedPath.startsWith('/') || requestedPath.includes('\0')) return next();
-    const file = `${requestedPath.replace(/^\/+|\/+$/g, '')}.html`;
+    if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api/') || path.extname(req.path)) return next();
+    const file = htmlFileForCleanPath(req.path);
+    if (!file) return next();
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(file, { root: PROJECT_ROOT, dotfiles: 'deny' }, (err) => {
         if (err) { res.removeHeader('Cache-Control'); next(); }
@@ -670,23 +863,36 @@ app.use((req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
-// JSON parsing + static assets for all normal routes
+// JSON parsing + explicit static assets for all normal routes
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '64kb' }));
-app.use(express.static(PROJECT_ROOT, {
-    etag: true,
-    setHeaders: (res, filePath) => {
-        if (/\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
-            // Images/fonts rarely change — cache hard.
-            res.setHeader('Cache-Control', 'public, max-age=2592000');
-        } else if (/\.(html|js|css)$/i.test(filePath)) {
-            // Markup/code must stay fresh across deploys — revalidate via etag each load.
-            res.setHeader('Cache-Control', 'no-cache');
-        } else {
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-        }
-    },
-}));
+app.use('/api', (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const cookieAuthenticated = !!(authCookie(req, ACCESS_COOKIE) || authCookie(req, REFRESH_COOKIE));
+    if (!cookieAuthenticated || String(req.headers.authorization || '').startsWith('Bearer ')) return next();
+    if (!trustedBaseUrl(req.headers.origin || '')) {
+        return res.status(403).json({ error: 'Cross-site request rejected.' });
+    }
+    next();
+});
+app.use((req, res, next) => {
+    if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api/')) return next();
+    const relative = normalizedPublicPath(req.path);
+    const criticalEventImage = relative.startsWith('critical-events-img/')
+        && /^critical-events-img\/[a-z0-9-]+\.(?:png|jpe?g|webp)$/i.test(relative);
+    if (!PUBLIC_ASSET_FILES.has(relative) && !criticalEventImage) return next();
+    if (/\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf)$/i.test(relative)) {
+        res.setHeader('Cache-Control', 'public, max-age=2592000');
+    } else if (/\.(js|css)$/i.test(relative)) {
+        res.setHeader('Cache-Control', 'no-cache');
+    } else {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+    if (relative === 'sw.js') res.setHeader('Service-Worker-Allowed', '/');
+    return res.sendFile(relative, { root: PROJECT_ROOT, dotfiles: 'deny' }, (error) => {
+        if (error) next();
+    });
+});
 
 // ---------------------------------------------------------------------------
 // Health/version check — lets you confirm at a glance which build is live
@@ -696,7 +902,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         ok: true,
         service: 'macprep',
-        build: 'session-rollups-20260717.1',
+        build: 'security-entitlements-20260718.1',
         auth_endpoint: '/api/authenticate',
         supabase: !!supabase,
         serve_filler: SERVE_FILLER,
@@ -748,6 +954,8 @@ app.get('/api/config', (req, res) => {
         sentryDsn: process.env.SENTRY_BROWSER_DSN || null,
         environment: process.env.NODE_ENV || 'production',
         referralCode: referralCodeFor(),
+        nativePurchaseBridgeMinVersion: 1,
+        nativePremiumProductId: MOBILE_PREMIUM_PRODUCT_ID,
     });
 });
 
@@ -841,6 +1049,21 @@ async function sendEmail({ to, subject, html }) {
     return r.json();
 }
 
+async function fetchRowsForUserIds(table, columns, userIds, chunkSize = 200) {
+    const rows = [];
+    for (let offset = 0; offset < userIds.length; offset += chunkSize) {
+        const ids = userIds.slice(offset, offset + chunkSize);
+        const chunkRows = await fetchAllPostgrestRows((from, to) => supabase
+            .from(table)
+            .select(columns)
+            .in('user_id', ids)
+            .order('user_id', { ascending: true })
+            .range(from, to));
+        rows.push(...chunkRows);
+    }
+    return rows;
+}
+
 function nudgeEmailHtml({ name, dueCount, unsubUrl }) {
     const hi = name ? `Hi ${escHtml(String(name).split(' ')[0])},` : 'Hi there,';
     const qword = dueCount === 1 ? 'question' : 'questions';
@@ -870,17 +1093,23 @@ async function sendRetentionNudges(opts) {
     if (!supabase) return { error: 'no db' };
     if (!RESEND_API_KEY && !opts.dry) return { error: 'RESEND_API_KEY not set' };
     const nowIso = new Date().toISOString();
-    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', nowIso).limit(20000);
+    const due = await fetchAllPostgrestRows((from, to) => supabase.from('review_state')
+        .select('user_id, question_id').lte('due_at', nowIso)
+        .order('user_id', { ascending: true }).order('question_id', { ascending: true }).range(from, to));
     const counts = {};
     (due || []).forEach((r) => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
     const userIds = Object.keys(counts);
     if (!userIds.length) return { sent: 0, candidates: 0 };
     const activeCutoff = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
-    const { data: active } = await supabase.from(PROGRESS_TABLE).select('user_id').gte('created_at', activeCutoff).limit(20000);
+    const active = await fetchAllPostgrestRows((from, to) => supabase.from(PROGRESS_TABLE)
+        .select('user_id, created_at').gte('created_at', activeCutoff)
+        .order('created_at', { ascending: true }).range(from, to));
     const activeSet = new Set((active || []).map((r) => r.user_id));
-    const { data: profiles } = await supabase.from(PROFILE_TABLE)
-        .select('user_id, email, full_name, last_nudged_at, nudge_opt_out')
-        .in('user_id', userIds.slice(0, 1000));
+    const profiles = await fetchRowsForUserIds(
+        PROFILE_TABLE,
+        'user_id, email, full_name, last_nudged_at, nudge_opt_out',
+        userIds
+    );
     const throttle = Date.now() - 20 * 3600 * 1000;
     let sent = 0, eligible = 0;
     for (const p of (profiles || [])) {
@@ -903,13 +1132,17 @@ async function sendRetentionNudges(opts) {
 // users with due reviews who haven't studied in 18h. Returns per-user due counts
 // plus the inactive user ids. Each channel then applies its own 20h throttle.
 async function computeReminderTargets() {
-    const { data: due } = await supabase.from('review_state').select('user_id').lte('due_at', new Date().toISOString()).limit(20000);
+    const due = await fetchAllPostgrestRows((from, to) => supabase.from('review_state')
+        .select('user_id, question_id').lte('due_at', new Date().toISOString())
+        .order('user_id', { ascending: true }).order('question_id', { ascending: true }).range(from, to));
     const counts = {};
     (due || []).forEach((r) => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
     const targetIds = Object.keys(counts);
     if (!targetIds.length) return { counts, inactive: [] };
     const activeCutoff = new Date(Date.now() - 18 * 3600 * 1000).toISOString();
-    const { data: active } = await supabase.from(PROGRESS_TABLE).select('user_id').gte('created_at', activeCutoff).limit(20000);
+    const active = await fetchAllPostgrestRows((from, to) => supabase.from(PROGRESS_TABLE)
+        .select('user_id, created_at').gte('created_at', activeCutoff)
+        .order('created_at', { ascending: true }).range(from, to));
     const activeSet = new Set((active || []).map((r) => r.user_id));
     return { counts, inactive: targetIds.filter((uid) => !activeSet.has(uid)) };
 }
@@ -922,9 +1155,11 @@ async function sendPushReminders() {
     const { counts, inactive } = await computeReminderTargets();
     if (!inactive.length) return { sent: 0, candidates: Object.keys(counts).length };
     const throttle = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
-    const { data: subs } = await supabase.from('push_subscriptions')
-        .select('id, user_id, subscription, last_pushed_at')
-        .in('user_id', inactive.slice(0, 1000));
+    const subs = await fetchRowsForUserIds(
+        'push_subscriptions',
+        'id, user_id, subscription, last_pushed_at',
+        inactive
+    );
     let sent = 0, eligible = 0;
     for (const s of (subs || [])) {
         if (s.last_pushed_at && s.last_pushed_at > throttle) continue;
@@ -980,9 +1215,11 @@ async function sendNativeReminders() {
     const { counts, inactive } = await computeReminderTargets();
     if (!inactive.length) return { sent: 0, candidates: Object.keys(counts).length };
     const throttle = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
-    const { data: toks } = await supabase.from('native_device_tokens')
-        .select('id, user_id, token, platform, last_pushed_at')
-        .in('user_id', inactive.slice(0, 1000));
+    const toks = await fetchRowsForUserIds(
+        'native_device_tokens',
+        'id, user_id, token, platform, last_pushed_at',
+        inactive
+    );
     let sent = 0, eligible = 0;
     for (const t of (toks || [])) {
         if (t.last_pushed_at && t.last_pushed_at > throttle) continue;
@@ -1131,10 +1368,12 @@ app.post('/api/admin/run-nudges', async (req, res) => {
 async function recordPurchaseOnce(userId, via = 'stripe') {
     if (!userId || !supabase) return;
     try {
-        const { count } = await supabase.from('analytics_events')
-            .select('id', { count: 'exact', head: true })
-            .eq('name', 'purchase').eq('user_id', userId);
-        if (!count) await supabase.from('analytics_events').insert({ name: 'purchase', user_id: userId, meta: { via } });
+        const { error } = await supabase.from('analytics_events').insert({
+            name: 'purchase',
+            user_id: userId,
+            meta: sanitizeAnalyticsMeta('upgrade_success', { via }),
+        });
+        if (error && error.code !== '23505') console.warn('[analytics] purchase event failed:', error.message);
     } catch (e) { /* analytics is never worth failing a payment path over */ }
 }
 
@@ -1239,6 +1478,12 @@ function startReminderScheduler() {
             const h = now.getUTCHours();
             if (h >= 13 && h < 15 && _lastNudgeDay !== day) {
                 _lastNudgeDay = day;
+                const { data: claimed, error: claimError } = await supabase.rpc('claim_macprep_daily_job', {
+                    p_job_name: 'study-reminders',
+                    p_run_day: day,
+                });
+                if (claimError) throw claimError;
+                if (!claimed) return;
                 if (RESEND_API_KEY) { const r = await sendRetentionNudges(); console.log(`[nudges] daily email run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} due)`); }
                 if (PUSH_ENABLED) { const rp = await sendPushReminders(); console.log(`[push] daily run: sent ${rp.sent}/${rp.eligible} eligible (${rp.candidates} due)`); }
                 if (NATIVE_PUSH_ENABLED) { const rn = await sendNativeReminders(); console.log(`[native-push] daily run: sent ${rn.sent}/${rn.eligible} eligible (${rn.candidates} due)`); }
@@ -1253,7 +1498,7 @@ function startReminderScheduler() {
 // ---------------------------------------------------------------------------
 async function getUserFromToken(req) {
     const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : authCookie(req, ACCESS_COOKIE);
     if (!token || !supabaseAuth) return null;
     const { data, error } = await supabaseAuth.auth.getUser(token);
     if (error) return null;
@@ -1271,21 +1516,52 @@ async function isUserPremium(userId) {
     return data?.account_tier === 'premium';
 }
 
-// Grant premium to a user, idempotently. Updates their profile row, or creates
-// one if none exists yet (so a paid/redeemed user is never left without access).
-// Used by the checkout-return verification path.
-async function grantPremium(userId, email) {
+async function hasFullAccess(user) {
+    if (!user) return false;
+    return isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
+}
+
+async function grantEntitlement({ userId, email, source, sourceReference, externalPaymentId = null, productId = null, amountTotal = null, currency = null, metadata = {} }) {
     if (!supabase || !userId) return false;
-    const upg = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
-    const { data, error } = await supabase.from(PROFILE_TABLE).update(upg).eq('user_id', userId).select('user_id');
+    const { error } = await supabase.rpc('grant_macprep_entitlement', {
+        p_user: userId,
+        p_email: email || null,
+        p_source: source,
+        p_source_reference: sourceReference,
+        p_external_payment_id: externalPaymentId,
+        p_product_id: productId,
+        p_amount_total: Number.isSafeInteger(amountTotal) ? amountTotal : null,
+        p_currency: currency || null,
+        p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
+    });
     if (error) throw error;
-    if (!data || data.length === 0) {
-        const up = { user_id: userId, ...upg };
-        if (email) up.email = email;
-        const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert(up, { onConflict: 'user_id' });
-        if (insErr) throw insErr;
-    }
     return true;
+}
+
+async function setEntitlementStatus({ source, sourceReference = null, externalPaymentId = null, status }) {
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc('set_macprep_entitlement_status', {
+        p_source: source,
+        p_source_reference: sourceReference,
+        p_external_payment_id: externalPaymentId,
+        p_status: status,
+    });
+    if (error) throw error;
+    return data || null;
+}
+
+async function verifyStripeCheckoutProduct(session) {
+    const expectedPriceId = String(process.env.STRIPE_PRODUCTION_PRICE_ID || '').trim();
+    if (!stripe || !expectedPriceId) throw new Error('Stripe price verification is not configured.');
+    if (!session?.id || session.mode !== 'payment' || session.payment_status !== 'paid') {
+        throw new Error('Stripe checkout is not a completed one-time payment.');
+    }
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
+    const rows = lineItems?.data || [];
+    if (rows.length !== 1 || rows[0]?.price?.id !== expectedPriceId || rows[0]?.quantity !== 1) {
+        throw new Error('Stripe checkout does not match the MACPrep full-access product.');
+    }
+    return rows[0];
 }
 
 class MobilePurchaseError extends Error {
@@ -1401,6 +1677,32 @@ function appleVerifier(environment) {
     );
 }
 
+async function verifyAppleNotification(signedPayload) {
+    if (typeof signedPayload !== 'string' || signedPayload.length < 32 || signedPayload.length > 100000) {
+        throw new MobilePurchaseError('Invalid Apple notification.', 400);
+    }
+    const productionAppId = Number(process.env.APPLE_IAP_APP_ID);
+    const environments = Number.isSafeInteger(productionAppId) && productionAppId > 0
+        ? [Environment.PRODUCTION, Environment.SANDBOX]
+        : [Environment.SANDBOX];
+    let lastError;
+    for (const environment of environments) {
+        try {
+            const verifier = appleVerifier(environment);
+            const notification = await verifier.verifyAndDecodeNotification(signedPayload);
+            let transaction = null;
+            if (notification?.data?.signedTransactionInfo) {
+                transaction = await verifier.verifyAndDecodeTransaction(notification.data.signedTransactionInfo);
+            }
+            return { notification, transaction };
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    console.warn('[mobile-purchase] Apple notification verification failed:', lastError?.message || 'unknown error');
+    throw new MobilePurchaseError('Invalid Apple notification signature.', 400);
+}
+
 async function verifyApplePurchase(userId, transactionId) {
     assertMobilePurchase(/^\d{1,64}$/.test(String(transactionId || '')), 'Invalid Apple transaction.');
     const credentials = appleCredentials();
@@ -1472,6 +1774,25 @@ async function verifyGooglePlayPurchase(userId, purchaseToken) {
     return { ...entitlement, transactionId: String(purchaseToken), publisher, acknowledgementState: purchase.acknowledgementState };
 }
 
+async function verifyGooglePubSubRequest(req) {
+    const audience = String(process.env.GOOGLE_PLAY_RTDN_AUDIENCE || '').trim();
+    const expectedEmail = String(process.env.GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT_EMAIL || '').trim().toLowerCase();
+    if (!audience || !expectedEmail) throw new MobilePurchaseError('Google Play notifications are not configured.', 503);
+    const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
+    if (!match) throw new MobilePurchaseError('Missing Google Pub/Sub identity.', 401);
+    const client = new google.auth.OAuth2();
+    let payload;
+    try {
+        const ticket = await client.verifyIdToken({ idToken: match[1], audience });
+        payload = ticket.getPayload();
+    } catch (error) {
+        throw new MobilePurchaseError('Invalid Google Pub/Sub identity.', 401);
+    }
+    if (!payload?.email_verified || String(payload.email || '').toLowerCase() !== expectedEmail) {
+        throw new MobilePurchaseError('Unexpected Google Pub/Sub identity.', 403);
+    }
+}
+
 async function claimMobileEntitlement(userId, entitlement) {
     if (!supabase) throw new MobilePurchaseError('Purchases are temporarily unavailable.', 503);
     const row = {
@@ -1537,19 +1858,31 @@ async function getAdminUser(req) {
 // because the service-role client bypasses RLS, this check IS the isolation. Returns
 // null for students and unassigned faculty (→ 403). getFacultyUser is read-only; setting
 // roles/programs stays admin-only (POST /api/admin/faculty).
-async function getFacultyUser(req) {
-    const user = await getUserFromToken(req);
+export function resolveFacultyScope({ user, isAdmin = false, profile = null, requestedProgram = '' }) {
+    if (!user || !hasVerifiedEmail(user)) return null;
+    if (isAdmin) {
+        const program = normalizeTrainingProgram(requestedProgram);
+        return { user, program: program || null, role: 'admin', isAdmin: true };
+    }
+    const program = normalizeTrainingProgram(profile?.faculty_program);
+    if (!(profile?.is_program_director || profile?.is_faculty) || !program) return null;
+    return {
+        user,
+        program,
+        role: profile.is_program_director ? 'program_director' : 'faculty',
+        isAdmin: false,
+    };
+}
+
+async function getFacultyUser(req, knownUser = null) {
+    const user = knownUser || await getUserFromToken(req);
     if (!user || !supabase || !hasVerifiedEmail(user)) return null;
     if (isAdminUser(user)) {
-        const requested = typeof req.query?.program === 'string' ? req.query.program.trim() : '';
-        return { user, program: requested || null, role: 'admin', isAdmin: true };
+        return resolveFacultyScope({ user, isAdmin: true, requestedProgram: req.query?.program });
     }
     const { data: p } = await supabase.from(PROFILE_TABLE)
         .select('is_program_director, is_faculty, faculty_program').eq('user_id', user.id).maybeSingle();
-    if (!p) return null;
-    const program = (p.faculty_program || '').trim();
-    if (!(p.is_program_director || p.is_faculty) || !program) return null;
-    return { user, program, role: p.is_program_director ? 'program_director' : 'faculty', isAdmin: false };
+    return resolveFacultyScope({ user, profile: p });
 }
 
 // Known program-director accounts from the verified-personal-email rows of the outreach
@@ -1605,12 +1938,20 @@ async function getSaaBenchmark() {
     } catch (e) { console.error('[saa-benchmark]', e.message); }
     return _saaBench;
 }
-// Per-domain SAA accuracy %, only where there's enough signal (keeps it an anonymized
-// aggregate, never a stat derived from one or two students).
-function saaDomainBenchmark(bench, minAttempts = 20) {
-    const out = {};
-    Object.entries((bench && bench.byDomain) || {}).forEach(([dom, v]) => { if (v.a >= minAttempts) out[dom] = Math.round((v.c / v.a) * 100); });
-    return out;
+// Per-domain SAA accuracy from each learner's latest answer per question. Require
+// both enough answers and enough distinct active students before exposing a value.
+function saaDomainBenchmark(bench, minResponses = 20, minLearners = 10) {
+    const accuracy = {};
+    const samples = {};
+    Object.entries((bench && bench.byDomain) || {}).forEach(([domain, value]) => {
+        const responses = Number(value?.a) || 0;
+        const learners = Number(value?.u) || 0;
+        if (responses >= minResponses && learners >= minLearners) {
+            accuracy[domain] = Math.round(((Number(value?.c) || 0) / responses) * 100);
+            samples[domain] = learners;
+        }
+    });
+    return { accuracy, samples };
 }
 
 // ---------------------------------------------------------------------------
@@ -1623,9 +1964,8 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const password = req.body?.password || '';
     const name = req.body?.name || '';
     const credential = ['SAA', 'CAA'].includes(req.body?.credential) ? req.body.credential : null;
-    const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const gradDate = isDate(req.body?.graduation_date) ? req.body.graduation_date : null;
-    const examDate = isDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
+    const gradDate = isValidProfileDate(req.body?.graduation_date) ? req.body.graduation_date : null;
+    const examDate = isValidProfileDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
     const trainingProgram = normalizeTrainingProgram(req.body?.training_program);
 
     if (!supabaseAuth) return res.status(500).json({ success: false, error: 'Auth not configured.' });
@@ -1660,11 +2000,11 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
                 }
             }
 
+            if (data.session) setAuthCookies(res, data.session);
             return res.json({
                 success: true,
                 needsConfirmation: !data.session, // true when email confirmation is on
-                token: data.session?.access_token || null,
-                refresh_token: data.session?.refresh_token || null,
+                authenticated: !!data.session,
                 profile: { email, premium_unlocked: false },
             });
         }
@@ -1675,10 +2015,10 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
 
         const isPremium = await isUserPremium(data.user?.id);
 
+        setAuthCookies(res, data.session);
         return res.json({
             success: true,
-            token: data.session?.access_token || null,
-            refresh_token: data.session?.refresh_token || null,
+            authenticated: true,
             profile: { email, premium_unlocked: isPremium },
         });
     } catch (err) {
@@ -1687,18 +2027,29 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     }
 });
 
-// Exchange a refresh token for a fresh access token so a study session survives
-// the 1-hour access-token TTL instead of abruptly logging the user out.
+// Rotate the HttpOnly session cookies so a study session survives the one-hour
+// access-token TTL without exposing either credential to browser JavaScript.
 app.post('/api/auth/refresh', sessionLimiter, async (req, res) => {
-    const refresh_token = req.body?.refresh_token;
+    const refresh_token = req.body?.refresh_token || authCookie(req, REFRESH_COOKIE);
     if (!supabaseAuth || !refresh_token) return res.status(400).json({ error: 'Missing refresh token.' });
     try {
         const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
         if (error || !data.session) return res.status(401).json({ error: 'Could not refresh session.' });
-        return res.json({ token: data.session.access_token, refresh_token: data.session.refresh_token });
+        setAuthCookies(res, data.session);
+        return res.json({ authenticated: true });
     } catch (err) {
         return res.status(401).json({ error: 'Could not refresh session.' });
     }
+});
+
+app.post('/api/auth/logout', sessionLimiter, async (req, res) => {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : authCookie(req, ACCESS_COOKIE);
+    clearAuthCookies(res);
+    if (token && supabase) {
+        try { await supabase.auth.admin.signOut(token, 'global'); } catch (e) { /* cookie clearing still succeeds */ }
+    }
+    return res.json({ success: true });
 });
 
 // Send a password-reset email (Supabase recovery link → /reset.html).
@@ -1737,10 +2088,14 @@ app.post('/api/auth/update-password', authLimiter, async (req, res) => {
         if (!methods.includes('recovery')) {
             return res.status(403).json({ error: 'This action requires a password-reset link. Use the "Forgot password" option to get one.' });
         }
-        const { error: upErr } = await supabase.auth.admin.updateUserById(data.user.id, { password: new_password });
-        if (upErr) throw upErr;
+        // Use the authenticated user endpoint so the configured password-strength,
+        // leaked-password, and recovery-session protections are enforced. An admin
+        // update would bypass the normal user password-change policy.
+        await updatePasswordWithAccessToken(access_token, new_password);
+        clearAuthCookies(res);
         return res.json({ success: true });
     } catch (err) {
+        if (err instanceof AuthPasswordUpdateError) return res.status(err.status).json({ error: err.message });
         console.error('Password update failure:', err.message);
         return res.status(500).json({ error: 'Could not update password.' });
     }
@@ -1758,12 +2113,22 @@ app.post('/api/user/change-password', authLimiter, async (req, res) => {
     try {
         // Re-authenticate with the current password before changing it, so a
         // leftover or stolen session token alone cannot lock the owner out.
-        const { error: authErr } = await supabaseAuth.auth.signInWithPassword({ email: user.email, password: current_password });
-        if (authErr) return res.status(403).json({ error: 'Current password is incorrect.' });
-        const { error } = await supabase.auth.admin.updateUserById(user.id, { password: new_password });
-        if (error) throw error;
-        return res.json({ success: true });
+        const { data: reauth, error: authErr } = await supabaseAuth.auth.signInWithPassword({ email: user.email, password: current_password });
+        if (authErr || !reauth.session?.access_token) return res.status(403).json({ error: 'Current password is incorrect.' });
+        await updatePasswordWithAccessToken(reauth.session.access_token, new_password, current_password);
+
+        // Hosted Supabase invalidates active sessions after a password update. Start
+        // a fresh session with the new password so a successful change does not leave
+        // the user in a confusing half-signed-in state.
+        const { data: nextSession, error: nextError } = await supabaseAuth.auth.signInWithPassword({ email: user.email, password: new_password });
+        if (nextError || !nextSession.session) {
+            clearAuthCookies(res);
+            return res.json({ success: true, requires_login: true });
+        }
+        setAuthCookies(res, nextSession.session);
+        return res.json({ success: true, requires_login: false });
     } catch (err) {
+        if (err instanceof AuthPasswordUpdateError) return res.status(err.status).json({ error: err.message });
         return res.status(500).json({ error: 'Could not change password.' });
     }
 });
@@ -1792,11 +2157,10 @@ app.post('/api/user/delete', async (req, res) => {
 app.post('/api/user/reset-progress', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    const admin = await getAdminUser(req);
-    const allowed = admin ? true : await isUserPremium(user.id);
+    const allowed = await hasFullAccess(user);
     if (!allowed) return res.status(403).json({ error: 'Progress reset is available with full access.' });
     try {
-        const { error } = await supabase.from(PROGRESS_TABLE).delete().eq('user_id', user.id);
+        const { error } = await supabase.rpc('reset_macprep_progress', { p_user: user.id });
         if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
@@ -1850,6 +2214,40 @@ const ANALYTICS_EVENTS = new Set([
     'progress_reset', 'upgrade_screen',
 ]);
 const ANALYTICS_PLATFORM_KEYS = ['web', 'ios', 'android', 'untagged'];
+const ANALYTICS_ARCADE_TYPES = new Set(['survival', 'suddendeath', 'timeattack', 'blitz']);
+const ANALYTICS_MODES = new Set(['tutor', 'exam', 'recommended', 'diagnostic', 'mock', 'review', 'custom']);
+const ANALYTICS_UPGRADE_SOURCES = new Set(['upgrade_screen']);
+const ANALYTICS_UPGRADE_VIA = new Set(['web', 'ios', 'android', 'voucher', 'stripe', 'apple', 'google_play']);
+const ANALYTICS_FEATURES = new Set(['generic', 'recommended', 'diagnostic', 'mock', 'flashcards', 'critical-events', 'arcade', 'boss', 'review', 'focused']);
+const ANALYTICS_DOMAINS = new Set([
+    'Principles of Anesthesia',
+    'Physiology, Pathophysiology & Management',
+    'Instrumentation, Monitoring & Anesthetic Delivery Systems',
+    'Subspecialty Care',
+    'Pharmacology',
+    'Regional Anesthesia & Pain Management',
+]);
+const ANALYTICS_META_FIELDS = new Map([
+    ['landing_view', new Set(['vid'])],
+    ['demo_started', new Set(['vid'])],
+    ['demo_completed', new Set(['vid'])],
+    ['recommended_start', new Set(['size', 'adaptive'])],
+    ['diagnostic_start', new Set(['size'])],
+    ['mock_exam_start', new Set(['size'])],
+    ['session_start', new Set(['size', 'mode'])],
+    ['quiz_start', new Set(['size', 'mode'])],
+    ['session_complete', new Set(['size', 'mode', 'answered'])],
+    ['specialty_quiz_start', new Set(['count'])],
+    ['boss_start', new Set(['domain'])],
+    ['arcade_start', new Set(['type'])],
+    ['arcade_over', new Set(['type', 'score', 'reason'])],
+    ['paywall_hit', new Set(['feature', 'src'])],
+    ['upgrade_screen', new Set(['feature'])],
+    ['upgrade_success', new Set(['via'])],
+    ['critical_events_open', new Set(['count'])],
+    ['flashcards_start', new Set(['size'])],
+    ['flashcards_done', new Set(['size', 'right'])],
+]);
 const FEATURE_EVENT_LABELS = new Map([
     ['recommended_start', 'Recommended set'],
     ['diagnostic_start', 'Diagnostic'],
@@ -1864,6 +2262,27 @@ const FEATURE_EVENT_LABELS = new Map([
 export function analyticsPlatformFromMeta(meta) {
     const platform = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta.platform : null;
     return platform === 'web' || platform === 'ios' || platform === 'android' ? platform : 'untagged';
+}
+
+export function sanitizeAnalyticsMeta(name, rawMeta) {
+    const raw = rawMeta && typeof rawMeta === 'object' && !Array.isArray(rawMeta) ? rawMeta : {};
+    const clean = { platform: analyticsPlatformFromMeta(raw) };
+    const allowed = ANALYTICS_META_FIELDS.get(name) || new Set();
+    for (const key of allowed) {
+        const value = raw[key];
+        if (key === 'vid' && typeof value === 'string' && /^[a-z0-9-]{1,40}$/i.test(value)) clean.vid = value;
+        else if (['size', 'count', 'answered', 'score', 'right'].includes(key) && Number.isInteger(Number(value))) {
+            clean[key] = Math.max(0, Math.min(5000, Number(value)));
+        } else if (key === 'adaptive' && typeof value === 'boolean') clean.adaptive = value;
+        else if (key === 'mode' && ANALYTICS_MODES.has(value)) clean.mode = value;
+        else if (key === 'type' && ANALYTICS_ARCADE_TYPES.has(value)) clean.type = value;
+        else if (key === 'feature' && ANALYTICS_FEATURES.has(value)) clean.feature = value;
+        else if (key === 'src' && ANALYTICS_UPGRADE_SOURCES.has(value)) clean.src = value;
+        else if (key === 'via' && ANALYTICS_UPGRADE_VIA.has(value)) clean.via = value;
+        else if (key === 'domain' && ANALYTICS_DOMAINS.has(value)) clean.domain = value;
+        else if (key === 'reason' && typeof value === 'string' && /^[a-z0-9_-]{1,24}$/i.test(value)) clean.reason = value;
+    }
+    return clean;
 }
 
 async function fetchAnalyticsEventsSince(since) {
@@ -1931,9 +2350,7 @@ app.post('/api/event', eventLimiter, async (req, res) => {
     const name = String(req.body?.name || '');
     if (!ANALYTICS_EVENTS.has(name)) return res.json({ ok: true }); // silently ignore unknown
     const user = await getUserFromToken(req);
-    let meta = (req.body && typeof req.body.meta === 'object' && req.body.meta && !Array.isArray(req.body.meta)) ? req.body.meta : {};
-    // Bound the stored payload so the events table can't be flooded with large blobs.
-    try { if (JSON.stringify(meta).length > 2000) meta = {}; } catch (e) { meta = {}; }
+    const meta = sanitizeAnalyticsMeta(name, req.body?.meta);
     try {
         await supabase.from('analytics_events').insert({ name, user_id: user?.id || null, meta });
     } catch (e) { /* analytics is best-effort */ }
@@ -1977,9 +2394,33 @@ app.post('/api/admin/question', async (req, res) => {
     }
     if (Array.isArray(b.choices)) update.choices = b.choices;
     if (Array.isArray(b.references)) update.references = b.references;
-    if (b.status === 'published') update.reviewed_by = admin.id;
     if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Nothing to update.' });
     try {
+        const { data: current, error: readError } = await supabase
+            .from('questions')
+            .select('id, domain, domain_name, category, subtopic, stem, choices, correct_answer, explanation, "references", status')
+            .eq('id', id)
+            .maybeSingle();
+        if (readError) throw readError;
+        if (!current) return res.status(404).json({ error: 'Question not found.' });
+        const candidate = {
+            ...current,
+            ...update,
+            choices: parseChoices(update.choices ?? current.choices),
+            references: (() => {
+                const value = update.references ?? current.references;
+                if (Array.isArray(value)) return value;
+                if (typeof value === 'string') { try { return JSON.parse(value); } catch (error) { return []; } }
+                return [];
+            })(),
+        };
+        if (candidate.status === 'published') {
+            const assessment = validateQuestionForPublication(candidate);
+            if (!assessment.valid) {
+                return res.status(422).json({ error: 'This question does not meet the publication standard.', issues: assessment.errors });
+            }
+            update.reviewed_by = admin.id;
+        }
         const { error } = await supabase.from('questions').update(update).eq('id', id);
         if (error) throw error;
         return res.json({ success: true });
@@ -2035,20 +2476,39 @@ app.post('/api/admin/edit', async (req, res) => {
         if (edit.status !== 'pending') return res.json({ success: true, already: true });
         if (action === 'approve') {
             const finalChoices = Array.isArray(req.body?.choices) && req.body.choices.length ? req.body.choices : edit.proposed_choices;
-            // Answer-key guard: exactly one correct choice must remain, or refuse.
-            const nCorrect = (finalChoices || []).filter((c) => c && c.correct === true).length;
-            if (nCorrect !== 1) return res.status(400).json({ error: 'Edit must keep exactly one correct choice.' });
-            const { error: e2 } = await supabase.from('questions').update({ choices: finalChoices }).eq('id', edit.question_id);
-            if (e2) throw e2;
-            const { error: e3 } = await supabase.from('question_edits').update({ status: 'approved', proposed_choices: finalChoices, reviewed_at: new Date().toISOString() }).eq('id', id);
-            if (e3) throw e3;
+            const { data: question, error: qErr } = await supabase
+                .from('questions')
+                .select('id, domain, domain_name, category, subtopic, stem, choices, correct_answer, explanation, "references", status')
+                .eq('id', edit.question_id)
+                .maybeSingle();
+            if (qErr) throw qErr;
+            if (!question) return res.status(404).json({ error: 'Question not found.' });
+            if (question.status === 'published') {
+                const assessment = validateQuestionForPublication({ ...question, choices: finalChoices });
+                if (!assessment.valid) {
+                    return res.status(422).json({ error: 'The proposed edit does not meet the publication standard.', issues: assessment.errors });
+                }
+            }
+            const { data: applied, error: applyError } = await supabase.rpc('apply_macprep_question_edit', {
+                p_edit_id: id,
+                p_action: 'approve',
+                p_choices: finalChoices,
+            });
+            if (applyError) throw applyError;
+            return res.json({ success: true, already: !!applied?.already });
         } else {
-            const { error: e4 } = await supabase.from('question_edits').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', id);
-            if (e4) throw e4;
+            const { data: applied, error: applyError } = await supabase.rpc('apply_macprep_question_edit', {
+                p_edit_id: id,
+                p_action: 'reject',
+                p_choices: null,
+            });
+            if (applyError) throw applyError;
+            return res.json({ success: true, already: !!applied?.already });
         }
-        return res.json({ success: true });
     } catch (err) {
         console.error('Edit action failure:', err.message);
+        if (/edit_not_found/i.test(err.message || '')) return res.status(404).json({ error: 'Edit not found.' });
+        if (/question_not_found/i.test(err.message || '')) return res.status(404).json({ error: 'Question not found.' });
         return res.status(500).json({ error: 'Could not apply edit.' });
     }
 });
@@ -2098,26 +2558,16 @@ app.post('/api/redeem-voucher', voucherLimiter, async (req, res) => {
     const code = String(req.body?.code || '').trim().toUpperCase();
     if (!code) return res.status(400).json({ error: 'Enter a code.' });
     try {
-        const { data: v } = await supabase.from('program_vouchers')
-            .select('id, is_claimed').eq('voucher_key', code).maybeSingle();
-        if (!v) return res.status(404).json({ error: 'That code was not found.' });
-        if (v.is_claimed) return res.status(409).json({ error: 'That code has already been used.' });
-        // Claim it and upgrade the user (only if still unclaimed — guards double-claim).
-        const { data: claimed, error: cErr } = await supabase.from('program_vouchers')
-            .update({ is_claimed: true, claimed_by_id: user.id, claimed_by_email: user.email, claimed_at: new Date().toISOString() })
-            .eq('id', v.id).eq('is_claimed', false).select('id');
-        if (cErr) throw cErr;
-        if (!claimed || claimed.length === 0) return res.status(409).json({ error: 'That code has already been used.' });
-        const upg = { account_tier: 'premium', premium_unlocked_at: new Date().toISOString() };
-        const { data: updated, error: uErr } = await supabase.from(PROFILE_TABLE).update(upg).eq('user_id', user.id).select('user_id');
-        if (uErr) throw uErr;
-        if (!updated || updated.length === 0) {
-            // No profile row yet — create one so the redeemed code actually grants access.
-            const { error: insErr } = await supabase.from(PROFILE_TABLE).upsert({ user_id: user.id, email: user.email, ...upg }, { onConflict: 'user_id' });
-            if (insErr) throw insErr;
-        }
+        const { error } = await supabase.rpc('claim_macprep_voucher', {
+            p_user: user.id,
+            p_email: (user.email || '').toLowerCase().trim(),
+            p_code: code,
+        });
+        if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
+        if (/voucher_not_found/i.test(err.message || '')) return res.status(404).json({ error: 'That code was not found.' });
+        if (/voucher_already_claimed/i.test(err.message || '')) return res.status(409).json({ error: 'That code has already been used.' });
         console.error('Voucher redeem failure:', err.message);
         return res.status(500).json({ error: 'Could not redeem code.' });
     }
@@ -2194,7 +2644,9 @@ app.post('/api/admin/faculty', async (req, res) => {
 });
 
 app.get('/api/faculty/cohort', cohortLimiter, async (req, res) => {
-    const ctx = await getFacultyUser(req);
+    const authenticatedUser = await getUserFromToken(req);
+    if (!authenticatedUser) return res.status(401).json({ error: 'Authentication required.' });
+    const ctx = await getFacultyUser(req, authenticatedUser);
     if (!ctx) return res.status(403).json({ error: 'The cohort dashboard is for program directors and faculty.' });
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
@@ -2448,7 +2900,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
     const poolMode = ['all', 'new'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
     const questionIds = Array.from(new Set((Array.isArray(req.body?.question_ids) ? req.body.question_ids : [])
         .map((id) => String(id).trim()).filter(Boolean))).slice(0, MAX_STUDY_SESSION_SIZE);
-    const elevated = isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
+    const elevated = await hasFullAccess(user);
 
     try {
         let questions;
@@ -2488,7 +2940,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
     if (!supabase) return res.json({ questions: [] });
-    const elevated = isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
+    const elevated = await hasFullAccess(user);
     if (!elevated) return res.status(402).json({ error: 'Question search is available with full access.', paywall: true, questions: [] });
     const terms = String(req.query.q || '').trim().slice(0, 120);
     const words = terms.split(/\s+/).filter((word) => word.length >= 2).slice(0, 6);
@@ -2518,7 +2970,7 @@ app.get('/api/exam-export', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
-    if (!(await isUserPremium(user.id))) {
+    if (!(await hasFullAccess(user))) {
         return res.status(402).json({ error: 'Printable exams are a premium feature.', paywall: true });
     }
     const count = Math.min(Math.max(parseInt(req.query.count, 10) || 25, 1), 200);
@@ -2563,7 +3015,7 @@ app.get('/api/flashcards', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
-    if (!(await isUserPremium(user.id))) {
+    if (!(await hasFullAccess(user))) {
         return res.status(402).json({ error: 'Flashcard mode is a premium feature.', paywall: true });
     }
     const idsParam = (req.query.ids || '').toString().trim();
@@ -2626,7 +3078,7 @@ function loadCriticalEvents() {
 app.get('/api/critical-events', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!(await isUserPremium(user.id))) {
+    if (!(await hasFullAccess(user))) {
         return res.status(402).json({ error: 'Critical Event cards are a premium feature.', paywall: true });
     }
     const ce = loadCriticalEvents();
@@ -2670,11 +3122,7 @@ app.post('/api/gamification', async (req, res) => {
 // answered (user_progress) — never from a client-reported number.
 // ---------------------------------------------------------------------------
 app.post('/api/grade', gradeLimiter, async (req, res) => {
-    const { questionId, choiceIndex, time_ms: timeMsRaw, answer_changed: changedRaw } = req.body || {};
-    // Per-attempt analytics (Phase 3): time-on-item (ms, capped at 30 min to drop
-    // "left the tab open" outliers) + whether the user changed their selection.
-    const timeMs = (Number.isFinite(Number(timeMsRaw)) && Number(timeMsRaw) > 0 && Number(timeMsRaw) <= 1800000) ? Math.round(Number(timeMsRaw)) : null;
-    const answerChanged = (typeof changedRaw === 'boolean') ? changedRaw : null;
+    const { questionId, choiceIndex } = req.body || {};
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
 
     const user = await getUserFromToken(req);
@@ -2685,12 +3133,12 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
     }
 
     try {
-        const isPremium = await isUserPremium(user.id);
+        const fullAccess = await hasFullAccess(user);
 
         // Enforce the free ceiling on distinct questions already answered. Re-answering
         // a question the user has already seen is always allowed (doesn't add to the
         // distinct count), so this can't be gamed by replaying the same item.
-        if (!isPremium) {
+        if (!fullAccess) {
             const ceiling = await getFreeTierCeiling();
             // Cheap first: re-answering a question already seen is always free.
             const { count: seenThis } = await supabase
@@ -2711,31 +3159,11 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         if (error) throw error;
         if (!q) return res.status(404).json({ error: 'Question not found.' });
 
-        // Resolve the correct index from choices[].correct, falling back to the
-        // letter column ("A" -> 0).
-        const choices = parseChoices(q.choices);
-        let correctIndex = choices.findIndex((c) => c && typeof c === 'object' && c.correct === true);
-        if (correctIndex < 0 && typeof q.correct_answer === 'string' && q.correct_answer.trim()) {
-            correctIndex = q.correct_answer.trim().toUpperCase().charCodeAt(0) - 65;
-        }
+        const graded = normalizeGradeInput(q, req.body);
+        const { selectedIndex: selIndex, correctIndex, isCorrect, confidence, timeMs, answerChanged, choices } = graded;
 
-        // If we can't resolve exactly one in-range correct answer, refuse to grade
-        // rather than silently scoring the attempt wrong (and never record it).
-        if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= choices.length) {
-            console.error(`UNSCORABLE question id=${questionId}: no resolvable correct answer.`);
-            return res.status(422).json({ error: 'This question could not be scored and has been flagged for review.' });
-        }
-
-        // Validate the submitted choice is an in-range integer.
-        const selIndex = Number(choiceIndex);
-        if (!Number.isInteger(selIndex) || selIndex < 0 || selIndex >= choices.length) {
-            return res.status(400).json({ error: 'Invalid answer choice.' });
-        }
-
-        const isCorrect = selIndex === correctIndex;
-        const confidence = ['low', 'medium', 'high'].includes(req.body?.confidence) ? req.body.confidence : null;
-
-        // Record the attempt for progress + free-tier accounting (best-effort).
+        // Record the attempt before revealing the answer. Unexpected persistence
+        // failures must never be reported as a successfully graded question.
         const { error: pErr } = await supabase.from(PROGRESS_TABLE).insert({
             user_id: user.id,
             question_id: String(questionId),
@@ -2753,7 +3181,7 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
             if (/free_tier/i.test(pErr.message || '') || pErr.code === '23514') {
                 return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
             }
-            console.warn(`Progress insert warning: ${pErr.message}`);
+            throw pErr;
         }
 
         // Update the spaced-repetition (SM-2) schedule for this question — best-effort.
@@ -2771,42 +3199,25 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         let choiceDistribution = null; // [pct per choice index] once enough responses
         let responseCount = 0;
         try {
-            // Peer comparison is scoped to ALL SAAs (students) — never the user's own cohort
-            // (Jake's rule). saaIds comes from the cached SAA benchmark; we filter this
-            // question's responses to SAA accounts before computing %-correct + choice mix.
-            const bench = await getSaaBenchmark();
-            const saaIds = bench.saaIds || new Set();
-            const { data: rows } = await supabase.from(PROGRESS_TABLE).select('is_correct, selected_label, user_id').eq('question_id', String(questionId));
-            const saaRows = (rows || []).filter((r) => saaIds.has(r.user_id));
-            if (saaRows.length) {
-                responseCount = saaRows.length;
-                if (saaRows.length >= 3) peerPct = Math.round((saaRows.filter((r) => r.is_correct).length / saaRows.length) * 100);
-                const counts = new Array(choices.length).fill(0);
-                let total = 0;
-                saaRows.forEach((r) => {
-                    const i = String(r.selected_label || '').toUpperCase().charCodeAt(0) - 65;
-                    if (Number.isInteger(i) && i >= 0 && i < choices.length) { counts[i]++; total++; }
-                });
-                // Surface once there are a few responses (same floor as peer_correct_pct);
-                // avoids a misleading "100%" off a single answer.
-                if (total >= 3) choiceDistribution = counts.map((c) => Math.round((c / total) * 100));
+            // Peer comparison is scoped to ALL SAAs and aggregated in Postgres; raw
+            // population-wide user ids and response rows never enter the app process.
+            const { data: peer, error: peerError } = await supabase.rpc('macprep_saa_question_stats', {
+                p_question: String(questionId),
+            });
+            if (peerError) throw peerError;
+            const learnerCount = Number(peer?.learners) || 0;
+            responseCount = learnerCount;
+            if (learnerCount >= 10) {
+                peerPct = Math.round(((Number(peer?.correct) || 0) / responseCount) * 100);
+                const labels = peer?.labels && typeof peer.labels === 'object' ? peer.labels : {};
+                choiceDistribution = choices.map((_, index) => Math.round(
+                    ((Number(labels[String.fromCharCode(65 + index)]) || 0) / responseCount) * 100
+                ));
             }
         } catch (e) { /* peer stats best-effort */ }
 
-        // Per-choice rationale (so the client can show why each option is right/wrong)
-        // and the source references (journal links). Never reveal the `correct`
-        // flag positions until after the answer — but at grade time it's fine.
-        const rationales = choices.map((c) => (c && typeof c === 'object' ? (c.rationale || '') : ''));
-        let references = q.references;
-        if (typeof references === 'string') { try { references = JSON.parse(references); } catch (e) { references = []; } }
-        if (!Array.isArray(references)) references = [];
-
         return res.json({
-            correct: isCorrect,
-            correctIndex,
-            explanation: q.explanation || '',
-            rationales,
-            references,
+            ...graded.result,
             peer_correct_pct: peerPct,
             peer_group: 'SAA',
             choice_distribution: choiceDistribution,
@@ -2814,7 +3225,111 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         });
     } catch (err) {
         console.error('Grade route failure:', err.message);
-        return res.status(500).json({ error: 'Grading failure.' });
+        return res.status(err.status || 500).json({ error: err.status ? err.message : 'Grading failure.' });
+    }
+});
+
+// Exam mode submits once. The answer key is returned only after one atomic,
+// idempotent progress write succeeds for the complete answered set.
+app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+
+    const submissionId = String(req.body?.submissionId || '');
+    const answers = Array.isArray(req.body?.answers) ? req.body.answers : [];
+    if (!validUuid(submissionId)) return res.status(400).json({ error: 'A valid exam submission id is required.' });
+    if (!answers.length || answers.length > MAX_STUDY_SESSION_SIZE) {
+        return res.status(400).json({ error: `Submit between 1 and ${MAX_STUDY_SESSION_SIZE} answered questions.` });
+    }
+
+    const questionIds = answers.map((answer) => String(answer?.questionId || '').trim());
+    if (questionIds.some((id) => !id) || new Set(questionIds).size !== questionIds.length) {
+        return res.status(400).json({ error: 'Every submitted question must be present exactly once.' });
+    }
+
+    try {
+        const fullAccess = await hasFullAccess(user);
+        if (!fullAccess) {
+            const ceiling = await getFreeTierCeiling();
+            const { data: seenRows, error: seenErr } = await supabase
+                .from(PROGRESS_TABLE)
+                .select('question_id')
+                .eq('user_id', user.id)
+                .in('question_id', questionIds);
+            if (seenErr) throw seenErr;
+            const seen = new Set((seenRows || []).map((row) => String(row.question_id)));
+            const { data: distinctCount, error: countErr } = await supabase.rpc('distinct_answered', { p_user: user.id });
+            if (countErr) throw countErr;
+            const newQuestions = questionIds.filter((id) => !seen.has(id)).length;
+            if ((Number(distinctCount) || 0) + newQuestions > ceiling) {
+                return res.status(402).json({ error: 'paywall', paywall: true, limit: ceiling });
+            }
+        }
+
+        const query = applyServedFilter(
+            supabase
+                .from('questions')
+                .select('id, specialty, category, correct_answer, choices, explanation, "references"')
+                .in('id', questionIds)
+        );
+        const { data: questions, error: questionErr } = await query;
+        if (questionErr) throw questionErr;
+        const byId = new Map((questions || []).map((question) => [String(question.id), question]));
+        if (byId.size !== questionIds.length) {
+            return res.status(404).json({ error: 'One or more exam questions are no longer available.' });
+        }
+
+        const gradedAnswers = answers.map((answer) => {
+            const questionId = String(answer.questionId);
+            const question = byId.get(questionId);
+            const grade = normalizeGradeInput(question, answer);
+            return { questionId, question, grade };
+        });
+        const progressRows = gradedAnswers.map(({ questionId, question, grade }) => ({
+            user_id: user.id,
+            question_id: questionId,
+            submission_id: submissionId,
+            specialty: question.specialty || null,
+            category: question.category || null,
+            selected_label: String.fromCharCode(65 + grade.selectedIndex),
+            is_correct: grade.isCorrect,
+            confidence: grade.confidence,
+            time_ms: grade.timeMs,
+            answer_changed: grade.answerChanged,
+        }));
+
+        const { data: inserted, error: progressErr } = await supabase
+            .from(PROGRESS_TABLE)
+            .upsert(progressRows, {
+                onConflict: 'user_id,submission_id,question_id',
+                ignoreDuplicates: true,
+            })
+            .select('question_id');
+        if (progressErr) {
+            if (/free_tier/i.test(progressErr.message || '') || progressErr.code === '23514') {
+                return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
+            }
+            throw progressErr;
+        }
+
+        const insertedIds = new Set((inserted || []).map((row) => String(row.question_id)));
+        gradedAnswers.forEach(({ questionId, grade }) => {
+            if (!insertedIds.has(questionId)) return;
+            const quality = grade.isCorrect
+                ? (grade.confidence === 'high' ? 5 : grade.confidence === 'medium' ? 4 : 3)
+                : (grade.confidence === 'high' ? 0 : 2);
+            supabase.rpc('sm2_review', { p_user: user.id, p_question: questionId, p_quality: quality })
+                .then(({ error }) => { if (error) console.warn(`sm2_review warning: ${error.message}`); }, () => {});
+        });
+
+        return res.json({
+            submissionId,
+            results: gradedAnswers.map(({ questionId, grade }) => ({ questionId, ...grade.result })),
+        });
+    } catch (err) {
+        console.error('Batch grade route failure:', err.message);
+        return res.status(err.status || 500).json({ error: err.status ? err.message : 'The exam could not be graded. No answers were recorded.' });
     }
 });
 
@@ -2859,185 +3374,37 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             .maybeSingle();
         if (error) throw error;
 
-        // Derive study stats from recorded progress, including accuracy by specialty.
-        const progress = await fetchAllPostgrestRows((from, to) => supabase
-            .from(PROGRESS_TABLE)
-            .select('question_id, is_correct, category, created_at, confidence')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: true })
-            .range(from, to));
-
-        const answeredIds = new Set((progress || []).map((r) => r.question_id));
-        const correct = (progress || []).filter((r) => r.is_correct).length;
-        const ceiling = await getFreeTierCeiling();
-
-        // Missed question ids = answered incorrectly and never since gotten right.
-        const everCorrect = new Set((progress || []).filter((r) => r.is_correct).map((r) => r.question_id));
-        const missed_ids = Array.from(new Set((progress || [])
-            .filter((r) => !r.is_correct && !everCorrect.has(r.question_id))
-            .map((r) => r.question_id)));
-
-        // "Confident but wrong": answered with high confidence yet still not gotten right.
-        const confident_missed_ids = Array.from(new Set((progress || [])
-            .filter((r) => !r.is_correct && r.confidence === 'high' && !everCorrect.has(r.question_id))
-            .map((r) => r.question_id)));
-
-        const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
-        const flagged_ids = (flags || []).map((f) => f.question_id);
-        const { data: fcards } = await supabase.from('user_flashcards').select('question_id').eq('user_id', user.id);
-        const flashcard_ids = (fcards || []).map((f) => f.question_id);
-
-        // Per-specialty (category) accuracy from attempts.
-        const byCat = {};
-        (progress || []).forEach((r) => {
-            const c = r.category || 'Uncategorized';
-            byCat[c] = byCat[c] || { attempts: 0, correct: 0 };
-            byCat[c].attempts++;
-            if (r.is_correct) byCat[c].correct++;
-        });
-        const by_specialty = Object.entries(byCat)
-            .map(([category, v]) => ({ category, attempts: v.attempts, correct: v.correct, accuracy: Math.round((v.correct / v.attempts) * 100) }))
-            .sort((a, b) => b.attempts - a.attempts);
-
-        // Confidence calibration: accuracy on questions the user marked "Confident".
-        // Low accuracy here = overconfidence (a genuinely actionable, novel insight).
-        const calByCat = {};
-        (progress || []).forEach((r) => {
-            if (r.confidence !== 'high') return;
-            const c = r.category || 'Uncategorized';
-            (calByCat[c] = calByCat[c] || { n: 0, correct: 0 });
-            calByCat[c].n++;
-            if (r.is_correct) calByCat[c].correct++;
-        });
-        const calibration = Object.entries(calByCat)
-            .filter(([, v]) => v.n >= 3)
-            .map(([category, v]) => ({ category, attempts: v.n, accuracy: Math.round((v.correct / v.n) * 100) }))
-            .sort((a, b) => a.accuracy - b.accuracy);
-
-        // Coverage: distinct answered vs total served per category. Paginate the bank —
-        // a plain .select() is capped at 1000 rows, so once the bank grew past 1000 every
-        // category was undercounted (totals summed to 1000 instead of the real bank size).
-        const bankRows = [];
-        for (let from = 0; from < 50000; from += 1000) {
-            const { data: chunk } = await applyServedFilter(supabase.from('questions').select('id, category, domain_name, difficulty')).range(from, from + 999);
-            if (!chunk || !chunk.length) break;
-            bankRows.push(...chunk);
-            if (chunk.length < 1000) break;
-        }
-        const bankTotal = {};
-        (bankRows || []).forEach((r) => { const c = r.category || 'Uncategorized'; bankTotal[c] = (bankTotal[c] || 0) + 1; });
-        const answeredByCat = {};
-        (progress || []).forEach((r) => {
-            const c = r.category || 'Uncategorized';
-            (answeredByCat[c] = answeredByCat[c] || new Set()).add(r.question_id);
-        });
-        const coverage = Object.keys(bankTotal).map((c) => ({
-            category: c, total: bankTotal[c], answered: (answeredByCat[c] ? answeredByCat[c].size : 0),
-        })).sort((a, b) => b.total - a.total);
-
-        // ---- Adaptive engine inputs: per-domain ability (Elo) + mastery -------
-        // The served bank rows (paged above) carry each question's domain + difficulty.
-        // Replay the user's attempts in time order as a lightweight Elo per NCCAA
-        // domain: each answer nudges the domain rating toward/away from the
-        // question's difficulty rating. The client uses `target` to serve
-        // difficulty matched to the learner (with a slight upward stretch) and
-        // `mastery` to rank weakest domains + drive the readiness view. All
-        // derived on the fly from history — no schedule table, works retroactively.
-        const qMeta = {};
-        const bankByDomain = {};
-        (bankRows || []).forEach((r) => {
-            const dn = r.domain_name || 'General';
-            qMeta[r.id] = { domain: dn, difficulty: String(r.difficulty || 'medium').toLowerCase() };
-            bankByDomain[dn] = (bankByDomain[dn] || 0) + 1;
-        });
-        const DIFF_RATING = { easy: 900, medium: 1100, hard: 1300 };
-        const ELO_K = 24, ELO_START = 1100;
-        const domAbility = {};
-        const ensureDom = (d) => (domAbility[d] = domAbility[d] || { theta: ELO_START, attempts: 0, correct: 0, answered: new Set() });
-        Object.keys(bankByDomain).forEach(ensureDom); // every served domain appears, even untouched
-        (progress || []).forEach((r) => {
-            const meta = qMeta[r.question_id];
-            if (!meta) return; // attempt on a question no longer served — skip ability update
-            const D = ensureDom(meta.domain);
-            const qr = DIFF_RATING[meta.difficulty] || ELO_START;
-            const expected = 1 / (1 + Math.pow(10, (qr - D.theta) / 400));
-            D.theta += ELO_K * ((r.is_correct ? 1 : 0) - expected);
-            if (D.theta < 700) D.theta = 700; else if (D.theta > 1500) D.theta = 1500;
-            D.attempts++; if (r.is_correct) D.correct++;
-            D.answered.add(r.question_id);
-        });
-        const DOMAIN_ORDER = [
-            'Principles of Anesthesia',
-            'Physiology, Pathophysiology & Management',
-            'Instrumentation, Monitoring & Anesthetic Delivery Systems',
-            'Subspecialty Care',
-            'Pharmacology',
-            'Regional Anesthesia & Pain Management',
-        ];
-        const by_domain = Object.keys(domAbility).map((d) => {
-            const D = domAbility[d];
-            const theta = Math.round(D.theta);
-            const target = theta + 40; // desirable-difficulty stretch just above current ability
-            return {
-                domain: d,
-                attempts: D.attempts,
-                correct: D.correct,
-                accuracy: D.attempts ? Math.round((D.correct / D.attempts) * 100) : null,
-                answered: D.answered.size,
-                total: bankByDomain[d] || 0,
-                ability: theta,
-                target,
-                target_tier: target >= 1200 ? 'hard' : target >= 1000 ? 'medium' : 'easy',
-                mastery: D.attempts >= 5 ? Math.max(0, Math.min(100, Math.round(((theta - 800) / 600) * 100))) : null,
-            };
-        }).sort((a, b) => {
-            const ia = DOMAIN_ORDER.indexOf(a.domain), ib = DOMAIN_ORDER.indexOf(b.domain);
-            return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-        });
-
-        // Study streak: consecutive days (ending today or yesterday) with activity.
-        // Day boundaries use the user's LOCAL timezone (tz = browser getTimezoneOffset
-        // in minutes) so streaks, "answered today", and the trend roll over at local
-        // midnight, not UTC (which flipped ~7-8pm for US users).
         const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
-        const dayKey = (d) => new Date(new Date(d).getTime() - tzOffset * 60000).toISOString().slice(0, 10);
-        const activeDays = new Set((progress || []).map((r) => dayKey(r.created_at)));
-        let streak = 0;
-        const today = new Date();
-        for (let i = 0; i < 365; i++) {
-            const d = new Date(today.getTime() - i * 86400000);
-            if (activeDays.has(dayKey(d))) streak++;
-            else if (i === 0) continue; // today not yet studied — keep counting from yesterday
-            else break;
+        const [learningResult, readinessResult, flagsResult, cardsResult, dueResult, ceiling, benchmark] = await Promise.all([
+            supabase.rpc('macprep_user_learning_rollup', {
+                p_user: user.id,
+                p_tz_offset: tzOffset,
+                p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+            }),
+            supabase.rpc('macprep_user_practice_readiness', {
+                p_user: user.id,
+                p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+            }),
+            supabase.from('user_flags').select('question_id').eq('user_id', user.id),
+            supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
+            supabase.from('review_state').select('question_id').eq('user_id', user.id).lte('due_at', new Date().toISOString()),
+            getFreeTierCeiling(),
+            getSaaBenchmark(),
+        ]);
+        for (const result of [learningResult, readinessResult, flagsResult, cardsResult, dueResult]) {
+            if (result.error) throw result.error;
         }
-
-        // Accuracy trend: last 7 active days.
-        const byDay = {};
-        (progress || []).forEach((r) => { const k = dayKey(r.created_at); (byDay[k] = byDay[k] || { a: 0, c: 0 }); byDay[k].a++; if (r.is_correct) byDay[k].c++; });
-        const trend = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).slice(-7)
-            .map(([day, v]) => ({ day, accuracy: Math.round((v.c / v.a) * 100), attempts: v.a }));
-
-        // Readiness estimate: overall accuracy scaled by how much of the bank seen.
-        const totalServed = (bankRows || []).length || 1;
-        const seenFrac = Math.min(1, answeredIds.size / totalServed);
-        const overallAcc = (progress || []).length ? correct / (progress || []).length : 0;
-        const readiness = Math.round(overallAcc * 100 * (0.5 + 0.5 * seenFrac));
+        const learning = learningResult.data || {};
+        const readinessBasis = readinessResult.data || {};
+        const stats = learning.stats || { answered: 0, attempts: 0, correct: 0 };
+        const flagged_ids = (flagsResult.data || []).map((row) => row.question_id);
+        const flashcard_ids = (cardsResult.data || []).map((row) => row.question_id);
+        const due_ids = (dueResult.data || []).map((row) => row.question_id);
+        const today = new Date();
         let days_to_exam = null;
         if (profile?.target_exam_date) {
             days_to_exam = Math.ceil((new Date(profile.target_exam_date) - today) / 86400000);
         }
-
-        // Questions answered today (for the daily-goal indicator).
-        const todayKey = dayKey(today);
-        const answered_today = (progress || []).filter((r) => dayKey(r.created_at) === todayKey).length;
-
-        // Spaced repetition (SM-2): questions whose scheduled review is now due.
-        let due_ids = [];
-        try {
-            const { data: dueRows } = await supabase.from('review_state')
-                .select('question_id').eq('user_id', user.id).lte('due_at', new Date().toISOString());
-            due_ids = (dueRows || []).map((r) => r.question_id);
-        } catch (e) { /* review_state optional */ }
 
         // Effective credential: an SAA (student) whose graduation date has passed is
         // treated as a CAA from that day on (computed, no scheduled job) — this is what
@@ -3059,7 +3426,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const needsProgram = !isReviewUser(user) && !normalizeTrainingProgram(profile?.training_program);
         // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
         // students compare to the whole SAA population, never their own cohort).
-        const saa_domain_benchmark = saaDomainBenchmark(await getSaaBenchmark());
+        const saaBenchmark = saaDomainBenchmark(benchmark);
 
         // Review-ask nudge: once an account is a week old, ask for a review at the next
         // sign-in — unless they already left one (any status; one review per account) or
@@ -3070,10 +3437,11 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         try {
             const acctMs = profile?.created_at ? Date.parse(profile.created_at) : NaN;
             const oldEnough = Number.isFinite(acctMs) && (Date.now() - acctMs) >= 7 * 86400000;
+            const enoughExperience = Number(stats.answered) >= 10;
             const lastAsk = profile?.review_prompt_at ? Date.parse(profile.review_prompt_at) : 0;
             const windowOpen = !lastAsk || (Date.now() - lastAsk) >= 30 * 86400000;
             // Never nag the owner/admins (they own the product) or the App Store review account.
-            if (oldEnough && windowOpen && !isAdminUser(user) && !isReviewUser(user)) {
+            if (oldEnough && enoughExperience && windowOpen && !isAdminUser(user) && !isReviewUser(user)) {
                 const { count } = await supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
                 review_prompt_due = !count;
             }
@@ -3116,24 +3484,31 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 daily_state: (profile && profile.daily_state && typeof profile.daily_state === 'object') ? profile.daily_state : {},
                 phone: profile?.phone || '',
                 free_tier_limit: ceiling,
-                stats: { answered: answeredIds.size, attempts: (progress || []).length, correct },
-                by_specialty,
-                calibration,
-                coverage,
-                by_domain,
-                saa_domain_benchmark,
-                streak,
-                active_days: Array.from(activeDays),
-                trend,
-                readiness,
+                stats,
+                by_specialty: Array.isArray(learning.by_specialty) ? learning.by_specialty : [],
+                calibration: Array.isArray(learning.calibration) ? learning.calibration : [],
+                coverage: Array.isArray(learning.coverage) ? learning.coverage : [],
+                by_domain: Array.isArray(learning.by_domain) ? learning.by_domain : [],
+                saa_domain_benchmark: saaBenchmark.accuracy,
+                saa_domain_benchmark_samples: saaBenchmark.samples,
+                streak: Number(learning.streak) || 0,
+                active_days: Array.isArray(learning.active_days) ? learning.active_days : [],
+                trend: Array.isArray(learning.trend) ? learning.trend : [],
+                readiness: Number(readinessBasis.score) || 0,
+                readiness_basis: {
+                    answered: Number(readinessBasis.answered) || 0,
+                    correct: Number(readinessBasis.correct) || 0,
+                    total: Number(readinessBasis.total) || 0,
+                    latest_accuracy: readinessBasis.latest_accuracy == null ? null : Number(readinessBasis.latest_accuracy),
+                },
                 days_to_exam,
-                answered_today,
-                missed_ids,
-                confident_missed_ids,
+                answered_today: Number(learning.answered_today) || 0,
+                missed_ids: Array.isArray(learning.missed_ids) ? learning.missed_ids : [],
+                confident_missed_ids: Array.isArray(learning.confident_missed_ids) ? learning.confident_missed_ids : [],
                 due_ids,
                 flagged_ids,
                 flashcard_ids,
-                answered_ids: Array.from(answeredIds),
+                answered_ids: Array.isArray(learning.answered_ids) ? learning.answered_ids : [],
             },
         });
     } catch (err) {
@@ -3151,8 +3526,19 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
 
     const b = req.body || {};
     const update = {};
-    for (const f of ['full_name', 'credential', 'phone']) {
-        if (typeof b[f] === 'string') update[f] = b[f].slice(0, 200);
+    if (Object.prototype.hasOwnProperty.call(b, 'full_name')) {
+        if (typeof b.full_name !== 'string') return res.status(400).json({ error: 'Name must be text.' });
+        update.full_name = b.full_name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().replace(/\s+/g, ' ').slice(0, 120);
+    }
+    if (Object.prototype.hasOwnProperty.call(b, 'credential')) {
+        if (!['SAA', 'CAA'].includes(b.credential)) return res.status(400).json({ error: 'Credential must be SAA or CAA.' });
+        update.credential = b.credential;
+    }
+    if (Object.prototype.hasOwnProperty.call(b, 'phone')) {
+        if (typeof b.phone !== 'string' || !/^[0-9+().\-\s]{0,32}$/.test(b.phone)) {
+            return res.status(400).json({ error: 'Enter a valid phone number.' });
+        }
+        update.phone = b.phone.trim() || null;
     }
     if (Object.prototype.hasOwnProperty.call(b, 'training_program')) {
         const trainingProgram = normalizeTrainingProgram(b.training_program);
@@ -3161,14 +3547,20 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         }
         update.training_program = trainingProgram;
     }
-    if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
-    else if (typeof b.target_exam_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.target_exam_date)) {
-        update.target_exam_date = b.target_exam_date;
+    if (Object.prototype.hasOwnProperty.call(b, 'target_exam_date')) {
+        if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
+        else if (isValidProfileDate(b.target_exam_date)) update.target_exam_date = b.target_exam_date;
+        else return res.status(400).json({ error: 'Enter a valid target exam date.' });
     }
-    if (b.graduation_date === '' || b.graduation_date === null) update.graduation_date = null;
-    else if (typeof b.graduation_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.graduation_date)) {
-        update.graduation_date = b.graduation_date;
+    if (Object.prototype.hasOwnProperty.call(b, 'graduation_date')) {
+        if (b.graduation_date === '' || b.graduation_date === null) update.graduation_date = null;
+        else if (isValidProfileDate(b.graduation_date)) update.graduation_date = b.graduation_date;
+        else return res.status(400).json({ error: 'Enter a valid graduation date.' });
     }
+    if (update.credential === 'SAA' && !update.graduation_date) {
+        return res.status(400).json({ error: 'Students (SAA) must add a valid graduation date.' });
+    }
+    if (update.credential === 'CAA') update.graduation_date = null;
     if (typeof b.study_goal === 'string' && ['exam', 'practice', 'none'].includes(b.study_goal)) {
         update.study_goal = b.study_goal;
         if (b.study_goal !== 'exam') update.target_exam_date = null; // practice/none → no exam countdown
@@ -3197,7 +3589,7 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
                     + `<p>Member: ${esc(user.email || user.id)}${update.credential ? ' &middot; ' + esc(update.credential) : ''}</p>`
                     + `<p style="color:#666;">If it's a real accredited AA program, add it to AA_PROGRAMS in src/app.js (and the outreach roster).</p>`,
             }).catch((e) => console.error('[program-alert] email failed:', e.message));
-            try { await supabase.from('analytics_events').insert({ name: 'program_not_listed', user_id: user.id, meta: { program: prog } }); } catch (e) { /* non-fatal */ }
+            try { await supabase.from('analytics_events').insert({ name: 'program_not_listed', user_id: user.id, meta: { platform: 'untagged' } }); } catch (e) { /* non-fatal */ }
         }
         return res.json({ success: true });
     } catch (err) {
@@ -3474,10 +3866,9 @@ app.post('/api/feedback', feedbackLimiter, async (req, res) => {
 // logged-in users can submit (→ pending); the founder moderates in admin. Kept
 // separate from anonymous feedback, since reviews are public and attributed.
 //
-// Reviews normally post live, but any submission containing slurs, hate speech,
-// threats, or strong profanity is held as `pending` so the founder can vet it in
-// the Content review queue before it reaches the public page. The submitter is
-// deliberately NOT told their review was held — no tip-off that invites a reword.
+// Every review enters the moderation queue before public display. Language checks
+// still prioritize risky submissions for the founder's notification, but no user
+// supplied testimonial can publish directly to a public marketing surface.
 // ---------------------------------------------------------------------------
 const REVIEW_FLAG_WORDS = [
     // strong profanity
@@ -3545,12 +3936,10 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
         return res.status(403).json({ error: 'Reviews can be posted once your account is 24 hours old. Thanks for joining — check back tomorrow to share your thoughts!' });
     }
     try {
-        // Clean reviews post live; anything with flagged language is HELD as `pending`
-        // (not shown publicly) for the founder to approve in the Content review queue.
-        // One review per account: re-submitting UPDATES the account's existing review
-        // (upsert on the unique user_id index).
+        // One review per account: re-submitting updates the existing review and sends
+        // the new text back through moderation.
         const held = reviewNeedsModeration(body) || reviewNeedsModeration(author_name) || reviewNeedsModeration(credential);
-        const status = held ? 'pending' : 'approved';
+        const status = 'pending';
         const { error } = await supabase.from('reviews').upsert(
             { user_id: user.id, author_name, credential, rating, body, status },
             { onConflict: 'user_id' }
@@ -3561,10 +3950,10 @@ app.post('/api/reviews', feedbackLimiter, async (req, res) => {
         supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id).then(() => {}, () => {});
         sendEmail({
             to: 'support@macprep.org',
-            subject: held ? `Review HELD for moderation — ${author_name}` : `New MACPrep review (live) — ${author_name}`,
+            subject: held ? `Review flagged for moderation — ${author_name}` : `New MACPrep review awaiting approval — ${author_name}`,
             html: `<p style="font-family:sans-serif;font-size:15px;"><strong>${escHtml(author_name)}</strong> ${escHtml(credential || '')} · ${rating}★</p><p style="font-family:sans-serif;font-size:15px;background:#f6f7f9;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">${escHtml(body)}</p>` + (held
                 ? `<p style="font-size:13px;color:#b45309;"><strong>⚠ Auto-held (flagged language).</strong> It is NOT on the public page. Approve or remove it in the admin Content review queue.</p>`
-                : `<p style="font-size:12px;color:#9ca3af;">This is live on the Reviews page. Remove it from the admin Reviews panel if needed.</p>`),
+                : `<p style="font-size:12px;color:#6b7280;">This is not public yet. Approve or remove it in the admin Content review queue.</p>`),
         }).then(() => {}, () => {});
         // Always report success — never signal to the submitter that a review was held.
         return res.json({ success: true });
@@ -3581,7 +3970,8 @@ app.post('/api/user/review-prompt-seen', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     try {
-        await supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id);
+        const { error } = await supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id);
+        if (error) throw error;
         return res.json({ ok: true });
     } catch (e) { return res.status(500).json({ error: e.message }); }
 });
@@ -3590,8 +3980,8 @@ app.get('/api/admin/reviews', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
-        // Reviews auto-publish now, so show ALL of them (newest first) — admin moderates
-        // by removing/rejecting anything abusive rather than approving up front.
+        // Show every non-rejected review so pending submissions and approved public
+        // testimonials can be managed in the same queue.
         const { data, error } = await supabase.from('reviews')
             .select('id, author_name, credential, rating, body, status, featured, created_at')
             .neq('status', 'rejected').order('created_at', { ascending: false }).limit(300);
@@ -3649,6 +4039,85 @@ app.post('/api/admin/review', async (req, res) => {
 // client-side premium flag. Both stores resolve to the same account_tier contract
 // already used by Stripe, vouchers, and program grants.
 // ---------------------------------------------------------------------------
+app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
+    try {
+        const { notification, transaction } = await verifyAppleNotification(req.body?.signedPayload);
+        const type = notification?.notificationType;
+        if (type === NotificationTypeV2.TEST) return res.status(200).end();
+        if (!transaction) return res.status(200).end();
+        if (transaction.bundleId !== MOBILE_APP_BUNDLE_ID
+            || transaction.productId !== MOBILE_PREMIUM_PRODUCT_ID
+            || transaction.type !== AppleProductType.NON_CONSUMABLE) {
+            return res.status(400).json({ error: 'Notification is not for MACPrep full access.' });
+        }
+        const sourceReference = String(transaction.originalTransactionId || transaction.transactionId || '');
+        if (!sourceReference) return res.status(400).json({ error: 'Notification has no transaction reference.' });
+
+        if (type === NotificationTypeV2.REFUND) {
+            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'refunded' });
+        } else if (type === NotificationTypeV2.REVOKE) {
+            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'revoked' });
+        } else if (type === NotificationTypeV2.REFUND_REVERSED) {
+            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'active' });
+        } else if (type === NotificationTypeV2.ONE_TIME_CHARGE && validUuid(transaction.appAccountToken)) {
+            const entitlement = validateAppleTransactionPayload(transaction, {
+                userId: transaction.appAccountToken,
+                transactionId: transaction.transactionId,
+            });
+            await grantEntitlement({
+                userId: transaction.appAccountToken,
+                source: 'apple',
+                sourceReference: entitlement.transactionId,
+                productId: entitlement.productId,
+                metadata: { notification_uuid: notification.notificationUUID || null },
+            });
+        }
+        return res.status(200).end();
+    } catch (error) {
+        if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
+        console.error('[mobile-purchase] Apple notification failed:', error?.message || 'unknown error');
+        return res.status(500).json({ error: 'Could not process Apple notification.' });
+    }
+});
+
+app.post('/api/mobile-purchases/google-notifications', async (req, res) => {
+    try {
+        await verifyGooglePubSubRequest(req);
+        const encoded = req.body?.message?.data;
+        if (typeof encoded !== 'string' || encoded.length > 150000) return res.status(400).json({ error: 'Invalid Pub/Sub message.' });
+        let notification;
+        try { notification = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')); }
+        catch (error) { return res.status(400).json({ error: 'Invalid Google Play notification.' }); }
+        if (notification.packageName !== MOBILE_APP_BUNDLE_ID) return res.status(400).json({ error: 'Notification is for another app.' });
+
+        const oneTime = notification.oneTimeProductNotification;
+        const voided = notification.voidedPurchaseNotification;
+        if (oneTime) {
+            if (oneTime.sku !== MOBILE_PREMIUM_PRODUCT_ID) return res.status(200).end();
+            const token = String(oneTime.purchaseToken || '');
+            if (!/^[A-Za-z0-9._~-]{16,2048}$/.test(token)) return res.status(400).json({ error: 'Invalid purchase token.' });
+            const publisher = googlePublisherClient();
+            const response = await publisher.purchases.productsv2.getproductpurchasev2({
+                packageName: MOBILE_APP_BUNDLE_ID,
+                token,
+            });
+            const purchased = response.data?.purchaseStateContext?.purchaseState === 'PURCHASED';
+            await setEntitlementStatus({ source: 'google_play', sourceReference: token, status: purchased ? 'active' : 'revoked' });
+        } else if (voided?.purchaseToken && Number(voided.productType) === 2) {
+            await setEntitlementStatus({
+                source: 'google_play',
+                sourceReference: String(voided.purchaseToken),
+                status: 'revoked',
+            });
+        }
+        return res.status(200).end();
+    } catch (error) {
+        if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
+        console.error('[mobile-purchase] Google notification failed:', error?.message || 'unknown error');
+        return res.status(500).json({ error: 'Could not process Google Play notification.' });
+    }
+});
+
 app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
@@ -3664,7 +4133,18 @@ app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res)
         }
 
         await claimMobileEntitlement(user.id, entitlement);
-        await grantPremium(user.id, (user.email || '').toLowerCase().trim());
+        await grantEntitlement({
+            userId: user.id,
+            email: (user.email || '').toLowerCase().trim(),
+            source: entitlement.store,
+            sourceReference: entitlement.transactionId,
+            productId: entitlement.productId,
+            metadata: {
+                original_transaction_id: entitlement.originalTransactionId || null,
+                environment: entitlement.environment || null,
+                purchased_at: entitlement.purchasedAt || null,
+            },
+        });
         recordPurchaseOnce(user.id, store);
 
         let acknowledged = true;
@@ -3756,10 +4236,22 @@ app.post('/api/verify-checkout-session', checkoutLimiter, async (req, res) => {
         const owner = session.client_reference_id || session.metadata?.user_id || null;
         const paid = session.payment_status === 'paid';
         if (!paid || owner !== user.id) {
-            const already = await isUserPremium(user.id);
+            const already = await hasFullAccess(user);
             return res.json({ premium_unlocked: already });
         }
-        await grantPremium(user.id, (session.customer_details?.email || user.email || '').toLowerCase().trim());
+        const lineItem = await verifyStripeCheckoutProduct(session);
+        const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+        await grantEntitlement({
+            userId: user.id,
+            email: (session.customer_details?.email || user.email || '').toLowerCase().trim(),
+            source: 'stripe',
+            sourceReference: session.id,
+            externalPaymentId: paymentIntent || null,
+            productId: lineItem.price.id,
+            amountTotal: session.amount_total,
+            currency: session.currency,
+            metadata: { verified_on_return: true },
+        });
         // The webhook normally records the purchase; when this fallback path is what
         // unlocked the account (webhook missed/delayed), record it here — deduped, so
         // whichever path runs second is a no-op and the sale is counted exactly once.

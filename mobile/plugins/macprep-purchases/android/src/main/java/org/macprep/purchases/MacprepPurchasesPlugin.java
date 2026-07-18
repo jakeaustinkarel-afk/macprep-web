@@ -44,6 +44,18 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
     }
 
     @PluginMethod
+    public void getCapabilities(PluginCall call) {
+        JSObject result = new JSObject();
+        JSArray productIds = new JSArray();
+        productIds.put(PREMIUM_PRODUCT_ID);
+        result.put("bridgeVersion", 1);
+        result.put("productIds", productIds);
+        result.put("supportsPurchase", true);
+        result.put("supportsRestore", true);
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void getProducts(PluginCall call) {
         withBillingClient(call, () -> queryProduct(call, product -> {
             JSObject serialized = serializeProduct(product);

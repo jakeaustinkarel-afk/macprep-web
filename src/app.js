@@ -16,18 +16,49 @@
     // ---- helpers ----------------------------------------------------------
     const $ = (id) => document.getElementById(id);
     function ls(k, v) { try { return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v)); } catch (e) { return null; } }
-    function getToken() { return ls('macprep_token'); }
-    function setToken(t) { t ? ls('macprep_token', t) : ls('macprep_token', null); }
-    function setRefresh(t) { t ? ls('macprep_refresh', t) : ls('macprep_refresh', null); }
+    function ss(k, v) { try { return v === undefined ? sessionStorage.getItem(k) : (v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)); } catch (e) { return null; } }
+    const SESSION_MARKER = 'macprep_session_active';
+    function getToken() { return ss(SESSION_MARKER); }
+    function setToken(active) {
+        active ? ss(SESSION_MARKER, '1') : ss(SESSION_MARKER, null);
+        active ? ls('macprep_signed_in', '1') : ls('macprep_signed_in', null);
+        // Authentication credentials live only in HttpOnly cookies. Remove any
+        // token left by an older build before page scripts can continue using it.
+        ss('macprep_token', null);
+        ss('macprep_refresh', null);
+        ls('macprep_token', null);
+        ls('macprep_refresh', null);
+    }
+    function setRefresh() { ss('macprep_refresh', null); ls('macprep_refresh', null); }
+    function migrateLegacyAuthStorage() {
+        const oldToken = ls('macprep_token');
+        const oldRefresh = ls('macprep_refresh');
+        const tabToken = ss('macprep_token');
+        const tabRefresh = ss('macprep_refresh');
+        if ((oldToken || oldRefresh || tabToken || tabRefresh || ls('macprep_signed_in')) && !getToken()) {
+            ss(SESSION_MARKER, '1');
+        }
+        ls('macprep_token', null);
+        ls('macprep_refresh', null);
+        ss('macprep_token', null);
+        ss('macprep_refresh', null);
+    }
     function authHeaders(extra) {
-        const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
-        if (state.token) h['Authorization'] = `Bearer ${state.token}`;
-        return h;
+        return Object.assign({ 'Content-Type': 'application/json' }, extra || {});
     }
     // Only allow http(s) links to be rendered as anchors (defends against
     // javascript:/data: hrefs in stored question sources).
     function safeUrl(u) { return (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null; }
     function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+    function newSubmissionId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+        const bytes = new Uint8Array(16);
+        window.crypto.getRandomValues(bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
 
     // Markdown-lite: escape, then apply **bold**, *italic*, `code`, bullet lists,
     // and paragraph/line breaks. Safe (escapes first, only re-introduces known tags).
@@ -52,16 +83,20 @@
         return out;
     }
 
-    async function refreshToken() {
-        const rt = ls('macprep_refresh');
-        if (!rt) return false;
+    async function refreshToken(explicitRefreshToken) {
         try {
-            const r = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) });
+            const r = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(explicitRefreshToken ? { refresh_token: explicitRefreshToken } : {}),
+            });
             if (!r.ok) return false;
             const d = await r.json();
-            if (!d.token) return false;
-            state.token = d.token; setToken(d.token);
-            if (d.refresh_token) setRefresh(d.refresh_token);
+            // `token` is accepted only during a rolling deployment from an older
+            // server. It is never stored or attached to a browser request.
+            if (!d.authenticated && !d.token) return false;
+            state.token = '1'; setToken(true);
+            setRefresh(null);
             return true;
         } catch (e) { return false; }
     }
@@ -69,12 +104,11 @@
     async function apiJSON(url, opts) {
         opts = opts || {};
         let resp = await fetch(url, opts);
-        // If an authenticated call 401s, try a one-time silent token refresh so a
-        // study session survives the access token's 1-hour TTL.
-        if (resp.status === 401 && opts.headers && opts.headers['Authorization'] && !opts._retried) {
+        // If a signed-in call 401s, try one silent cookie refresh so a study
+        // session survives the access cookie's one-hour lifetime.
+        if (resp.status === 401 && state.token && !opts._retried) {
             if (await refreshToken()) {
                 opts._retried = true;
-                opts.headers = Object.assign({}, opts.headers, { 'Authorization': `Bearer ${state.token}` });
                 resp = await fetch(url, opts);
             }
         }
@@ -289,9 +323,9 @@
                 body: JSON.stringify({ action: 'login', email, password }),
             });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Login rejected.');
-            state.token = data.token || null;
+            state.token = data.authenticated || data.token ? '1' : null;
             setToken(state.token);
-            setRefresh(data.refresh_token || null);
+            setRefresh();
             track('login');
             await bootAuthedSession();
         } catch (err) {
@@ -340,8 +374,8 @@
             const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential, training_program: program, program_unlisted: programUnlisted, graduation_date: credential === 'SAA' ? gradDate : null, target_exam_date: credential === 'SAA' ? examDate : null }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
             track('signup');
-            if (data.token) {
-                state.token = data.token; setToken(state.token); setRefresh(data.refresh_token || null);
+            if (data.authenticated || data.token) {
+                state.token = '1'; setToken(true); setRefresh();
                 state.justSignedUp = true;
                 await bootAuthedSession();
             } else {
@@ -358,7 +392,8 @@
 
     function signOut() {
         stopExamTimer();
-        setToken(null); setRefresh(null);
+        try { fetch('/api/auth/logout', { method: 'POST', headers: authHeaders(), keepalive: true }).catch(() => {}); } catch (e) {}
+        setToken(null); setRefresh();
         ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
         state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
         go('login');
@@ -590,8 +625,10 @@
                 + `<div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Next questions adapt to each level.</div>${rows}`;
         }
         // You vs all SAAs — per-domain accuracy vs the whole student population (anonymized
-        // peer benchmark). Students compare to ALL SAAs, never a specific cohort.
+        // peer benchmark). Students compare to an anonymized active-SAA aggregate,
+        // never a specific cohort or another named learner.
         const saaBench = p.saa_domain_benchmark || {};
+        const saaSamples = p.saa_domain_benchmark_samples || {};
         let benchBlock = '';
         {
             const brows = domList.filter((d) => d.attempts > 0 && saaBench[d.domain] != null).map((d) => {
@@ -600,9 +637,9 @@
                 const delta = you - avg;
                 const dc = delta > 0 ? 'var(--accent)' : delta < 0 ? 'var(--bad)' : 'var(--muted)';
                 const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '·';
-                return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px;"><span style="flex:0 0 150px;color:var(--text2);" title="${d.domain}">${SHORT_DOM[d.domain] || d.domain}</span><span class="mono" style="flex:1;color:var(--text2);">You <strong>${you}%</strong> · SAA avg ${avg}%</span><span class="mono" style="flex:0 0 62px;text-align:right;color:${dc};font-weight:700;">${arrow} ${Math.abs(delta)}</span></div>`;
+                return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px;"><span style="flex:0 0 150px;color:var(--text2);" title="${d.domain}">${SHORT_DOM[d.domain] || d.domain}</span><span class="mono" style="flex:1;color:var(--text2);">You <strong>${you}%</strong> · SAA aggregate ${avg}% <span style="color:var(--muted);">(n=${saaSamples[d.domain]})</span></span><span class="mono" style="flex:0 0 62px;text-align:right;color:${dc};font-weight:700;">${arrow} ${Math.abs(delta)}</span></div>`;
             }).join('');
-            if (brows) benchBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">You vs all SAAs</div><div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Your accuracy vs every SAA on MACPrep, by domain.</div>${brows}`;
+            if (brows) benchBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">You vs active SAA peers</div><div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Latest response per learner and question; shown only with at least 10 learners.</div>${brows}`;
         }
         el.innerHTML = `<h3>Accuracy &amp; exam plan</h3>
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Accuracy — last 7 active days</div>
@@ -612,7 +649,7 @@
             ${examNudge}
             ${masteryBlock}
             ${benchBlock}
-            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — refresh your readiness score</button>`;
+            <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — check your current level</button>`;
     }
 
     // Refer-a-classmate: a shareable message + the 20%-off code (a Stripe promo
@@ -661,7 +698,7 @@
             return;
         }
         el.innerHTML = `<h3>Welcome to MACPrep 👋</h3>
-            <p class="sub" style="margin:0 0 12px;">New here? Take a quick <strong>diagnostic</strong> — a short set across all six blueprint domains that gives you a predicted readiness score and shows exactly which domain to start with. Or jump straight in with a warm-up.</p>
+            <p class="sub" style="margin:0 0 12px;">New here? Take a quick <strong>diagnostic</strong> — a short set across all six blueprint domains that shows your diagnostic accuracy and where to start. It is directional practice feedback, not a predicted exam result. Or jump straight in with a warm-up.</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn" onclick="MACPrep.startDiagnostic()">📊 Take the diagnostic</button>
                 <button class="btn ghost" onclick="MACPrep.startSample()">Try a 5-question warm-up</button>
@@ -679,7 +716,7 @@
             <p class="sub" style="margin:0 0 16px;">Pick what fits — it just tailors your dashboard. You can change it anytime in your profile.</p>
             <div style="border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;">
                 <div style="font-weight:bold;margin-bottom:3px;">📅 I have an exam coming up</div>
-                <div class="sub" style="margin:0 0 11px;font-size:13px;">We'll build a daily plan and track your readiness.</div>
+                <div class="sub" style="margin:0 0 11px;font-size:13px;">We'll build a daily plan and track your practice progress.</div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                     <input type="date" id="exam-date-input" min="${today}" style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font-size:14px;color:var(--text);">
                     <button class="btn" id="exam-set-btn" onclick="MACPrep.setExamDate(document.getElementById('exam-date-input').value)">Build my plan</button>
@@ -849,8 +886,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 33;
+    const WHATS_NEW_VERSION = 34;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'Safer accounts, steadier study progress', desc: 'Sign-in now stays in protected browser cookies, password protections are stronger, mock-exam submissions retry safely, and purchases, refunds, and cohort codes reconcile more reliably. Practice estimates and SAA comparisons now use clearer sample rules and labels. Available on the web and current MACPrep mobile shell. An older open tab may ask you to sign in once.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A simpler path to study', desc: 'The public site now makes it easier to start with the right account setup, scan pricing on a phone, browse guides, and find answers without wading through long pages. Available on the web and the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Clearer cohort-code guidance', desc: 'The pricing page now centers the cohort-code instructions, making it easier to spot the right next step when your class or program gave you a code. Available on the web and current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A clearer study command center', desc: 'Your dashboard now puts readiness, your daily goal, and the recommended set first. Exam pace, domain mastery, review work, and study modes are easier to scan, while every saved theme and font choice still applies. The landing page, pricing, FAQ, and About page now share the same warmer, more focused presentation. Available on the web and the current MACPrep mobile shell.' },
@@ -872,7 +910,7 @@
         { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
         { tag: 'New', date: 'Jul 5', title: 'Flag questions from the Review', desc: 'The end-of-session Review now has Flag + “+ Card” buttons on every question — even the ones you got right — so you can save anything to revisit, or add it to your flashcards, while you review.' },
         { tag: 'New', date: 'Jul 5', title: '100 achievements — and a title for every one', desc: 'The achievement bank is now 100 strong, and every single achievement unlocks its own title to show by your name — 100 titles to collect. Pick your favorite in Account → Title ★. The new ones span longer streaks, sharper accuracy (up to 99%), full-bank coverage, higher levels, and tougher Arcade runs.' },
-        { tag: 'New', date: 'Jul 4', webOnly: true, title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for an app-like experience — it opens full-screen, loads instantly, and works offline. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). Streak reminders are on the way.' },
+        { tag: 'New', date: 'Jul 4', webOnly: true, title: 'Install MACPrep on your device', desc: 'Add MACPrep to your home screen for a full-screen, app-like experience with faster return visits. Tap “Install” when the prompt appears (on iPhone: Share → Add to Home Screen). An internet connection is required for study sessions; streak reminders are available after you opt in.' },
         { tag: 'New', date: 'Jul 4', title: 'A cleaner, balanced dashboard', desc: 'On wide screens the dashboard now lays out in two balanced columns, so more of your progress is visible at a glance, with the study-modes launcher up top as a full-width strip. Plus snappier press feedback across the app and smoother loading while pages fetch.' },
         { tag: 'New', date: 'Jul 3', title: 'Critical Events', desc: 'A new premium section: clinician-reviewed rapid-reference cards for every major anesthesia crisis — when to suspect it, immediate actions, drugs & doses, an algorithm, and pitfalls. Every card is cross-checked against the Stanford Emergency Manual and primary sources, with a linked source behind each dose. Search or jump to any event from the menu.' },
         { tag: 'New', date: 'Jul 2', title: 'Three new themes', desc: 'Sunset, Forest, and Mist join the theme picker — free for everyone. Twenty themes total now; pick yours from the palette button in the sidebar.' },
@@ -1057,7 +1095,7 @@
     }
     function recomputeBonusXp() {
         if (!state.gam) return; let xp = 0;
-        try { const m = {}; computeAchievements().forEach((a) => { m[a.title] = a.xp || 0; }); (state.gam.ach_claimed || []).forEach((t) => { xp += m[t] || 0; }); } catch (e) {}
+        try { const m = {}; computeAchievements().forEach((a) => { m[achievementKey(a)] = a.xp || 0; }); (state.gam.ach_claimed || []).forEach((t) => { xp += m[t] || 0; }); } catch (e) {}
         try { const ds = state.gam.daily_state || {}; Object.keys(ds).forEach((k) => { const d = ds[k] || {}; xp += (Array.isArray(d.rewarded) ? d.rewarded.length : 0) * QUEST_XP + (d.chest ? CHEST_XP : 0); }); } catch (e) {}
         state.gam.bonus_xp = Math.max(state.gam.bonus_xp || 0, xp);
     }
@@ -1227,6 +1265,8 @@
         const streak = p.streak || 0;
         const weekDays = Math.min(streak, 7);
         const readiness = Math.max(0, Math.min(100, p.readiness || 0));
+        const readinessBasis = p.readiness_basis || {};
+        const readinessAnswered = Number(readinessBasis.answered) || 0;
         const total = (p.stats || {}).answered || 0;
         const goalPct = Math.min(100, Math.round((answeredToday / goal) * 100));
         const toGoal = Math.max(0, goal - answeredToday);
@@ -1245,8 +1285,8 @@
                 desc: 'Questions answered today vs. your daily target. Resets each morning — close it by practicing.' },
             { key: 'week', c: cWeek, r: 51, pct: Math.round((weekDays / 7) * 100), label: 'This week', val: `${weekDays} / 7 days`,
                 desc: 'Days you’ve practiced this week — one notch per active day, up to 7. Keeps your streak visible.' },
-            { key: 'readiness', c: cReady, r: 36, pct: readiness, label: 'Readiness', val: `${readiness}%`,
-                desc: 'Your overall exam-readiness score, blended from accuracy and how much of the bank you’ve covered. Moves slowly as you master more.' },
+            { key: 'readiness', c: cReady, r: 36, pct: readiness, label: 'Practice estimate', val: `${readiness}%`,
+                desc: `Based on your latest answer to ${readinessAnswered} unique question${readinessAnswered === 1 ? '' : 's'} and bank coverage. It is not a predicted exam score.` },
         ];
         momRingMeta = {}; ringMeta.forEach((m) => { momRingMeta[m.key] = m; });
         const ringGroup = (m) => {
@@ -1262,13 +1302,13 @@
             + `<svg id="mom-rings" width="150" height="150" viewBox="0 0 150 150" role="group" aria-label="Momentum rings — hover a ring for detail" style="display:block;overflow:visible;">`
             + ringMeta.map(ringGroup).join('')
             + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);pointer-events:none;">${readiness}%</text>`
-            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">READINESS</text></svg>`
+            + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:7px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">PRACTICE EST.</text></svg>`
             + `<div id="mom-tip" role="status" aria-live="polite" style="display:none;position:absolute;left:0;top:156px;width:210px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;box-shadow:0 8px 24px rgba(0,0,0,.14);"></div>`
             + `</div>`;
         const legend = `<div class="dash-momentum-legend">`
             + momLegRow(cGoal, "Today's goal", `${Math.min(answeredToday, goal)} / ${goal} questions`, 'goal')
             + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`, 'week')
-            + momLegRow(cReady, 'Readiness', `${readiness}%`, 'readiness') + `</div>`;
+            + momLegRow(cReady, 'Practice estimate', `${readiness}%`, 'readiness') + `</div>`;
         const planTitle = toGoal ? 'Your next focused set.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
         const planSub = toGoal
             ? `A focused set, matched to your level.`
@@ -1280,7 +1320,7 @@
         const heroStats = [
             { n: `${Math.min(answeredToday, goal)}/${goal}`, l: 'today\'s goal' },
             { n: due.toLocaleString(), l: 'due reviews' },
-            { n: `${readiness}%`, l: 'readiness' },
+            { n: `${readiness}%`, l: 'practice estimate' },
         ];
         el.innerHTML = `
             <div class="dash-hero-head"><div><div class="dash-hero-title">${greet}, ${escapeHtml(first)}.</div><div class="sub" style="margin:4px 0 0;font-size:14px;">${total === 0
@@ -1303,6 +1343,9 @@
     }
 
     // ---- Achievements: unlocked vs locked-with-a-goal, computed from live profile data.
+    // `key` preserves already-claimed achievement identity when user-facing wording
+    // becomes more accurate.
+    function achievementKey(achievement) { return achievement.key || achievement.title; }
     function computeAchievements() {
         const p = state.profile || {}, s = p.stats || {};
         const total = s.answered || 0, streak = p.streak || 0, att = s.attempts || 0, corr = s.correct || 0;
@@ -1354,9 +1397,9 @@
         // milestones — readiness, combos, and mock exams
         const rdy = Math.max(0, Math.min(100, p.readiness || 0));
         const mocks = parseInt(ls('macprep_mock_count') || '0', 10) || 0;
-        const milePush = (icon, title, met, pct, sub) => A.push({ cat: 'Milestones', icon, title, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
-        milePush('gauge', 'Exam-ready — 80% readiness', rdy >= 80, Math.round((rdy / 80) * 100), `readiness ${rdy}% / 80%`);
-        milePush('gauge', 'Peak form — 95% readiness', rdy >= 95, Math.round((rdy / 95) * 100), `readiness ${rdy}% / 95%`);
+        const milePush = (icon, title, met, pct, sub, key) => A.push({ cat: 'Milestones', icon, title, key: key || title, met, pct: met ? 100 : Math.max(0, Math.min(99, pct || 0)), sub: met ? 'Unlocked' : sub });
+        milePush('gauge', 'Practice estimate — 80%', rdy >= 80, Math.round((rdy / 80) * 100), `practice estimate ${rdy}% / 80%`, 'Exam-ready — 80% readiness');
+        milePush('gauge', 'Peak practice estimate — 95%', rdy >= 95, Math.round((rdy / 95) * 100), `practice estimate ${rdy}% / 95%`, 'Peak form — 95% readiness');
         milePush('star', 'Scholar — 1,000 answered at 80%+', total >= 1000 && acc >= 80, Math.round(Math.min(total / 1000, acc / 80) * 100), total < 1000 ? `${(1000 - total).toLocaleString()} more answers, then 80%+` : `at ${acc}% — reach 80%`);
         milePush('flame', 'The grind — 30-day streak + 2,500', streak >= 30 && total >= 2500, Math.round(Math.min(streak / 30, total / 2500) * 100), 'a 30-day streak and 2,500 answered');
         milePush('clipboard', 'Dress rehearsal — finish a Mock Exam', mocks >= 1, 0, 'complete a full Mock Exam');
@@ -1410,7 +1453,7 @@
         masPush('Prodigy — 90% in a specialty', dom90 >= 1, 0, '90%+ in any specialty (20+ answered)');
         masPush('Triple virtuoso — 90% in three', dom90 >= 3, Math.round((dom90 / 3) * 100), `${dom90} / 3 specialties at 90%+`);
         A.push({ cat: 'Mastery', icon: 'trophy', title: 'Boss veteran — three domains', desc: 'Defeat three Domain Bosses (80%+ on each challenge).', met: bossN >= 3, pct: bossN >= 3 ? 100 : Math.max(0, Math.min(99, Math.round((bossN / 3) * 100))), sub: bossN >= 3 ? 'Unlocked' : `${bossN} / 3 domains defeated` });
-        milePush('gauge', 'Razor-sharp — 90% readiness', rdy >= 90, Math.round((rdy / 90) * 100), `readiness ${rdy}% / 90%`);
+        milePush('gauge', 'Practice estimate — 90%', rdy >= 90, Math.round((rdy / 90) * 100), `practice estimate ${rdy}% / 90%`, 'Razor-sharp — 90% readiness');
         milePush('clipboard', 'Mock regular — five', mocks >= 5, Math.round((mocks / 5) * 100), `${mocks} / 5 completed`);
         lvlA(20, 'Level 20'); lvlA(30, 'Level 30'); lvlA(40, 'Level 40'); lvlA(60, 'Level 60'); lvlA(90, 'Level 90');
         arcPush('Arcade veteran — 100 runs', 'Play 100 Arcade runs across any modes.', arcPlays >= 100, Math.round((arcPlays / 100) * 100), `${arcPlays} / 100 runs`);
@@ -1428,7 +1471,7 @@
             let xp = ({ Volume: 60, Consistency: 90, Accuracy: 110, Coverage: 80, Mastery: 130, Milestones: 100 })[a.cat] || 75;
             if (/every achievement/i.test(t)) xp = 1000;
             else if (/Max level — 100|every domain|whole bank|every specialty at 100%|Centurion streak|Unstoppable|Five figures — 10,000|Year of prep|Twenty-K|Fifteen-K|Five hundred days|Flawless — 99%|Abyssal|Level 90/i.test(t)) xp = 500;
-            else if (/Level 50|Level 75|Halfway to the top|Elite — 90%|Marksman — 95%|Peak form|Scholar —|High five — 5,000|The grind|Mock master|Mock veteran|Half-century — 50|Untouchable|7,500 club|Cold-blooded|Deadeye|Half a year|One-fifty|Level 60|Five-domain expert|Triple virtuoso|Century diver|Boss veteran|Prodigy — 90%/i.test(t)) xp = 300;
+            else if (/Level 50|Level 75|Halfway to the top|Elite — 90%|Marksman — 95%|Peak practice|Scholar —|High five — 5,000|The grind|Mock master|Mock veteran|Half-century — 50|Untouchable|7,500 club|Cold-blooded|Deadeye|Half a year|One-fifty|Level 60|Five-domain expert|Triple virtuoso|Century diver|Boss veteran|Prodigy — 90%/i.test(t)) xp = 300;
             else if (/Off the mark/i.test(t)) xp = 30;
             a.xp = xp;
         });
@@ -1476,8 +1519,8 @@
         'Triple virtuoso — 90% in three': 'The Savant', 'Boss hunter — beat your first domain': 'Boss Hunter',
         'Boss veteran — three domains': 'Boss Veteran', 'Boss slayer — every domain': 'Boss Slayer',
         // Milestones
-        'Exam-ready — 80% readiness': 'Exam-Ready', 'Razor-sharp — 90% readiness': 'Razor-Sharp',
-        'Peak form — 95% readiness': 'Peak Form', 'Scholar — 1,000 answered at 80%+': 'The Scholar',
+        'Exam-ready — 80% readiness': 'Practice Ready', 'Razor-sharp — 90% readiness': 'Razor-Sharp Practice',
+        'Peak form — 95% readiness': 'Peak Practice', 'Scholar — 1,000 answered at 80%+': 'The Scholar',
         'The grind — 30-day streak + 2,500': 'The Grinder', 'Dress rehearsal — finish a Mock Exam': 'The Understudy',
         'Mock master — three Mock Exams': 'Battle-Tested', 'Mock regular — five': 'The Rehearsed',
         'Mock veteran — ten Mock Exams': 'The Veteran', 'Level 5': 'The Novice', 'Level 10': 'The Apprentice',
@@ -1493,7 +1536,7 @@
     };
     const BASE_TITLES = ['Rookie']; // always available so the picker is never empty
     function unlockedTitles() {
-        const earned = computeAchievements().filter((a) => a.met && TITLE_MAP[a.title]).map((a) => TITLE_MAP[a.title]);
+        const earned = computeAchievements().filter((a) => a.met && TITLE_MAP[achievementKey(a)]).map((a) => TITLE_MAP[achievementKey(a)]);
         return [...BASE_TITLES, ...earned];
     }
     // The most recently EARNED title — the last entry in ach_claimed (claims append in
@@ -1562,8 +1605,8 @@
         const A = computeAchievements();
         const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         const rows = titles.map((t) => `<button type="button" onclick="MACPrep.saveTitle('${esc(t)}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:${t === cur ? 'var(--accent-dim)' : 'var(--bg)'};border:1px solid ${t === cur ? 'var(--accent)' : 'var(--line)'};border-radius:9px;padding:11px 13px;margin-top:8px;cursor:pointer;"><span style="font-weight:700;font-size:14px;color:var(--text);">${escapeHtml(t)}</span>${t === cur ? '<span class="mono" style="font-size:10px;color:var(--accent);">ACTIVE</span>' : ''}</button>`).join('');
-        const lockedRows = Object.keys(TITLE_MAP).filter((ach) => { const a = A.find((x) => x.title === ach); return a && !a.met; })
-            .map((ach) => { const a = A.find((x) => x.title === ach); return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);opacity:.55;"><span style="font-weight:600;font-size:13px;">${lockSvg(12)} ${escapeHtml(TITLE_MAP[ach])}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;text-align:right;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : a.title)}</span></div>`; }).join('');
+        const lockedRows = Object.keys(TITLE_MAP).filter((ach) => { const a = A.find((x) => achievementKey(x) === ach); return a && !a.met; })
+            .map((ach) => { const a = A.find((x) => achievementKey(x) === ach); return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-top:1px solid var(--line);opacity:.55;"><span style="font-weight:600;font-size:13px;">${lockSvg(12)} ${escapeHtml(TITLE_MAP[ach])}</span><span class="mono" style="font-size:10px;color:var(--muted);flex:none;text-align:right;">${escapeHtml(a.sub && a.sub !== 'Unlocked' ? a.sub : a.title)}</span></div>`; }).join('');
         const wrap = document.createElement('div');
         wrap.id = 'title-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);';
@@ -1589,7 +1632,7 @@
         return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1.5px;" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
     }
     function achReward(a) {
-        const title = TITLE_MAP[a.title];
+        const title = TITLE_MAP[achievementKey(a)];
         if (title) return `🎁 Unlocks title <strong style="color:var(--accent);">${escapeHtml(title)}</strong>`;
         return '';
     }
@@ -1599,7 +1642,7 @@
         const A = computeAchievements();
         let claimed; try { claimed = new Set(state.gam ? (state.gam.ach_claimed || []) : JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]')); } catch (e) { claimed = new Set(); }
         let gained = 0, n = 0;
-        A.forEach((a) => { if (a.met && !claimed.has(a.title)) { claimed.add(a.title); gained += (a.xp || 0); n++; } });
+        A.forEach((a) => { const key = achievementKey(a); if (a.met && !claimed.has(key)) { claimed.add(key); gained += (a.xp || 0); n++; } });
         if (gained > 0) {
             try { localStorage.setItem('macprep_ach_claimed', JSON.stringify(Array.from(claimed))); } catch (e) {}
             if (state.gam) { state.gam.ach_claimed = Array.from(claimed); scheduleGamSync(); }
@@ -2175,9 +2218,8 @@
         }, $('mode-select') ? $('mode-select').value : 'tutor');
     }
 
-    // Diagnostic / readiness assessment: a balanced sample across the 6 blueprint
-    // domains, run as an exam, ending in a predicted-readiness score + the weakest
-    // domain to start with.
+    // Diagnostic assessment: a balanced sample across the six blueprint domains.
+    // Its result is directional practice feedback, not a pass prediction.
     async function startDiagnostic() {
         const usage = freeUsage();
         if (!usage.unlimited) { openUpgradeModal('diagnostic'); return; }
@@ -2262,7 +2304,7 @@
 
     function beginSession(pool, mode) {
         mode = mode || ($('mode-select') ? $('mode-select').value : 'tutor');
-        state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [], mode, answers: {} };
+        state.session = { pool, index: 0, answered: 0, correct: 0, size: pool.length, locked: false, log: [], mode, answers: {}, submissionId: mode === 'exam' ? newSubmissionId() : null };
         if (mode === 'exam') state.session.timeLeft = pool.length * EXAM_SECONDS_PER_Q;
         track('session_start', { size: pool.length, mode });
         track('quiz_start', { size: pool.length, mode });
@@ -3075,7 +3117,7 @@
     // ---- Review ask ----------------------------------------------------------
     // Once an account is a week old, ask for a review at sign-in — the SAME form the
     // Reviews tab uses (same fields, same POST /api/reviews, one review per account,
-    // posts live). The server decides when it's due (profile.review_prompt_due):
+    // enters moderation before appearing publicly). The server decides when it's due (profile.review_prompt_due):
     // never if they've already reviewed; "maybe later" re-asks monthly.
     function maybePromptReview() {
         if (!state.token || !state.profile || !state.profile.review_prompt_due) return false;
@@ -3094,7 +3136,7 @@
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="rvp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:440px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
             <div id="rvp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Enjoying MACPrep? Share your experience</div>
-            <div class="sub" style="font-size:13px;margin-bottom:14px;">A quick review helps other SAAs and CAAs find peer-built, cited board prep. It posts on the public <a href="/reviews" target="_blank" rel="noopener">Reviews page</a>.</div>
+            <div class="sub" style="font-size:13px;margin-bottom:14px;">A quick review helps other SAAs and CAAs find peer-built, cited board prep. Reviews are checked before appearing on the public <a href="/reviews" target="_blank" rel="noopener">Reviews page</a>.</div>
             <input id="rvp-name" placeholder="Your name" maxlength="80" value="${escapeHtml(p.full_name || '')}" style="${inp}">
             <input id="rvp-cred" placeholder="Credential (e.g. SAA, Class of 2026 · or CAA)" maxlength="80" value="${escapeHtml(['SAA', 'CAA'].includes(p.credential) ? p.credential : '')}" style="${inp}">
             <select id="rvp-rating" style="${inp}"><option value="5">★★★★★ · 5</option><option value="4.5">★★★★½ · 4.5</option><option value="4">★★★★ · 4</option><option value="3.5">★★★½ · 3.5</option><option value="3">★★★ · 3</option><option value="2.5">★★½ · 2.5</option><option value="2">★★ · 2</option><option value="1.5">★½ · 1.5</option><option value="1">★ · 1</option></select>
@@ -3129,8 +3171,8 @@
             const { resp, data } = await apiJSON('/api/reviews', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok || !data.success) throw new Error((data && data.error) || 'Could not submit your review.');
             if (state.profile) state.profile.review_prompt_due = false;
-            if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Thanks! Your review is live. 🎉'; }
-            setTimeout(() => { closeReviewPrompt(); toast('Thanks for the review! 🎉', 'ok'); }, 1200);
+            if (msg) { msg.style.color = 'var(--accent)'; msg.textContent = 'Thanks! Your review was submitted for approval.'; }
+            setTimeout(() => { closeReviewPrompt(); toast('Thanks for the review!', 'ok'); }, 1200);
         } catch (e) {
             if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; }
             if (btn) { btn.disabled = false; btn.textContent = 'Submit review'; }
@@ -3307,8 +3349,8 @@
         const verdict = data.correct
             ? `<span style="color:${GRADE_GREEN};font-weight:bold;">CORRECT</span>`
             : `<span style="color:${GRADE_RED};font-weight:bold;">INCORRECT</span>`;
-        const peerWho = (data.peer_group === 'SAA') ? 'of SAAs' : 'of test-takers';
-        const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% ${peerWho} got this right</span>` : '';
+        const peerWho = (data.peer_group === 'SAA') ? 'active SAA peers' : 'test-takers';
+        const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of ${peerWho} got this right <span title="Each learner's latest response only">(n=${Number(data.response_count) || 0})</span></span>` : '';
         let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
         const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
         if (refs.length) {
@@ -3504,23 +3546,48 @@
         if (!auto && unanswered > 0 && !confirm(`${unanswered} question(s) are unanswered. Submit anyway?`)) return;
         s.submitting = true;
         stopExamTimer();
-        setLoading(true);
-        let correct = 0, failed = 0;
-        try {
-            for (const i of answeredIdx) {
-                const q = s.pool[i]; const sel = s.answers[i].selectedIndex;
-                try {
-                    const { resp, data } = await apiJSON('/api/grade', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, choiceIndex: sel, answer_changed: (((s._selCount && s._selCount[i]) || 1) > 1) }) });
-                    if (resp.ok) { s.answers[i].graded = data; if (data.correct) correct++; }
-                    else { failed++; }
-                } catch (e) { failed++; }
-            }
-        } finally { setLoading(false); }
-        s.answered = answeredIdx.length - failed; s.correct = correct;
+        s.submissionId = s.submissionId || newSubmissionId();
+        saveSession();
+        let correct = 0;
+        if (answeredIdx.length) {
+            setLoading(true);
+            try {
+                const answers = answeredIdx.map((i) => ({
+                    questionId: s.pool[i].id,
+                    choiceIndex: s.answers[i].selectedIndex,
+                    answer_changed: (((s._selCount && s._selCount[i]) || 1) > 1),
+                }));
+                const { resp, data } = await apiJSON('/api/grade-batch', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({ submissionId: s.submissionId, answers }),
+                });
+                if (!resp.ok) {
+                    if (resp.status === 402) openUpgradeModal('studymode');
+                    throw Object.assign(new Error(data.error || 'The exam could not be graded.'), { status: resp.status });
+                }
+                const results = Array.isArray(data.results) ? data.results : [];
+                const byId = new Map(results.map((result) => [String(result.questionId), result]));
+                if (byId.size !== answeredIdx.length) throw new Error('The server returned an incomplete exam result.');
+                answeredIdx.forEach((i) => {
+                    const graded = byId.get(String(s.pool[i].id));
+                    if (!graded || !Number.isInteger(graded.correctIndex)) throw new Error('The server returned an invalid exam result.');
+                    s.answers[i].graded = graded;
+                    if (graded.correct) correct++;
+                });
+            } catch (error) {
+                s.submitting = false;
+                saveSession();
+                toast(error.message || 'The exam could not be graded. Your answers are still saved.');
+                if (!auto && s.timeLeft > 0) startExamTimer();
+                return;
+            } finally { setLoading(false); }
+        }
+        s.answered = answeredIdx.length; s.correct = correct;
         s.complete = true; ls('macprep_session', null);
         s.log = answeredIdx.map((i) => {
-            const q = s.pool[i]; const a = s.answers[i]; const g = a.graded || {};
-            return { id: q.id, meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: s.diagnostic ? (q.domain_name || q.category || 'General') : (q.category || q.domain_name || 'General'), stem: q.stem || '', correct: !!g.correct, correctLetter: String.fromCharCode(65 + (g.correctIndex || 0)), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
+            const q = s.pool[i]; const a = s.answers[i]; const g = a.graded;
+            return { id: q.id, meta: [q.category || q.domain_name, q.subtopic].filter(Boolean).join(' · '), category: s.diagnostic ? (q.domain_name || q.category || 'General') : (q.category || q.domain_name || 'General'), stem: q.stem || '', correct: g.correct, correctLetter: String.fromCharCode(65 + g.correctIndex), yourLetter: String.fromCharCode(65 + a.selectedIndex), explanation: g.explanation || '' };
         });
         track('session_complete', { mode: 'exam', size: s.pool.length });
         try { await loadProfile(); } catch (e) {}
@@ -3528,26 +3595,22 @@
         $('prev-btn') && ($('prev-btn').style.display = 'none');
         $('submit-exam-btn') && ($('submit-exam-btn').style.display = 'none');
         const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
-        const allFailed = answeredIdx.length > 0 && s.answered === 0;
-        const bossWon = !!s.boss && !allFailed && pct >= BOSS_THRESHOLD;
+        const bossWon = !!s.boss && s.answered > 0 && pct >= BOSS_THRESHOLD;
         if (bossWon) markBossCleared(s.boss);
-        $('question-meta').textContent = allFailed ? 'GRADING FAILED' : (s.boss ? (bossWon ? '⚔ BOSS DEFEATED' : 'BOSS SURVIVED') : s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE');
+        $('question-meta').textContent = s.boss ? (bossWon ? '⚔ BOSS DEFEATED' : 'BOSS SURVIVED') : s.mock ? 'MOCK EXAM COMPLETE' : s.diagnostic ? 'DIAGNOSTIC COMPLETE' : 'EXAM COMPLETE';
         // Count completed mock exams (drives the "Dress rehearsal" / "Mock master" achievements).
-        if (s.mock && !allFailed) { try { localStorage.setItem('macprep_mock_count', String((parseInt(localStorage.getItem('macprep_mock_count') || '0', 10) || 0) + 1)); } catch (e) {} }
-        if (allFailed) {
-            $('question-stem').innerHTML = `<span style="color:var(--warn);">We couldn't grade your exam — this is usually a temporary connection problem. Please check your connection and run the session again.</span>`;
-        } else {
-            const failWarn = failed ? `<div style="margin-top:12px;color:var(--warn);font-size:13px;">⚠ ${failed} question${failed === 1 ? '' : 's'} couldn't be graded (network error) and were left out of your score. Try them again from the dashboard.</div>` : '';
+        if (s.mock) { try { localStorage.setItem('macprep_mock_count', String((parseInt(localStorage.getItem('macprep_mock_count') || '0', 10) || 0) + 1)); } catch (e) {} }
+        {
             const hype = pct >= 90 ? '🎉 Outstanding — ' : pct >= 75 ? '🎉 Great work — ' : '';
             $('question-stem').innerHTML = s.boss
                 ? (bossWon
-                    ? `⚔ You defeated the <strong>${escapeHtml(s.boss)}</strong> boss with <strong>${pct}%</strong> — this domain is cleared!${failWarn}`
-                    : `The <strong>${escapeHtml(s.boss)}</strong> boss survived — you scored <strong>${pct}%</strong> (need ${BOSS_THRESHOLD}%+). Study the breakdown below and challenge it again.${failWarn}`)
+                    ? `⚔ You defeated the <strong>${escapeHtml(s.boss)}</strong> boss with <strong>${pct}%</strong> — this domain is cleared!`
+                    : `The <strong>${escapeHtml(s.boss)}</strong> boss survived — you scored <strong>${pct}%</strong> (need ${BOSS_THRESHOLD}%+). Study the breakdown below and challenge it again.`)
                 : s.mock
-                ? `${hype}Mock exam complete — you scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}). Weighted across all six NCCAA domains — the breakdown below shows where to focus.${failWarn}`
+                ? `${hype}Mock exam complete — you scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}). Weighted across all six NCCAA domains — the breakdown below shows where to focus.`
                 : s.diagnostic
-                ? `Your predicted readiness is <strong>${pct}%</strong> — across ${s.answered} questions spanning all six blueprint domains.${failWarn} The breakdown below shows exactly where to focus first.`
-                : `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).${failWarn}`;
+                ? `Your diagnostic accuracy is <strong>${pct}%</strong> across ${s.answered} questions spanning all six blueprint domains. Treat this short sample as directional practice feedback, not a predicted exam result; the breakdown below shows where to focus first.`
+                : `${hype}You scored <strong>${pct}%</strong> (${s.correct}/${s.answered} correct${unanswered ? `, ${unanswered} unanswered` : ''}).`;
             if (bossWon || (pct >= 70 && s.answered >= 3)) celebrate();
         }
         $('choices-container').innerHTML = '';
@@ -3833,7 +3896,7 @@
     const PREMIUM_FEATURES = {
         studymode: { icon: '🎯', name: 'This study mode', blurb: 'Free accounts get one recommended 25-question trial session. Upgrade to unlock every study mode (Quick sets, Smart Review, Focused quizzes by specialty, Custom sessions) plus flashcards, mock exams, duels, and the full question bank.' },
         arcade: { icon: '🕹️', name: 'Arcade', blurb: 'Unlimited high-score runs — Survival, Sudden Death, Time Attack & Blitz.' },
-        diagnostic: { icon: '📊', name: 'The diagnostic', blurb: 'Get a readiness score and a domain-level starting point after a balanced assessment.' },
+        diagnostic: { icon: '📊', name: 'The diagnostic', blurb: 'Get directional accuracy and a domain-level starting point after a balanced assessment.' },
         search: { icon: '🔎', name: 'Question search', blurb: 'Search the full question bank by keyword and jump directly into a question.' },
         printableExam: { icon: '📄', name: 'Printable exams', blurb: 'Create a clean take-home exam to print or save as a PDF.' },
         mock: { icon: '📝', name: 'The Full-Length Mock Exam', blurb: 'A board-length, timed simulation of the real NCCAA exam — the closest thing to sitting the boards.' },
@@ -3879,7 +3942,7 @@
                 <button onclick="MACPrep.closeUpgradeModal()" aria-label="Close" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;line-height:1;">&times;</button>
                 <div class="mono" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;">Full access</div>
                 <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:21px;line-height:1.25;">${titleN}</div>
-                <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access is tied to your MACPrep account. A purchase made here, on the web, or on another device unlocks this same account everywhere.</div>
+                <div class="sub" style="font-size:13.5px;margin-top:9px;line-height:1.7;">Full access is tied to your MACPrep account. A verified Store purchase or program entitlement unlocks this same account everywhere.</div>
                 <div id="native-purchase-actions" style="margin-top:18px;"><div class="mono" style="font-size:11px;color:var(--muted);text-align:center;">Checking store availability...</div></div>
                 <button class="btn ghost" type="button" onclick="MACPrep.restoreNativePurchases()" style="width:100%;margin-top:10px;">Restore purchases</button>
                 <button class="btn ghost" type="button" onclick="MACPrep.refreshAccess()" style="width:100%;margin-top:8px;">Refresh account access</button>
@@ -3922,6 +3985,22 @@
 
     const NATIVE_PREMIUM_PRODUCT_ID = 'org.macprep.app.full_access';
     let _nativePremiumProduct = null;
+    let _runtimeConfigPromise = null;
+
+    function runtimeConfig() {
+        if (!_runtimeConfigPromise) {
+            _runtimeConfigPromise = fetch('/api/config', { credentials: 'same-origin' })
+                .then((response) => {
+                    if (!response.ok) throw new Error('Could not load app configuration.');
+                    return response.json();
+                })
+                .catch((error) => {
+                    _runtimeConfigPromise = null;
+                    throw error;
+                });
+        }
+        return _runtimeConfigPromise;
+    }
 
     function nativePurchasePlugin() { return capPlugin('MacprepPurchases'); }
     function nativePurchasePlatform() {
@@ -3933,9 +4012,21 @@
         if (_nativePremiumProduct) return _nativePremiumProduct;
         const plugin = nativePurchasePlugin();
         if (!plugin) throw new Error('This app version needs to be updated before in-app purchase is available.');
-        const data = await plugin.getProducts({ productId: NATIVE_PREMIUM_PRODUCT_ID });
+        if (typeof plugin.getCapabilities !== 'function') throw new Error('Update MACPrep before purchasing full access.');
+        const [cfg, capabilities] = await Promise.all([runtimeConfig(), plugin.getCapabilities()]);
+        const requiredVersion = Number(cfg?.nativePurchaseBridgeMinVersion || 1);
+        const bridgeVersion = Number(capabilities?.bridgeVersion || 0);
+        if (!Number.isInteger(bridgeVersion) || bridgeVersion < requiredVersion) {
+            throw new Error('Update MACPrep before purchasing full access.');
+        }
+        const productId = typeof cfg?.nativePremiumProductId === 'string'
+            ? cfg.nativePremiumProductId
+            : NATIVE_PREMIUM_PRODUCT_ID;
+        const supportedProducts = Array.isArray(capabilities?.productIds) ? capabilities.productIds : [];
+        if (!supportedProducts.includes(productId)) throw new Error('This app version does not support the current full-access product.');
+        const data = await plugin.getProducts({ productId });
         const product = Array.isArray(data?.products)
-            ? data.products.find((item) => item && item.productId === NATIVE_PREMIUM_PRODUCT_ID)
+            ? data.products.find((item) => item && item.productId === productId)
             : null;
         if (!product) throw new Error('Full access is not available in this store yet.');
         _nativePremiumProduct = product;
@@ -4711,10 +4802,16 @@
         if (current == null) return;
         const pw = prompt('Enter a new password (at least 12 characters):');
         if (pw == null) return;
-        if (pw.length < 8) { toast('Password must be at least 8 characters.'); return; }
+        if (pw.length < 12) { toast('Password must be at least 12 characters.'); return; }
         try {
             const { resp, data } = await apiJSON('/api/user/change-password', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ current_password: current, new_password: pw }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not change password.');
+            if (data.requires_login) {
+                setToken(null);
+                toast('Password changed. Sign in again with your new password.', 'ok');
+                setTimeout(() => { location.href = '/login'; }, 900);
+                return;
+            }
             toast('Password changed.', 'ok');
         } catch (e) { toast('Failed: ' + e.message); }
     }
@@ -5251,8 +5348,7 @@
     // Activates only when SENTRY_BROWSER_DSN is set on the server.
     async function initMonitoring() {
         try {
-            const r = await fetch('/api/config');
-            const cfg = await r.json();
+            const cfg = await runtimeConfig();
             // Adopt the server's authoritative monthly referral code, then refresh the
             // referral note if it's already on screen (config may resolve after render).
             if (cfg.referralCode && cfg.referralCode !== REFERRAL_CODE) {
@@ -5318,7 +5414,7 @@
     // ---- Command palette (⌘K / Ctrl-K) -----------------------------------
     const CMDK = [
         { icon: '▶', label: 'Start recommended session', hint: 'smart mix', run: () => startRecommended(), auth: true },
-        { icon: '📊', label: 'Take a diagnostic', hint: 'readiness score', run: () => startDiagnostic(), auth: true },
+        { icon: '📊', label: 'Take a diagnostic', hint: 'current practice level', run: () => startDiagnostic(), auth: true },
         { icon: '🎯', label: 'Smart review — weak areas + missed', run: () => smartReview(), auth: true },
         { icon: '↩', label: 'Redo my missed questions', run: () => redoMissed(), auth: true },
         { icon: '☆', label: 'Review my flagged questions', run: () => startFlagged(), auth: true },
@@ -5521,6 +5617,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         initMonitoring();
+        migrateLegacyAuthStorage();
         syncSignupProgramOptions();
         onCredChange();
         syncThemeColor();
@@ -5528,11 +5625,12 @@
         // Email-confirmation links land here with the new session in the URL hash.
         const hash = new URLSearchParams((location.hash || '').slice(1));
         if (hash.get('access_token')) {
-            setToken(hash.get('access_token'));
-            if (hash.get('refresh_token')) setRefresh(hash.get('refresh_token'));
+            const confirmationRefresh = hash.get('refresh_token');
             history.replaceState({}, '', '/');
+            if (confirmationRefresh) await refreshToken(confirmationRefresh);
         }
         state.token = getToken();
+        if (!state.token) await refreshToken();
         track('page_view');
         if (isNativeApp()) track('app_open');
         // Opening the theme/font picker should also dismiss any open nav dropdown.

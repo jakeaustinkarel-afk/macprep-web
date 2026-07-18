@@ -202,7 +202,7 @@ Play needs **phone screenshots** (min 2; 1080×1920 or similar) — reuse the sa
 ---
 
 ## 7. Gotchas already handled / to remember
-- **Guideline 4.2 (minimum functionality):** native push + full study feature set + offline install = well past a "thin web wrapper." The review notes lead with the native push.
+- **Guideline 4.2 (minimum functionality):** describe only native capabilities that have passed real-device testing, such as Store purchase/restore and native notifications. Do not claim offline study; question delivery and grading require a connection.
 - **`APNS_PRODUCTION`**: `false` for Xcode dev builds (sandbox), **`true`** for the store build. Don't forget to flip it.
 - **Demo account is mandatory** for both stores (login-walled app).
 - **Do not submit before the server can verify purchases.** The UI alone is not enough: create the matching store product, deploy the ledger migration, set server credentials, and complete the real-device purchase/restore checks first.

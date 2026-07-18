@@ -8,10 +8,14 @@ import {
     deleteMacprepAccount,
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
+    isValidProfileDate,
     mobileAccountHash,
     normalizeTrainingProgram,
+    readCookieHeader,
     registrationProfileError,
     normalizeMobileStore,
+    resolveFacultyScope,
+    sanitizeAnalyticsMeta,
     selectUnansweredFreePool,
     summarizeProductUsage,
     trustedBaseUrl,
@@ -19,6 +23,7 @@ import {
     validateGooglePurchasePayload,
 } from '../src/server.mjs';
 import { fetchAllPostgrestRows } from '../src/lib/postgrest-pagination.mjs';
+import { validateQuestionForPublication } from '../src/lib/question-validation.mjs';
 
 test('served question lookup applies the published-content filter before grading', () => {
     const calls = [];
@@ -93,12 +98,93 @@ test('product analytics keeps native, web, and legacy events separate', () => {
     assert.equal(analyticsPlatformFromMeta({ platform: 'desktop' }), 'untagged');
 });
 
+test('analytics metadata rejects arbitrary and identifying fields', () => {
+    assert.deepEqual(sanitizeAnalyticsMeta('session_complete', {
+        platform: 'ios', size: 25, answered: 24, mode: 'recommended',
+        email: 'student@example.com', program: 'Example University', custom: { secret: true },
+    }), { platform: 'ios', size: 25, mode: 'recommended', answered: 24 });
+    assert.deepEqual(sanitizeAnalyticsMeta('landing_view', {
+        platform: 'desktop', vid: 'visitor-123', email: 'student@example.com',
+    }), { platform: 'untagged', vid: 'visitor-123' });
+    assert.deepEqual(sanitizeAnalyticsMeta('boss_start', {
+        platform: 'web', domain: 'Not a real domain',
+    }), { platform: 'web' });
+});
+
 test('registration requires a real AA program and preserves a clean program label', () => {
     assert.equal(normalizeTrainingProgram('  Nova   Southeastern University (Tampa)  '), 'Nova Southeastern University (Tampa)');
+    assert.equal(normalizeTrainingProgram('Emory\u0000\nUniversity'), 'Emory University');
     assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: '' }), 'Please select your AA program.');
     assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: 'Program not listed' }), 'Please select your AA program.');
-    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: null, trainingProgram: 'Emory University' }), 'Students (SAA) must add a graduation date.');
+    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: null, trainingProgram: 'Emory University' }), 'Students (SAA) must add a valid graduation date.');
+    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-02-30', trainingProgram: 'Emory University' }), 'Students (SAA) must add a valid graduation date.');
     assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
+    assert.equal(isValidProfileDate('2028-02-29'), true);
+    assert.equal(isValidProfileDate('2027-02-29'), false);
+});
+
+test('faculty scope is derived from the verified account assignment, not a query parameter', () => {
+    const user = { id: 'faculty-user', email: 'faculty@example.edu', email_confirmed_at: '2026-01-01T00:00:00Z' };
+    const scope = resolveFacultyScope({
+        user,
+        requestedProgram: 'Another University',
+        profile: { is_faculty: true, faculty_program: '  Emory   University  ' },
+    });
+    assert.deepEqual(scope, { user, program: 'Emory University', role: 'faculty', isAdmin: false });
+    assert.equal(resolveFacultyScope({ user, profile: { is_faculty: true, faculty_program: '' } }), null);
+    assert.equal(resolveFacultyScope({ user: { ...user, email_confirmed_at: null }, profile: { is_faculty: true, faculty_program: 'Emory University' } }), null);
+    assert.equal(resolveFacultyScope({ user, profile: { is_faculty: false, faculty_program: 'Emory University' } }), null);
+});
+
+test('cookie parsing matches exact names and safely decodes values', () => {
+    const header = 'other_macprep_access=wrong; macprep_access=token%2Evalue; theme=dark';
+    assert.equal(readCookieHeader(header, 'macprep_access'), 'token.value');
+    assert.equal(readCookieHeader(header, 'missing'), '');
+    assert.equal(readCookieHeader('macprep_access=%E0%A4%A', 'macprep_access'), '');
+});
+
+test('browser code keeps authentication credentials out of JavaScript storage and headers', async () => {
+    const browserFiles = await Promise.all([
+        '../src/app.js', '../metrics.html', '../faculty.html', '../pricing.html', '../reviews.html',
+    ].map((relative) => readFile(fileURLToPath(new URL(relative, import.meta.url)), 'utf8')));
+    for (const source of browserFiles) {
+        assert.doesNotMatch(source, /sessionStorage\.getItem\(['"]macprep_token['"]\)/);
+        assert.doesNotMatch(source, /Authorization\s*[:=].*Bearer/i);
+    }
+
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    const authSection = server.slice(server.indexOf("app.post('/api/authenticate'"), server.indexOf("app.post('/api/auth/logout'"));
+    assert.match(authSection, /authenticated:\s*!!data\.session/);
+    assert.match(authSection, /authenticated:\s*true/);
+    assert.doesNotMatch(authSection, /token:\s*data\.session\?\.access_token/);
+    assert.doesNotMatch(authSection, /res\.json\(\{\s*token:\s*data\.session\.access_token/);
+
+    const passwordSection = server.slice(server.indexOf('class AuthPasswordUpdateError'), server.indexOf("app.post('/api/user/delete'"));
+    assert.match(passwordSection, /\/auth\/v1\/user/);
+    assert.match(passwordSection, /current_password/);
+    assert.doesNotMatch(passwordSection, /admin\.updateUserById\([^)]*password/s);
+});
+
+test('publication validation requires one aligned answer, rationales, blueprint tags, and a real source', () => {
+    const question = {
+        stem: 'A stable adult develops hypotension immediately after induction of general anesthesia. What is the best initial response?',
+        explanation: 'The response should address the most likely mechanism while preserving perfusion and reassessing the patient.',
+        domain_name: 'Principles of Anesthesia',
+        subtopic: 'Induction hypotension',
+        correct_answer: 'B',
+        choices: [
+            { text: 'Observe without intervention', rationale: 'Observation alone does not address clinically important hypotension.', correct: false },
+            { text: 'Treat the likely mechanism and reassess', rationale: 'Prompt targeted treatment supports perfusion while the cause is evaluated.', correct: true },
+            { text: 'Deepen the anesthetic immediately', rationale: 'Additional anesthetic can worsen vasodilation and reduce perfusion pressure.', correct: false },
+            { text: 'Delay action until a laboratory result returns', rationale: 'The immediate hemodynamic problem should be addressed before delayed tests return.', correct: false },
+        ],
+        references: [{ doi: '10.1016/j.bja.2020.01.001' }],
+    };
+    assert.deepEqual(validateQuestionForPublication(question), { valid: true, errors: [] });
+    const unsafe = validateQuestionForPublication({ ...question, correct_answer: 'A', references: [{ doi: '10.1213/ane.0000000000000000' }] });
+    assert.equal(unsafe.valid, false);
+    assert.match(unsafe.errors.join(' '), /does not match/);
+    assert.match(unsafe.errors.join(' '), /placeholder/);
 });
 
 test('Apple entitlement payload requires the expected app, product, and account token', () => {
@@ -199,11 +285,64 @@ test('account-deletion fix casts the legacy voucher claim identifier', async () 
 });
 
 test('security migration revokes legacy public data access', async () => {
-    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717203000_revoke_legacy_public_data_access.sql', import.meta.url)), 'utf8');
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260717211946_revoke_legacy_public_data_access.sql', import.meta.url)), 'utf8');
     assert.match(migration, /drop policy if exists "Allow public read access to questions"/);
     assert.match(migration, /drop policy if exists "Allow open review readings"/);
     assert.match(migration, /revoke all on table public\.macprep_questions_deprecated from anon, authenticated/);
     assert.match(migration, /revoke all on table public\.user_reviews from anon, authenticated/);
+});
+
+test('exam submission migration makes batch retries idempotent', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718201644_atomic_exam_submissions.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /add column if not exists submission_id uuid/);
+    assert.match(migration, /unique index if not exists idx_user_progress_submission_question/);
+    assert.match(migration, /\(user_id, submission_id, question_id\)/);
+});
+
+test('account entitlement migration makes every grant server-only and replay-safe', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718201718_account_entitlement_ledger.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /create table if not exists public\.account_entitlements/);
+    assert.match(migration, /unique \(source, source_reference\)/);
+    assert.match(migration, /create unique index if not exists idx_account_entitlements_source_external_payment/);
+    assert.match(migration, /for update/);
+    assert.match(migration, /revoke all on table public\.account_entitlements from public, anon, authenticated/);
+    for (const name of ['grant_macprep_entitlement', 'set_macprep_entitlement_status', 'claim_macprep_voucher']) {
+        assert.match(migration, new RegExp(`function public\\.${name}`));
+    }
+});
+
+test('learning rollup migration keeps cross-account data behind service-role functions', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718201730_transactional_review_and_learning_rollups.sql', import.meta.url)), 'utf8');
+    for (const name of ['apply_macprep_question_edit', 'macprep_user_learning_rollup', 'macprep_saa_question_stats', 'reset_macprep_progress', 'claim_macprep_daily_job']) {
+        assert.match(migration, new RegExp(`function public\\.${name}`));
+        assert.match(migration, new RegExp(`grant execute on function public\\.${name}`));
+    }
+    assert.match(migration, /revoke all on table public\.user_domain_ability from public, anon, authenticated/);
+    assert.match(migration, /create trigger trg_macprep_domain_ability/);
+});
+
+test('shared limits and peer estimates are atomic, private, and latest-answer based', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718202820_distributed_rate_limits_and_honest_benchmarks.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /create table if not exists public\.rate_limit_windows/);
+    assert.match(migration, /primary key \(bucket, identity_hash\)/);
+    assert.match(migration, /on conflict \(bucket, identity_hash\) do update/);
+    assert.match(migration, /alter table public\.rate_limit_windows enable row level security/);
+    assert.match(migration, /revoke all on table public\.rate_limit_windows from public, anon, authenticated/);
+    assert.match(migration, /function public\.consume_macprep_rate_limit/);
+    assert.match(migration, /distinct on \(up\.user_id, up\.question_id\)/);
+    assert.match(migration, /distinct on \(up\.question_id\)/);
+    assert.match(migration, /function public\.macprep_user_practice_readiness/);
+    assert.match(migration, /grant execute on function public\.macprep_user_practice_readiness\(uuid, text\[\]\) to service_role/);
+});
+
+test('native purchase bridges publish an explicit compatibility handshake', async () => {
+    const ios = await readFile(fileURLToPath(new URL('../mobile/plugins/macprep-purchases/ios/Sources/MacprepPurchases/MacprepPurchasesPlugin.swift', import.meta.url)), 'utf8');
+    const android = await readFile(fileURLToPath(new URL('../mobile/plugins/macprep-purchases/android/src/main/java/org/macprep/purchases/MacprepPurchasesPlugin.java', import.meta.url)), 'utf8');
+    for (const source of [ios, android]) {
+        assert.match(source, /getCapabilities/);
+        assert.match(source, /bridgeVersion/);
+        assert.match(source, /productIds/);
+    }
 });
 
 test('mobile purchase migration makes the server-only receipt ledger replay-safe', async () => {

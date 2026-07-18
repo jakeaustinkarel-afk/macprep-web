@@ -1,6 +1,6 @@
 # MACPrep Backlog
 
-Last reviewed: 2026-07-17.
+Last reviewed: 2026-07-18.
 
 ## Ready To Execute
 
@@ -8,6 +8,9 @@ Last reviewed: 2026-07-17.
 - [ ] Pull the reviewed historical Supabase baseline into version control with `supabase db pull`. The live schema predates this repo's migration history; do not fabricate it from code.
 - [ ] Add a protected staging environment with a Stripe test webhook secret and seeded Supabase data, then add an end-to-end signed webhook test.
 - [x] Captured `EXPLAIN (ANALYZE, BUFFERS)` for benchmark, cohort, leaderboard, and bounded served-question selection on 2026-07-17.
+- [x] Applied atomic mock-exam, entitlement-ledger, transactional review/learning, and distributed-rate-limit migrations to the linked Supabase project on 2026-07-18.
+- [x] Moved browser authentication to HttpOnly cookies, enabled 12-character and leaked-password protections in Supabase Auth, and added CSRF/static-surface regression coverage.
+- [x] Added CI, browser/native capability handshakes, idempotent purchase reconciliation, and latest-response practice/peer metrics with minimum sample thresholds.
 
 ## Next Engineering Slice
 

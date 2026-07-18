@@ -111,7 +111,7 @@
     <div class="wrap">
         <span class="tag">Legal</span>
         <h1>Cookie Policy</h1>
-        <p class="muted">Last updated: June 19, 2026</p>
+        <p class="muted">Last updated: July 18, 2026</p>
 
         <p>This Cookie Policy explains how MACPrep uses cookies and similar browser storage technologies. We keep this minimal: we use only what is needed to run the Service and do <strong>not</strong> use third-party advertising or cross-site tracking cookies.</p>
 
@@ -120,9 +120,11 @@
         <table style="min-width:440px;">
             <thead><tr><th>Technology</th><th>Purpose</th><th>Type</th></tr></thead>
             <tbody>
-                <tr><td>Local storage (<code>macprep_token</code>)</td><td>Keeps you signed in by storing your session token in your browser.</td><td>Strictly necessary</td></tr>
-                <tr><td>Local storage (preferences)</td><td>Remembers small UI preferences such as your premium status flag.</td><td>Functional</td></tr>
-                <tr><td>Supabase auth storage</td><td>Used by our authentication provider to manage your secure session.</td><td>Strictly necessary</td></tr>
+                <tr><td>Secure session cookies</td><td>Keep you signed in without exposing long-lived credentials to page scripts.</td><td>Strictly necessary</td></tr>
+                <tr><td>Local storage (<code>macprep_signed_in</code>)</td><td>Stores a non-secret sign-in indicator so public navigation can show the Dashboard link.</td><td>Strictly necessary</td></tr>
+                <tr><td>Session storage</td><td>Stores a non-secret active-tab marker. Authentication credentials remain in HttpOnly cookies and cannot be read by page scripts.</td><td>Strictly necessary</td></tr>
+                <tr><td>Local storage (preferences and local state)</td><td>Remembers interface preferences, theme and font choices, and resumable local product state. It does not hold your authentication credential.</td><td>Functional</td></tr>
+                <tr><td>Local storage (<code>macprep_vid</code>)</td><td>Assigns a pseudonymous first-party identifier to measure use of the public sample-question experience. It is not used for cross-site tracking.</td><td>Analytics</td></tr>
             </tbody>
         </table>
         </div>
@@ -135,7 +137,7 @@
         </ul>
 
         <h2>Managing storage</h2>
-        <p>Because we rely on strictly necessary session storage, signing out or clearing your browser's site data for macprep.org will remove these items. Note that clearing them will sign you out.</p>
+        <p>Signing out clears the active MACPrep session. Closing a tab clears its session storage. Clearing site data for macprep.org removes cookies, preferences, local state, and the public-demo identifier and will sign you out.</p>
 
         <h2>Changes</h2>
         <p>We may update this policy; the "last updated" date reflects the latest version.</p>
@@ -174,6 +176,6 @@
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
 
-<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_signed_in"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
 </body>
 </html>

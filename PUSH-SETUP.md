@@ -18,7 +18,8 @@ VAPID keys are set on Render, `/api/push/vapid-public` returns `enabled:true`, a
 **To send yourself a test** (signed-in admin, browser console):
 ```js
 fetch('/api/admin/run-nudges',{method:'POST',
-  headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.macprep_token},
+  credentials:'same-origin',
+  headers:{'Content-Type':'application/json'},
   body:JSON.stringify({pushTest:true})}).then(r=>r.json()).then(console.log)
 // → { ok:true, web_test_sent:N, native_test_sent:M }
 ```
@@ -51,7 +52,7 @@ APPLE_TEAM_ID           = KHDCN5PKGG
 APNS_BUNDLE_ID          = org.macprep.app
 APNS_PRODUCTION         = true      # use "false" while testing a dev build from Xcode; "true" for TestFlight/App Store
 ```
-Setting these flips `NATIVE_PUSH_ENABLED` on (mirrors the VAPID gate). `firebase-admin` is pinned to v13, so **no Node-22 requirement** — safe on any Render runtime.
+Setting these flips `NATIVE_PUSH_ENABLED` on (mirrors the VAPID gate). `firebase-admin` is currently pinned to the v14 major; use the Node version declared by the project and verify the Render build before enabling delivery.
 
 ### B4. Native wiring (implemented; validate once B1 files exist)
 - `@capacitor/push-notifications`, APNs token forwarding in `AppDelegate.swift`, native-device token registration, and server-side APNs/FCM delivery are implemented.

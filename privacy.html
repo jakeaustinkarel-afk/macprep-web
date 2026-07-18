@@ -109,41 +109,45 @@
     <div class="wrap">
         <span class="tag">Legal</span>
         <h1>Privacy Policy</h1>
-        <p class="muted">Last updated: June 19, 2026</p>
+        <p class="muted">Last updated: July 18, 2026</p>
 
         <p>MACPrep ("we," "us") provides an anesthesia board review question bank. This policy explains what information we collect, how we use it, and the choices you have. We aim to collect as little as possible and to keep it secure.</p>
 
         <h2>1. Information we collect</h2>
         <ul>
-            <li><strong>Account information:</strong> your email address and password. Passwords are managed by our authentication provider (Supabase Auth) and are stored only as salted hashes — we never see your plaintext password.</li>
-            <li><strong>Profile information you choose to provide:</strong> name, professional credential, training program, target exam date, and phone number. All of these are optional.</li>
-            <li><strong>Study activity:</strong> the questions you answer and whether your answers were correct, used to show your progress and accuracy.</li>
-            <li><strong>Payment information:</strong> handled entirely by Stripe. We receive a confirmation that a payment succeeded and your billing email; we never receive or store your full card number.</li>
+            <li><strong>Account information:</strong> your email address and authentication credentials. Passwords are submitted over HTTPS and passed to Supabase Auth for verification; MACPrep does not store or intentionally log plaintext passwords.</li>
+            <li><strong>Profile information:</strong> your name, professional credential, and AA program or institution. SAAs also provide an expected graduation date. A target exam date and phone number are optional.</li>
+            <li><strong>Study activity:</strong> questions attempted, submitted answers, correctness, confidence, timing, notes, flags, flashcards, and related progress information used to provide study and readiness features.</li>
+            <li><strong>Purchase and entitlement records:</strong> payment status, product, provider, transaction identifiers, and account access status. Stripe processes web card payments; Apple and Google process native-app purchases. MACPrep does not receive or store full card numbers.</li>
+            <li><strong>Device and usage information:</strong> platform, limited first-party product events, a pseudonymous browser visitor identifier for the public demo, and push-notification tokens when you opt in to notifications.</li>
+            <li><strong>Information you submit:</strong> support requests, question feedback, product suggestions, and reviews. Reviews are moderated before they can appear publicly.</li>
         </ul>
 
         <h2>2. How we use your information</h2>
         <ul>
             <li>To provide the service — authenticate you, serve questions, grade answers, and track progress.</li>
-            <li>To manage your subscription and unlock premium access after payment.</li>
-            <li>To respond to support requests.</li>
+            <li>To verify purchases, vouchers, refunds, and account access across the website and native apps.</li>
+            <li>To personalize study recommendations, calculate progress, and operate opt-in reminders.</li>
+            <li>To provide verified faculty or program directors with the cohort information described below.</li>
+            <li>To respond to support requests, moderate submitted content, protect the Service, and improve reliability.</li>
         </ul>
 
         <h2>3. How your information is shared</h2>
-        <p>We do not sell your personal information. We share data only with the service providers needed to run MACPrep:</p>
+        <p>We do not sell your personal information. We disclose information in these limited circumstances:</p>
         <ul>
-            <li><strong>Supabase</strong> — database and authentication.</li>
-            <li><strong>Stripe</strong> — payment processing. See Stripe's privacy policy for how they handle card data.</li>
-            <li><strong>Render</strong> — application hosting.</li>
+            <li><strong>Your program:</strong> faculty or program directors whose access MACPrep has verified and assigned to your selected AA program may view your name, email, credential, study activity, and performance in their cohort dashboard. They cannot select another program's cohort.</li>
+            <li><strong>Service providers:</strong> Supabase for authentication and data storage, Render for hosting, Stripe or the applicable app store for purchases, and providers used for email, error monitoring, and push notifications when those features are enabled.</li>
+            <li><strong>Legal and safety needs:</strong> when required by law or reasonably necessary to protect MACPrep, our users, or others.</li>
         </ul>
 
         <h2>4. Data security</h2>
-        <p>Access to question answers and your profile is protected by server-side authentication and database row-level security. Correct answers are never sent to your browser before you respond. Traffic is encrypted in transit (HTTPS).</p>
+        <p>We use HTTPS, server-side authorization, restricted database access, secure session cookies, and other technical and organizational safeguards. Correct answers are not sent to the client before an answer or completed exam is graded. No online service can guarantee absolute security.</p>
 
         <h2>5. Data retention and your rights</h2>
-        <p>You may view and edit your profile information at any time from your profile page. To delete your account and associated data, or to request a copy of your data, email us at <a href="mailto:support@macprep.org">support@macprep.org</a> and we will process the request.</p>
+        <p>We retain account and study information while your account is active and as reasonably needed to provide the Service, resolve disputes, meet legal obligations, and protect the Service. You may view or edit profile information and request account deletion from your profile. You may also request deletion or a copy of your data at <a href="mailto:support@macprep.org">support@macprep.org</a>. Payment providers may retain transaction records under their own legal and financial obligations.</p>
 
         <h2>6. Cookies, local storage &amp; analytics</h2>
-        <p>We use your browser's local storage to keep you signed in (a session token). We do not use third-party advertising or tracking cookies. We collect simple, first-party usage analytics (for example, that a sign-in or practice session occurred) to understand and improve the product; these events are stored on our own servers, are not shared with advertisers, and are not used to build cross-site profiles.</p>
+        <p>We use secure, same-site cookies to maintain signed-in sessions. Local storage holds non-secret interface preferences, resumable local state, a sign-in display marker, and a pseudonymous identifier used to measure the public sample-question experience. We collect a limited set of first-party product events and reject unapproved analytics fields. We do not use third-party advertising cookies, sell browsing data, or build cross-site advertising profiles. See our <a href="/cookies.html">Cookie Policy</a>.</p>
 
         <h2>7. Children's privacy</h2>
         <p>MACPrep is intended for healthcare professionals and students and is not directed to children under 13.</p>
@@ -185,6 +189,6 @@
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
 
-<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_signed_in"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
 </body>
 </html>

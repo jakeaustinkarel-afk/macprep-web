@@ -85,6 +85,9 @@
         // Supabase recovery links arrive as a URL hash: #access_token=...&type=recovery
         function hashParam(k){ return new URLSearchParams(location.hash.slice(1)).get(k); }
         const accessToken = hashParam('access_token');
+        // Keep the one-time recovery credential out of screenshots, copied URLs,
+        // and browser history as soon as the page has captured it in memory.
+        if (location.hash) history.replaceState(null, '', location.pathname + location.search);
         const msg = document.getElementById('msg');
         if (!accessToken) {
             document.getElementById('form-wrap').style.display='none';
@@ -94,7 +97,7 @@
         async function submitReset(){
             const pw=document.getElementById('pw').value, pw2=document.getElementById('pw2').value;
             const btn=document.getElementById('submit');
-            if(pw.length<8){ msg.style.color='#F87171'; msg.textContent='Password must be at least 8 characters.'; return; }
+            if(pw.length<12){ msg.style.color='#F87171'; msg.textContent='Password must be at least 12 characters.'; return; }
             if(pw!==pw2){ msg.style.color='#F87171'; msg.textContent='Passwords do not match.'; return; }
             btn.disabled=true; btn.textContent='Updating…'; msg.textContent='';
             try{

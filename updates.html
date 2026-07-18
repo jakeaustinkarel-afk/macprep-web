@@ -157,7 +157,7 @@
                 <li><span class="fx-date">Jul 4</span><span>Fixed the <strong>Mock Exam timer</strong> continuing to count down after you left the exam — leaving now pauses the clock and resuming picks it right back up, so a timed exam can never submit itself while you're on another screen.</span></li>
                 <li><span class="fx-date">Jul 4</span><span>Press <strong>Esc</strong> to close any pop-up — the calculator, lab values, the mock-exam and specialty pickers, and every other dialog now dismiss from the keyboard.</span></li>
                 <li><span class="fx-date">Jul 4</span><span><strong>Accessibility &amp; polish</strong> — the green <strong>Correct</strong> / red <strong>Incorrect</strong> labels now clear contrast standards on every theme, quiz-toolbar controls and confidence chips are bigger and easier to tap on phones, and pop-ups are properly labeled for screen readers.</span></li>
-                <li><span class="fx-date">Jul 4</span><span><strong>Install MACPrep</strong> to your home screen for an app-like experience — full-screen, instant load, and offline study. Tap “Install” when prompted (iPhone: Share → Add to Home Screen); streak reminders are on the way. Plus a sharper dashboard — the study launcher leads with your focused set and core modes (the rest under “More ways to study”), and the readiness card now centers on your accuracy trend.</span></li>
+                <li><span class="fx-date">Jul 4</span><span><strong>Install MACPrep</strong> to your home screen for a full-screen, app-like experience and faster return visits. Tap “Install” when prompted (iPhone: Share → Add to Home Screen); optional streak reminders are available. Study sessions require an internet connection. Plus a sharper dashboard — the study launcher leads with your focused set and core modes (the rest under “More ways to study”), and the readiness card now centers on your accuracy trend.</span></li>
                 <li><span class="fx-date">Jul 4</span><span>A cleaner, <strong>balanced dashboard</strong> — on wide screens it now lays out in two even columns (with the study-modes launcher up top as a full-width strip), so more of your progress shows at a glance. Plus snappier <strong>press feedback</strong> on every tappable card and smoother <strong>loading</strong> while pages fetch.</span></li>
                 <li><span class="fx-date">Jul 3</span><span>Revamped <strong>Leaderboard</strong> — everyone's on by default (opt out anytime), shown only by first name + last initial. Compete on <strong>three boards</strong>: questions this week (resets Monday 7 AM ET), day streak, and accuracy (<strong>Sharpshooter</strong>). Your top 10 now shows on the dashboard.</span></li>
                 <li><span class="fx-date">Jul 3</span><span>New <strong>Flashcard mode</strong> (full access) — hide the choices, type your answer from memory, then flip the card to check it against the correct answer, rationale, and source. Active recall is the highest-retention way to study.</span></li>
@@ -204,6 +204,17 @@
         </div>
             </div>
         </details>
+
+        <div class="entry">
+            <div class="date">JULY 18, 2026</div>
+            <h3>Improved: Safer accounts, steadier study progress</h3>
+            <ul>
+                <li><strong>Account sessions are better protected.</strong> Browser sign-ins now stay in protected cookies, password protections are stronger, and one-time reset links disappear from the address bar as soon as they open.</li>
+                <li><strong>Study and access updates are more resilient.</strong> Mock-exam submissions can retry without duplicating answers, while purchases, refunds, App Store access, cohort codes, and review edits reconcile through atomic server workflows.</li>
+                <li><strong>Progress language is more honest.</strong> The dashboard now labels readiness as a practice estimate, uses each learner's latest response per question for eligible peer comparisons, and shows those comparisons only when the sample is large enough.</li>
+                <li><strong>Available on the web and current MACPrep mobile shell.</strong> No action is required, although an older open tab may ask you to sign in once.</li>
+            </ul>
+        </div>
 
         <div class="entry">
             <div class="date">JULY 18, 2026</div>
@@ -393,7 +404,7 @@
                 <li><strong>Start recommended session</strong> — one tap builds a smart ~20-question set from your weak areas, due reviews, and missed questions. No setup needed.</li>
                 <li><strong>Command palette (⌘K)</strong> — jump to any action instantly from anywhere.</li>
                 <li><strong>Refer a classmate</strong> — share MACPrep and they get 20% off.</li>
-                <li><strong>Install MACPrep to your home screen</strong> — it now works like an app, with an offline page when you lose signal.</li>
+                <li><strong>Install MACPrep to your home screen</strong> — it now opens like an app and shows a clear reconnect screen when you lose signal.</li>
                 <li>Clearer pricing, plus a new <strong>&ldquo;Why trust us&rdquo;</strong> page on how every question is sourced and clinician-reviewed.</li>
             </ul>
         </div>
@@ -486,6 +497,6 @@
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
 
-<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_token"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
+<script>/*authnav-v1*/(function(){try{if(!localStorage.getItem("macprep_signed_in"))return;document.querySelectorAll("#site-nav a").forEach(function(a){var h=a.getAttribute("href")||"";if((h==="/login.html"||h==="/login")){a.textContent="Dashboard";a.setAttribute("href","/index.html");}else if(h.indexOf("#signup-pane")>=0){a.remove();}});}catch(e){}})();</script>
 </body>
 </html>

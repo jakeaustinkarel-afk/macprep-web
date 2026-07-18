@@ -8,10 +8,20 @@ public class MacprepPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "MacprepPurchasesPlugin"
     public let jsName = "MacprepPurchases"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "getCapabilities", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise)
     ]
+
+    @objc public func getCapabilities(_ call: CAPPluginCall) {
+        call.resolve([
+            "bridgeVersion": 1,
+            "productIds": [Self.premiumProductId],
+            "supportsPurchase": true,
+            "supportsRestore": true
+        ])
+    }
 
     @objc public func getProducts(_ call: CAPPluginCall) {
         Task {
