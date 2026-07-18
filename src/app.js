@@ -4527,10 +4527,34 @@
     }
     let _nativeShellInit = false;
     let _nativeAppWasBackgrounded = false;
+    let _nativeBootStartedAt = 0;
+    let _nativeBootCompleted = false;
+    let _nativeBootSafetyTimer = null;
+    function finishNativeBoot() {
+        if (!isNativeApp() || _nativeBootCompleted) return;
+        _nativeBootCompleted = true;
+        if (_nativeBootSafetyTimer) { window.clearTimeout(_nativeBootSafetyTimer); _nativeBootSafetyTimer = null; }
+        const boot = $('native-boot');
+        if (!boot) return;
+        const minimumVisibleMs = 460;
+        const elapsed = Date.now() - _nativeBootStartedAt;
+        window.setTimeout(() => {
+            boot.classList.add('is-leaving');
+            window.setTimeout(() => boot.remove(), 380);
+        }, Math.max(0, minimumVisibleMs - elapsed));
+    }
     function initNativeShell() {
         if (!isNativeApp() || _nativeShellInit) return; _nativeShellInit = true;
+        _nativeBootStartedAt = Date.now();
         document.documentElement.classList.add('is-native');
-        const SS = capPlugin('SplashScreen'); if (SS) { try { SS.hide(); } catch (e) {} } // web has painted → reveal
+        // Let the in-app boot screen paint before releasing the OS-controlled launch image.
+        const SS = capPlugin('SplashScreen');
+        const releaseNativeSplash = () => { if (SS) { try { SS.hide(); } catch (e) {} } };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(releaseNativeSplash);
+        else window.setTimeout(releaseNativeSplash, 0);
+        // A stalled request should fall through to the normal app-level loading state,
+        // never leave the launch screen indefinitely in front of it.
+        _nativeBootSafetyTimer = window.setTimeout(finishNativeBoot, 9000);
         syncNativeStatusBar();
         // Off-domain links (source citations, partners, socials) open in an in-app Safari sheet
         // that dismisses back into the app — instead of ejecting to the full Safari app.
@@ -5514,8 +5538,10 @@
         if (state.token) {
             try { await bootAuthedSession(); }
             catch (e) { go('login'); }
+            finally { finishNativeBoot(); }
         } else {
             go('login');
+            finishNativeBoot();
         }
     });
 })();

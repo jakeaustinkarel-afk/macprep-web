@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
-  <rect width="2732" height="2732" fill="#F6F7F9"/>
-  <g transform="translate(1366 1366) scale(1.4) translate(-256 -256)">
+  <rect width="2732" height="2732" fill="#0E1512"/>
+  <path d="M0 1380H528l126-126 114 252 154-490 166 702 152-410 140 72h552" fill="none" stroke="#1F7A58" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" opacity=".62"/>
+  <path d="M0 1474H614l94-88 96 194 142-470 176 644 128-354 108 74h674" fill="none" stroke="#B7E9CF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".28"/>
+  <g transform="translate(1366 1366) scale(1.45) translate(-256 -256)">
     <rect width="512" height="512" rx="112" fill="#146A4A"/>
     <path d="M116 258 H188 L222 162 L278 350 L316 208 L348 258 H396" fill="none" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
+  <rect x="1198" y="2038" width="336" height="8" fill="#4FCC8E" opacity=".72"/>
+  <rect x="1302" y="2084" width="128" height="8" fill="#B7E9CF" opacity=".32"/>
 </svg>
