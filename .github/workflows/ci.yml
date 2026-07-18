@@ -1,0 +1,35 @@
+name: MACPrep CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install web dependencies
+        run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check src/server.mjs
+          node --check src/app.js
+          node --check sw.js
+      - name: Test
+        run: npm test
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Install and audit mobile dependencies
+        run: |
+          npm ci --prefix mobile
+          npm audit --prefix mobile --omit=dev --audit-level=high
