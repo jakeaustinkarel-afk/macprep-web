@@ -1,0 +1,688 @@
+[
+  {
+    "date": "2026/08/10 08:00",
+    "id": "osa-recovery",
+    "title": "OSA recovery: the pattern matters",
+    "source": "https://www.asahq.org/~/media/sites/asahq/files/public/resources/standards-guidelines/practice-guidelines-for-the-perioperative-management-of-patients-with-obstructive-sleep-apnea.pdf",
+    "sourceLabel": "ASA Practice Guidelines for Perioperative Management of Obstructive Sleep Apnea",
+    "slides": [
+      [
+        "OSA recovery",
+        "One good saturation",
+        "does not erase a pattern."
+      ],
+      [
+        "THE SETUP",
+        "Repeated obstruction",
+        "and hypoxemia in PACU."
+      ],
+      [
+        "QUESTION",
+        "What should change",
+        "before discharge?"
+      ],
+      [
+        "LOOK FOR",
+        "Risk that persists",
+        "after the immediate recovery period."
+      ],
+      [
+        "THE MOVE",
+        "Consider monitored care",
+        "and positive pressure support when indicated."
+      ],
+      [
+        "WHY",
+        "Recurrent obstruction",
+        "can return as stimulation fades."
+      ],
+      [
+        "REMEMBER",
+        "Read the trend.",
+        "Not a single number."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/10 16:00",
+    "id": "arterial-line-damping",
+    "title": "A line waveform: trust, then test",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11297833/",
+    "sourceLabel": "Abnormal arterial pressure waveform damping review",
+    "slides": [
+      [
+        "THE A LINE",
+        "A number is only as good",
+        "as the system behind it."
+      ],
+      [
+        "THE CLUE",
+        "A sharp systolic peak",
+        "can be artifact."
+      ],
+      [
+        "FAST FLUSH",
+        "One quick test",
+        "checks the response."
+      ],
+      [
+        "MANY OSCILLATIONS",
+        "Think underdamped.",
+        "Systolic can overshoot."
+      ],
+      [
+        "NO OSCILLATIONS",
+        "Think overdamped.",
+        "The trace can flatten."
+      ],
+      [
+        "BEFORE TREATMENT",
+        "Inspect tubing, bubbles,",
+        "kinks, and the transducer."
+      ],
+      [
+        "REMEMBER",
+        "Verify the measurement",
+        "before treating the number."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/11 08:00",
+    "id": "sglt2-edka",
+    "title": "SGLT2: normal glucose can mislead",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/37932195/",
+    "sourceLabel": "Perioperative Management of Patients Receiving SGLT2 Inhibitors",
+    "slides": [
+      [
+        "SGLT2 MEDS",
+        "A normal glucose",
+        "is not the whole story."
+      ],
+      [
+        "THE RISK",
+        "Perioperative euglycemic",
+        "ketoacidosis can occur."
+      ],
+      [
+        "PREOP CHECK",
+        "What was the last dose?",
+        "Was the hold interval met?"
+      ],
+      [
+        "ELECTIVE CASE",
+        "Most agents are held",
+        "at least 3 days."
+      ],
+      [
+        "ERTUGLIFLOZIN",
+        "The common interval",
+        "is 4 days."
+      ],
+      [
+        "URGENT CASE",
+        "Use symptoms, labs,",
+        "and your local pathway."
+      ],
+      [
+        "REMEMBER",
+        "Do not let a normal",
+        "glucose end the assessment."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/11 16:00",
+    "id": "airway-fire",
+    "title": "Airway fire: the conversation is prevention",
+    "source": "https://www.asahq.org/~/media/sites/asahq/files/public/resources/standards-guidelines/practice-advisory-for-the-prevention-and-management-of-operating-room-fires.pdf",
+    "sourceLabel": "ASA Practice Advisory for the Prevention and Management of Operating Room Fires",
+    "slides": [
+      [
+        "AIRWAY FIRE",
+        "Prevention begins",
+        "before ignition."
+      ],
+      [
+        "THE TRIANGLE",
+        "Oxidizer.",
+        "Ignition source. Fuel."
+      ],
+      [
+        "HIGH RISK",
+        "Open oxygen",
+        "plus a nearby ignition source."
+      ],
+      [
+        "THE PLAN",
+        "Use the lowest feasible",
+        "oxygen concentration."
+      ],
+      [
+        "ALSO",
+        "Avoid nitrous oxide",
+        "when appropriate."
+      ],
+      [
+        "SAY IT OUT LOUD",
+        "Confirm before ignition.",
+        "Keep the team aligned."
+      ],
+      [
+        "REMEMBER",
+        "Change the setup",
+        "before the risk becomes real."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/12 08:00",
+    "id": "tiva-delivery",
+    "title": "TIVA: the line is part of the plan",
+    "source": "https://www.asahq.org/~/media/sites/asahq/files/public/resources/standards-guidelines/practice-advisory-for-intraoperative-awareness-and-brain-function-monitoring.pdf",
+    "sourceLabel": "ASA Practice Advisory for Intraoperative Awareness and Brain Function Monitoring",
+    "slides": [
+      [
+        "TIVA",
+        "The infusion path",
+        "is part of the anesthetic."
+      ],
+      [
+        "THE RISK",
+        "A disconnection can create",
+        "a delivery gap."
+      ],
+      [
+        "WHEN SOMETHING LOOKS OFF",
+        "Do not assume stable BP",
+        "means delivery is intact."
+      ],
+      [
+        "FIRST MOVE",
+        "Restore and verify",
+        "anesthetic delivery."
+      ],
+      [
+        "THEN CHECK",
+        "Pump settings.",
+        "Tubing. IV access."
+      ],
+      [
+        "THE PRINCIPLE",
+        "Monitor the patient",
+        "and the delivery system."
+      ],
+      [
+        "REMEMBER",
+        "Verify before",
+        "you assume."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/12 16:00",
+    "id": "rebound-pain",
+    "title": "A block wearing off should not surprise the patient",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7533186/",
+    "sourceLabel": "Managing rebound pain after regional anesthesia",
+    "slides": [
+      [
+        "REGIONAL BLOCK",
+        "Great analgesia still needs",
+        "a handoff plan."
+      ],
+      [
+        "REBOUND PAIN",
+        "Pain can rise quickly",
+        "as the block resolves."
+      ],
+      [
+        "THE MISTAKE",
+        "Waiting for severe pain",
+        "before starting the plan."
+      ],
+      [
+        "BEFORE DISCHARGE",
+        "Set expectations",
+        "in plain language."
+      ],
+      [
+        "BUILD THE PLAN",
+        "Use clinician appropriate",
+        "scheduled multimodal analgesia."
+      ],
+      [
+        "MAKE IT ACTIONABLE",
+        "Say when to begin it.",
+        "Write it down."
+      ],
+      [
+        "REMEMBER",
+        "Education before discharge",
+        "beats a midnight call."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/13 08:00",
+    "id": "urgent-doac",
+    "title": "Urgent DOAC: start with the clock",
+    "source": "https://doi.org/10.1161/CIR.0000000000001285",
+    "sourceLabel": "AHA Scientific Statement on Reversal of Direct Oral Anticoagulants",
+    "slides": [
+      [
+        "URGENT DOAC",
+        "The first question",
+        "is often the last dose."
+      ],
+      [
+        "DO NOT START WITH",
+        "A single old INR",
+        "and a guess."
+      ],
+      [
+        "FRAME THE CASE",
+        "Time. Renal function.",
+        "Bleeding risk. Urgency."
+      ],
+      [
+        "ALSO ASK",
+        "Why is the patient",
+        "anticoagulated?"
+      ],
+      [
+        "WHEN USEFUL",
+        "A drug specific level",
+        "can refine uncertainty."
+      ],
+      [
+        "COORDINATE EARLY",
+        "Surgery. Anesthesia.",
+        "Pharmacy. Specialists."
+      ],
+      [
+        "REMEMBER",
+        "Urgent does not mean",
+        "unstructured."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/13 16:00",
+    "id": "tourniquet-release",
+    "title": "Tourniquet release: prepare for the transition",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5187604/",
+    "sourceLabel": "Tourniquet application during anesthesia: What we need to know",
+    "slides": [
+      [
+        "TOURNIQUET RELEASE",
+        "The physiology changes",
+        "when the clamp comes down."
+      ],
+      [
+        "AFTER A LONG CASE",
+        "CO2 and metabolites",
+        "return to circulation."
+      ],
+      [
+        "WATCH THE TREND",
+        "Ventilation.",
+        "Hemodynamics. Timing."
+      ],
+      [
+        "NOT A SURPRISE",
+        "It is a known",
+        "physiologic transition."
+      ],
+      [
+        "BEFORE RELEASE",
+        "Coordinate with surgery.",
+        "Look at patient reserve."
+      ],
+      [
+        "THEN",
+        "Be ready to respond",
+        "to the patient in front of you."
+      ],
+      [
+        "REMEMBER",
+        "Read the trend",
+        "before the release."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/14 08:00",
+    "id": "ponv-risk",
+    "title": "PONV: match the plan to the risk",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/32467512/",
+    "sourceLabel": "Fourth Consensus Guidelines for the Management of Postoperative Nausea and Vomiting",
+    "slides": [
+      [
+        "PONV",
+        "Prevention is not",
+        "one drug at emergence."
+      ],
+      [
+        "RISK FACTORS",
+        "History. Motion sickness.",
+        "Nonsmoking. Opioid use."
+      ],
+      [
+        "THE QUESTION",
+        "How many signals",
+        "are already present?"
+      ],
+      [
+        "THE PLAN",
+        "Reduce baseline risk",
+        "when you can."
+      ],
+      [
+        "THEN",
+        "Use multimodal prevention",
+        "matched to risk."
+      ],
+      [
+        "NOT THIS",
+        "Wait for symptoms",
+        "as the only strategy."
+      ],
+      [
+        "REMEMBER",
+        "The best plan fits",
+        "this patient and this case."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/14 16:00",
+    "id": "low-pressure-alarm",
+    "title": "Low pressure alarm: patient first",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5063182/",
+    "sourceLabel": "Association of Anaesthetists monitoring recommendations",
+    "slides": [
+      [
+        "LOW PRESSURE",
+        "An alarm is a prompt.",
+        "Not a diagnosis."
+      ],
+      [
+        "FIRST PRIORITY",
+        "Confirm the patient",
+        "is being ventilated."
+      ],
+      [
+        "THEN WORK OUTWARD",
+        "Airway device.",
+        "Circuit. Connections. Machine."
+      ],
+      [
+        "LOOK FOR",
+        "Disconnection.",
+        "Leak. Cuff problem."
+      ],
+      [
+        "IF NEEDED",
+        "Hand ventilate with",
+        "a self inflating bag."
+      ],
+      [
+        "DO NOT",
+        "Start with a menu",
+        "of machine settings."
+      ],
+      [
+        "REMEMBER",
+        "Patient to machine.",
+        "In that order."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/15 08:00",
+    "id": "delirium-prevention",
+    "title": "Delirium prevention: build a bundle",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5901697/",
+    "sourceLabel": "American Geriatrics Society postoperative delirium guideline",
+    "slides": [
+      [
+        "DELIRIUM PREVENTION",
+        "The best plan is",
+        "usually not one medication."
+      ],
+      [
+        "THINK BUNDLE",
+        "Orientation.",
+        "Sleep. Mobility. Hydration."
+      ],
+      [
+        "DO NOT FORGET",
+        "Glasses, hearing aids,",
+        "and familiar cues."
+      ],
+      [
+        "MEDICATION REVIEW",
+        "Avoid deliriogenic drugs",
+        "when feasible."
+      ],
+      [
+        "THE HANDOFF",
+        "Prevention crosses",
+        "the entire perioperative team."
+      ],
+      [
+        "NOT THIS",
+        "Wait for severe symptoms",
+        "before changing the environment."
+      ],
+      [
+        "REMEMBER",
+        "Small supportive steps",
+        "can add up."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/15 16:00",
+    "id": "ett-cuff",
+    "title": "ETT cuff: measure, do not guess",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/32199655/",
+    "sourceLabel": "Endotracheal Tube Cuff Pressure Assessment study",
+    "slides": [
+      [
+        "ETT CUFF",
+        "A pilot balloon feel",
+        "is not a pressure reading."
+      ],
+      [
+        "THE TARGET",
+        "A commonly cited range:",
+        "20 to 30 cm H2O."
+      ],
+      [
+        "WHY IT MATTERS",
+        "You need a seal",
+        "without excessive pressure."
+      ],
+      [
+        "THE TOOL",
+        "Use a cuff manometer.",
+        "Know the number."
+      ],
+      [
+        "RECHECK",
+        "Conditions can change",
+        "throughout the case."
+      ],
+      [
+        "WATCH FOR",
+        "Nitrous oxide, position,",
+        "and airway pressure changes."
+      ],
+      [
+        "REMEMBER",
+        "Measure, then adjust.",
+        "Do not guess."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/16 08:00",
+    "id": "bcis",
+    "title": "BCIS: recognize the timing",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/30694541/",
+    "sourceLabel": "Bone Cement Implantation Syndrome: Key Concepts for Anesthesiologists",
+    "slides": [
+      [
+        "BCIS",
+        "The timing can be",
+        "the biggest clue."
+      ],
+      [
+        "WATCH FOR",
+        "Hypoxemia.",
+        "Hypotension. Falling EtCO2."
+      ],
+      [
+        "WHEN",
+        "Cementation, insertion,",
+        "reduction, or tourniquet release."
+      ],
+      [
+        "DO NOT WAIT",
+        "Recognition and team",
+        "communication come first."
+      ],
+      [
+        "SUPPORT",
+        "Oxygenation and circulation",
+        "while coordinating the response."
+      ],
+      [
+        "THE POINT",
+        "Name the pattern",
+        "while it is still changing."
+      ],
+      [
+        "REMEMBER",
+        "Time the event",
+        "to the surgical step."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  },
+  {
+    "date": "2026/08/16 16:00",
+    "id": "cefazolin-redosing",
+    "title": "Cefazolin: keep the antibiotic clock visible",
+    "source": "https://www.ashp.org/-/media/assets/policy-guidelines/docs/therapeutic-guidelines/therapeutic-guidelines-antimicrobial-prophylaxis-surgery.ashx?hash=A15B4714417A51A03E5BDCAC150B94EAF899D49B&la=en",
+    "sourceLabel": "ASHP Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery",
+    "slides": [
+      [
+        "CEFAZOLIN",
+        "The first dose",
+        "is not the whole plan."
+      ],
+      [
+        "LONG CASE",
+        "Ask when the dose",
+        "actually started."
+      ],
+      [
+        "COMMON RULE",
+        "Redose around 4 hours",
+        "for cefazolin."
+      ],
+      [
+        "ALSO",
+        "Major blood loss can",
+        "shorten the interval."
+      ],
+      [
+        "WHY",
+        "The goal is adequate",
+        "tissue concentration at closure."
+      ],
+      [
+        "MAKE IT EASY",
+        "Put the clock",
+        "where the team can see it."
+      ],
+      [
+        "REMEMBER",
+        "Antibiotic timing",
+        "belongs on the checklist."
+      ],
+      [
+        "MACPREP",
+        "Cited clinical learning",
+        "for CAAs and SAAs."
+      ]
+    ]
+  }
+]
