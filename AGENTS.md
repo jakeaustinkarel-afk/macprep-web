@@ -34,6 +34,7 @@ Read these before substantial product or architecture work:
 - `STORE-SUBMISSION.md` - App Store and Play Store submission kit.
 - `brand/BRAND.md` - brand mark, color, and usage rules.
 - `mobile/README.md` - Capacitor mobile shell notes.
+- `docs/codex/RELEASE_NOTES.md` - required public release-note workflow.
 
 ## Important Tables And Content Gates
 
@@ -58,6 +59,16 @@ Never commit `.env`, service-role keys, Stripe secrets, Firebase service account
 - Syntax check frontend controller: `node --check src/app.js`
 - Install mobile dependencies: `cd mobile && npm install`
 - Sync native projects: `cd mobile && npx cap sync`
+
+## Release Notes
+
+Every production product release must include an update that users can see before deployment. For the complete checklist and writing rules, use `docs/codex/RELEASE_NOTES.md`.
+
+- Add the release at the top of `WHATS_NEW` in `src/app.js` and increment `WHATS_NEW_VERSION` so signed-in users receive the in-app popup and unread indicator.
+- Add a matching, newest-first entry to `updates.html`. Keep the title and release date aligned with the in-app entry.
+- Describe what changed in plain language, which surfaces receive it (web, iOS, Android), and any action users need to take. Do not disclose secrets, exploit details, or claim a native binary is live before its build is available.
+- Group closely related work that ships together into one clear release entry. Log behind-the-scenes reliability or security maintenance in user-safe language when it is part of a production product release.
+- Before deployment, run `node --check src/app.js`, `npm test`, and verify the in-app/public release-note parity check passes.
 
 ## Working Style
 

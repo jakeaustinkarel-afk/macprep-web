@@ -849,8 +849,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 25;
+    const WHATS_NEW_VERSION = 26;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'A simpler app launch', desc: 'MACPrep now opens into a quieter branded launch experience and transitions straight into your study space while your session loads. It is live on the web and current mobile shell; matching native launch artwork is ready for the next iPhone and Android app build.' },
         { tag: 'New', date: 'Jul 15', title: 'New Accessibility options', desc: 'Profile → Accessibility adds three opt-in controls: Larger Text (four sizes), High Contrast, and Differentiate Without Color (adds ✓/✗ marks where color alone carried the meaning) — all off by default, so nothing changes unless you switch it on. Plus a deep under-the-hood pass for screen readers and keyboard navigation.' },
         { tag: 'New', date: 'Jul 15', title: 'See how you stack up', desc: 'Every question now shows the percent of fellow SAAs who got it right, and your dashboard’s new “You vs all SAAs” breakdown compares your accuracy in each exam domain to the whole SAA community — so you can see exactly where you’re ahead and where to focus.' },
         { tag: 'New', date: 'Jul 15', title: 'Pick your program', desc: 'Your profile now asks which accredited AA program you attend (or graduated from) — choose your specific campus from the list, or “Program not listed” if yours is new and we’ll add it. This tailors MACPrep to you; faculty at your program may see aggregate cohort progress.' },
