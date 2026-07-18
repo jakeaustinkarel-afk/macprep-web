@@ -2,7 +2,7 @@
 // Strategy: network-first for HTML + app.js (so deploys land immediately, with an
 // offline fallback to the cached shell), stale-while-revalidate for static assets
 // (icons/fonts/images load instantly), and API calls always go to the network.
-const CACHE = 'macprep-v4';
+const CACHE = 'macprep-v5';
 const OFFLINE = '/offline.html';
 const SHELL = ['/', '/src/app.js', OFFLINE, '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest'];
 

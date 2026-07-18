@@ -162,6 +162,12 @@
         .fb-meta{font-size:12px;color:var(--muted);}
         .fb-body{font-size:14px;color:var(--text2);white-space:pre-wrap;line-height:1.55;}
         .muted{color:var(--muted);} .center{text-align:center;padding:64px 20px;}
+        .faculty-locked{max-width:660px;margin:40px auto 0;padding:46px 32px;}
+        .faculty-locked-label{display:inline-flex;margin-bottom:14px;color:var(--accent);font-family:ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+        .faculty-locked h2{margin:0 0 12px;color:var(--text);font-family:Georgia,serif;font-size:30px;font-weight:600;letter-spacing:0;text-transform:none;}
+        .faculty-locked .muted{max-width:470px;margin:0 auto 22px;line-height:1.6;}
+        .faculty-locked-note{margin:14px 0 0;color:var(--muted);font-size:12px;}
+        @media(max-width:560px){.faculty-locked{margin-top:24px;padding:34px 22px;}.faculty-locked h2{font-size:26px;}}
         .loading{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:80px 0;font-size:14px;}
         .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
         @keyframes spin{to{transform:rotate(360deg);}}
@@ -248,7 +254,7 @@
     }
 
     function signedOut(msg){
-        return '<div class="card center"><div style="margin-bottom:14px;color:var(--muted);"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><p class="muted" style="max-width:460px;margin:0 auto 20px;">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/index.html">Go to the app →</a></div>';
+        return '<div class="card center faculty-locked"><span class="faculty-locked-label">Faculty access</span><h2>Access your cohort dashboard</h2><p class="muted">' + esc(msg) + '</p><a class="ghost-btn" style="display:inline-flex;" href="/#signin">Sign in to MACPrep</a><p class="faculty-locked-note">Program Director and faculty access is verified by MACPrep.</p></div>';
     }
 
     // Admin only: pick which program's cohort to inspect.

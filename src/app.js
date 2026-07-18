@@ -849,8 +849,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 32;
+    const WHATS_NEW_VERSION = 33;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'A simpler path to study', desc: 'The public site now makes it easier to start with the right account setup, scan pricing on a phone, browse guides, and find answers without wading through long pages. Available on the web and the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Clearer cohort-code guidance', desc: 'The pricing page now centers the cohort-code instructions, making it easier to spot the right next step when your class or program gave you a code. Available on the web and current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A clearer study command center', desc: 'Your dashboard now puts readiness, your daily goal, and the recommended set first. Exam pace, domain mastery, review work, and study modes are easier to scan, while every saved theme and font choice still applies. The landing page, pricing, FAQ, and About page now share the same warmer, more focused presentation. Available on the web and the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A clearer place to start', desc: 'The MACPrep landing page now leads with a cleaner study path: try real questions, see your next focus, and understand full access without digging through the page. The study workspace keeps every saved theme and font choice. Available on the web and in the current MACPrep mobile shell.' },

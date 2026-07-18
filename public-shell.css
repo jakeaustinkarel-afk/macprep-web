@@ -59,7 +59,7 @@ body.public-page {
 
 .public-page .wrap {
   width: min(100% - 40px, 1080px);
-  padding: clamp(46px, 7vw, 84px) 0 82px;
+  padding: clamp(38px, 5vw, 64px) 0 72px;
 }
 
 .public-page h1,
@@ -68,7 +68,7 @@ body.public-page {
   margin-left: auto;
   margin-right: auto;
   font-family: var(--public-display);
-  font-size: clamp(34px, 5vw, 54px);
+  font-size: clamp(34px, 4.4vw, 52px);
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: 0;
@@ -219,6 +219,155 @@ body.public-page {
   background: color-mix(in srgb, var(--text) 2%, var(--bg));
 }
 
+/* Public resource density ------------------------------------------------ */
+.public-page .guides-library {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.public-page .guide-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.public-page .guide-filter {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.public-page .guide-card {
+  display: flex;
+  min-height: 204px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+}
+
+.public-page .guide-card h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--public-display);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.public-page .guide-card p { margin: 0; color: var(--text2); line-height: 1.6; }
+.public-page .guide-card .guide-card-meta {
+  margin-top: auto;
+  color: var(--accent);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.public-page .guide-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, .7fr);
+  gap: 18px;
+  margin: 24px 0 30px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  border-radius: 8px;
+  background: var(--public-soft);
+}
+
+.public-page .guide-tools-copy strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.public-page .guide-tools-copy p {
+  margin: 6px 0 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.public-page .guide-toc {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 2;
+  column-gap: 18px;
+}
+
+.public-page .guide-toc li { break-inside: avoid; margin: 0 0 7px; }
+.public-page .guide-toc a { color: var(--text2); font-size: 13px; line-height: 1.35; }
+.public-page .guide-toc a:hover { color: var(--accent); }
+
+.public-page .guide-context-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 34px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.public-page .guide-context-cta p { margin: 0; color: var(--text2); font-size: 14px; }
+.public-page .guide-context-cta a { white-space: nowrap; font-weight: 700; }
+
+.public-page .review-skeleton {
+  min-height: 182px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.public-page .review-skeleton span {
+  display: block;
+  height: 12px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+
+.public-page .review-skeleton span:nth-child(1) { width: 34%; }
+.public-page .review-skeleton span:nth-child(2) { width: 100%; margin-top: 26px; }
+.public-page .review-skeleton span:nth-child(3) { width: 88%; }
+.public-page .review-skeleton span:nth-child(4) { width: 52%; margin-top: 26px; }
+
+.public-page .update-history {
+  margin: 20px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.public-page .update-history > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.public-page .update-history > summary::-webkit-details-marker { display: none; }
+.public-page .update-history > summary::after { content: "+"; color: var(--accent); font-family: ui-monospace, monospace; font-size: 20px; font-weight: 400; }
+.public-page .update-history[open] > summary::after { content: "-"; }
+.public-page .update-history-body { padding-bottom: 2px; }
+
 /* The existing landing is product-led already. These refinements make its visual
  * language match the rest of the site while keeping the real question interface
  * as the hero media. */
@@ -233,9 +382,9 @@ body:not(.app-authed) #login-view .lp-hero-grid {
   grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr);
   gap: clamp(38px, 6vw, 84px);
   align-items: center;
-  min-height: 650px;
-  padding-top: 54px;
-  padding-bottom: 44px;
+  min-height: 590px;
+  padding-top: 46px;
+  padding-bottom: 36px;
 }
 body:not(.app-authed) #login-view .lp-hero-copy { padding: 20px 0; }
 body:not(.app-authed) #login-view .lp-eyebrow,
@@ -247,7 +396,7 @@ body:not(.app-authed) #login-view .lp-h1 {
   max-width: 12ch;
   margin: 18px 0 18px;
   color: var(--text);
-  font-size: clamp(44px, 5.8vw, 76px);
+  font-size: clamp(44px, 5.2vw, 68px);
   font-weight: 600;
   line-height: .99;
 }
@@ -391,6 +540,11 @@ body.app-authed #review-queue-summary > * {
   }
   .public-page .wrap { width: min(100% - 32px, 1080px); padding-top: 42px; }
   .public-page .entry { padding: 22px 20px; }
+  .public-page .guides-library { grid-template-columns: 1fr; }
+  .public-page .guide-card { min-height: 0; }
+  .public-page .guide-tools { grid-template-columns: 1fr; }
+  .public-page .guide-toc { columns: 1; }
+  .public-page .guide-context-cta { align-items: flex-start; flex-direction: column; }
   body:not(.app-authed) #login-view .lp-hero-grid {
     grid-template-columns: 1fr;
     min-height: 0;
