@@ -849,8 +849,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 28;
+    const WHATS_NEW_VERSION = 29;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'A more cohesive MACPrep', desc: 'The landing page, pricing, guides, trust pages, and signed-in study views now share a warmer, calmer visual system that keeps the focus on your next study step. Your saved theme and font still shape the learning workspace. Available on the web and in the current MACPrep mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A dashboard that feels like yours', desc: 'Your dashboard now has calmer surfaces, clearer study feedback, and friendlier ways to scan what matters next. Every theme and font choice stays yours: Warm Paper, Mist, bright palettes, and dark workspaces all carry the refreshed design. Available on the web and the current mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A more considered app launch', desc: 'The first moments in MACPrep now carry more of the product’s clinical character: an ink launch canvas, the pulse tile, and a quieter progress cue. It is live in the current mobile shell; matching native splash artwork is ready for the next iPhone and Android app build.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A simpler app launch', desc: 'MACPrep now opens into a quieter branded launch experience and transitions straight into your study space while your session loads. It is live on the web and current mobile shell; matching native launch artwork is ready for the next iPhone and Android app build.' },

@@ -1,0 +1,300 @@
+/*
+ * Shared presentation layer for MACPrep's public site.
+ * It intentionally consumes the existing theme tokens so a signed-in visitor
+ * carries their selected appearance into public resources without adding a
+ * second, competing palette system.
+ */
+
+:root {
+  --public-display: "Fraunces", Georgia, serif;
+  --public-soft: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  --public-soft-strong: color-mix(in srgb, var(--accent) 13%, var(--panel));
+  --public-shadow: 0 16px 38px -30px rgba(14, 21, 18, .45);
+}
+
+html[data-font="charter"] { --font: Charter, Cambria, Georgia, serif; }
+html[data-font="times"] { --font: "Times New Roman", Times, serif; }
+html[data-font="grotesk"] { --font: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+html[data-font="reader"] { --font: Verdana, Geneva, sans-serif; }
+
+body.public-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.public-page .header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: 68px;
+  padding: 14px clamp(20px, 4vw, 56px);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+
+.public-page .brand-logo {
+  font-family: "Figtree", var(--font);
+  letter-spacing: 0;
+  font-size: 21px;
+}
+
+.public-page .nav {
+  gap: clamp(14px, 2vw, 28px);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.public-page .nav a { color: var(--text2); }
+.public-page .nav a:hover { color: var(--accent); }
+.public-page .nav .nav-cta {
+  border: 1px solid color-mix(in srgb, var(--accent) 76%, var(--line));
+  box-shadow: 0 10px 22px -17px color-mix(in srgb, var(--accent) 88%, transparent);
+}
+
+.public-page .wrap {
+  width: min(100% - 40px, 1080px);
+  padding: clamp(46px, 7vw, 84px) 0 82px;
+}
+
+.public-page h1,
+.public-page .wrap > h1 {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+  font-family: var(--public-display);
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.public-page .tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.public-page .sub,
+.public-page .lead,
+.public-page .meta-line {
+  max-width: 680px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.public-page .sub { font-size: 16px; }
+.public-page .lead { font-size: 18px; }
+
+.public-page .grid { gap: 16px; }
+.public-page .card,
+.public-page .tcard,
+.public-page .card-link,
+.public-page .entry,
+.public-page .fixes,
+.public-page .callout,
+.public-page .cta-box,
+.public-page .anchor {
+  border-color: var(--line);
+  border-radius: 8px;
+  box-shadow: var(--public-shadow);
+}
+
+.public-page .card,
+.public-page .tcard,
+.public-page .card-link,
+.public-page .entry {
+  background: var(--panel);
+}
+
+.public-page .card { padding: clamp(22px, 3vw, 30px); }
+.public-page .card h2 { font-family: var(--public-display); font-weight: 600; letter-spacing: 0; }
+.public-page .card-link {
+  padding: 22px;
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.public-page .card-link:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 18px 36px -29px rgba(14, 21, 18, .55);
+}
+
+.public-page .trust { gap: 14px; }
+.public-page .tcard { padding: 24px; }
+.public-page .tcard h3,
+.public-page .qa h3 { color: var(--text); font-size: 17px; }
+.public-page .tnum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  letter-spacing: .5px;
+}
+
+.public-page .qa {
+  padding: 22px 0;
+  border-top-color: var(--line);
+}
+.public-page .qa p,
+.public-page .entry li,
+.public-page .muted { color: var(--text2); }
+
+.public-page .btn,
+.public-page .cta-btn {
+  border-radius: 8px;
+  box-shadow: 0 10px 22px -17px color-mix(in srgb, var(--accent) 88%, transparent);
+}
+.public-page .btn.ghost { background: transparent; }
+
+.public-page .anchor,
+.public-page .callout,
+.public-page .cta-box,
+.public-page .fixes {
+  background: var(--public-soft);
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+}
+
+.public-page .entry {
+  padding: 26px 28px;
+  margin-bottom: 14px;
+}
+.public-page .entry h3 {
+  font-family: var(--public-display);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.public-page .date,
+.public-page .fx-date,
+.public-page .meta-line {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: .5px;
+}
+
+.public-page .wrap > h2 {
+  margin-top: 44px;
+  color: var(--text);
+  font-family: var(--public-display);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+.public-page .wrap > p,
+.public-page .wrap > ul,
+.public-page .wrap > ol {
+  max-width: 760px;
+  color: var(--text2);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.public-page .pf-card {
+  border-radius: 8px;
+  box-shadow: none;
+}
+.public-page .pf-card:hover { transform: translateY(-2px); }
+
+.public-page footer {
+  margin-top: 0 !important;
+  background: color-mix(in srgb, var(--text) 2%, var(--bg));
+}
+
+/* The existing landing is product-led already. These refinements make its visual
+ * language match the rest of the site while keeping the real question interface
+ * as the hero media. */
+body:not(.app-authed) #login-view .lp-hero-bg,
+body:not(.app-authed) #login-view .lp-finalcta .lp-dots { display: none; }
+body:not(.app-authed) #login-view .lp-container { max-width: 1180px; }
+body:not(.app-authed) #login-view .lp-hero-grid { gap: 48px; padding-top: 64px; padding-bottom: 62px; }
+body:not(.app-authed) #login-view .lp-eyebrow,
+body:not(.app-authed) #login-view .lp-qbadge {
+  border-radius: 999px;
+  box-shadow: none;
+}
+body:not(.app-authed) #login-view .lp-card,
+body:not(.app-authed) #login-view .lp-window,
+body:not(.app-authed) #login-view .lp-review-card,
+body:not(.app-authed) #login-view .lp-joinband,
+body:not(.app-authed) #login-view .lp-band,
+body:not(.app-authed) #login-view .lp-guard,
+body:not(.app-authed) #login-view .lp-finalcta {
+  border-radius: 8px;
+}
+body:not(.app-authed) #login-view .lp-card,
+body:not(.app-authed) #login-view .lp-review-card { box-shadow: var(--public-shadow); }
+body:not(.app-authed) #login-view .lp-guard,
+body:not(.app-authed) #login-view .lp-finalcta {
+  background: var(--public-soft);
+}
+body:not(.app-authed) #login-view .lp-btn { border-radius: 8px; }
+body:not(.app-authed) #login-view .lp-h1,
+body:not(.app-authed) #login-view .lp-h2 { letter-spacing: 0; }
+
+/* This is intentionally a quiet shared treatment for non-dashboard learner views.
+ * It gives results, notes, and staff pages the same considered density while all
+ * color stays driven by the user-selected theme. */
+body.app-authed #quiz-view,
+body.app-authed #notebook-view,
+body.app-authed #leaderboard-view,
+body.app-authed #achievements-view,
+body.app-authed #profile-view,
+body.app-authed #feedback-view,
+body.app-authed #admin-view,
+body.app-authed #review-queue-view,
+body.app-authed #cohort-codes-view {
+  max-width: 1180px;
+}
+body.app-authed #quiz-view > .card,
+body.app-authed #profile-view > .card,
+body.app-authed #feedback-view > .card,
+body.app-authed #cohort-codes-view > .card,
+body.app-authed #session-breakdown,
+body.app-authed #session-review {
+  border-radius: 10px;
+  box-shadow: var(--public-shadow);
+}
+body.app-authed #quiz-view > .card { border-color: color-mix(in srgb, var(--line) 88%, var(--accent)); }
+body.app-authed #notebook-search { border-radius: 8px !important; }
+body.app-authed #review-queue-summary > * {
+  border-radius: 8px;
+  background: var(--public-soft);
+}
+
+@media (max-width: 720px) {
+  .public-page .header-bar { min-height: 62px; padding: 12px 18px; }
+  .public-page .nav {
+    top: calc(100% + 4px);
+    right: 10px;
+    left: 10px;
+    border-radius: 8px;
+    box-shadow: 0 20px 34px -26px rgba(14, 21, 18, .55);
+  }
+  .public-page .wrap { width: min(100% - 32px, 1080px); padding-top: 42px; }
+  .public-page .entry { padding: 22px 20px; }
+  body:not(.app-authed) #login-view .lp-hero-grid { padding-top: 42px; padding-bottom: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-page .card-link,
+  .public-page .pf-card { transition: none; }
+}
