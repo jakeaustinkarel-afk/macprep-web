@@ -816,10 +816,10 @@
         const meta = q.category || q.domain_name || '';   // broad specialty only — subtopic can spoil the answer
         const reviewed = q.reviewed ? '<span style="font-size:11px;color:var(--accent);white-space:nowrap;">✓ reviewed by a CAA</span>' : '';
         card.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">Question of the day</span>' + reviewed + '</div>'
-            + '<div class="mono" style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;">' + escapeHtml(meta) + '</div>'
-            + '<div style="font-size:15px;line-height:1.6;margin-bottom:15px;">' + renderRich(q.stem) + '</div>'
-            + '<button class="btn" onclick="MACPrep.startQotd()">Answer today\'s question →</button>';
+            '<div class="dash-qotd-top"><span class="mono" style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">Question of the day</span>' + reviewed + '</div>'
+            + '<div class="dash-qotd-meta">' + escapeHtml(meta) + '</div>'
+            + '<div class="dash-qotd-teaser">' + renderRich(q.stem) + '</div>'
+            + '<div class="dash-qotd-footer"><span class="mono">A fresh question every day</span><button class="btn" onclick="MACPrep.startQotd()">Answer question →</button></div>';
     }
     function renderActivityCalendar() {
         const card = $('activity-card'); if (!card) return;
@@ -849,8 +849,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 27;
+    const WHATS_NEW_VERSION = 28;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 18', title: 'A dashboard that feels like yours', desc: 'Your dashboard now has calmer surfaces, clearer study feedback, and friendlier ways to scan what matters next. Every theme and font choice stays yours: Warm Paper, Mist, bright palettes, and dark workspaces all carry the refreshed design. Available on the web and the current mobile shell.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A more considered app launch', desc: 'The first moments in MACPrep now carry more of the product’s clinical character: an ink launch canvas, the pulse tile, and a quieter progress cue. It is live in the current mobile shell; matching native splash artwork is ready for the next iPhone and Android app build.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A simpler app launch', desc: 'MACPrep now opens into a quieter branded launch experience and transitions straight into your study space while your session loads. It is live on the web and current mobile shell; matching native launch artwork is ready for the next iPhone and Android app build.' },
         { tag: 'New', date: 'Jul 15', title: 'New Accessibility options', desc: 'Profile → Accessibility adds three opt-in controls: Larger Text (four sizes), High Contrast, and Differentiate Without Color (adds ✓/✗ marks where color alone carried the meaning) — all off by default, so nothing changes unless you switch it on. Plus a deep under-the-hood pass for screen readers and keyboard navigation.' },
@@ -1182,11 +1183,11 @@
         const gained = grantQuestRewards(dq);
         if (gained) { try { toast('+' + gained + ' XP earned!'); } catch (e) {} renderMomentum(); }
         const doneCount = dq.quests.filter((q) => q.done).length;
-        const row = (q) => `<div style="display:flex;align-items:center;gap:11px;padding:9px 0;">
-            <span style="width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${q.done ? 'var(--accent)' : 'var(--bg)'};border:1px solid ${q.done ? 'var(--accent)' : 'var(--line)'};color:${q.done ? 'var(--on-accent)' : 'var(--muted)'};font-size:14px;">${q.done ? '✓' : ''}</span>
+        const row = (q) => `<div class="dash-quest${q.done ? ' is-done' : ''}">
+            <span class="dash-quest-check">${q.done ? '✓' : ''}</span>
             <div style="flex:1;min-width:0;">
                 <div style="font-size:13.5px;font-weight:600;color:${q.done ? 'var(--muted)' : 'var(--text)'};${q.done ? 'text-decoration:line-through;' : ''}">${q.label}</div>
-                ${q.done ? '' : `<div style="height:4px;background:var(--line);border-radius:3px;margin-top:5px;overflow:hidden;"><span style="display:block;height:100%;width:${Math.round((q.cur / q.target) * 100)}%;background:var(--accent);border-radius:3px;"></span></div>`}
+                ${q.done ? '' : `<div class="dash-quest-progress"><span style="width:${Math.round((q.cur / q.target) * 100)}%;"></span></div>`}
             </div>
             <span class="mono" style="font-size:11px;flex:none;color:${q.done ? 'var(--accent)' : 'var(--muted)'};">${q.done ? '+' + q.xp + ' XP' : q.cur + '/' + q.target}</span></div>`;
         let chest = '';
@@ -1252,43 +1253,45 @@
                 + `<circle class="mrg-hit" cx="75" cy="75" r="${m.r}" fill="none" stroke="transparent" stroke-width="14" style="pointer-events:stroke;cursor:pointer;"/>`
                 + `</g>`;
         };
-        const rings = `<div style="position:relative;flex:none;">`
+        const rings = `<div class="dash-momentum-rings">`
             + `<svg id="mom-rings" width="150" height="150" viewBox="0 0 150 150" role="group" aria-label="Momentum rings — hover a ring for detail" style="display:block;overflow:visible;">`
             + ringMeta.map(ringGroup).join('')
             + `<text x="75" y="73" text-anchor="middle" style="font-family:ui-monospace,monospace;font-weight:800;font-size:25px;fill:var(--text);pointer-events:none;">${toGoal || '✓'}</text>`
             + `<text x="75" y="89" text-anchor="middle" style="font-family:ui-monospace,monospace;font-size:8px;fill:var(--muted);letter-spacing:1px;pointer-events:none;">${toGoal ? 'TO GOAL' : 'DONE'}</text></svg>`
             + `<div id="mom-tip" role="status" aria-live="polite" style="display:none;position:absolute;left:0;top:156px;width:210px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 11px;box-shadow:0 8px 24px rgba(0,0,0,.14);"></div>`
             + `</div>`;
-        const legend = `<div style="display:flex;flex-direction:column;gap:12px;flex:none;">`
+        const legend = `<div class="dash-momentum-legend">`
             + momLegRow(cGoal, "Today's goal", `${Math.min(answeredToday, goal)} / ${goal} questions`, 'goal')
             + momLegRow(cWeek, 'This week', `${weekDays} / 7 days`, 'week')
             + momLegRow(cReady, 'Readiness', `${readiness}%`, 'readiness') + `</div>`;
-        const planTitle = toGoal ? 'Close your rings.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
+        const planTitle = toGoal ? 'Your next focused set.' : (streak ? 'Streak alive. 🔥' : 'Nice work today.');
         const planSub = toGoal
             ? `A focused set, matched to your level.`
             : `You're on a roll — a fresh set whenever you are.`;
         const saved = getSavedSession();
         const ctaLabel = saved ? 'Continue session' : 'Start today\'s set';
         const ctaFn = saved ? 'MACPrep.resumeSession()' : 'MACPrep.startRecommended()';
+        const due = (p.due_ids || []).length;
+        const heroStats = [
+            { n: `${Math.min(answeredToday, goal)}/${goal}`, l: 'today\'s goal' },
+            { n: due.toLocaleString(), l: 'due reviews' },
+            { n: `${readiness}%`, l: 'readiness' },
+        ];
         el.innerHTML = `
-            <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;"><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.01em;line-height:1.1;">${greet}, ${escapeHtml(first)}.</div>${titleChip(activeTitle())}</div>
-            <div class="sub" style="margin:4px 0 20px;font-size:14px;">${total === 0
+            <div class="dash-hero-head"><div><div class="dash-hero-title">${greet}, ${escapeHtml(first)}.</div><div class="sub" style="margin:4px 0 0;font-size:14px;">${total === 0
                 ? `Welcome — answer your first set to light up your rings and start your streak.`
-                : (toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — don't break the chain.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`)}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:24px 30px;align-items:center;">
-                ${rings}${legend}
-                <div style="flex:1;min-width:230px;display:flex;flex-direction:column;gap:14px;">
-                    <div>
-                        <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;">${planTitle}</div>
-                        <div class="sub" style="margin:3px 0 12px;font-size:13.5px;">${planSub}</div>
-                        <button class="btn" type="button" onclick="${ctaFn}" style="font-size:13.5px;">${ctaLabel} →</button>
-                    </div>
-                    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                            <div style="display:flex;align-items:center;gap:9px;"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 7px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-family:ui-monospace,monospace;font-weight:800;font-size:15px;">${lvl.level}</span><div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">Level${lvl.atMax ? ' · MAX' : ''}</div></div>
-                            <div class="mono" style="font-size:10px;color:var(--muted);">${lvl.atMax ? `${lvl.totalXp.toLocaleString()} XP` : `${lvl.xpInto} / ${lvl.xpNeed} XP → ${lvl.level + 1}`}</div>
-                        </div>
-                        <div style="height:6px;background:var(--line);border-radius:3px;margin-top:9px;overflow:hidden;"><span style="display:block;height:100%;width:${lvl.pct}%;background:var(--accent);border-radius:3px;transition:width .6s ease;"></span></div>
+                : (toGoal ? `You're <strong style="color:${cGoal};">${toGoal}</strong> from today's goal${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''} — keep the chain moving.` : `Goal met${streak ? ` · <strong style="color:var(--accent);">${streak}-day streak</strong>` : ''}. 🔥`)}</div></div>${titleChip(activeTitle())}</div>
+            <div class="dash-hero-layout">
+                <div class="dash-hero-progress">${rings}${legend}</div>
+                <div class="dash-hero-action">
+                    <div class="dash-hero-kicker">Your study plan</div>
+                    <div class="dash-hero-action-title">${planTitle}</div>
+                    <div class="sub">${planSub}</div>
+                    <button class="btn" type="button" onclick="${ctaFn}" style="font-size:13.5px;">${ctaLabel} →</button>
+                    <div class="dash-focus-grid">${heroStats.map((s) => `<div class="dash-focus-stat"><div class="n">${s.n}</div><div class="l">${s.l}</div></div>`).join('')}</div>
+                    <div class="dash-level">
+                        <div class="dash-level-row"><div style="display:flex;align-items:center;gap:9px;"><span class="dash-level-mark">${lvl.level}</span><div class="dash-level-label">Level${lvl.atMax ? ' · MAX' : ''}</div></div><div class="mono" style="font-size:10px;color:var(--muted);">${lvl.atMax ? `${lvl.totalXp.toLocaleString()} XP` : `${lvl.xpInto} / ${lvl.xpNeed} XP → ${lvl.level + 1}`}</div></div>
+                        <div class="dash-level-progress"><span style="width:${lvl.pct}%;"></span></div>
                     </div>
                 </div>
             </div>`;
