@@ -390,13 +390,25 @@
         }
     }
 
-    function signOut() {
+    let signOutInFlight = false;
+    async function signOut() {
+        if (signOutInFlight) return false;
+        signOutInFlight = true;
         stopExamTimer();
-        try { fetch('/api/auth/logout', { method: 'POST', headers: authHeaders(), keepalive: true }).catch(() => {}); } catch (e) {}
-        setToken(null); setRefresh();
-        ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
-        state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
-        go('login');
+        try {
+            const response = await fetch('/api/auth/logout', { method: 'POST', headers: authHeaders(), keepalive: true });
+            if (!response.ok) throw new Error('The server did not confirm sign-out.');
+            setToken(null); setRefresh();
+            ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
+            state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
+            go('login');
+            return true;
+        } catch (error) {
+            toast('Could not sign out. Check your connection and try again.');
+            return false;
+        } finally {
+            signOutInFlight = false;
+        }
     }
 
     // Forgot-password: request a reset email.
@@ -886,8 +898,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 35;
+    const WHATS_NEW_VERSION = 36;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 18', title: 'More reliable progress and account access', desc: 'Repeat practice now stays consistent across your Missed set, Recommended sessions, dashboard totals, and the leaderboard. Saved notes, flags, flashcards, reminders, duels, sign-out, and purchase restores now confirm the server update before reporting success. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 18', title: 'Repeat review answers grade normally', desc: 'Questions you have practiced before can now be answered again in Recommended, Review, Tutor, Arcade, and later mock-exam sessions without a grading error. Repeat attempts still update your spaced review and progress, while retry-safe exam submissions remain protected. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Safer accounts, steadier study progress', desc: 'Sign-in now stays in protected browser cookies, password protections are stronger, mock-exam submissions retry safely, and purchases, refunds, and cohort codes reconcile more reliably. Practice estimates and SAA comparisons now use clearer sample rules and labels. Available on the web and current MACPrep mobile shell. An older open tab may ask you to sign in once.' },
         { tag: 'Improved', date: 'Jul 18', title: 'A simpler path to study', desc: 'The public site now makes it easier to start with the right account setup, scan pricing on a phone, browse guides, and find answers without wading through long pages. Available on the web and the current MACPrep mobile shell.' },
@@ -3465,8 +3478,23 @@
             s.answered++;
             if (data.correct) s.correct++;
             if (state.profile && state.profile.stats) {
-                state.profile.stats.answered++; state.profile.stats.attempts++;
+                const questionKey = String(currentQ.id);
+                const answeredIds = Array.isArray(state.profile.answered_ids) ? state.profile.answered_ids : [];
+                const wasAlreadyAnswered = answeredIds.some((id) => String(id) === questionKey);
+                if (!wasAlreadyAnswered) {
+                    state.profile.stats.answered++;
+                    answeredIds.push(currentQ.id);
+                    state.profile.answered_ids = answeredIds;
+                }
+                state.profile.stats.attempts++;
                 if (data.correct) state.profile.stats.correct++;
+                const removeQuestion = (ids) => (Array.isArray(ids) ? ids : []).filter((id) => String(id) !== questionKey);
+                state.profile.missed_ids = removeQuestion(state.profile.missed_ids);
+                state.profile.confident_missed_ids = removeQuestion(state.profile.confident_missed_ids);
+                if (!data.correct) {
+                    state.profile.missed_ids.push(currentQ.id);
+                    if (state.pendingConfidence === 'high') state.profile.confident_missed_ids.push(currentQ.id);
+                }
             }
             bumpDaily({ answered: 1, correct: data.correct ? 1 : 0, specialty: currentQ.category || currentQ.domain_name }); // daily-quest progress
             s.answers[s.index] = { selectedIndex, graded: data };

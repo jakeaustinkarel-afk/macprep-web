@@ -27,6 +27,16 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 export const app = express();
 app.disable('x-powered-by');
 
+function reportOperationalError(area, error, context = {}) {
+    const message = error?.message || String(error || 'Unknown error');
+    console.error(`[${area}] ${message}`);
+    Sentry.withScope((scope) => {
+        scope.setTag('macprep.area', area);
+        if (context && Object.keys(context).length) scope.setContext('operation', context);
+        Sentry.captureException(error instanceof Error ? error : new Error(message));
+    });
+}
+
 // Behind Render + Cloudflare; trust the proxy so req.ip reflects the real client
 // (needed for rate limiting).
 app.set('trust proxy', true);
@@ -53,7 +63,8 @@ app.use((req, res, next) => {
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data:",
         "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io",
         "frame-ancestors 'none'",
@@ -688,13 +699,19 @@ async function getRecommendedPriorityIds(userId, size) {
 
     const progress = await fetchAllPostgrestRows((from, to) => supabase
         .from(PROGRESS_TABLE)
-        .select('question_id, is_correct')
+        .select('id, question_id, is_correct, created_at')
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range(from, to));
-    const everCorrect = new Set(progress.filter((row) => row.is_correct).map((row) => String(row.question_id)));
-    const missed = Array.from(new Set(progress
-        .filter((row) => !row.is_correct && !everCorrect.has(String(row.question_id)))
-        .map((row) => String(row.question_id))))
+    const latest = new Map();
+    progress.forEach((row) => {
+        const questionId = String(row.question_id);
+        if (!latest.has(questionId)) latest.set(questionId, row);
+    });
+    const missed = Array.from(latest.entries())
+        .filter(([, row]) => !row.is_correct)
+        .map(([questionId]) => questionId)
         .slice(0, missedCap);
     return Array.from(new Set([...due, ...missed]));
 }
@@ -760,19 +777,13 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
                 userId = profile?.user_id || null;
             }
             if (!validUuid(userId)) {
-                console.error('PAID-BUT-NO-PROFILE: verified Stripe checkout has no resolvable MACPrep account.');
-                return res.json({ received: true });
+                throw new Error('Verified paid checkout has no resolvable MACPrep account.');
             }
-            const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-            await grantEntitlement({
+            await syncPaidStripeCheckout({
+                session,
+                lineItem,
                 userId,
                 email: customerEmail,
-                source: 'stripe',
-                sourceReference: session.id,
-                externalPaymentId: paymentIntent || null,
-                productId: lineItem.price.id,
-                amountTotal: session.amount_total,
-                currency: session.currency,
                 metadata: { checkout_event_id: event.id, livemode: !!event.livemode },
             });
             recordPurchaseOnce(userId);
@@ -780,16 +791,32 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
             const charge = event.data.object;
             if (charge.refunded === true) {
                 const paymentIntent = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
-                if (paymentIntent) await setEntitlementStatus({ source: 'stripe', externalPaymentId: paymentIntent, status: 'refunded' });
+                if (paymentIntent) {
+                    const matched = await syncStripePaymentStatus({
+                        paymentIntentId: paymentIntent,
+                        status: 'refunded',
+                        fallbackEmail: charge.billing_details?.email || '',
+                        eventId: event.id,
+                    });
+                    if (!matched) reportOperationalError('stripe.refund.unmatched', new Error('A refund event did not match a MACPrep entitlement.'), { eventType: event.type });
+                }
             }
         } else if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
             const dispute = event.data.object;
             const paymentIntent = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
             const status = event.type === 'charge.dispute.closed' && dispute.status === 'won' ? 'active' : 'disputed';
-            if (paymentIntent) await setEntitlementStatus({ source: 'stripe', externalPaymentId: paymentIntent, status });
+            if (paymentIntent) {
+                const matched = await syncStripePaymentStatus({
+                    paymentIntentId: paymentIntent,
+                    status,
+                    eventId: event.id,
+                    allowReactivate: status === 'active',
+                });
+                if (!matched) reportOperationalError('stripe.dispute.unmatched', new Error('A dispute event did not match a MACPrep entitlement.'), { eventType: event.type });
+            }
         }
     } catch (syncError) {
-        console.error(`Webhook entitlement sync error: ${syncError.message}`);
+        reportOperationalError('stripe.webhook', syncError, { eventType: event.type });
         return res.status(500).send('Entitlement sync failure.');
     }
 
@@ -898,15 +925,37 @@ app.use((req, res, next) => {
 // Health/version check — lets you confirm at a glance which build is live
 // (e.g. curl https://www.macprep.org/api/health). Bump `build` when deploying.
 // ---------------------------------------------------------------------------
-app.get('/api/health', (req, res) => {
-    res.json({
-        ok: true,
+app.get('/api/health', async (req, res) => {
+    let database = supabase ? 'reachable' : 'not_configured';
+    if (supabase) {
+        let timeout;
+        try {
+            const probe = supabase.from(PROFILE_TABLE).select('user_id').limit(1);
+            const { error } = await Promise.race([
+                probe,
+                new Promise((resolve) => {
+                    timeout = setTimeout(() => resolve({ error: new Error('Database health check timed out.') }), 2500);
+                    timeout.unref?.();
+                }),
+            ]);
+            if (error) throw error;
+        } catch (error) {
+            database = 'unreachable';
+            reportOperationalError('health.database', error, { route: '/api/health' });
+        } finally {
+            if (timeout) clearTimeout(timeout);
+        }
+    }
+    const ok = database !== 'unreachable';
+    res.status(ok ? 200 : 503).json({
+        ok,
         service: 'macprep',
-        build: 'repeat-grading-20260718.1',
+        build: 'regression-repairs-20260718.1',
         auth_endpoint: '/api/authenticate',
-        supabase: !!supabase,
+        supabase: database === 'reachable',
+        database,
         serve_filler: SERVE_FILLER,
-        monitoring: !!process.env.SENTRY_BROWSER_DSN,
+        monitoring: !!process.env.SENTRY_DSN,
         time: new Date().toISOString(),
     });
 });
@@ -1232,7 +1281,8 @@ async function sendNativeReminders() {
 // One-off test push to a user's OWN native devices (admin test path).
 async function sendNativeTest(userId) {
     if (!NATIVE_PUSH_ENABLED || !supabase) return 0;
-    const { data: toks } = await supabase.from('native_device_tokens').select('id, token, platform').eq('user_id', userId);
+    const { data: toks, error } = await supabase.from('native_device_tokens').select('id, token, platform').eq('user_id', userId);
+    if (error) throw error;
     let sent = 0;
     for (const t of (toks || [])) {
         const body = 'Test push — reminders are working ✓';
@@ -1279,10 +1329,12 @@ app.post('/api/push/unsubscribe', pushLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     try {
         const endpoint = req.body?.endpoint;
-        if (endpoint) await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id);
-        else await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+        const result = endpoint
+            ? await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id)
+            : await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+        if (result.error) throw result.error;
         return res.json({ success: true });
-    } catch (e) { return res.status(500).json({ error: 'Could not remove.' }); }
+    } catch (e) { reportOperationalError('push.unsubscribe', e); return res.status(500).json({ error: 'Could not remove.' }); }
 });
 
 // Native store-app device tokens (@capacitor/push-notifications): iOS APNs / Android FCM.
@@ -1315,10 +1367,12 @@ app.post('/api/push/unregister-native', pushLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     try {
         const token = req.body?.token;
-        if (token) await supabase.from('native_device_tokens').delete().eq('token', token).eq('user_id', user.id);
-        else await supabase.from('native_device_tokens').delete().eq('user_id', user.id);
+        const result = token
+            ? await supabase.from('native_device_tokens').delete().eq('token', token).eq('user_id', user.id)
+            : await supabase.from('native_device_tokens').delete().eq('user_id', user.id);
+        if (result.error) throw result.error;
         return res.json({ success: true });
-    } catch (e) { return res.status(500).json({ error: 'Could not remove.' }); }
+    } catch (e) { reportOperationalError('native-push.unregister', e); return res.status(500).json({ error: 'Could not remove.' }); }
 });
 
 // One-click unsubscribe (token-signed, no login needed).
@@ -1327,8 +1381,14 @@ app.get('/api/unsubscribe', async (req, res) => {
     const u = req.query.u, t = req.query.t;
     const page = (msg) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MACPrep</title><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7f9;color:#111827;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;"><div style="text-align:center;max-width:420px;padding:32px;"><div style="font-family:ui-monospace,monospace;font-size:24px;font-weight:800;">MAC<span style="color:#047857;">Prep</span></div><p style="font-size:16px;line-height:1.6;margin-top:18px;">${msg}</p><a href="${BASE_URL}/" style="color:#047857;">Back to MACPrep</a></div></body>`;
     if (!u || !t || !supabase || t !== unsubToken(u)) return res.status(400).send(page('This unsubscribe link is invalid or expired.'));
-    try { await supabase.from(PROFILE_TABLE).update({ nudge_opt_out: true }).eq('user_id', u); } catch (e) {}
-    res.send(page("You've been unsubscribed from study reminders. Email support@macprep.org if you'd like them back on."));
+    try {
+        const { error } = await supabase.from(PROFILE_TABLE).update({ nudge_opt_out: true }).eq('user_id', u);
+        if (error) throw error;
+        return res.send(page("You've been unsubscribed from study reminders. Email support@macprep.org if you'd like them back on."));
+    } catch (error) {
+        reportOperationalError('reminder.unsubscribe', error);
+        return res.status(500).send(page('We could not update that preference. Please try the link again shortly.'));
+    }
 });
 
 // Admin-only manual trigger for testing. { testTo:"you@x.com" } sends one sample
@@ -1507,23 +1567,42 @@ async function getUserFromToken(req) {
 
 // Helper: is this authenticated user premium? Keyed on user_id + account_tier.
 async function isUserPremium(userId) {
-    if (!supabase || !userId) return false;
-    const { data } = await supabase
+    if (!supabase || !userId) {
+        const error = new Error('Account access service is not configured.');
+        error.status = 503;
+        throw error;
+    }
+    const { data, error } = await supabase
         .from(PROFILE_TABLE)
         .select('account_tier')
         .eq('user_id', userId)
         .maybeSingle();
+    if (error) {
+        error.status = 503;
+        throw error;
+    }
     return data?.account_tier === 'premium';
 }
 
 async function hasFullAccess(user) {
     if (!user) return false;
-    return isAdminUser(user) || isReviewUser(user) || await isUserPremium(user.id);
+    if (isAdminUser(user) || isReviewUser(user)) return true;
+    try {
+        return await isUserPremium(user.id);
+    } catch (error) {
+        reportOperationalError('entitlement.lookup', error);
+        return null;
+    }
+}
+
+function accessLookupUnavailable(res) {
+    return res.status(503).json({ error: 'Account access could not be verified. Please try again shortly.', retryable: true });
 }
 
 async function grantEntitlement({ userId, email, source, sourceReference, externalPaymentId = null, productId = null, amountTotal = null, currency = null, metadata = {} }) {
     if (!supabase || !userId) return false;
-    const { error } = await supabase.rpc('grant_macprep_entitlement', {
+    const providerSource = ['stripe', 'apple', 'google_play'].includes(source);
+    const args = {
         p_user: userId,
         p_email: email || null,
         p_source: source,
@@ -1533,9 +1612,36 @@ async function grantEntitlement({ userId, email, source, sourceReference, extern
         p_amount_total: Number.isSafeInteger(amountTotal) ? amountTotal : null,
         p_currency: currency || null,
         p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
+    };
+    if (providerSource) {
+        args.p_status = 'active';
+        args.p_allow_reactivate = false;
+    }
+    const { data, error } = await supabase.rpc(
+        providerSource ? 'sync_macprep_provider_entitlement' : 'grant_macprep_entitlement',
+        args
+    );
+    if (error) throw error;
+    return !!data;
+}
+
+async function syncProviderEntitlement({ userId, email = null, source, sourceReference, externalPaymentId = null, productId = null, status, amountTotal = null, currency = null, metadata = {}, allowReactivate = false }) {
+    if (!supabase || !userId) throw new Error('Entitlement storage is unavailable.');
+    const { data, error } = await supabase.rpc('sync_macprep_provider_entitlement', {
+        p_user: userId,
+        p_email: email,
+        p_source: source,
+        p_source_reference: sourceReference,
+        p_external_payment_id: externalPaymentId,
+        p_product_id: productId,
+        p_status: status,
+        p_amount_total: Number.isSafeInteger(amountTotal) ? amountTotal : null,
+        p_currency: currency || null,
+        p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
+        p_allow_reactivate: !!allowReactivate,
     });
     if (error) throw error;
-    return true;
+    return !!data;
 }
 
 async function setEntitlementStatus({ source, sourceReference = null, externalPaymentId = null, status }) {
@@ -1564,6 +1670,107 @@ async function verifyStripeCheckoutProduct(session) {
     return rows[0];
 }
 
+async function profileUserIdForEmail(email) {
+    const normalized = String(email || '').toLowerCase().trim();
+    if (!normalized || !supabase) return null;
+    const { data, error } = await supabase
+        .from(PROFILE_TABLE)
+        .select('user_id')
+        .eq('email', normalized)
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
+    return data?.user_id || null;
+}
+
+async function currentStripeEntitlementStatus(paymentIntentId) {
+    if (!paymentIntentId) return 'active';
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge'] });
+    let charge = paymentIntent?.latest_charge || null;
+    if (typeof charge === 'string') charge = await stripe.charges.retrieve(charge);
+    if (charge?.refunded === true) return 'refunded';
+    if (charge?.disputed === true) return 'disputed';
+    return 'active';
+}
+
+async function resolveStripeEntitlementContext(paymentIntentId, fallbackEmail = '') {
+    if (!stripe || !paymentIntentId) return null;
+    const expectedPriceId = String(process.env.STRIPE_PRODUCTION_PRICE_ID || '').trim();
+    if (!expectedPriceId) throw new Error('Stripe price verification is not configured.');
+
+    const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 10 });
+    for (const session of sessions?.data || []) {
+        if (session.mode !== 'payment' || session.payment_status !== 'paid') continue;
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
+        const rows = lineItems?.data || [];
+        if (rows.length !== 1 || rows[0]?.price?.id !== expectedPriceId || rows[0]?.quantity !== 1) continue;
+        const lineItem = rows[0];
+        const email = (session.customer_details?.email || session.customer_email || fallbackEmail || '').toLowerCase().trim();
+        let userId = session.client_reference_id || session.metadata?.user_id || null;
+        if (!validUuid(userId)) userId = await profileUserIdForEmail(email);
+        if (!validUuid(userId)) throw new Error('Verified MACPrep payment has no resolvable account.');
+        return { userId, email, session, lineItem };
+    }
+
+    // New checkouts copy the account/product marker onto the PaymentIntent, which
+    // gives refund recovery a second exact path if a Checkout listing is delayed.
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (paymentIntent?.metadata?.macprep_product_id !== expectedPriceId) return null;
+    const userId = paymentIntent.metadata?.user_id;
+    if (!validUuid(userId)) throw new Error('Verified MACPrep payment has no resolvable account.');
+    return {
+        userId,
+        email: String(fallbackEmail || '').toLowerCase().trim(),
+        session: { id: `payment_intent:${paymentIntentId}`, amount_total: paymentIntent.amount, currency: paymentIntent.currency },
+        lineItem: { price: { id: expectedPriceId } },
+    };
+}
+
+async function syncStripePaymentStatus({ paymentIntentId, status, fallbackEmail = '', eventId = null, allowReactivate = false }) {
+    if (!paymentIntentId) return null;
+    const existingUser = await setEntitlementStatus({
+        source: 'stripe',
+        externalPaymentId: paymentIntentId,
+        status,
+    });
+    if (existingUser) return existingUser;
+
+    const context = await resolveStripeEntitlementContext(paymentIntentId, fallbackEmail);
+    if (!context) return null;
+    await syncProviderEntitlement({
+        userId: context.userId,
+        email: context.email,
+        source: 'stripe',
+        sourceReference: context.session.id,
+        externalPaymentId: paymentIntentId,
+        productId: context.lineItem.price.id,
+        status,
+        amountTotal: context.session.amount_total,
+        currency: context.session.currency,
+        metadata: { recovered_from_provider_event: true, provider_event_id: eventId },
+        allowReactivate,
+    });
+    return context.userId;
+}
+
+async function syncPaidStripeCheckout({ session, lineItem, userId, email, metadata = {} }) {
+    const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+    const status = await currentStripeEntitlementStatus(paymentIntentId);
+    const hasAccess = await syncProviderEntitlement({
+        userId,
+        email,
+        source: 'stripe',
+        sourceReference: session.id,
+        externalPaymentId: paymentIntentId || null,
+        productId: lineItem.price.id,
+        status,
+        amountTotal: session.amount_total,
+        currency: session.currency,
+        metadata,
+    });
+    return { hasAccess, paymentIntentId, status };
+}
+
 class MobilePurchaseError extends Error {
     constructor(message, status = 400) {
         super(message);
@@ -1577,6 +1784,14 @@ export function normalizeMobileStore(store) {
 
 export function mobileAccountHash(userId) {
     return createHash('sha256').update(String(userId || '').toLowerCase()).digest('hex');
+}
+
+async function userIdFromMobileAccountHash(hash) {
+    const normalized = String(hash || '').toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(normalized) || !supabase) return null;
+    const { data, error } = await supabase.rpc('macprep_user_id_from_mobile_hash', { p_hash: normalized });
+    if (error) throw error;
+    return validUuid(data) ? data : null;
 }
 
 function validUuid(value) {
@@ -2022,8 +2237,9 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             profile: { email, premium_unlocked: isPremium },
         });
     } catch (err) {
-        console.error('Auth error:', err.message);
-        return res.status(500).json({ success: false, error: 'Authentication failure.' });
+        reportOperationalError('auth.authenticate', err);
+        const status = err?.status === 503 ? 503 : 500;
+        return res.status(status).json({ success: false, error: status === 503 ? 'Account access is temporarily unavailable.' : 'Authentication failure.' });
     }
 });
 
@@ -2145,7 +2361,7 @@ app.post('/api/user/delete', async (req, res) => {
         await deleteMacprepAccount(supabase, user.id);
         return res.json({ success: true });
     } catch (err) {
-        console.error('Account deletion failure:', err.message);
+        reportOperationalError('account.delete', err);
         return res.status(500).json({ error: 'Could not delete account.' });
     }
 });
@@ -2158,13 +2374,14 @@ app.post('/api/user/reset-progress', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     const allowed = await hasFullAccess(user);
+    if (allowed === null) return accessLookupUnavailable(res);
     if (!allowed) return res.status(403).json({ error: 'Progress reset is available with full access.' });
     try {
         const { error } = await supabase.rpc('reset_macprep_progress', { p_user: user.id });
         if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
-        console.error('Progress reset failure:', err.message);
+        reportOperationalError('progress.reset', err);
         return res.status(500).json({ error: 'Could not reset progress.' });
     }
 });
@@ -2449,12 +2666,15 @@ app.get('/api/admin/edits', async (req, res) => {
         const ids = [...new Set((data || []).map((e) => e.question_id))];
         const qmap = {};
         if (ids.length) {
-            const { data: qs } = await supabase.from('questions').select('id, stem, category, subtopic, difficulty').in('id', ids);
+            const { data: qs, error: questionError } = await supabase.from('questions').select('id, stem, category, subtopic, difficulty').in('id', ids);
+            if (questionError) throw questionError;
             (qs || []).forEach((q) => { qmap[q.id] = q; });
         }
         const edits = (data || []).map((e) => ({ ...e, question: qmap[e.question_id] || null }));
         const STATUSES = ['pending', 'approved', 'rejected'];
         const cr = await Promise.all(STATUSES.map((s) => supabase.from('question_edits').select('id', { count: 'exact', head: true }).eq('status', s)));
+        const countError = cr.find((result) => result.error)?.error;
+        if (countError) throw countError;
         const counts = {}; STATUSES.forEach((s, i) => { counts[s] = cr[i].count || 0; });
         return res.json({ edits, counts });
     } catch (err) {
@@ -2541,9 +2761,10 @@ app.get('/api/admin/vouchers', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
-        const { data } = await supabase.from('program_vouchers')
+        const { data, error } = await supabase.from('program_vouchers')
             .select('voucher_key, is_claimed, claimed_by_email, claimed_at, created_at, label')
             .eq('owner_director_id', admin.id).order('created_at', { ascending: false }).limit(500);
+        if (error) throw error;
         const list = data || [];
         return res.json({ vouchers: list, total: list.length, claimed: list.filter((v) => v.is_claimed).length });
     } catch (err) {
@@ -2586,8 +2807,9 @@ app.get('/api/admin/faculty', async (req, res) => {
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     if (!supabase) return res.status(500).json({ error: 'no db' });
     try {
-        const { data: rows } = await supabase.from(PROFILE_TABLE)
+        const { data: rows, error } = await supabase.from(PROFILE_TABLE)
             .select('email, full_name, credential, training_program, is_program_director, is_faculty, faculty_program');
+        if (error) throw error;
         const U = rows || [];
         const faculty = U.filter((u) => u.is_program_director || u.is_faculty)
             .map((u) => ({ email: u.email, name: u.full_name || null, role: u.is_program_director ? 'program_director' : 'faculty', program: u.faculty_program || null }))
@@ -2617,7 +2839,8 @@ app.post('/api/admin/faculty', async (req, res) => {
     if (role !== 'none' && !program) return res.status(400).json({ error: 'A program is required to grant faculty/PD access.' });
     try {
         // Resolve the target by email server-side (never a client-supplied id).
-        const { data: prof } = await supabase.from(PROFILE_TABLE).select('user_id, email').eq('email', email).maybeSingle();
+        const { data: prof, error: profileError } = await supabase.from(PROFILE_TABLE).select('user_id, email').eq('email', email).maybeSingle();
+        if (profileError) throw profileError;
         if (!prof) return res.status(404).json({ error: 'No MACPrep account with that email.' });
         // SECURITY: only elevate a VERIFIED account. Profile rows are created at signup BEFORE
         // email confirmation, so an email-match alone is an impersonation vector — require a
@@ -2828,8 +3051,9 @@ let _demoPool = { at: 0, items: [] };
 async function getDemoPool() {
     if (_demoPool.items.length && Date.now() - _demoPool.at < 30 * 60 * 1000) return _demoPool.items;
     if (!supabase) return _demoPool.items;
-    const { data } = await supabase.from('questions').select('*')
+    const { data, error } = await supabase.from('questions').select('*')
         .eq('status', 'published').order('id').limit(DEMO_POOL_SIZE);
+    if (error) throw error;
     if (data && data.length) _demoPool = { at: Date.now(), items: data.map((q) => ({ ...q, choices: parseChoices(q.choices) })) };
     return _demoPool.items;
 }
@@ -2900,9 +3124,9 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
     const poolMode = ['all', 'new'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
     const questionIds = Array.from(new Set((Array.isArray(req.body?.question_ids) ? req.body.question_ids : [])
         .map((id) => String(id).trim()).filter(Boolean))).slice(0, MAX_STUDY_SESSION_SIZE);
-    const elevated = await hasFullAccess(user);
-
     try {
+        const elevated = await hasFullAccess(user);
+        if (elevated === null) return accessLookupUnavailable(res);
         let questions;
         if (!elevated) {
             // The signed-in trial is intentionally one bounded, recommended
@@ -2931,7 +3155,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
         }
         return res.json({ questions: questions.map(safeQuestionForClient), catalog: await getQuestionCatalog() });
     } catch (err) {
-        console.error('Study session failure:', err.message);
+        reportOperationalError('study-session.build', err);
         return res.status(500).json({ error: 'Could not build a study session.' });
     }
 });
@@ -2941,6 +3165,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
     if (!supabase) return res.json({ questions: [] });
     const elevated = await hasFullAccess(user);
+    if (elevated === null) return accessLookupUnavailable(res);
     if (!elevated) return res.status(402).json({ error: 'Question search is available with full access.', paywall: true, questions: [] });
     const terms = String(req.query.q || '').trim().slice(0, 120);
     const words = terms.split(/\s+/).filter((word) => word.length >= 2).slice(0, 6);
@@ -2970,7 +3195,9 @@ app.get('/api/exam-export', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
-    if (!(await hasFullAccess(user))) {
+    const fullAccess = await hasFullAccess(user);
+    if (fullAccess === null) return accessLookupUnavailable(res);
+    if (!fullAccess) {
         return res.status(402).json({ error: 'Printable exams are a premium feature.', paywall: true });
     }
     const count = Math.min(Math.max(parseInt(req.query.count, 10) || 25, 1), 200);
@@ -3015,7 +3242,9 @@ app.get('/api/flashcards', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
-    if (!(await hasFullAccess(user))) {
+    const fullAccess = await hasFullAccess(user);
+    if (fullAccess === null) return accessLookupUnavailable(res);
+    if (!fullAccess) {
         return res.status(402).json({ error: 'Flashcard mode is a premium feature.', paywall: true });
     }
     const idsParam = (req.query.ids || '').toString().trim();
@@ -3078,7 +3307,9 @@ function loadCriticalEvents() {
 app.get('/api/critical-events', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!(await hasFullAccess(user))) {
+    const fullAccess = await hasFullAccess(user);
+    if (fullAccess === null) return accessLookupUnavailable(res);
+    if (!fullAccess) {
         return res.status(402).json({ error: 'Critical Event cards are a premium feature.', paywall: true });
     }
     const ce = loadCriticalEvents();
@@ -3097,7 +3328,8 @@ app.post('/api/gamification', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const b = req.body || {};
     try {
-        const { data: cur } = await supabase.from(PROFILE_TABLE).select('bonus_xp, ach_claimed, daily_state').eq('user_id', user.id).maybeSingle();
+        const { data: cur, error: currentError } = await supabase.from(PROFILE_TABLE).select('bonus_xp, ach_claimed, daily_state').eq('user_id', user.id).maybeSingle();
+        if (currentError) throw currentError;
         const ach_claimed = [...new Set([...(Array.isArray(cur?.ach_claimed) ? cur.ach_claimed : []), ...(Array.isArray(b.ach_claimed) ? b.ach_claimed : [])].filter((x) => typeof x === 'string'))].slice(0, 500);
         const mergeDaily = (A0, B0) => {
             const out = {}; const keys = new Set([...Object.keys(A0 || {}), ...Object.keys(B0 || {})]);
@@ -3107,8 +3339,19 @@ app.post('/api/gamification', async (req, res) => {
         };
         const daily_state = mergeDaily(cur?.daily_state, b.daily_state);
         const bonus_xp = Math.max(+(cur?.bonus_xp) || 0, +(b.bonus_xp) || 0);
-        const { error } = await supabase.from(PROFILE_TABLE).update({ bonus_xp, ach_claimed, daily_state }).eq('user_id', user.id);
+        const { data: saved, error } = await supabase.from(PROFILE_TABLE)
+            .update({ bonus_xp, ach_claimed, daily_state }).eq('user_id', user.id).select('user_id');
         if (error) throw error;
+        if (!saved?.length) {
+            const { error: insertError } = await supabase.from(PROFILE_TABLE).upsert({
+                user_id: user.id,
+                email: (user.email || '').toLowerCase().trim() || null,
+                bonus_xp,
+                ach_claimed,
+                daily_state,
+            }, { onConflict: 'user_id' });
+            if (insertError) throw insertError;
+        }
         return res.json({ bonus_xp, ach_claimed, daily_state });
     } catch (err) {
         console.error('Gamification sync failure:', err.message);
@@ -3134,6 +3377,7 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
 
     try {
         const fullAccess = await hasFullAccess(user);
+        if (fullAccess === null) return accessLookupUnavailable(res);
 
         // Enforce the free ceiling on distinct questions already answered. Re-answering
         // a question the user has already seen is always allowed (doesn't add to the
@@ -3224,7 +3468,7 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
             response_count: responseCount,
         });
     } catch (err) {
-        console.error('Grade route failure:', err.message);
+        if (!err.status || err.status >= 500) reportOperationalError('grade.single', err);
         return res.status(err.status || 500).json({ error: err.status ? err.message : 'Grading failure.' });
     }
 });
@@ -3250,6 +3494,19 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
 
     try {
         const fullAccess = await hasFullAccess(user);
+        if (fullAccess === null) return accessLookupUnavailable(res);
+        const { data: existingSubmission, error: existingSubmissionError } = await supabase
+            .from(PROGRESS_TABLE)
+            .select('question_id')
+            .eq('user_id', user.id)
+            .eq('submission_id', submissionId);
+        if (existingSubmissionError) throw existingSubmissionError;
+        if (existingSubmission?.length) {
+            const existingIds = new Set(existingSubmission.map((row) => String(row.question_id)));
+            if (existingIds.size !== questionIds.length || questionIds.some((id) => !existingIds.has(id))) {
+                return res.status(409).json({ error: 'This exam submission id was already used for a different question set.' });
+            }
+        }
         if (!fullAccess) {
             const ceiling = await getFreeTierCeiling();
             const { data: seenRows, error: seenErr } = await supabase
@@ -3314,21 +3571,44 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         }
 
         const insertedIds = new Set((inserted || []).map((row) => String(row.question_id)));
-        gradedAnswers.forEach(({ questionId, grade }) => {
+        await Promise.all(gradedAnswers.map(async ({ questionId, grade }) => {
             if (!insertedIds.has(questionId)) return;
             const quality = grade.isCorrect
                 ? (grade.confidence === 'high' ? 5 : grade.confidence === 'medium' ? 4 : 3)
                 : (grade.confidence === 'high' ? 0 : 2);
-            supabase.rpc('sm2_review', { p_user: user.id, p_question: questionId, p_quality: quality })
-                .then(({ error }) => { if (error) console.warn(`sm2_review warning: ${error.message}`); }, () => {});
+            const { error } = await supabase.rpc('sm2_review', {
+                p_user: user.id,
+                p_question: questionId,
+                p_quality: quality,
+            });
+            if (error) reportOperationalError('grade-batch.sm2', error, { questionId });
+        }));
+
+        // A retry must return the answers that won the idempotent insert, not a
+        // newly supplied body that the database correctly ignored.
+        const { data: persisted, error: persistedError } = await supabase
+            .from(PROGRESS_TABLE)
+            .select('question_id, selected_label')
+            .eq('user_id', user.id)
+            .eq('submission_id', submissionId);
+        if (persistedError) throw persistedError;
+        const persistedById = new Map((persisted || []).map((row) => [String(row.question_id), row]));
+        if (persistedById.size !== questionIds.length || questionIds.some((id) => !persistedById.has(id))) {
+            return res.status(409).json({ error: 'This exam submission id was already used for a different question set.' });
+        }
+        const persistedResults = questionIds.map((questionId) => {
+            const selectedLabel = String(persistedById.get(questionId)?.selected_label || '').toUpperCase();
+            const selectedIndex = selectedLabel.charCodeAt(0) - 65;
+            const grade = normalizeGradeInput(byId.get(questionId), { choiceIndex: selectedIndex });
+            return { questionId, ...grade.result };
         });
 
         return res.json({
             submissionId,
-            results: gradedAnswers.map(({ questionId, grade }) => ({ questionId, ...grade.result })),
+            results: persistedResults,
         });
     } catch (err) {
-        console.error('Batch grade route failure:', err.message);
+        if (!err.status || err.status >= 500) reportOperationalError('grade.batch', err);
         return res.status(err.status || 500).json({ error: err.status ? err.message : 'The exam could not be graded. No answers were recorded.' });
     }
 });
@@ -3512,7 +3792,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             },
         });
     } catch (err) {
-        console.error('Profile route failure:', err.message);
+        reportOperationalError('profile.load', err);
         return res.status(500).json({ profile: null });
     }
 });
@@ -3557,10 +3837,6 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         else if (isValidProfileDate(b.graduation_date)) update.graduation_date = b.graduation_date;
         else return res.status(400).json({ error: 'Enter a valid graduation date.' });
     }
-    if (update.credential === 'SAA' && !update.graduation_date) {
-        return res.status(400).json({ error: 'Students (SAA) must add a valid graduation date.' });
-    }
-    if (update.credential === 'CAA') update.graduation_date = null;
     if (typeof b.study_goal === 'string' && ['exam', 'practice', 'none'].includes(b.study_goal)) {
         update.study_goal = b.study_goal;
         if (b.study_goal !== 'exam') update.target_exam_date = null; // practice/none → no exam countdown
@@ -3574,8 +3850,38 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     update.updated_at = new Date().toISOString();
 
     try {
-        const { error } = await supabase.from(PROFILE_TABLE).update(update).eq('user_id', user.id);
+        if (Object.prototype.hasOwnProperty.call(update, 'credential')
+            || Object.prototype.hasOwnProperty.call(update, 'graduation_date')) {
+            const { data: current, error: currentError } = await supabase
+                .from(PROFILE_TABLE)
+                .select('credential, graduation_date')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (currentError) throw currentError;
+            const credentialValue = update.credential || current?.credential || null;
+            const credentialUpper = String(credentialValue || '').trim().toUpperCase();
+            const effectiveCredential = credentialUpper.startsWith('SAA')
+                ? 'SAA'
+                : credentialUpper.startsWith('CAA') ? 'CAA' : credentialValue;
+            const effectiveGraduation = Object.prototype.hasOwnProperty.call(update, 'graduation_date')
+                ? update.graduation_date
+                : current?.graduation_date || null;
+            if (effectiveCredential === 'SAA' && !effectiveGraduation) {
+                return res.status(400).json({ error: 'Students (SAA) must add a valid graduation date.' });
+            }
+            if (effectiveCredential === 'CAA') update.graduation_date = null;
+        }
+        const { data: savedProfile, error } = await supabase.from(PROFILE_TABLE)
+            .update(update).eq('user_id', user.id).select('user_id');
         if (error) throw error;
+        if (!savedProfile?.length) {
+            const { error: insertError } = await supabase.from(PROFILE_TABLE).upsert({
+                user_id: user.id,
+                email: (user.email || '').toLowerCase().trim() || null,
+                ...update,
+            }, { onConflict: 'user_id' });
+            if (insertError) throw insertError;
+        }
         // A member picked "Program not listed" and typed a program not yet in the dropdown —
         // alert the owner (best-effort) + log it so the AA_PROGRAMS roster stays current.
         if (b.program_unlisted && typeof update.training_program === 'string' && update.training_program.trim()) {
@@ -3593,7 +3899,7 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         }
         return res.json({ success: true });
     } catch (err) {
-        console.error('Profile update failure:', err.message);
+        reportOperationalError('profile.save', err);
         return res.status(500).json({ error: 'Could not save profile.' });
     }
 });
@@ -3606,17 +3912,21 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
 app.post('/api/user/flag', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const questionId = String(req.body?.questionId || '');
     const flagged = req.body?.flagged !== false;
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
     try {
         if (flagged) {
-            await supabase.from('user_flags').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+            const { error } = await supabase.from('user_flags').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+            if (error) throw error;
         } else {
-            await supabase.from('user_flags').delete().eq('user_id', user.id).eq('question_id', questionId);
+            const { error } = await supabase.from('user_flags').delete().eq('user_id', user.id).eq('question_id', questionId);
+            if (error) throw error;
         }
         return res.json({ success: true, flagged });
     } catch (err) {
+        reportOperationalError('flag.save', err);
         return res.status(500).json({ error: 'Could not update flag.' });
     }
 });
@@ -3631,12 +3941,15 @@ app.post('/api/user/flashcard', async (req, res) => {
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
     try {
         if (saved) {
-            await supabase.from('user_flashcards').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+            const { error } = await supabase.from('user_flashcards').upsert({ user_id: user.id, question_id: questionId }, { onConflict: 'user_id,question_id' });
+            if (error) throw error;
         } else {
-            await supabase.from('user_flashcards').delete().eq('user_id', user.id).eq('question_id', questionId);
+            const { error } = await supabase.from('user_flashcards').delete().eq('user_id', user.id).eq('question_id', questionId);
+            if (error) throw error;
         }
         return res.json({ success: true, saved });
     } catch (err) {
+        reportOperationalError('flashcard.save', err);
         return res.status(500).json({ error: 'Could not update flashcard deck.' });
     }
 });
@@ -3649,7 +3962,8 @@ function duelCode() {
 }
 async function duelName(userId) {
     try {
-        const { data } = await supabase.from(PROFILE_TABLE).select('full_name').eq('user_id', userId).maybeSingle();
+        const { data, error } = await supabase.from(PROFILE_TABLE).select('full_name').eq('user_id', userId).maybeSingle();
+        if (error) throw error;
         const n = data && data.full_name ? lbShortName(data.full_name) : '';
         return n || 'A classmate';
     } catch (e) { return 'A classmate'; }
@@ -3662,7 +3976,8 @@ app.post('/api/duel/create', async (req, res) => {
     try {
         let q = supabase.from('questions').select('id');
         q = applyServedFilter(q);
-        const { data: qs } = await q.limit(1500);
+        const { data: qs, error: questionError } = await q.limit(1500);
+        if (questionError) throw questionError;
         const pool = (qs || []).map((r) => r.id);
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const ids = pool.slice(0, count);
@@ -3672,6 +3987,7 @@ app.post('/api/duel/create', async (req, res) => {
         while (tries < 6) {
             const { error } = await supabase.from('duels').insert({ code, creator_id: user.id, creator_name: name, question_ids: ids });
             if (!error) { ok = true; break; }
+            if (error.code !== '23505') throw error;
             code = duelCode(); tries++;
         }
         if (!ok) return res.status(500).json({ error: 'Could not create duel — try again.' });
@@ -3689,19 +4005,22 @@ app.post('/api/duel/random', async (req, res) => {
     try {
         const name = await duelName(user.id);
         // 1) Try to claim an open random duel another student is waiting on (creator already played).
-        const { data: open } = await supabase.from('duels').select('code, question_ids, creator_name')
+        const { data: open, error: openError } = await supabase.from('duels').select('code, question_ids, creator_name')
             .eq('is_random', true).is('opponent_id', null).neq('creator_id', user.id)
             .not('creator_score', 'is', null).order('created_at', { ascending: true }).limit(1).maybeSingle();
+        if (openError) throw openError;
         if (open) {
-            const { data: claimed } = await supabase.from('duels')
+            const { data: claimed, error: claimError } = await supabase.from('duels')
                 .update({ opponent_id: user.id, opponent_name: name })
                 .eq('code', open.code).is('opponent_id', null).select('code').maybeSingle();
+            if (claimError) throw claimError;
             if (claimed) return res.json({ success: true, matched: true, code: open.code, questionIds: open.question_ids || [], creatorName: open.creator_name, role: 'opponent', isRandom: true });
         }
         // 2) None open → create one and wait in the pool for the next random dueler.
         let q = supabase.from('questions').select('id');
         q = applyServedFilter(q);
-        const { data: qs } = await q.limit(1500);
+        const { data: qs, error: questionError } = await q.limit(1500);
+        if (questionError) throw questionError;
         const pool = (qs || []).map((r) => r.id);
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const ids = pool.slice(0, count);
@@ -3710,6 +4029,7 @@ app.post('/api/duel/random', async (req, res) => {
         while (tries < 6) {
             const { error } = await supabase.from('duels').insert({ code, creator_id: user.id, creator_name: name, question_ids: ids, is_random: true });
             if (!error) { ok = true; break; }
+            if (error.code !== '23505') throw error;
             code = duelCode(); tries++;
         }
         if (!ok) return res.status(500).json({ error: 'Could not start a random duel — try again.' });
@@ -3722,9 +4042,10 @@ app.get('/api/duel/mine', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     try {
-        const { data } = await supabase.from('duels').select('*')
+        const { data, error } = await supabase.from('duels').select('*')
             .or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`)
             .order('created_at', { ascending: false }).limit(8);
+        if (error) throw error;
         const duels = (data || []).map((d) => ({
             code: d.code, youAre: d.creator_id === user.id ? 'creator' : 'opponent', isRandom: d.is_random,
             creatorName: d.creator_name, creatorScore: d.creator_score, creatorTotal: d.creator_total,
@@ -3740,7 +4061,8 @@ app.get('/api/duel/:code', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const code = String(req.params.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     try {
-        const { data: d } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        const { data: d, error } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        if (error) throw error;
         if (!d) return res.status(404).json({ error: 'That duel code was not found.' });
         const youAre = d.creator_id === user.id ? 'creator' : (d.opponent_id === user.id ? 'opponent' : (d.opponent_id ? 'spectator' : 'new'));
         return res.json({
@@ -3759,15 +4081,22 @@ app.post('/api/duel/score', async (req, res) => {
     const score = Math.max(0, Math.min(parseInt(req.body?.score, 10) || 0, 200));
     const total = Math.max(1, Math.min(parseInt(req.body?.total, 10) || 1, 200));
     try {
-        const { data: d } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        const { data: d, error: duelError } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
+        if (duelError) throw duelError;
         if (!d) return res.status(404).json({ error: 'That duel code was not found.' });
         const name = await duelName(user.id);
         const upd = {};
         if (d.creator_id === user.id) { upd.creator_score = score; upd.creator_total = total; if (d.opponent_score != null) upd.completed_at = new Date().toISOString(); }
         else if (!d.opponent_id || d.opponent_id === user.id) { upd.opponent_id = user.id; upd.opponent_name = name; upd.opponent_score = score; upd.opponent_total = total; if (d.creator_score != null) upd.completed_at = new Date().toISOString(); }
         else { return res.status(409).json({ error: 'This duel already has two players.' }); }
-        await supabase.from('duels').update(upd).eq('code', code);
-        const m = { ...d, ...upd };
+        let updateQuery = supabase.from('duels').update(upd).eq('code', code);
+        if (d.creator_id === user.id) updateQuery = updateQuery.eq('creator_id', user.id);
+        else if (d.opponent_id === user.id) updateQuery = updateQuery.eq('opponent_id', user.id);
+        else updateQuery = updateQuery.is('opponent_id', null);
+        const { data: updated, error: updateError } = await updateQuery.select('*').maybeSingle();
+        if (updateError) throw updateError;
+        if (!updated) return res.status(409).json({ error: 'Another player joined this duel first.' });
+        const m = updated;
         return res.json({ success: true, code, creatorName: m.creator_name, creatorScore: m.creator_score, creatorTotal: m.creator_total, opponentName: m.opponent_name, opponentScore: m.opponent_score, opponentTotal: m.opponent_total, isRandom: m.is_random });
     } catch (err) { return res.status(500).json({ error: 'Could not save your duel score.' }); }
 });
@@ -3778,8 +4107,14 @@ app.get('/api/user/note', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     const questionId = String(req.query.questionId || '');
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
-    const { data } = await supabase.from('user_notes').select('note').eq('user_id', user.id).eq('question_id', questionId).maybeSingle();
-    return res.json({ note: data?.note || '' });
+    try {
+        const { data, error } = await supabase.from('user_notes').select('note').eq('user_id', user.id).eq('question_id', questionId).maybeSingle();
+        if (error) throw error;
+        return res.json({ note: data?.note || '' });
+    } catch (error) {
+        reportOperationalError('note.load', error);
+        return res.status(500).json({ error: 'Could not load note.' });
+    }
 });
 
 app.post('/api/user/note', async (req, res) => {
@@ -3790,12 +4125,15 @@ app.post('/api/user/note', async (req, res) => {
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
     try {
         if (note.trim() === '') {
-            await supabase.from('user_notes').delete().eq('user_id', user.id).eq('question_id', questionId);
+            const { error } = await supabase.from('user_notes').delete().eq('user_id', user.id).eq('question_id', questionId);
+            if (error) throw error;
         } else {
-            await supabase.from('user_notes').upsert({ user_id: user.id, question_id: questionId, note, updated_at: new Date().toISOString() }, { onConflict: 'user_id,question_id' });
+            const { error } = await supabase.from('user_notes').upsert({ user_id: user.id, question_id: questionId, note, updated_at: new Date().toISOString() }, { onConflict: 'user_id,question_id' });
+            if (error) throw error;
         }
         return res.json({ success: true });
     } catch (err) {
+        reportOperationalError('note.save', err);
         return res.status(500).json({ error: 'Could not save note.' });
     }
 });
@@ -3806,12 +4144,15 @@ app.get('/api/user/notebook', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.json({ notes: [], flagged: [] });
     try {
-        const { data: notes } = await supabase.from('user_notes').select('question_id, note, updated_at').eq('user_id', user.id);
-        const { data: flags } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
+        const { data: notes, error: notesError } = await supabase.from('user_notes').select('question_id, note, updated_at').eq('user_id', user.id);
+        if (notesError) throw notesError;
+        const { data: flags, error: flagsError } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
+        if (flagsError) throw flagsError;
         const ids = Array.from(new Set([...(notes || []).map((n) => n.question_id), ...(flags || []).map((f) => f.question_id)]));
         const qmap = {};
         if (ids.length) {
-            const { data: qs } = await supabase.from('questions').select('id, category, domain_name, stem').in('id', ids);
+            const { data: qs, error: questionError } = await supabase.from('questions').select('id, category, domain_name, stem').in('id', ids);
+            if (questionError) throw questionError;
             (qs || []).forEach((q) => { qmap[String(q.id)] = { category: q.category || q.domain_name || 'General', stem: q.stem || '' }; });
         }
         const ctx = (id) => qmap[String(id)] || { category: '', stem: '' };
@@ -4053,17 +4394,30 @@ app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
         const sourceReference = String(transaction.originalTransactionId || transaction.transactionId || '');
         if (!sourceReference) return res.status(400).json({ error: 'Notification has no transaction reference.' });
 
-        if (type === NotificationTypeV2.REFUND) {
-            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'refunded' });
-        } else if (type === NotificationTypeV2.REVOKE) {
-            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'revoked' });
-        } else if (type === NotificationTypeV2.REFUND_REVERSED) {
-            await setEntitlementStatus({ source: 'apple', sourceReference, status: 'active' });
+        if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE, NotificationTypeV2.REFUND_REVERSED].includes(type)) {
+            const status = type === NotificationTypeV2.REFUND
+                ? 'refunded'
+                : type === NotificationTypeV2.REVOKE ? 'revoked' : 'active';
+            const matched = await setEntitlementStatus({ source: 'apple', sourceReference, status });
+            if (!matched && validUuid(transaction.appAccountToken)) {
+                await syncProviderEntitlement({
+                    userId: transaction.appAccountToken,
+                    source: 'apple',
+                    sourceReference,
+                    productId: transaction.productId,
+                    status,
+                    metadata: { notification_uuid: notification.notificationUUID || null },
+                    allowReactivate: type === NotificationTypeV2.REFUND_REVERSED,
+                });
+            } else if (!matched) {
+                reportOperationalError('apple.entitlement.unmatched', new Error('An Apple status event did not match an account.'), { notificationType: type });
+            }
         } else if (type === NotificationTypeV2.ONE_TIME_CHARGE && validUuid(transaction.appAccountToken)) {
             const entitlement = validateAppleTransactionPayload(transaction, {
                 userId: transaction.appAccountToken,
                 transactionId: transaction.transactionId,
             });
+            await claimMobileEntitlement(transaction.appAccountToken, entitlement);
             await grantEntitlement({
                 userId: transaction.appAccountToken,
                 source: 'apple',
@@ -4075,7 +4429,7 @@ app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
         return res.status(200).end();
     } catch (error) {
         if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
-        console.error('[mobile-purchase] Apple notification failed:', error?.message || 'unknown error');
+        reportOperationalError('apple.notification', error);
         return res.status(500).json({ error: 'Could not process Apple notification.' });
     }
 });
@@ -4101,19 +4455,74 @@ app.post('/api/mobile-purchases/google-notifications', async (req, res) => {
                 packageName: MOBILE_APP_BUNDLE_ID,
                 token,
             });
-            const purchased = response.data?.purchaseStateContext?.purchaseState === 'PURCHASED';
-            await setEntitlementStatus({ source: 'google_play', sourceReference: token, status: purchased ? 'active' : 'revoked' });
-        } else if (voided?.purchaseToken && Number(voided.productType) === 2) {
-            await setEntitlementStatus({
+            const purchase = response.data;
+            const purchased = purchase?.purchaseStateContext?.purchaseState === 'PURCHASED';
+            if (Number(oneTime.notificationType) === 1 && !purchased) {
+                throw new MobilePurchaseError('Google Play purchase state has not settled yet.', 503);
+            }
+            const productMatches = Array.isArray(purchase?.productLineItem)
+                && purchase.productLineItem.some((item) => item?.productId === MOBILE_PREMIUM_PRODUCT_ID);
+            if (!productMatches) return res.status(200).end();
+            if (!purchased) {
+                // A canceled pending purchase never granted access. Revoke only an
+                // existing record; do not replace an unrelated legacy entitlement.
+                await setEntitlementStatus({ source: 'google_play', sourceReference: token, status: 'revoked' });
+                return res.status(200).end();
+            }
+            const userId = await userIdFromMobileAccountHash(purchase.obfuscatedExternalAccountId);
+            if (!userId) {
+                reportOperationalError('google-play.entitlement.unmatched', new Error('A Google Play purchase event did not match an account.'), { notificationType: oneTime.notificationType });
+                return res.status(200).end();
+            }
+            const verified = validateGooglePurchasePayload(purchase, { userId });
+            const entitlement = { ...verified, transactionId: token };
+            await claimMobileEntitlement(userId, entitlement);
+            await grantEntitlement({
+                userId,
                 source: 'google_play',
-                sourceReference: String(voided.purchaseToken),
+                sourceReference: token,
+                productId: entitlement.productId,
+                metadata: { pubsub_message_id: req.body?.message?.messageId || null },
+            });
+            await acknowledgeGooglePlayPurchase(publisher, token, purchase.acknowledgementState);
+        } else if (voided?.purchaseToken && Number(voided.productType) === 2) {
+            const token = String(voided.purchaseToken);
+            if (!/^[A-Za-z0-9._~-]{16,2048}$/.test(token)) return res.status(400).json({ error: 'Invalid purchase token.' });
+            const matched = await setEntitlementStatus({
+                source: 'google_play',
+                sourceReference: token,
                 status: 'revoked',
             });
+            if (!matched) {
+                const publisher = googlePublisherClient();
+                const response = await publisher.purchases.productsv2.getproductpurchasev2({
+                    packageName: MOBILE_APP_BUNDLE_ID,
+                    token,
+                });
+                const purchase = response.data;
+                const productMatches = Array.isArray(purchase?.productLineItem)
+                    && purchase.productLineItem.some((item) => item?.productId === MOBILE_PREMIUM_PRODUCT_ID);
+                const userId = productMatches
+                    ? await userIdFromMobileAccountHash(purchase.obfuscatedExternalAccountId)
+                    : null;
+                if (userId) {
+                    await syncProviderEntitlement({
+                        userId,
+                        source: 'google_play',
+                        sourceReference: token,
+                        productId: MOBILE_PREMIUM_PRODUCT_ID,
+                        status: 'revoked',
+                        metadata: { pubsub_message_id: req.body?.message?.messageId || null },
+                    });
+                } else {
+                    reportOperationalError('google-play.voided.unmatched', new Error('A voided Google Play purchase did not match an account.'));
+                }
+            }
         }
         return res.status(200).end();
     } catch (error) {
         if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
-        console.error('[mobile-purchase] Google notification failed:', error?.message || 'unknown error');
+        reportOperationalError('google-play.notification', error);
         return res.status(500).json({ error: 'Could not process Google Play notification.' });
     }
 });
@@ -4133,7 +4542,7 @@ app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res)
         }
 
         await claimMobileEntitlement(user.id, entitlement);
-        await grantEntitlement({
+        const premiumUnlocked = await grantEntitlement({
             userId: user.id,
             email: (user.email || '').toLowerCase().trim(),
             source: entitlement.store,
@@ -4145,6 +4554,9 @@ app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res)
                 purchased_at: entitlement.purchasedAt || null,
             },
         });
+        if (!premiumUnlocked) {
+            throw new MobilePurchaseError('This store purchase has been refunded or revoked.', 422);
+        }
         recordPurchaseOnce(user.id, store);
 
         let acknowledged = true;
@@ -4158,7 +4570,7 @@ app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res)
         return res.json({ premium_unlocked: true, store, acknowledged });
     } catch (error) {
         if (error instanceof MobilePurchaseError) return res.status(error.status).json({ error: error.message });
-        console.error('[mobile-purchase] entitlement sync failed:', error?.message || 'unknown error');
+        reportOperationalError('mobile-purchase.verify', error, { store });
         return res.status(500).json({ error: 'Could not verify this purchase.' });
     }
 });
@@ -4175,6 +4587,9 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
 
         const user = await getUserFromToken(req);
         if (!user) return res.status(401).json({ error: 'Please sign in before upgrading.' });
+        const fullAccess = await hasFullAccess(user);
+        if (fullAccess === null) return accessLookupUnavailable(res);
+        if (fullAccess) return res.status(409).json({ error: 'This account already has full access.', premium_unlocked: true });
         const email = (user.email || '').trim();
 
         // Build an absolute base URL. Prefer the Origin header, then a configured
@@ -4189,6 +4604,12 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
             // by verified id — never by a client-supplied email.
             client_reference_id: user.id,
             metadata: { user_id: user.id },
+            payment_intent_data: {
+                metadata: {
+                    user_id: user.id,
+                    macprep_product_id: priceId,
+                },
+            },
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'payment',
             // Let buyers enter Stripe promotion codes (founding-member, student,
@@ -4205,7 +4626,7 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
 
         res.json({ url: session.url });
     } catch (err) {
-        console.error('Checkout API failure:', err.message);
+        reportOperationalError('stripe.checkout-create', err);
         res.status(500).json({ error: 'Could not start checkout. Please try again.' });
     }
 });
@@ -4237,28 +4658,24 @@ app.post('/api/verify-checkout-session', checkoutLimiter, async (req, res) => {
         const paid = session.payment_status === 'paid';
         if (!paid || owner !== user.id) {
             const already = await hasFullAccess(user);
+            if (already === null) return accessLookupUnavailable(res);
             return res.json({ premium_unlocked: already });
         }
         const lineItem = await verifyStripeCheckoutProduct(session);
-        const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-        await grantEntitlement({
+        const entitlement = await syncPaidStripeCheckout({
+            session,
+            lineItem,
             userId: user.id,
             email: (session.customer_details?.email || user.email || '').toLowerCase().trim(),
-            source: 'stripe',
-            sourceReference: session.id,
-            externalPaymentId: paymentIntent || null,
-            productId: lineItem.price.id,
-            amountTotal: session.amount_total,
-            currency: session.currency,
             metadata: { verified_on_return: true },
         });
         // The webhook normally records the purchase; when this fallback path is what
         // unlocked the account (webhook missed/delayed), record it here — deduped, so
         // whichever path runs second is a no-op and the sale is counted exactly once.
         recordPurchaseOnce(user.id);
-        return res.json({ premium_unlocked: true });
+        return res.json({ premium_unlocked: entitlement.hasAccess });
     } catch (err) {
-        console.error('verify-checkout-session failure:', err.message);
+        reportOperationalError('stripe.checkout-verify', err);
         return res.status(500).json({ error: 'Could not verify payment.' });
     }
 });

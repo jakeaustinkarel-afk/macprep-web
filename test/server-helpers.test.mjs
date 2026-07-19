@@ -362,3 +362,42 @@ test('mobile purchase migration makes the server-only receipt ledger replay-safe
     assert.match(migration, /revoke all on table public\.mobile_purchase_entitlements from public, anon, authenticated/);
     assert.match(migration, /delete from public\.mobile_purchase_entitlements where user_id = p_user/);
 });
+
+test('regression repair keeps repeat practice and provider events order-safe', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718213000_recent_regression_repairs.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /distinct on \(up\.user_id, up\.question_id\)/);
+    assert.match(migration, /distinct on \(question_id\) question_id, is_correct, confidence/);
+    assert.match(migration, /from per_question where not is_correct/);
+    assert.match(migration, /status in \('refunded', 'revoked', 'disputed'\)/);
+    assert.match(migration, /and not p_allow_reactivate/);
+    assert.match(migration, /function public\.macprep_user_id_from_mobile_hash/);
+    assert.match(migration, /revoke all on function public\.sync_macprep_provider_entitlement/);
+    assert.match(migration, /grant execute on function public\.sync_macprep_provider_entitlement[\s\S]+to service_role/);
+});
+
+test('batch retries reveal the persisted attempt and browser sign-out waits for confirmation', async () => {
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    const batch = server.slice(server.indexOf("app.post('/api/grade-batch'"), server.indexOf('// User cosmetics'));
+    assert.match(batch, /eq\('submission_id', submissionId\)/);
+    assert.match(batch, /select\('question_id, selected_label'\)/);
+    assert.match(batch, /results: persistedResults/);
+    assert.doesNotMatch(batch, /results: gradedAnswers\.map/);
+
+    const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
+    const signOut = browser.slice(browser.indexOf('async function signOut()'), browser.indexOf('// Forgot-password'));
+    assert.match(signOut, /const response = await fetch\('\/api\/auth\/logout'/);
+    assert.match(signOut, /if \(!response\.ok\) throw/);
+    assert.ok(signOut.indexOf('await fetch') < signOut.indexOf('setToken(null)'));
+    assert.match(browser, /wasAlreadyAnswered/);
+});
+
+test('user save routes inspect Supabase errors instead of returning false success', async () => {
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    for (const marker of ["app.post('/api/user/flag'", "app.post('/api/user/flashcard'", "app.post('/api/user/note'", "app.post('/api/duel/score'"]) {
+        const start = server.indexOf(marker);
+        const end = server.indexOf('\n});', start) + 4;
+        const route = server.slice(start, end);
+        assert.match(route, /error/);
+        assert.match(route, /throw/);
+    }
+});
