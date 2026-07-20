@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.mjs",
     "build": "echo 'No custom client-side compile compilation steps required for vanilla broadsheet layers.'",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "audit:questions": "node validate_question_bank.mjs"
   },
   "dependencies": {
     "@apple/app-store-server-library": "^3.1.0",

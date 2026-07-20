@@ -53,3 +53,80 @@ export function validateQuestionForPublication(question) {
 
     return { valid: errors.length === 0, errors };
 }
+
+function answerBatchId(id) {
+    const value = text(id);
+    return value.replace(/-\d+$/, '') || value;
+}
+
+export function auditAnswerPositionBalance(questions, options = {}) {
+    const minBatchSize = Number.isInteger(options.minBatchSize) ? options.minBatchSize : 10;
+    const maxDominantShare = Number.isFinite(options.maxDominantShare) ? options.maxDominantShare : 0.4;
+    const maxRunLength = Number.isInteger(options.maxRunLength) ? options.maxRunLength : 4;
+    const batches = new Map();
+    const issues = [];
+
+    for (const question of Array.isArray(questions) ? questions : []) {
+        const id = text(question?.id);
+        const answer = text(question?.correct_answer ?? question?.correctAnswer).toUpperCase();
+        if (!id || !/^[A-E]$/.test(answer)) {
+            issues.push({ type: 'invalid_answer_key', id: id || '(missing id)' });
+            continue;
+        }
+        const batch = answerBatchId(id);
+        if (!batches.has(batch)) batches.set(batch, []);
+        batches.get(batch).push({ id, answer });
+    }
+
+    const summaries = [];
+    for (const [batch, rows] of batches) {
+        rows.sort((a, b) => a.id.localeCompare(b.id));
+        const counts = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+        let currentRun = 0;
+        let longestRun = 0;
+        let previousAnswer = null;
+
+        for (const row of rows) {
+            counts[row.answer]++;
+            currentRun = row.answer === previousAnswer ? currentRun + 1 : 1;
+            longestRun = Math.max(longestRun, currentRun);
+            previousAnswer = row.answer;
+        }
+
+        const [dominantAnswer, dominantCount] = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+        const dominantShare = rows.length ? dominantCount / rows.length : 0;
+        const summary = {
+            batch,
+            questions: rows.length,
+            counts,
+            dominantAnswer,
+            dominantCount,
+            dominantShare,
+            longestRun,
+        };
+        summaries.push(summary);
+
+        if (rows.length >= minBatchSize && dominantShare > maxDominantShare) {
+            issues.push({
+                type: 'dominant_answer_position',
+                batch,
+                answer: dominantAnswer,
+                count: dominantCount,
+                questions: rows.length,
+                share: dominantShare,
+            });
+        }
+        if (rows.length >= minBatchSize && longestRun > maxRunLength) {
+            issues.push({
+                type: 'answer_position_run',
+                batch,
+                runLength: longestRun,
+                limit: maxRunLength,
+            });
+        }
+    }
+
+    summaries.sort((a, b) => a.batch.localeCompare(b.batch));
+    return { valid: issues.length === 0, issues, batches: summaries };
+}

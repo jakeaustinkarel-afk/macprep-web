@@ -950,7 +950,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'regression-repairs-20260718.1',
+        build: 'answer-balance-20260719.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,

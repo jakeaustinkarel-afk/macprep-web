@@ -18,6 +18,7 @@
     function ls(k, v) { try { return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v)); } catch (e) { return null; } }
     function ss(k, v) { try { return v === undefined ? sessionStorage.getItem(k) : (v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)); } catch (e) { return null; } }
     const SESSION_MARKER = 'macprep_session_active';
+    const QUESTION_BANK_REVISION = '20260719-answer-balance-v1';
     function getToken() { return ss(SESSION_MARKER); }
     function setToken(active) {
         active ? ss(SESSION_MARKER, '1') : ss(SESSION_MARKER, null);
@@ -898,8 +899,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 36;
+    const WHATS_NEW_VERSION = 37;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 19', title: 'Balanced answer positions across the question bank', desc: 'Correct answers are now evenly distributed across recently added question batches, so a repeated letter pattern cannot give away the answer. We audited all 1,509 published questions while keeping every clinical choice, rationale, and citation unchanged. An in-progress session opened before this correction will restart once to ensure its choice order is current. Available on the web and current MACPrep mobile shell.' },
         { tag: 'Fix', date: 'Jul 18', title: 'More reliable progress and account access', desc: 'Repeat practice now stays consistent across your Missed set, Recommended sessions, dashboard totals, and the leaderboard. Saved notes, flags, flashcards, reminders, duels, sign-out, and purchase restores now confirm the server update before reporting success. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 18', title: 'Repeat review answers grade normally', desc: 'Questions you have practiced before can now be answered again in Recommended, Review, Tutor, Arcade, and later mock-exam sessions without a grading error. Repeat attempts still update your spaced review and progress, while retry-safe exam submissions remain protected. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 18', title: 'Safer accounts, steadier study progress', desc: 'Sign-in now stays in protected browser cookies, password protections are stronger, mock-exam submissions retry safely, and purchases, refunds, and cohort codes reconcile more reliably. Practice estimates and SAA comparisons now use clearer sample rules and labels. Available on the web and current MACPrep mobile shell. An older open tab may ask you to sign in once.' },
@@ -2245,13 +2247,23 @@
     // recovered instead of silently wiping the user's work.
     function saveSession() {
         try {
-            if (state.session && !state.session.complete && !state.session.arcade) ls('macprep_session', JSON.stringify(state.session));
+            if (state.session && !state.session.complete && !state.session.arcade) {
+                state.session.questionBankRevision = QUESTION_BANK_REVISION;
+                ls('macprep_session', JSON.stringify(state.session));
+            }
             else ls('macprep_session', null);
         } catch (e) { try { ls('macprep_session', null); } catch (_) {} }
     }
 
     function getSavedSession() {
-        try { const s = JSON.parse(ls('macprep_session') || 'null'); return (s && s.pool && s.pool.length && !s.complete) ? s : null; }
+        try {
+            const s = JSON.parse(ls('macprep_session') || 'null');
+            if (s && s.questionBankRevision !== QUESTION_BANK_REVISION) {
+                ls('macprep_session', null);
+                return null;
+            }
+            return (s && s.pool && s.pool.length && !s.complete) ? s : null;
+        }
         catch (e) { return null; }
     }
     function renderResumeCard() {

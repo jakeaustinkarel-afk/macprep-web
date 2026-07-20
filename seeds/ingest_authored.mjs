@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { validateQuestionForPublication } from '../src/lib/question-validation.mjs';
+import { auditAnswerPositionBalance, validateQuestionForPublication } from '../src/lib/question-validation.mjs';
 
 const args = process.argv.slice(2);
 const file = args.find((arg) => !arg.startsWith('--'));
@@ -48,6 +48,21 @@ const failures = rows.flatMap((row) => {
 if (failures.length) {
     console.error(`Validation failed with ${failures.length} issue(s):`);
     failures.forEach((failure) => console.error(`- ${failure}`));
+    process.exit(1);
+}
+
+const answerPositionAudit = auditAnswerPositionBalance(rows);
+if (!answerPositionAudit.valid) {
+    console.error('Validation failed: answer positions are predictably distributed within this batch.');
+    answerPositionAudit.issues.forEach((issue) => {
+        if (issue.type === 'dominant_answer_position') {
+            console.error(`- ${issue.batch}: ${issue.count}/${issue.questions} correct answers are ${issue.answer}.`);
+        } else if (issue.type === 'answer_position_run') {
+            console.error(`- ${issue.batch}: ${issue.runLength} consecutive questions use the same correct-answer position.`);
+        } else {
+            console.error(`- ${issue.id}: invalid answer key.`);
+        }
+    });
     process.exit(1);
 }
 

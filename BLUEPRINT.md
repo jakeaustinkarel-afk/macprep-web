@@ -96,6 +96,7 @@ A question may be published only if **all** are true:
 5. **Cited.** At least one reference to a standard source (Miller's, Barash, Stoelting, Chestnut's, ASRA/ASA guidelines).
 6. **Blueprint-tagged.** Has a `domain` + `subtopic`.
 7. **SME-reviewed.** Reviewed by a credentialed CAA/anesthesiologist before `published`.
+8. **Position-balanced.** Correct answers are deliberately distributed across A-E within each authored batch, with no predictable same-letter run. Run `npm run audit:questions` with the server-only Supabase environment configured before a production question release.
 
 **Hard constraint:** medically accurate question authoring at scale requires clinical SME input. The samples below set the bar; they are not a license to auto-generate thousands of unreviewed items. The credible build path is author → SME review → publish, in blueprint-weighted batches.
 

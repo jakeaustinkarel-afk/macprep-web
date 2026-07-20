@@ -23,7 +23,7 @@ import {
     validateGooglePurchasePayload,
 } from '../src/server.mjs';
 import { fetchAllPostgrestRows } from '../src/lib/postgrest-pagination.mjs';
-import { validateQuestionForPublication } from '../src/lib/question-validation.mjs';
+import { auditAnswerPositionBalance, validateQuestionForPublication } from '../src/lib/question-validation.mjs';
 
 test('served question lookup applies the published-content filter before grading', () => {
     const calls = [];
@@ -400,4 +400,42 @@ test('user save routes inspect Supabase errors instead of returning false succes
         assert.match(route, /error/);
         assert.match(route, /throw/);
     }
+});
+
+test('answer-position audit rejects predictable authored batches', () => {
+    const skewed = Array.from({ length: 12 }, (_, index) => ({
+        id: `authored-batch-r50-${String(index + 1).padStart(3, '0')}`,
+        correct_answer: 'A',
+    }));
+    const result = auditAnswerPositionBalance(skewed);
+
+    assert.equal(result.valid, false);
+    assert.ok(result.issues.some((issue) => issue.type === 'dominant_answer_position'));
+    assert.ok(result.issues.some((issue) => issue.type === 'answer_position_run'));
+});
+
+test('answer-position audit accepts a balanced batch with short natural runs', () => {
+    const answers = ['C', 'A', 'D', 'B', 'E', 'B', 'D', 'A', 'E', 'C', 'C', 'D', 'A', 'B', 'E'];
+    const balanced = answers.map((answer, index) => ({
+        id: `authored-batch-r50-${String(index + 1).padStart(3, '0')}`,
+        correct_answer: answer,
+    }));
+
+    assert.equal(auditAnswerPositionBalance(balanced).valid, true);
+});
+
+test('answer-position repair relabels choices and keys together', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260719204500_rebalance_published_answer_positions.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /jsonb_set\(choice, '\{label\}'/);
+    assert.match(migration, /correct_answer = chr\(64 \+ rebuilt\.target_index\)/);
+    assert.match(migration, /where coalesce\(\(choice->>'correct'\)::boolean, false\)/);
+    assert.match(migration, /having max\(n\) - min\(n\) > 1/);
+
+    const retiredRandomizer = await readFile(fileURLToPath(new URL('../rebalance_question_bank.mjs', import.meta.url)), 'utf8');
+    assert.match(retiredRandomizer, /Direct question-bank randomization is retired/);
+    assert.doesNotMatch(retiredRandomizer, /Math\.random|\.update\(/);
+
+    const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
+    assert.match(browser, /QUESTION_BANK_REVISION = '20260719-answer-balance-v1'/);
+    assert.match(browser, /s\.questionBankRevision !== QUESTION_BANK_REVISION/);
 });
