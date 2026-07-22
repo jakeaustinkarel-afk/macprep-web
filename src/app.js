@@ -905,8 +905,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 40;
+    const WHATS_NEW_VERSION = 41;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 22', title: 'Clearer CAA resource links', desc: 'Helpful external links in the public footer are now grouped under CAA resources, making their purpose clearer without presenting every listed organization as a formal MACPrep partner. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Cohort code groups you can rename', desc: 'Admins can now rename an existing cohort-code group directly from the generator, making it easy to add a school, class year, or send year later without changing any code or claim history. MACPrep also prevents two group names from being merged by accident. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 22', title: 'More resilient availability monitoring', desc: 'MACPrep now handles brief database slowdowns without turning a momentary delay into a service incident, while repeated failures still trigger an operational alert. Slow health checks are also stopped cleanly instead of continuing in the background. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 21', title: 'Reported answers now stay aligned', desc: 'We reviewed every open question report and corrected the affected study records. Answer submissions now carry a stable choice identity and question revision, so an older open tab refreshes safely instead of grading the same answer text as a different letter after an editorial reorder. We also clarified the obstetric failed-intubation scenario and completed several behind-the-scenes reliability fixes. Available on the web and current MACPrep mobile shell; no action is required.' },
