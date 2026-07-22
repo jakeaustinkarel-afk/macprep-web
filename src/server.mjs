@@ -359,13 +359,66 @@ export function isValidProfileDate(value) {
     const parsed = new Date(`${value}T00:00:00Z`);
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
-export function registrationProfileError({ credential, graduationDate, trainingProgram }) {
-    if (!['SAA', 'CAA'].includes(credential)) return 'Please select your credential (SAA or CAA).';
-    if (credential === 'SAA' && !isValidProfileDate(graduationDate)) return 'Students (SAA) must add a valid graduation date.';
+const LIFECYCLE_STAGES = new Set(['applicant', 'incoming_student', 'student', 'practicing']);
+const SIGNUP_LIFECYCLE_STAGES = new Set(['applicant', 'student', 'practicing']);
+const BOARD_PREP_LIFECYCLE_STAGES = new Set(['student', 'practicing']);
+export function normalizeLifecycleStage(value) {
+    return typeof value === 'string' && LIFECYCLE_STAGES.has(value.trim().toLowerCase())
+        ? value.trim().toLowerCase()
+        : null;
+}
+export function lifecycleCredential(stage) {
+    if (stage === 'student') return 'SAA';
+    if (stage === 'practicing') return 'CAA';
+    return null;
+}
+export function registrationProfileError({ lifecycleStage, credential, graduationDate, trainingProgram }) {
+    const stage = normalizeLifecycleStage(lifecycleStage)
+        || (credential === 'SAA' ? 'student' : credential === 'CAA' ? 'practicing' : null);
+    if (!SIGNUP_LIFECYCLE_STAGES.has(stage)) return 'Please select where you are in your AA journey.';
+    if (stage === 'applicant') return '';
+    if (stage === 'student' && !isValidProfileDate(graduationDate)) return 'Current AA students must add a valid expected graduation date.';
     if (!normalizeTrainingProgram(trainingProgram) || normalizeTrainingProgram(trainingProgram).toLowerCase() === 'program not listed') {
         return 'Please select your AA program.';
     }
     return '';
+}
+
+const APPLICANT_TASK_KEYS = new Set([
+    'research_programs', 'verify_prerequisites', 'arrange_shadowing',
+    'request_evaluations', 'draft_statement', 'submit_casaa',
+    'prepare_interviews', 'financial_plan', 'relocation_plan',
+]);
+const APPLICANT_PREREQUISITE_KEYS = new Set([
+    'biology', 'general_chemistry', 'organic_or_biochemistry', 'physics',
+    'calculus', 'statistics', 'anatomy_physiology',
+]);
+const APPLICANT_PREREQUISITE_STATES = new Set(['not_started', 'in_progress', 'complete', 'verify']);
+const APPLICANT_PROGRAM_STATES = new Set(['researching', 'planned', 'submitted', 'interview', 'accepted', 'closed']);
+export function sanitizeApplicantProgress(value) {
+    const raw = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const clean = { tasks: {}, prerequisites: {}, programs: [] };
+    const cycle = String(raw.target_cycle || '').trim();
+    if (/^20\d{2}$/.test(cycle)) clean.target_cycle = cycle;
+    const shadowingHours = Number(raw.shadowing_hours);
+    clean.shadowing_hours = Number.isFinite(shadowingHours)
+        ? Math.max(0, Math.min(5000, Math.round(shadowingHours * 10) / 10))
+        : 0;
+    const tasks = raw.tasks && typeof raw.tasks === 'object' && !Array.isArray(raw.tasks) ? raw.tasks : {};
+    APPLICANT_TASK_KEYS.forEach((key) => { clean.tasks[key] = tasks[key] === true; });
+    const prerequisites = raw.prerequisites && typeof raw.prerequisites === 'object' && !Array.isArray(raw.prerequisites)
+        ? raw.prerequisites : {};
+    APPLICANT_PREREQUISITE_KEYS.forEach((key) => {
+        clean.prerequisites[key] = APPLICANT_PREREQUISITE_STATES.has(prerequisites[key])
+            ? prerequisites[key] : 'not_started';
+    });
+    const programs = Array.isArray(raw.programs) ? raw.programs : [];
+    clean.programs = programs.slice(0, 15).map((entry) => {
+        const name = normalizeTrainingProgram(entry?.name).slice(0, 120);
+        const status = APPLICANT_PROGRAM_STATES.has(entry?.status) ? entry.status : 'researching';
+        return name ? { name, status } : null;
+    }).filter(Boolean);
+    return clean;
 }
 const PROGRESS_TABLE = 'user_progress';
 
@@ -1063,7 +1116,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'question-wording-audit-20260722.1',
+        build: 'applicant-lifecycle-20260722.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -1622,6 +1675,7 @@ app.get('/api/admin/metrics', async (req, res) => {
             // Client contract: totals.users (the SQL rollup names it users.total)
             totals: { users: m.users.total, premium: m.users.premium, free: m.users.free, with_exam_date: m.users.with_exam_date },
             credential_mix: m.credential_mix,
+            lifecycle_mix: m.lifecycle_mix,
             program_mix: m.program_mix,
             program_unset: m.program_unset,
             revenue: {
@@ -1730,6 +1784,118 @@ async function hasFullAccess(user) {
 
 function accessLookupUnavailable(res) {
     return res.status(503).json({ error: 'Account access could not be verified. Please try again shortly.', retryable: true });
+}
+
+function inferLifecycleStage(profile) {
+    const explicit = normalizeLifecycleStage(profile?.lifecycle_stage);
+    if (explicit) return explicit;
+    const credential = String(profile?.credential || '').trim().toUpperCase();
+    if (credential.startsWith('SAA')) return 'student';
+    if (credential.startsWith('CAA')) return 'practicing';
+    return null;
+}
+
+function dateHasArrived(value) {
+    return isValidProfileDate(value) && value <= new Date().toISOString().slice(0, 10);
+}
+
+async function advanceLifecycleDates(profile, userId) {
+    let next = profile || null;
+    let stage = inferLifecycleStage(next);
+    if (!supabase || !userId) return { profile: next, stage };
+    if (stage === 'incoming_student' && dateHasArrived(next?.matriculation_date)) {
+        const now = new Date().toISOString();
+        const { data, error } = await supabase.from(PROFILE_TABLE)
+            .update({ lifecycle_stage: 'student', credential: 'SAA', lifecycle_updated_at: now, updated_at: now })
+            .eq('user_id', userId)
+            .eq('lifecycle_stage', 'incoming_student')
+            .lte('matriculation_date', now.slice(0, 10))
+            .select('lifecycle_stage, credential, matriculation_date, graduation_date')
+            .maybeSingle();
+        if (error) throw error;
+        if (data) next = { ...next, ...data };
+        stage = data ? 'student' : inferLifecycleStage(next);
+    }
+    if (stage === 'student' && dateHasArrived(next?.graduation_date)) {
+        const now = new Date().toISOString();
+        const { data, error } = await supabase.from(PROFILE_TABLE)
+            .update({ lifecycle_stage: 'practicing', credential: 'CAA', lifecycle_updated_at: now, updated_at: now })
+            .eq('user_id', userId)
+            .eq('lifecycle_stage', 'student')
+            .lte('graduation_date', now.slice(0, 10))
+            .select('lifecycle_stage, credential, matriculation_date, graduation_date')
+            .maybeSingle();
+        if (error) throw error;
+        if (data) next = { ...next, ...data };
+        stage = data ? 'practicing' : inferLifecycleStage(next);
+    }
+    return { profile: next, stage };
+}
+
+async function advanceDueLifecycleProfiles() {
+    if (!supabase) return { incoming: 0, graduates: 0 };
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
+    const { data: incoming, error: incomingError } = await supabase.from(PROFILE_TABLE)
+        .update({ lifecycle_stage: 'student', credential: 'SAA', lifecycle_updated_at: now, updated_at: now })
+        .eq('lifecycle_stage', 'incoming_student')
+        .lte('matriculation_date', today)
+        .select('user_id');
+    if (incomingError) throw incomingError;
+    const { data: graduates, error: graduateError } = await supabase.from(PROFILE_TABLE)
+        .update({ lifecycle_stage: 'practicing', credential: 'CAA', lifecycle_updated_at: now, updated_at: now })
+        .eq('lifecycle_stage', 'student')
+        .lte('graduation_date', today)
+        .select('user_id');
+    if (graduateError) throw graduateError;
+    return { incoming: incoming?.length || 0, graduates: graduates?.length || 0 };
+}
+
+function startLifecycleScheduler() {
+    if (!supabase) return;
+    const run = async () => {
+        try {
+            const moved = await advanceDueLifecycleProfiles();
+            if (moved.incoming || moved.graduates) console.log(`[lifecycle] advanced ${moved.incoming} incoming students and ${moved.graduates} graduates`);
+        } catch (error) {
+            reportOperationalError('lifecycle.scheduler', error);
+        }
+    };
+    run();
+    const timer = setInterval(run, 60 * 60 * 1000);
+    if (typeof timer.unref === 'function') timer.unref();
+}
+
+async function getUserLifecycle(user) {
+    if (!user) return { stage: null, boardPrep: false };
+    if (isAdminUser(user) || isReviewUser(user)) return { stage: 'practicing', boardPrep: true, elevated: true };
+    if (!supabase) throw new Error('Lifecycle service is not configured.');
+    const { data, error } = await supabase.from(PROFILE_TABLE)
+        .select('lifecycle_stage, credential, matriculation_date, graduation_date')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (error) throw error;
+    const resolved = await advanceLifecycleDates(data, user.id);
+    return { ...resolved, boardPrep: BOARD_PREP_LIFECYCLE_STAGES.has(resolved.stage) };
+}
+
+async function requireBoardPrepLifecycle(user, res) {
+    try {
+        const lifecycle = await getUserLifecycle(user);
+        if (lifecycle.boardPrep) return lifecycle;
+        res.status(403).json({
+            error: lifecycle.stage === 'incoming_student'
+                ? 'Your student tools will open on your matriculation date.'
+                : 'Board-prep tools are available once you begin AA school.',
+            lifecycle_restricted: true,
+            lifecycle_stage: lifecycle.stage,
+        });
+        return null;
+    } catch (error) {
+        reportOperationalError('lifecycle.lookup', error);
+        res.status(503).json({ error: 'Your account stage could not be verified. Please try again shortly.', retryable: true });
+        return null;
+    }
 }
 
 async function grantEntitlement({ userId, email, source, sourceReference, externalPaymentId = null, productId = null, amountTotal = null, currency = null, metadata = {} }) {
@@ -2311,7 +2477,9 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const email = (req.body?.email || '').toLowerCase().trim();
     const password = req.body?.password || '';
     const name = req.body?.name || '';
-    const credential = ['SAA', 'CAA'].includes(req.body?.credential) ? req.body.credential : null;
+    const requestedLifecycle = normalizeLifecycleStage(req.body?.lifecycle_stage)
+        || (req.body?.credential === 'SAA' ? 'student' : req.body?.credential === 'CAA' ? 'practicing' : null);
+    const credential = lifecycleCredential(requestedLifecycle);
     const gradDate = isValidProfileDate(req.body?.graduation_date) ? req.body.graduation_date : null;
     const examDate = isValidProfileDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
     const trainingProgram = normalizeTrainingProgram(req.body?.training_program);
@@ -2324,9 +2492,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (password.length < MIN_PASSWORD_LENGTH) {
                 return res.status(400).json({ success: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
             }
-            // Credential and program are required at signup; students (SAA) also add a
-            // graduation date so the account can auto-promote to CAA when they graduate.
-            const profileError = registrationProfileError({ credential, graduationDate: gradDate, trainingProgram });
+            const profileError = registrationProfileError({ lifecycleStage: requestedLifecycle, graduationDate: gradDate, trainingProgram });
             if (profileError) return res.status(400).json({ success: false, error: profileError });
             const { data, error } = await supabaseAuth.auth.signUp({
                 email,
@@ -2338,9 +2504,22 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             // Create the profile row so the payment webhook has a target to match
             // by email, and so premium status has somewhere to live.
             if (supabase && data.user) {
+                const applicant = requestedLifecycle === 'applicant';
                 const { error: pErr } = await supabase
                     .from(PROFILE_TABLE)
-                    .upsert({ user_id: data.user.id, email, account_tier: 'free', full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null, credential, training_program: trainingProgram, graduation_date: gradDate, target_exam_date: examDate }, { onConflict: 'user_id' });
+                    .upsert({
+                        user_id: data.user.id,
+                        email,
+                        account_tier: 'free',
+                        full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null,
+                        lifecycle_stage: requestedLifecycle,
+                        lifecycle_updated_at: new Date().toISOString(),
+                        credential,
+                        training_program: applicant ? null : trainingProgram,
+                        graduation_date: requestedLifecycle === 'student' ? gradDate : null,
+                        target_exam_date: requestedLifecycle === 'student' ? examDate : null,
+                        leaderboard_opt_in: !applicant,
+                    }, { onConflict: 'user_id' });
                 if (pErr) {
                     console.error(`Profile create failure: ${pErr.message}`);
                     await supabase.auth.admin.deleteUser(data.user.id).catch((cleanupError) => console.error(`Failed to remove incomplete signup: ${cleanupError.message}`));
@@ -2353,7 +2532,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
                 success: true,
                 needsConfirmation: !data.session, // true when email confirmation is on
                 authenticated: !!data.session,
-                profile: { email, premium_unlocked: false },
+                profile: { email, premium_unlocked: false, lifecycle_stage: requestedLifecycle },
             });
         }
 
@@ -2506,6 +2685,7 @@ app.post('/api/user/delete', async (req, res) => {
 app.post('/api/user/reset-progress', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const allowed = await hasFullAccess(user);
     if (allowed === null) return accessLookupUnavailable(res);
     if (!allowed) return res.status(403).json({ error: 'Progress reset is available with full access.' });
@@ -2571,7 +2751,8 @@ const ANALYTICS_EVENTS = new Set([
     'app_open', 'app_foreground', 'recommended_start', 'diagnostic_start',
     'specialty_quiz_start', 'mock_exam_start', 'flashcards_start', 'flashcards_done',
     'critical_events_open', 'arcade_start', 'arcade_over', 'boss_start',
-    'progress_reset', 'upgrade_screen',
+    'progress_reset', 'upgrade_screen', 'applicant_progress_saved',
+    'lifecycle_committed',
 ]);
 const ANALYTICS_PLATFORM_KEYS = ['web', 'ios', 'android', 'untagged'];
 const ANALYTICS_ARCADE_TYPES = new Set(['survival', 'suddendeath', 'timeattack', 'blitz']);
@@ -3201,6 +3382,7 @@ app.get('/api/leaderboard', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.json({ boards: { streak: [], weekly: [], accuracy: [] }, me: null });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     try {
         const weekStart = lbWeekStartUTC();
         const weekResetsAt = new Date(weekStart.getTime() + 7 * 86400000).toISOString();
@@ -3256,6 +3438,7 @@ app.post('/api/leaderboard/settings', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const optIn = !!(req.body && req.body.opt_in);
     try {
         const { data, error } = await supabase.from(PROFILE_TABLE).update({ leaderboard_opt_in: optIn }).eq('user_id', user.id).select('user_id');
@@ -3351,6 +3534,7 @@ app.get('/api/questions', async (req, res) => {
         const user = await getUserFromToken(req);
         if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
         if (!supabase) return res.json({ questions: [], catalog: { total: 0, categories: [] } });
+        if (!(await requireBoardPrepLifecycle(user, res))) return;
         return res.json({ questions: [], catalog: await getQuestionCatalog() });
     } catch (err) {
         console.error('Questions route failure:', err.message);
@@ -3362,6 +3546,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
 
     const requested = Math.min(Math.max(parseInt(req.body?.size, 10) || 10, 1), MAX_STUDY_SESSION_SIZE);
     const purpose = String(req.body?.purpose || 'custom');
@@ -3410,6 +3595,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
     if (!supabase) return res.json({ questions: [] });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const elevated = await hasFullAccess(user);
     if (elevated === null) return accessLookupUnavailable(res);
     if (!elevated) return res.status(402).json({ error: 'Question search is available with full access.', paywall: true, questions: [] });
@@ -3441,6 +3627,7 @@ app.get('/api/exam-export', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const fullAccess = await hasFullAccess(user);
     if (fullAccess === null) return accessLookupUnavailable(res);
     if (!fullAccess) {
@@ -3486,6 +3673,7 @@ app.get('/api/flashcards', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const fullAccess = await hasFullAccess(user);
     if (fullAccess === null) return accessLookupUnavailable(res);
     if (!fullAccess) {
@@ -3548,6 +3736,7 @@ function loadCriticalEvents() {
 app.get('/api/critical-events', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const fullAccess = await hasFullAccess(user);
     if (fullAccess === null) return accessLookupUnavailable(res);
     if (!fullAccess) {
@@ -3567,6 +3756,7 @@ app.post('/api/gamification', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const b = req.body || {};
     try {
         const { data: cur, error: currentError } = await supabase.from(PROFILE_TABLE).select('bonus_xp, ach_claimed, daily_state').eq('user_id', user.id).maybeSingle();
@@ -3611,6 +3801,7 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
 
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
 
     if (!questionId || (choiceIndex === undefined && choiceId === undefined)) {
         return res.status(400).json({ error: 'questionId and an answer choice are required.' });
@@ -3724,6 +3915,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
 
     const submissionId = String(req.body?.submissionId || '');
     const answers = Array.isArray(req.body?.answers) ? req.body.answers : [];
@@ -3900,36 +4092,52 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
     if (!supabase) return res.json({ profile: null });
 
     try {
-        const { data: profile, error } = await supabase
+        const { data: storedProfile, error } = await supabase
             .from(PROFILE_TABLE)
-            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, credential, graduation_date, training_program, target_exam_date, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, title_auto, bonus_xp, ach_claimed, daily_state, review_prompt_at')
+            .select('email, account_tier, premium_unlocked_at, created_at, is_program_director, is_faculty, faculty_program, full_name, lifecycle_stage, lifecycle_updated_at, credential, matriculation_date, graduation_date, training_program, target_exam_date, applicant_progress, lifecycle_checkin_at, lifecycle_checkin_snoozed_until, phone, study_goal, theme, font, leaderboard_handle, leaderboard_opt_in, selected_title, title_auto, bonus_xp, ach_claimed, daily_state, review_prompt_at')
             .eq('user_id', user.id)
             .maybeSingle();
         if (error) throw error;
 
+        const advanced = await advanceLifecycleDates(storedProfile, user.id);
+        const profile = advanced.profile;
+        const lifecycleStage = advanced.stage
+            || ((isAdminUser(user) || isReviewUser(user)) ? 'practicing' : null);
+        const boardPrepAllowed = BOARD_PREP_LIFECYCLE_STAGES.has(lifecycleStage)
+            || isAdminUser(user) || isReviewUser(user);
+
         const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
         const planNow = new Date();
         const planHorizon = new Date(planNow.getTime() + 14 * 86400000).toISOString();
-        const [learningResult, readinessResult, flagsResult, cardsResult, dueResult, ceiling, benchmark] = await Promise.all([
-            supabase.rpc('macprep_user_learning_rollup', {
-                p_user: user.id,
-                p_tz_offset: tzOffset,
-                p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
-            }),
-            supabase.rpc('macprep_user_practice_readiness', {
-                p_user: user.id,
-                p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
-            }),
-            supabase.from('user_flags').select('question_id').eq('user_id', user.id),
-            supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
-            supabase.from('review_state')
-                .select('question_id, due_at')
-                .eq('user_id', user.id)
-                .lte('due_at', planHorizon)
-                .order('due_at', { ascending: true }),
-            getFreeTierCeiling(),
-            getSaaBenchmark(),
-        ]);
+        let learningResult = { data: {}, error: null };
+        let readinessResult = { data: {}, error: null };
+        let flagsResult = { data: [], error: null };
+        let cardsResult = { data: [], error: null };
+        let dueResult = { data: [], error: null };
+        let ceiling = 0;
+        let benchmark = {};
+        if (boardPrepAllowed) {
+            [learningResult, readinessResult, flagsResult, cardsResult, dueResult, ceiling, benchmark] = await Promise.all([
+                supabase.rpc('macprep_user_learning_rollup', {
+                    p_user: user.id,
+                    p_tz_offset: tzOffset,
+                    p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+                }),
+                supabase.rpc('macprep_user_practice_readiness', {
+                    p_user: user.id,
+                    p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
+                }),
+                supabase.from('user_flags').select('question_id').eq('user_id', user.id),
+                supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
+                supabase.from('review_state')
+                    .select('question_id, due_at')
+                    .eq('user_id', user.id)
+                    .lte('due_at', planHorizon)
+                    .order('due_at', { ascending: true }),
+                getFreeTierCeiling(),
+                getSaaBenchmark(),
+            ]);
+        }
         for (const result of [learningResult, readinessResult, flagsResult, cardsResult, dueResult]) {
             if (result.error) throw result.error;
         }
@@ -3942,24 +4150,18 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const due_ids = dueSchedule
             .filter((row) => !row.due_at || Date.parse(row.due_at) <= planNow.getTime())
             .map((row) => row.question_id);
-        // Effective credential: an SAA (student) whose graduation date has passed is
-        // treated as a CAA from that day on (computed, no scheduled job) — this is what
-        // gates the future CME section to CAAs. Source of truth stays credential + grad date.
         const rawCred = profile?.credential || null;
         const gradDate = profile?.graduation_date || null;
-        // Normalize both new codes ("SAA"/"CAA") and legacy long labels ("SAA (student …)")
-        // to a bare code so the auto-upgrade + gating logic is consistent. Non-AA values
-        // (e.g. "Anesthesiologist", "Other") pass through unchanged and never prompt.
         let credCode = rawCred;
         if (rawCred) { const u = rawCred.trim().toUpperCase(); credCode = u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : rawCred; }
-        let credentialEffective = credCode;
-        if (credCode === 'SAA' && gradDate) {
-            const g = new Date(gradDate + 'T00:00:00Z');
-            if (!isNaN(g.getTime()) && g.getTime() <= Date.now()) credentialEffective = 'CAA';
-        }
-        // Prompt for credential when it's missing, or when an SAA has no graduation date yet.
-        const needsCredential = !credCode || (credCode === 'SAA' && !gradDate);
-        const needsProgram = !isReviewUser(user) && !normalizeTrainingProgram(profile?.training_program);
+        if (lifecycleStage === 'applicant' || lifecycleStage === 'incoming_student') credCode = null;
+        const needsLifecycle = !lifecycleStage;
+        const needsCredential = needsLifecycle
+            || (lifecycleStage === 'student' && (credCode !== 'SAA' || !gradDate))
+            || (lifecycleStage === 'practicing' && credCode !== 'CAA');
+        const needsProgram = !isReviewUser(user)
+            && ['incoming_student', 'student', 'practicing'].includes(lifecycleStage)
+            && !normalizeTrainingProgram(profile?.training_program);
         // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
         // students compare to the whole SAA population, never their own cohort).
         const saaBenchmark = saaDomainBenchmark(benchmark);
@@ -3977,6 +4179,16 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             byDomain: Array.isArray(learning.by_domain) ? learning.by_domain : [],
         });
 
+        const accountCreatedMs = profile?.created_at ? Date.parse(profile.created_at) : NaN;
+        const today = planNow.toISOString().slice(0, 10);
+        const lifecycleLastAsk = profile?.lifecycle_checkin_at ? Date.parse(profile.lifecycle_checkin_at) : 0;
+        const lifecycleSnoozed = isValidProfileDate(profile?.lifecycle_checkin_snoozed_until)
+            && profile.lifecycle_checkin_snoozed_until >= today;
+        const lifecycle_checkin_due = lifecycleStage === 'applicant'
+            && Number.isFinite(accountCreatedMs)
+            && (Date.now() - accountCreatedMs) >= 30 * 86400000
+            && (!lifecycleLastAsk || (Date.now() - lifecycleLastAsk) >= 30 * 86400000)
+            && !lifecycleSnoozed;
         // Review-ask nudge: once an account is a week old, ask for a review at the next
         // sign-in — unless they already left one (any status; one review per account) or
         // were asked within the last 30 days ("maybe later" → monthly cadence). The App
@@ -3984,13 +4196,13 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         // cheap gates pass, so most profile fetches cost nothing extra.
         let review_prompt_due = false;
         try {
-            const acctMs = profile?.created_at ? Date.parse(profile.created_at) : NaN;
-            const oldEnough = Number.isFinite(acctMs) && (Date.now() - acctMs) >= 7 * 86400000;
+            const oldEnough = Number.isFinite(accountCreatedMs) && (Date.now() - accountCreatedMs) >= 7 * 86400000;
             const enoughExperience = Number(stats.answered) >= 10;
             const lastAsk = profile?.review_prompt_at ? Date.parse(profile.review_prompt_at) : 0;
             const windowOpen = !lastAsk || (Date.now() - lastAsk) >= 30 * 86400000;
             // Never nag the owner/admins (they own the product) or the App Store review account.
-            if (oldEnough && enoughExperience && windowOpen && !isAdminUser(user) && !isReviewUser(user)) {
+            if (boardPrepAllowed && !needsLifecycle && !lifecycle_checkin_due
+                && oldEnough && enoughExperience && windowOpen && !isAdminUser(user) && !isReviewUser(user)) {
                 const { count } = await supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
                 review_prompt_due = !count;
             }
@@ -4011,15 +4223,22 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 // program; a faculty/PD only if they've been assigned one. Server re-checks on every call.
                 can_view_cohort: isAdminUser(user) || (hasVerifiedEmail(user) && !!((profile?.is_program_director || profile?.is_faculty) && profile?.faculty_program)),
                 full_name: profile?.full_name || '',
+                lifecycle_stage: lifecycleStage || '',
+                board_prep_enabled: boardPrepAllowed,
+                needs_lifecycle: needsLifecycle,
+                lifecycle_checkin_due,
+                lifecycle_checkin_snoozed_until: profile?.lifecycle_checkin_snoozed_until || '',
                 credential: credCode || '',
+                matriculation_date: profile?.matriculation_date || '',
                 graduation_date: gradDate || '',
-                credential_effective: credentialEffective || '',
-                is_caa: credentialEffective === 'CAA',
+                credential_effective: credCode || '',
+                is_caa: lifecycleStage === 'practicing' && credCode === 'CAA',
                 needs_credential: needsCredential,
                 needs_program: needsProgram,
                 review_prompt_due,
                 training_program: profile?.training_program || '',
                 target_exam_date: profile?.target_exam_date || '',
+                applicant_progress: sanitizeApplicantProgress(profile?.applicant_progress),
                 study_goal: profile?.study_goal || null,
                 theme: profile?.theme || null,
                 font: profile?.font || null,
@@ -4076,6 +4295,14 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
 
     const b = req.body || {};
     const update = {};
+    if (Object.prototype.hasOwnProperty.call(b, 'lifecycle_stage')) {
+        const stage = normalizeLifecycleStage(b.lifecycle_stage);
+        if (!SIGNUP_LIFECYCLE_STAGES.has(stage)) {
+            return res.status(400).json({ error: 'Select applying, currently enrolled, or practicing CAA.' });
+        }
+        update.lifecycle_stage = stage;
+        update.lifecycle_updated_at = new Date().toISOString();
+    }
     if (Object.prototype.hasOwnProperty.call(b, 'full_name')) {
         if (typeof b.full_name !== 'string') return res.status(400).json({ error: 'Name must be text.' });
         update.full_name = b.full_name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().replace(/\s+/g, ' ').slice(0, 120);
@@ -4120,26 +4347,43 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     update.updated_at = new Date().toISOString();
 
     try {
-        if (Object.prototype.hasOwnProperty.call(update, 'credential')
-            || Object.prototype.hasOwnProperty.call(update, 'graduation_date')) {
-            const { data: current, error: currentError } = await supabase
-                .from(PROFILE_TABLE)
-                .select('credential, graduation_date')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            if (currentError) throw currentError;
-            const credentialValue = update.credential || current?.credential || null;
-            const credentialUpper = String(credentialValue || '').trim().toUpperCase();
-            const effectiveCredential = credentialUpper.startsWith('SAA')
-                ? 'SAA'
-                : credentialUpper.startsWith('CAA') ? 'CAA' : credentialValue;
-            const effectiveGraduation = Object.prototype.hasOwnProperty.call(update, 'graduation_date')
-                ? update.graduation_date
-                : current?.graduation_date || null;
-            if (effectiveCredential === 'SAA' && !effectiveGraduation) {
-                return res.status(400).json({ error: 'Students (SAA) must add a valid graduation date.' });
+        const { data: current, error: currentError } = await supabase
+            .from(PROFILE_TABLE)
+            .select('lifecycle_stage, credential, graduation_date, training_program')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (currentError) throw currentError;
+        const currentStage = inferLifecycleStage(current);
+        if (update.lifecycle_stage && currentStage && update.lifecycle_stage !== currentStage) {
+            return res.status(409).json({ error: 'Use the lifecycle transition in your dashboard to change stages.' });
+        }
+        const effectiveStage = update.lifecycle_stage || currentStage;
+        const effectiveGraduation = Object.prototype.hasOwnProperty.call(update, 'graduation_date')
+            ? update.graduation_date : current?.graduation_date || null;
+        const effectiveProgram = Object.prototype.hasOwnProperty.call(update, 'training_program')
+            ? update.training_program : normalizeTrainingProgram(current?.training_program);
+        if (effectiveStage === 'applicant') {
+            update.credential = null;
+            update.training_program = null;
+            update.matriculation_date = null;
+            update.graduation_date = null;
+            update.target_exam_date = null;
+            update.leaderboard_opt_in = false;
+        } else if (effectiveStage === 'student') {
+            if (!effectiveGraduation) return res.status(400).json({ error: 'Current AA students must add a valid expected graduation date.' });
+            if (!isReviewUser(user) && !effectiveProgram) return res.status(400).json({ error: 'Please select your AA program.' });
+            if (update.credential && update.credential !== 'SAA') {
+                return res.status(409).json({ error: 'Student accounts use the SAA credential until their graduation date.' });
             }
-            if (effectiveCredential === 'CAA') update.graduation_date = null;
+            update.credential = 'SAA';
+        } else if (effectiveStage === 'practicing') {
+            if (!isReviewUser(user) && !effectiveProgram) return res.status(400).json({ error: 'Please select your AA program.' });
+            if (update.credential && update.credential !== 'CAA') {
+                return res.status(409).json({ error: 'Practicing CAA accounts keep the CAA credential.' });
+            }
+            update.credential = 'CAA';
+        } else if (Object.prototype.hasOwnProperty.call(update, 'credential')) {
+            return res.status(409).json({ error: 'Select where you are in your AA journey first.' });
         }
         const { data: savedProfile, error } = await supabase.from(PROFILE_TABLE)
             .update(update).eq('user_id', user.id).select('user_id');
@@ -4174,6 +4418,128 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     }
 });
 
+app.post('/api/user/applicant-progress', profileLimiter, async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
+    try {
+        const lifecycle = await getUserLifecycle(user);
+        if (!['applicant', 'incoming_student'].includes(lifecycle.stage)) {
+            return res.status(403).json({ error: 'The application tracker is for applicant accounts.' });
+        }
+        const applicantProgress = sanitizeApplicantProgress(req.body?.progress);
+        const now = new Date().toISOString();
+        const { data, error } = await supabase.from(PROFILE_TABLE)
+            .update({ applicant_progress: applicantProgress, updated_at: now })
+            .eq('user_id', user.id)
+            .in('lifecycle_stage', ['applicant', 'incoming_student'])
+            .select('user_id')
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(409).json({ error: 'Your account stage changed. Refresh and try again.' });
+        try { await supabase.from('analytics_events').insert({ name: 'applicant_progress_saved', user_id: user.id, meta: { platform: 'untagged' } }); } catch (e) { /* best-effort */ }
+        return res.json({ success: true, applicant_progress: applicantProgress });
+    } catch (error) {
+        reportOperationalError('applicant.progress', error);
+        return res.status(500).json({ error: 'Could not save your application tracker.' });
+    }
+});
+
+app.post('/api/user/lifecycle', profileLimiter, async (req, res) => {
+    const user = await getUserFromToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
+    const action = String(req.body?.action || '');
+    try {
+        const lifecycle = await getUserLifecycle(user);
+        const now = new Date();
+        const nowIso = now.toISOString();
+
+        if (action === 'still_applying') {
+            if (lifecycle.stage !== 'applicant') return res.status(409).json({ error: 'Your account is no longer in the applicant stage.' });
+            const { error } = await supabase.from(PROFILE_TABLE).update({
+                lifecycle_checkin_at: nowIso,
+                lifecycle_checkin_snoozed_until: null,
+                updated_at: nowIso,
+            }).eq('user_id', user.id).eq('lifecycle_stage', 'applicant');
+            if (error) throw error;
+            return res.json({ success: true, lifecycle_stage: 'applicant' });
+        }
+
+        if (action === 'pause_cycle') {
+            if (lifecycle.stage !== 'applicant') return res.status(409).json({ error: 'Your account is no longer in the applicant stage.' });
+            const snoozeUntil = req.body?.snooze_until;
+            if (!isValidProfileDate(snoozeUntil)) return res.status(400).json({ error: 'Choose a valid reminder date.' });
+            const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+            const latest = new Date(now.getTime() + 730 * 86400000).toISOString().slice(0, 10);
+            if (snoozeUntil < tomorrow || snoozeUntil > latest) {
+                return res.status(400).json({ error: 'Choose a date within the next two years.' });
+            }
+            const { error } = await supabase.from(PROFILE_TABLE).update({
+                lifecycle_checkin_at: nowIso,
+                lifecycle_checkin_snoozed_until: snoozeUntil,
+                updated_at: nowIso,
+            }).eq('user_id', user.id).eq('lifecycle_stage', 'applicant');
+            if (error) throw error;
+            return res.json({ success: true, lifecycle_stage: 'applicant', snooze_until: snoozeUntil });
+        }
+
+        if (action === 'commit') {
+            if (!['applicant', 'incoming_student'].includes(lifecycle.stage)) {
+                return res.status(409).json({ error: 'This transition is only available before you begin AA school.' });
+            }
+            const trainingProgram = normalizeTrainingProgram(req.body?.training_program);
+            const matriculationDate = req.body?.matriculation_date;
+            const graduationDate = req.body?.graduation_date;
+            const targetExamDate = req.body?.target_exam_date || null;
+            if (!trainingProgram || trainingProgram.toLowerCase() === 'program not listed') {
+                return res.status(400).json({ error: 'Select the program and campus where you committed.' });
+            }
+            if (!isValidProfileDate(matriculationDate)) return res.status(400).json({ error: 'Add a valid matriculation date.' });
+            if (!isValidProfileDate(graduationDate)) return res.status(400).json({ error: 'Add a valid expected graduation date.' });
+            if (graduationDate <= matriculationDate) return res.status(400).json({ error: 'Graduation must be after matriculation.' });
+            if (targetExamDate && !isValidProfileDate(targetExamDate)) return res.status(400).json({ error: 'Add a valid target board date.' });
+            if (targetExamDate && targetExamDate < graduationDate) return res.status(400).json({ error: 'The target board date cannot be before graduation.' });
+            const nextStage = dateHasArrived(matriculationDate) ? 'student' : 'incoming_student';
+            const update = {
+                lifecycle_stage: nextStage,
+                lifecycle_updated_at: nowIso,
+                lifecycle_checkin_at: nowIso,
+                lifecycle_checkin_snoozed_until: null,
+                credential: nextStage === 'student' ? 'SAA' : null,
+                training_program: trainingProgram,
+                matriculation_date: matriculationDate,
+                graduation_date: graduationDate,
+                target_exam_date: targetExamDate,
+                leaderboard_opt_in: false,
+                updated_at: nowIso,
+            };
+            const { data, error } = await supabase.from(PROFILE_TABLE).update(update)
+                .eq('user_id', user.id)
+                .in('lifecycle_stage', ['applicant', 'incoming_student'])
+                .select('user_id')
+                .maybeSingle();
+            if (error) throw error;
+            if (!data) return res.status(409).json({ error: 'Your account stage changed. Refresh and try again.' });
+            try { await supabase.from('analytics_events').insert({ name: 'lifecycle_committed', user_id: user.id, meta: { platform: 'untagged' } }); } catch (e) { /* best-effort */ }
+            if (req.body?.program_unlisted) {
+                const safeProgram = trainingProgram.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+                sendEmail({
+                    to: Array.from(ADMIN_EMAILS),
+                    subject: `MACPrep: new committed AA program - ${trainingProgram.slice(0, 80)}`,
+                    html: `<p>An incoming student committed to a program that is not yet in MACPrep's list:</p><p><b>${safeProgram}</b></p>`,
+                }).catch((error) => console.error('[program-alert] email failed:', error.message));
+            }
+            return res.json({ success: true, lifecycle_stage: nextStage });
+        }
+
+        return res.status(400).json({ error: 'Unknown lifecycle action.' });
+    } catch (error) {
+        reportOperationalError('lifecycle.update', error);
+        return res.status(500).json({ error: 'Could not update your account stage.' });
+    }
+});
+
 // ---------------------------------------------------------------------------
 // Feedback — suggestions / bug reports. Stored in user_suggestions. Auth optional
 // (signed-in users have their email attached automatically).
@@ -4183,6 +4549,7 @@ app.post('/api/user/flag', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const questionId = String(req.body?.questionId || '');
     const flagged = req.body?.flagged !== false;
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
@@ -4206,6 +4573,7 @@ app.post('/api/user/flashcard', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const questionId = String(req.body?.questionId || '');
     const saved = req.body?.saved !== false;
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
@@ -4242,6 +4610,7 @@ app.post('/api/duel/create', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 10, 5), 20);
     try {
         const pool = (await fetchAllServedQuestionRows('id')).map((r) => r.id);
@@ -4267,6 +4636,7 @@ app.post('/api/duel/random', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 10, 5), 20);
     try {
         const name = await duelName(user.id);
@@ -4303,6 +4673,7 @@ app.get('/api/duel/mine', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     try {
         const { data, error } = await supabase.from('duels').select('*')
             .or(`creator_id.eq.${user.id},opponent_id.eq.${user.id}`)
@@ -4321,6 +4692,7 @@ app.get('/api/duel/:code', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const code = String(req.params.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     try {
         const { data: d, error } = await supabase.from('duels').select('*').eq('code', code).maybeSingle();
@@ -4339,6 +4711,7 @@ app.post('/api/duel/score', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const code = String(req.body?.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     const score = Math.max(0, Math.min(parseInt(req.body?.score, 10) || 0, 200));
     const total = Math.max(1, Math.min(parseInt(req.body?.total, 10) || 1, 200));
@@ -4367,6 +4740,8 @@ app.post('/api/duel/score', async (req, res) => {
 app.get('/api/user/note', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const questionId = String(req.query.questionId || '');
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
     try {
@@ -4382,6 +4757,8 @@ app.get('/api/user/note', async (req, res) => {
 app.post('/api/user/note', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     const questionId = String(req.body?.questionId || '');
     const note = (req.body?.note || '').toString().slice(0, 5000);
     if (!questionId) return res.status(400).json({ error: 'questionId required.' });
@@ -4405,6 +4782,7 @@ app.get('/api/user/notebook', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.json({ notes: [], flagged: [] });
+    if (!await requireBoardPrepLifecycle(user, res)) return;
     try {
         const { data: notes, error: notesError } = await supabase.from('user_notes').select('question_id, note, updated_at').eq('user_id', user.id);
         if (notesError) throw notesError;
@@ -4995,6 +5373,7 @@ function startBackgroundJobs() {
     backgroundJobsStarted = true;
     startReferralCodeScheduler();
     startReminderScheduler();
+    startLifecycleScheduler();
 }
 
 export function startServer(port = process.env.PORT || 3000) {

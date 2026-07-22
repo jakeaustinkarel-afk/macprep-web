@@ -1,6 +1,6 @@
 # MACPrep
 
-MACPrep is a board-review application for anesthesiologist assistants. It provides cited, clinician-reviewed question sessions, server-side grading, progress analytics, spaced repetition, mock exams, cohort reporting, and a Capacitor shell for iOS and Android.
+MACPrep supports the AA lifecycle from free applicant planning through SAA board review and practicing-CAA resources. It provides an applicant tracker, cited clinician-reviewed question sessions, server-side grading, progress analytics, spaced repetition, mock exams, cohort reporting, and a Capacitor shell for iOS and Android.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ The test suite is local and does not start a listener, call Stripe, or require a
 
 ## Database Deployment
 
-The server now depends on the 2026-07-17 rollup migration series in `supabase/migrations/`: `20260717200046_database_contract_and_rollups.sql` plus the two `fix_account_deletion_*` follow-ups. Together they add the indexes and service-role-only database functions used for SAA benchmarks, faculty cohort analytics, leaderboard rollups, and transactional account deletion.
+The server depends on the 2026-07-17 rollup migration series and `20260722223000_applicant_lifecycle.sql` in `supabase/migrations/`. Together they add the indexes and service-role-only database functions used for SAA benchmarks, faculty cohort analytics, leaderboard rollups, transactional account deletion, and lifecycle-safe applicant/incoming-student profiles.
 
 Deploy in this order:
 
@@ -52,6 +52,8 @@ For a greenfield Supabase project, first obtain a reviewed schema snapshot from 
 - Native apps must not open Stripe checkout or display external purchase flows; native upgrades use the server-verified Store purchase bridge.
 - Clinical content remains cited and clinician-reviewed before publication.
 - Program director/faculty access is not site-admin access.
+- Keep `lifecycle_stage`, professional `credential`, and premium entitlement separate. Applicants and incoming students do not receive board-prep APIs or enter SAA benchmarks, cohorts, or leaderboards.
+- On the stored graduation date, a student account automatically moves to the practicing CAA lifecycle and credential so professional and CME resources can be timed appropriately. This lifecycle label is not independent verification of certification or licensure.
 
 ## Mobile
 

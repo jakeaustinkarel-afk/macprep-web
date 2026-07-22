@@ -166,7 +166,10 @@
         return h + '</div>';
     }
 
-    const VIEWS = ['login-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'review-queue-view', 'cohort-codes-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
+    const VIEWS = ['login-view', 'applicant-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'review-queue-view', 'cohort-codes-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
+    const BOARD_PREP_VIEWS = new Set(['dashboard', 'quiz', 'notebook', 'leaderboard', 'achievements']);
+    function boardPrepEnabled() { return !!(state.profile && state.profile.board_prep_enabled); }
+    function isApplicantJourney() { return !!(state.profile && ['applicant', 'incoming_student'].includes(state.profile.lifecycle_stage)); }
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -185,6 +188,9 @@
         // while the user was away — contradicting the "you can resume it" promise above.
         if (view !== 'quiz') stopExamTimer();
         if (view !== 'login' && !state.token) view = 'login';
+        if (state.token && state.profile && !boardPrepEnabled()) {
+            if (BOARD_PREP_VIEWS.has(view)) view = 'applicant';
+        }
         // Admin view is owner-only. A program director / faculty (or anyone non-admin) can
         // never land on it — every admin API 403s them anyway, but this closes the direct
         // go('admin') path so they never even see the shell.
@@ -199,6 +205,9 @@
         // is display:none!important). #2 from the UI pass.
         ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger', 'nav-utils'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
+        const canStudy = authed && boardPrepEnabled();
+        ['nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical'].forEach((id) =>
+            $(id) && $(id).classList.toggle('hidden', !canStudy));
         if (authed) renderWhatsNewDot();
         // Admin nav — one flat "Admin" section (no dropdown). Section shows to anyone with
         // a reason to see it (owner/admin OR a program director/faculty who can view a cohort);
@@ -216,18 +225,19 @@
         // Tier badge shows for signed-in non-admins; admins get the Admin section instead.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
-        const activeNavId = { dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements', 'review-queue': 'nav-admin-review', 'cohort-codes': 'nav-admin-codes' }[view];
+        const activeNavId = { applicant: 'nav-dashboard', dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements', 'review-queue': 'nav-admin-review', 'cohort-codes': 'nav-admin-codes' }[view];
         ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-admin-review', 'nav-admin-codes'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
         if (authed) { renderSidebarAccount(); applySidebarPref(); }
         // "Redeem code" is only useful to free users (premium/admin already have full access).
         const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
-        $('nav-redeem') && $('nav-redeem').classList.toggle('hidden', !(authed && state.profile && !isPremium));
+        $('nav-redeem') && $('nav-redeem').classList.toggle('hidden', !(canStudy && state.profile && !isPremium));
         // "PRO" pills sit next to premium-only nav items — free users only, so they read as an invitation, not a wall.
         document.querySelectorAll('.nav-pro').forEach((b) => { b.hidden = !(authed && !isPremium); });
         // Marketing links + "Log in" show for logged-out visitors only.
         document.querySelectorAll('.nav-market').forEach((a) => a.classList.toggle('hidden', authed));
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         closeNavMenus();
+        if (view === 'applicant') renderApplicantDashboard();
         if (view === 'dashboard') { renderDashboard(); renderDailyQuests(); checkLevelUp(); }
         if (view === 'profile') { renderProfile(); renderA11yControls(); }
         if (view === 'notebook') loadNotebook();
@@ -237,7 +247,7 @@
         a11yEnhanceNav();
         // A11y (WCAG 2.4.2 / 2.4.3): update the title, announce the route, and move focus into the
         // new view so VoiceOver/keyboard users aren't stranded on the old control.
-        const _vn = { dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
+        const _vn = { applicant: 'Application journey', dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
         document.title = (authed || view !== 'login') ? `${_vn} — MACPrep` : 'MACPrep — NCCAA Board Review for CAAs & SAAs';
         try {
             const _vc = $(view + '-view');
@@ -355,7 +365,7 @@
         const first = (($('su-first') && $('su-first').value) || '').trim();
         const last = (($('su-last') && $('su-last').value) || '').trim();
         const name = (first + ' ' + last).replace(/\s+/g, ' ').trim();
-        const credential = ($('su-cred') && $('su-cred').value) || '';
+        const lifecycleStage = ($('su-cred') && $('su-cred').value) || '';
         const gradDate = ($('su-grad') && $('su-grad').value) || '';
         const examDate = ($('su-exam') && $('su-exam').value) || '';
         let program = ($('su-program') && $('su-program').value) || '';
@@ -364,11 +374,11 @@
         const btn = $('su-submit'); const msg = $('su-msg');
         const fail = (m) => { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = m; } };
         if (!first || !last) { fail('Please enter your first and last name.'); return; }
-        if (!credential) { fail('Please select your credential (SAA or CAA).'); return; }
-        if (credential === 'SAA' && !gradDate) { fail('Please add your expected graduation date.'); return; }
-        if (!program) { fail('Please select your AA program.'); return; }
+        if (!lifecycleStage) { fail('Please select where you are in your AA journey.'); return; }
+        if (lifecycleStage === 'student' && !gradDate) { fail('Please add your expected graduation date.'); return; }
+        if (lifecycleStage !== 'applicant' && !program) { fail('Please select your AA program.'); return; }
         let programUnlisted = false;
-        if (program === PROGRAM_NOT_LISTED) {
+        if (lifecycleStage !== 'applicant' && program === PROGRAM_NOT_LISTED) {
             const other = (($('su-program-other') && $('su-program-other').value) || '').trim();
             if (!other) { fail('Please type your program name so we can add it.'); return; }
             program = other;
@@ -380,9 +390,15 @@
         if (btn) { btn.disabled = true; btn.textContent = 'Creating your account…'; }
         if (msg) msg.textContent = '';
         try {
-            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action: 'register', name, email, password, credential, training_program: program, program_unlisted: programUnlisted, graduation_date: credential === 'SAA' ? gradDate : null, target_exam_date: credential === 'SAA' ? examDate : null }) });
+            const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({
+                action: 'register', name, email, password, lifecycle_stage: lifecycleStage,
+                training_program: lifecycleStage === 'applicant' ? null : program,
+                program_unlisted: lifecycleStage === 'applicant' ? false : programUnlisted,
+                graduation_date: lifecycleStage === 'student' ? gradDate : null,
+                target_exam_date: lifecycleStage === 'student' ? examDate : null,
+            }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
-            track('signup');
+            track('signup', { lifecycle_stage: lifecycleStage });
             if (data.authenticated || data.token) {
                 state.token = '1'; setToken(true); setRefresh();
                 state.justSignedUp = true;
@@ -516,7 +532,8 @@
         setLoading(true);
         try {
             await loadProfile();
-            await Promise.all([loadQuestions(), loadQotd()]);
+            if (boardPrepEnabled()) await Promise.all([loadQuestions(), loadQotd()]);
+            else { state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; }
         }
         finally { setLoading(false); }
         // Reflect tier badge
@@ -527,26 +544,29 @@
             else if (p.premium_unlocked) { badge.textContent = 'PREMIUM'; badge.className = 'badge premium'; }
             else { badge.textContent = 'FREE'; badge.className = 'badge free'; }
         }
-        go('dashboard');
+        go(boardPrepEnabled() ? 'dashboard' : 'applicant');
         maybeHandleCheckoutReturn();
-        initNativePush(); // native store apps: refresh the push token for already-opted-in users
-        const _credAsked = maybePromptCredential(); // one-time credential capture (priority) for accounts made before we asked
-        if (!_credAsked) maybePromptForName(); // returning users who never saved a first+last name
-        const _duelLink = /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
-        checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
+        if (boardPrepEnabled()) initNativePush(); // study reminders only apply once the study experience is active
+        const _lifecycleAsked = maybePromptCredential(); // one-time lifecycle capture for accounts made before we asked
+        if (!_lifecycleAsked) maybePromptForName(); // returning users who never saved a first+last name
+        const _applicantAsked = !_lifecycleAsked && maybePromptApplicantCheckIn();
+        const _duelLink = boardPrepEnabled() && /duel=[A-Za-z0-9]{4,8}/.test(location.hash || '');
+        if (boardPrepEnabled()) checkDuelDeepLink(); // /#duel=CODE shared by a classmate → jump into the duel
         // Review ask: accounts ≥1 week old that haven't reviewed yet get the same form
         // as the Reviews tab, at sign-in; "maybe later" re-asks monthly (server decides).
-        const _reviewAsked = !_credAsked && !_duelLink && maybePromptReview();
-        if (!_credAsked && !_duelLink && !_reviewAsked) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
+        const _reviewAsked = !_lifecycleAsked && !_applicantAsked && !_duelLink && maybePromptReview();
+        if (!_lifecycleAsked && !_applicantAsked && !_duelLink && !_reviewAsked) maybeShowWhatsNewPopup(); // centered "what's new" popup once per release
         // Post-signup activation: drop a brand-new user straight into a short warm-up.
         if (state.justSignedUp) {
             state.justSignedUp = false;
-            const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
-            if (answered === 0) { try { startSample(); } catch (e) {} }
+            if (boardPrepEnabled()) {
+                const answered = (state.profile && state.profile.stats && state.profile.stats.answered) || 0;
+                if (answered === 0) { try { startSample(); } catch (e) {} }
+            }
         }
         if (location.hash === '#about') showAboutSection();
         // Deep link to a specific Critical Event (e.g. shared /#ce=malignant-hyperthermia).
-        { const _ceM = (location.hash || '').match(/ce=([a-z0-9-]+)/i); if (_ceM) { try { startCriticalEvents(_ceM[1]); } catch (e) {} } }
+        { const _ceM = (location.hash || '').match(/ce=([a-z0-9-]+)/i); if (_ceM && boardPrepEnabled()) { try { startCriticalEvents(_ceM[1]); } catch (e) {} } }
     }
 
     // ---- dashboard --------------------------------------------------------
@@ -980,8 +1000,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 43;
+    const WHATS_NEW_VERSION = 44;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 22', title: 'MACPrep now starts before school', desc: 'Applicants can create a free account and use a focused dashboard for application steps, program and prerequisite tracking, shadowing preparation, interview questions, and financial or relocation planning. After committing, add your program and dates; the same account opens the SAA study experience on your matriculation date, then moves into the practicing CAA experience on graduation day so professional and CME resources arrive at the right time. Lifecycle changes never alter premium access. Available on the web and current MACPrep mobile shell. Some older accounts may be asked once to choose their current stage.' },
         { tag: 'Fix', date: 'Jul 22', title: 'Cleaner question wording', desc: 'A reported obstetric answer now clearly states that pregnancy decreases lower esophageal sphincter tone. We also checked every published question for matching wording, answer-alignment, rationale, spacing, punctuation, and delimiter problems, and added the same audit to future question-bank reviews. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 22', title: 'A study plan that adjusts with you', desc: 'Your dashboard now builds a two-week calendar from your exam date, unseen coverage, due reviews, recent misses, and weakest domains, then recalculates as you practice. Question debriefs now organize why the answer wins and why each distractor fails; richer CAA-reviewed teaching pivots will appear as they are approved. Behind the scenes, item-quality monitoring helps prioritize questions for clinical review without treating small samples as proof. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Clearer CAA resource links', desc: 'Helpful external links in the public footer are now grouped under CAA resources, making their purpose clearer without presenting every listed organization as a formal MACPrep partner. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -1008,7 +1029,7 @@
         { tag: 'Fix', date: 'Jul 12', title: 'You flagged it, we fixed it', desc: 'Thanks to the members who tapped Report. After your feedback we ran two full reviews of all 1,500+ questions and corrected 39 — clunky scenarios, clinical-detail wording, a couple of answer keys, and some stray formatting — so every question reads exactly right. Spot something off in a question? Tap Report on it; we read every single one, and it makes the bank sharper for everyone.' },
         { tag: 'New', date: 'Jul 10', title: 'Search the question bank', desc: 'Remember part of a question? Study Modes → Find a question. Search by keyword to pull up any question in the bank — perfect for reviewing a tricky one or talking it through with a classmate.' },
         { tag: 'New', date: 'Jul 10', title: 'Your Recommended set now adapts to you', desc: 'The “Recommended for you” set now estimates your ability in each of the six exam domains and serves new questions at a difficulty matched to your level — easing in where you’re new and ramping up as you improve, on top of your due spaced-repetition reviews and recent misses. See your new Mastery-by-domain breakdown on the dashboard.' },
-        { tag: 'New', date: 'Jul 10', title: 'Students → automatic CAA upgrade', desc: 'Tell us your credential (SAA or CAA). Students add an expected graduation date, and your account upgrades to CAA automatically the day you graduate — setting up CAA-only features (like CME) down the road.' },
+        { tag: 'New', date: 'Jul 10', title: 'Student and CAA profiles', desc: 'Tell us whether you are currently an SAA or practicing CAA and choose your program or campus. Students can add expected graduation and board dates so MACPrep can tailor the study experience and transition their account into practicing CAA resources at graduation.' },
         { tag: 'New', date: 'Jul 5', title: 'Duel a classmate', desc: 'Go head-to-head — Study Modes → Duel a classmate. Play a set of questions, share your code or invite link, and your classmate plays the exact same set. You’ll both see who won.' },
         { tag: 'New', date: 'Jul 5', title: 'Build your own flashcard deck', desc: 'Tap “Add to flashcards” on any question (or “+ Card” in the end-of-session Review) to save it to your personal deck, then drill it with active recall under Study Modes → My Flashcards.' },
         { tag: 'New', date: 'Jul 5', title: 'Flag questions from the Review', desc: 'The end-of-session Review now has Flag + “+ Card” buttons on every question — even the ones you got right — so you can save anything to revisit, or add it to your flashcards, while you review.' },
@@ -1044,7 +1065,7 @@
     function maybeShowWhatsNewPopup() {
         let seen; try { seen = parseInt(ls('macprep_whatsnew_seen'), 10) || 0; } catch (e) { seen = 0; }
         if (!seen) { try { ls('macprep_whatsnew_seen', String(WHATS_NEW_VERSION)); } catch (e) {} renderWhatsNewDot(); return; } // brand-new user: baseline silently, no popup
-        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen || state._reviewPromptOpen) return;
+        if (WHATS_NEW_VERSION <= seen || $('wn-popup') || state._namePromptOpen || state._credPromptOpen || state._commitmentPromptOpen || state._applicantPromptOpen || state._reviewPromptOpen) return;
         const rows = WHATS_NEW.filter((e) => !(e.webOnly && isNativeApp())).slice(0, 4).map((e) => {
             const isFix = e.tag === 'Fix';
             const pillColor = isFix ? 'var(--warn)' : 'var(--accent)';
@@ -1089,7 +1110,13 @@
         const subEl = $('nav-acct-sub');
         if (subEl) {
             if (title) { subEl.textContent = title; subEl.style.color = 'var(--accent)'; subEl.style.fontWeight = '700'; }
-            else { subEl.textContent = p.is_admin ? 'Admin access' : (p.premium_unlocked ? 'Full access' : 'Free plan'); subEl.style.color = ''; subEl.style.fontWeight = ''; }
+            else {
+                subEl.textContent = p.is_admin ? 'Admin access'
+                    : p.lifecycle_stage === 'applicant' ? 'Applicant resources'
+                        : p.lifecycle_stage === 'incoming_student' ? 'Incoming student'
+                            : (p.premium_unlocked ? 'Full access' : 'Free plan');
+                subEl.style.color = ''; subEl.style.fontWeight = '';
+            }
         }
     }
     // Collapsible sidebar rail (desktop). Preference persists in localStorage.
@@ -2990,25 +3017,33 @@
         if (p.is_admin) return false; // Jake already has a name; don't nag admins
         return !/\S+\s+\S+/.test(lbStripCred(p.full_name));
     }
-    // ---- Credential capture: SAA (student) vs CAA (certified) --------------
-    // Students add a graduation date; when it passes, the account's effective
-    // credential auto-promotes to CAA (computed server-side) — which will gate the
-    // future CME section to CAAs. Collected at signup, and as a one-time login
-    // pop-up for accounts created before we asked.
+    // ---- Lifecycle capture -------------------------------------------------
+    // Journey stage and premium entitlement are intentionally separate.
+    // Applicants have no credential; students are SAAs; graduation moves the
+    // account into the practicing CAA lifecycle for professional-resource timing.
     function onCredChange() {
-        const sel = $('su-cred'), box = $('su-saa-fields'), programWrap = $('su-program-wrap'), hint = $('su-program-hint'), programSelect = $('su-program');
-        if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
-        if (programWrap) programWrap.classList.toggle('hidden', !(sel && sel.value));
-        if (programSelect) programSelect.disabled = !(sel && sel.value);
-        if (hint && sel) hint.textContent = sel.value === 'CAA'
+        const sel = $('su-cred'), box = $('su-saa-fields'), programWrap = $('su-program-wrap'), hint = $('su-program-hint'), programSelect = $('su-program'), note = $('su-stage-note');
+        const stage = sel ? sel.value : '';
+        if (box) box.classList.toggle('hidden', stage !== 'student');
+        if (programWrap) programWrap.classList.toggle('hidden', !['student', 'practicing'].includes(stage));
+        if (programSelect) { programSelect.disabled = !['student', 'practicing'].includes(stage); programSelect.required = ['student', 'practicing'].includes(stage); }
+        if ($('su-grad')) $('su-grad').required = stage === 'student';
+        if (hint) hint.textContent = stage === 'practicing'
             ? 'Select the AA program where you teach or from which you graduated.'
-            : sel.value === 'SAA' ? 'Select the AA program you attend.' : 'Select your credential first.';
+            : stage === 'student' ? 'Select the AA program you attend.' : 'Select your current stage first.';
+        if (note) note.textContent = stage === 'applicant'
+            ? 'Your free dashboard will focus on applications, programs, prerequisites, shadowing, and planning.'
+            : stage === 'student' ? 'Your student dashboard includes 25 free questions before premium access is required.'
+                : stage === 'practicing' ? 'Your CAA dashboard includes certification and professional resources alongside board review.'
+                    : 'We will shape your dashboard around this stage. Your access level stays separate.';
     }
     function onCredModalChange() {
-        const sel = $('cp-cred'), box = $('cp-saa');
-        if (box) box.classList.toggle('hidden', !(sel && sel.value === 'SAA'));
+        const sel = $('cp-cred'), box = $('cp-saa'), program = $('cp-program-wrap');
+        const stage = sel ? sel.value : '';
+        if (box) box.classList.toggle('hidden', stage !== 'student');
+        if (program) program.classList.toggle('hidden', stage === 'applicant' || !stage);
         const hint = $('cp-prog-hint');
-        if (hint && sel) hint.textContent = sel.value === 'CAA' ? 'Select the AA program where you teach or from which you graduated.' : sel.value === 'SAA' ? 'Select the AA program you attend.' : 'Your AA program.';
+        if (hint) hint.textContent = stage === 'practicing' ? 'Select the AA program where you teach or from which you graduated.' : stage === 'student' ? 'Select the AA program you attend.' : 'Your AA program.';
     }
     // Accredited AA training programs, campus-level (multi-campus networks are broken out so
     // a program/cohort maps to one campus). Keep in sync with the outreach roster
@@ -3053,6 +3088,8 @@
         'Other / not listed',
     ]);
     function needsProgram(p) {
+        const stage = (p && p.lifecycle_stage) || '';
+        if (!['incoming_student', 'student', 'practicing'].includes(stage)) return false;
         const v = ((p && p.training_program) || '').trim();
         return !v || STALE_PROGRAM_LABELS.has(v);
     }
@@ -3092,20 +3129,21 @@
     function maybePromptCredential() {
         if (!state.token || !state.profile || state._credPromptOpen) return false;
         if (state.profile.is_review) return false;  // never gate the App Review demo account
-        // Prompt if credential is missing OR the training program is missing/stale (so practicing
-        // CAAs, and anyone still on an old institution-level label, get asked their program/campus).
-        if (!state.profile.needs_credential && !needsProgram(state.profile)) return false;
+        if (!state.profile.needs_lifecycle && !state.profile.needs_credential && !needsProgram(state.profile)) return false;
+        if (state.profile.lifecycle_stage === 'incoming_student') { openCommitmentModal(); return true; }
         openCredentialPrompt();
         return true;
     }
     function closeCredentialPrompt() {
-        if (needsProgram(state.profile || {})) return;
+        const p = state.profile || {};
+        if (p.needs_lifecycle || p.needs_credential || needsProgram(p)) return;
         const o = $('cred-prompt-overlay'); if (o) o.remove(); state._credPromptOpen = false;
     }
     function openCredentialPrompt() {
         state._credPromptOpen = true;
         const p = state.profile || {};
-        const pre = ['SAA', 'CAA'].includes(p.credential) ? p.credential : '';
+        const pre = ['applicant', 'student', 'practicing'].includes(p.lifecycle_stage)
+            ? p.lifecycle_stage : (p.credential === 'SAA' ? 'student' : p.credential === 'CAA' ? 'practicing' : '');
         const inp = 'width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin:4px 0 12px;font-size:14px;';
         const lbl = 'font-size:10.5px;letter-spacing:.5px;color:var(--muted);';
         const wrap = document.createElement('div');
@@ -3115,62 +3153,268 @@
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="cp-title" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:420px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:15px;letter-spacing:-.5px;color:var(--text);margin-bottom:14px;">MAC<span style="color:var(--accent);">Prep</span></div>
             <div id="cp-title" style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Help us tailor MACPrep</div>
-            <div class="sub" style="font-size:13px;margin-bottom:16px;">Tell us your credential and training program. This tailors MACPrep to you — and when a student graduates, your account upgrades to CAA automatically.</div>
-            <label class="mono" style="${lbl}">CREDENTIAL</label>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Tell us where you are in your AA journey. Applicants get a focused planning dashboard; student tools open when school begins. Access and premium status stay separate.</div>
+            <label class="mono" style="${lbl}">CURRENT STAGE</label>
             <select id="cp-cred" onchange="MACPrep.onCredModalChange()" style="${inp}">
-                <option value="" ${pre ? '' : 'selected'} disabled>Select…</option>
-                <option value="SAA" ${pre === 'SAA' ? 'selected' : ''}>SAA — Student Anesthesiologist Assistant</option>
-                <option value="CAA" ${pre === 'CAA' ? 'selected' : ''}>CAA — Certified Anesthesiologist Assistant</option>
+                <option value="" ${pre ? '' : 'selected'} disabled>Select your current stage…</option>
+                <option value="applicant" ${pre === 'applicant' ? 'selected' : ''}>Applying to AA school</option>
+                <option value="student" ${pre === 'student' ? 'selected' : ''}>Currently enrolled in AA school</option>
+                <option value="practicing" ${pre === 'practicing' ? 'selected' : ''}>Practicing CAA</option>
             </select>
-            <div id="cp-saa" class="${pre === 'SAA' ? '' : 'hidden'}">
+            <div id="cp-saa" class="${pre === 'student' ? '' : 'hidden'}">
                 <label class="mono" style="${lbl}">EXPECTED GRADUATION DATE</label>
                 <input id="cp-grad" type="date" value="${p.graduation_date || ''}" style="${inp}">
                 <label class="mono" style="${lbl}">EXAM DATE <span style="text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
             </div>
-            <label class="mono" style="${lbl}">AA PROGRAM</label>
-            <div class="sub" id="cp-prog-hint" style="font-size:11px;margin:-2px 0 6px;">${pre === 'CAA' ? 'Select the AA program where you teach or from which you graduated.' : pre === 'SAA' ? 'Select the AA program you attend.' : 'Your AA program.'}</div>
-            <select id="cp-program" onchange="MACPrep.onCpProgramChange()" style="${inp}">${programOptions(p.training_program || p.faculty_program || '')}</select>
-            <div id="cp-other-wrap" class="hidden">
-                <label class="mono" style="${lbl}">WHICH PROGRAM? <span style="text-transform:none;letter-spacing:0;">(we'll add it)</span></label>
-                <input id="cp-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}">
+            <div id="cp-program-wrap" class="${pre === 'applicant' || !pre ? 'hidden' : ''}">
+                <label class="mono" style="${lbl}">AA PROGRAM</label>
+                <div class="sub" id="cp-prog-hint" style="font-size:11px;margin:-2px 0 6px;">${pre === 'practicing' ? 'Select the AA program where you teach or from which you graduated.' : 'Select the AA program you attend.'}</div>
+                <select id="cp-program" onchange="MACPrep.onCpProgramChange()" style="${inp}">${programOptions(p.training_program || p.faculty_program || '')}</select>
+                <div id="cp-other-wrap" class="hidden">
+                    <label class="mono" style="${lbl}">WHICH PROGRAM? <span style="text-transform:none;letter-spacing:0;">(we'll add it)</span></label>
+                    <input id="cp-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}">
+                </div>
+                <div class="sub" style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;">Verified faculty at your program may view your MACPrep study progress. <a href="/privacy.html" target="_blank" rel="noopener">Privacy details</a></div>
             </div>
-            <div class="sub" style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.5;">Faculty at your program may view your MACPrep progress.</div>
             <button class="btn" style="width:100%;margin-top:2px;" onclick="MACPrep.saveCredentialPrompt(this)">Save</button>
             <div id="cp-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
         </div>`;
         document.body.appendChild(wrap);
     }
     async function saveCredentialPrompt(btn) {
-        const cred = ($('cp-cred') && $('cp-cred').value) || '';
+        const stage = ($('cp-cred') && $('cp-cred').value) || '';
         const grad = ($('cp-grad') && $('cp-grad').value) || '';
         const exam = ($('cp-exam') && $('cp-exam').value) || '';
         let program = ($('cp-program') && $('cp-program').value) || '';
         const msg = $('cp-msg');
-        if (!cred) { if (msg) msg.textContent = 'Please choose SAA or CAA.'; return; }
-        if (cred === 'SAA' && !grad) { if (msg) msg.textContent = 'Please add your expected graduation date.'; return; }
-        if (!program) { if (msg) msg.textContent = 'Please select your training program.'; return; }
+        if (!stage) { if (msg) msg.textContent = 'Please choose your current stage.'; return; }
+        if (stage === 'student' && !grad) { if (msg) msg.textContent = 'Please add your expected graduation date.'; return; }
+        if (stage !== 'applicant' && !program) { if (msg) msg.textContent = 'Please select your training program.'; return; }
         let unlisted = false;
-        if (program === PROGRAM_NOT_LISTED) {
+        if (stage !== 'applicant' && program === PROGRAM_NOT_LISTED) {
             const other = (($('cp-other') && $('cp-other').value) || '').trim();
             if (!other) { if (msg) msg.textContent = 'Please type your program name so we can add it.'; return; }
             program = other; unlisted = true;
         }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
         try {
-            const body = { credential: cred, graduation_date: cred === 'SAA' ? grad : null, training_program: program };
+            const body = { lifecycle_stage: stage };
+            if (stage !== 'applicant') body.training_program = program;
             if (unlisted) body.program_unlisted = true;
-            if (cred === 'SAA' && exam) body.target_exam_date = exam;
+            if (stage === 'student') { body.graduation_date = grad; body.target_exam_date = exam || null; }
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
             await loadProfile();
             closeCredentialPrompt();
+            go(boardPrepEnabled() ? 'dashboard' : 'applicant');
             toast('Thanks — you\'re all set.', 'ok');
         } catch (e) {
             if (msg) msg.textContent = e.message;
             if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
         }
     }
+
+    const APPLICANT_TASKS = [
+        ['research_programs', 'Research accredited programs'],
+        ['verify_prerequisites', 'Verify prerequisites by program'],
+        ['arrange_shadowing', 'Arrange CAA shadowing'],
+        ['request_evaluations', 'Request evaluations early'],
+        ['draft_statement', 'Draft and revise your statement'],
+        ['submit_casaa', 'Complete and submit CASAA'],
+        ['prepare_interviews', 'Prepare for interviews'],
+        ['financial_plan', 'Build a financial plan'],
+        ['relocation_plan', 'Plan for relocation or travel'],
+    ];
+    const APPLICANT_PREREQUISITES = [
+        ['biology', 'Biology'], ['general_chemistry', 'General chemistry'],
+        ['organic_or_biochemistry', 'Organic chemistry / biochemistry'], ['physics', 'Physics'],
+        ['calculus', 'Calculus'], ['statistics', 'Statistics'],
+        ['anatomy_physiology', 'Anatomy and physiology'],
+    ];
+    const APPLICANT_PREREQ_STATES = [
+        ['not_started', 'Not started'], ['in_progress', 'In progress'],
+        ['complete', 'Complete'], ['verify', 'Verify with program'],
+    ];
+    const APPLICANT_PROGRAM_STATES = [
+        ['researching', 'Researching'], ['planned', 'Planning to apply'],
+        ['submitted', 'Submitted'], ['interview', 'Interview'],
+        ['accepted', 'Accepted'], ['closed', 'Not pursuing'],
+    ];
+    function isoDateOffset(days) { const d = new Date(Date.now() + days * 86400000); return d.toISOString().slice(0, 10); }
+    function displayDate(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return '';
+        const d = new Date(`${value}T12:00:00`);
+        return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    }
+    function applicantProgress() {
+        const p = state.profile && state.profile.applicant_progress;
+        return p && typeof p === 'object' ? p : { tasks: {}, prerequisites: {}, programs: [], shadowing_hours: 0 };
+    }
+    function renderApplicantDashboard() {
+        const p = state.profile || {};
+        const progress = applicantProgress();
+        const incoming = p.lifecycle_stage === 'incoming_student';
+        const first = (p.full_name || '').trim().split(/\s+/)[0] || '';
+        if ($('applicant-kicker')) $('applicant-kicker').textContent = incoming ? 'INCOMING STUDENT' : 'APPLICATION JOURNEY';
+        if ($('applicant-greeting')) $('applicant-greeting').textContent = incoming
+            ? `${first ? `${first}, y` : 'Y'}ou are on your way`
+            : `${first ? `${first}, y` : 'Y'}our path to AA school`;
+        if ($('applicant-subtitle')) $('applicant-subtitle').textContent = incoming
+            ? 'Use this time to prepare for the transition. Your student dashboard opens automatically when school begins.'
+            : 'Keep the moving pieces in one calm, private workspace.';
+        const commitTop = $('applicant-commit-top');
+        if (commitTop) commitTop.textContent = incoming ? 'Edit commitment' : 'I committed to a program';
+
+        const hero = $('applicant-status-card');
+        if (hero) {
+            if (incoming) {
+                const start = displayDate(p.matriculation_date);
+                const days = p.matriculation_date ? Math.max(0, Math.ceil((Date.parse(`${p.matriculation_date}T12:00:00`) - Date.now()) / 86400000)) : null;
+                hero.innerHTML = `<div><div class="applicant-kicker">COMMITMENT RECORDED</div><h3>${escapeHtml(p.training_program || 'Your AA program')}</h3><p class="sub">Your application tracker stays available while you prepare. On ${escapeHtml(start || 'your matriculation date')}, your account will enter the student experience automatically.</p><div class="applicant-hero-meta"><span>${days == null ? 'Start date pending' : days === 0 ? 'Student tools open today' : `${days} day${days === 1 ? '' : 's'} until matriculation`}</span>${p.graduation_date ? `<span>Expected graduation ${escapeHtml(displayDate(p.graduation_date))}</span>` : ''}</div></div><button class="btn ghost" type="button" onclick="MACPrep.openCommitmentModal()">Update details</button>`;
+            } else {
+                const done = APPLICANT_TASKS.filter(([key]) => progress.tasks && progress.tasks[key]).length;
+                hero.innerHTML = `<div><div class="applicant-kicker">YOUR APPLICATION HOME</div><h3>Build a clear plan, one decision at a time</h3><p class="sub">MACPrep keeps this workspace free. Track your own progress here, then verify requirements and deadlines with each program before you apply.</p><div class="applicant-hero-meta"><span>${done} of ${APPLICANT_TASKS.length} planning steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div><button class="btn" type="button" onclick="MACPrep.openCommitmentModal()">I committed to a program</button>`;
+            }
+        }
+        if ($('applicant-cycle')) $('applicant-cycle').value = progress.target_cycle || '';
+        if ($('applicant-shadowing-hours')) $('applicant-shadowing-hours').value = Number(progress.shadowing_hours) || 0;
+        const tasks = $('applicant-tasks');
+        if (tasks) tasks.innerHTML = APPLICANT_TASKS.map(([key, label]) => {
+            const checked = !!(progress.tasks && progress.tasks[key]);
+            return `<label class="applicant-task${checked ? ' is-done' : ''}"><input type="checkbox" data-app-task="${key}" ${checked ? 'checked' : ''} onchange="MACPrep.toggleApplicantTask(this)"><span>${escapeHtml(label)}</span></label>`;
+        }).join('');
+        const prereqs = $('applicant-prerequisites');
+        if (prereqs) prereqs.innerHTML = APPLICANT_PREREQUISITES.map(([key, label]) => {
+            const current = (progress.prerequisites && progress.prerequisites[key]) || 'not_started';
+            return `<div class="applicant-prereq-name">${escapeHtml(label)}</div><select data-app-prereq="${key}" aria-label="${escapeHtml(label)} status">${APPLICANT_PREREQ_STATES.map(([value, text]) => `<option value="${value}" ${current === value ? 'selected' : ''}>${text}</option>`).join('')}</select>`;
+        }).join('');
+        renderApplicantPrograms(progress.programs || []);
+    }
+    function toggleApplicantTask(input) {
+        const row = input && input.closest('.applicant-task');
+        if (row) row.classList.toggle('is-done', !!input.checked);
+    }
+    function renderApplicantPrograms(programs) {
+        const root = $('applicant-programs'); if (!root) return;
+        root.innerHTML = programs.length ? programs.map((program, index) => `<div class="applicant-program-row" data-app-program-row>
+            <input type="text" maxlength="120" value="${escapeHtml(program.name || '')}" aria-label="Program ${index + 1} name">
+            <select aria-label="Program ${index + 1} status">${APPLICANT_PROGRAM_STATES.map(([value, text]) => `<option value="${value}" ${program.status === value ? 'selected' : ''}>${text}</option>`).join('')}</select>
+            <button class="btn ghost" type="button" title="Remove program" aria-label="Remove ${escapeHtml(program.name || 'program')}" onclick="MACPrep.removeApplicantProgram(this)">&times;</button>
+        </div>`).join('') : '<div class="applicant-program-empty">Add programs as you research them. This list is private to your account.</div>';
+    }
+    function addApplicantProgram() {
+        const name = (($('applicant-program-name') && $('applicant-program-name').value) || '').trim();
+        const status = ($('applicant-program-status') && $('applicant-program-status').value) || 'researching';
+        if (!name) { toast('Enter a program and campus first.'); return; }
+        const rows = Array.from(document.querySelectorAll('[data-app-program-row]'));
+        if (rows.length >= 15) { toast('The tracker can hold up to 15 programs.'); return; }
+        if (rows.some((row) => (row.querySelector('input')?.value || '').trim().toLowerCase() === name.toLowerCase())) { toast('That program is already in your tracker.'); return; }
+        const programs = rows.map((row) => ({ name: row.querySelector('input')?.value || '', status: row.querySelector('select')?.value || 'researching' }));
+        programs.push({ name, status }); renderApplicantPrograms(programs);
+        $('applicant-program-name').value = '';
+    }
+    function removeApplicantProgram(button) {
+        const row = button && button.closest('[data-app-program-row]');
+        if (row) row.remove();
+        if (!document.querySelector('[data-app-program-row]')) renderApplicantPrograms([]);
+    }
+    function readApplicantProgress() {
+        const tasks = {}, prerequisites = {};
+        document.querySelectorAll('[data-app-task]').forEach((el) => { tasks[el.dataset.appTask] = !!el.checked; });
+        document.querySelectorAll('[data-app-prereq]').forEach((el) => { prerequisites[el.dataset.appPrereq] = el.value; });
+        const programs = Array.from(document.querySelectorAll('[data-app-program-row]')).map((row) => ({
+            name: (row.querySelector('input')?.value || '').trim(), status: row.querySelector('select')?.value || 'researching',
+        })).filter((entry) => entry.name);
+        return {
+            target_cycle: (($('applicant-cycle') && $('applicant-cycle').value) || '').trim(),
+            shadowing_hours: Number(($('applicant-shadowing-hours') && $('applicant-shadowing-hours').value) || 0),
+            tasks, prerequisites, programs,
+        };
+    }
+    async function saveApplicantProgress() {
+        const btn = $('applicant-save-btn'), msg = $('applicant-save-msg');
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+        if (msg) { msg.style.color = 'var(--muted)'; msg.textContent = ''; }
+        try {
+            const { resp, data } = await apiJSON('/api/user/applicant-progress', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ progress: readApplicantProgress() }) });
+            if (!resp.ok) throw new Error(data.error || 'Could not save your tracker.');
+            if (state.profile) state.profile.applicant_progress = data.applicant_progress;
+            renderApplicantDashboard();
+            if (msg) { msg.style.color = 'var(--good)'; msg.textContent = 'Saved'; }
+        } catch (error) {
+            if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = error.message; }
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Save application tracker'; }
+        }
+    }
+
+    function closeCommitmentModal() { const o = $('commitment-overlay'); if (o) o.remove(); state._commitmentPromptOpen = false; }
+    function onCommitProgramChange() {
+        const sel = $('commit-program'), wrap = $('commit-program-other-wrap');
+        if (wrap) wrap.classList.toggle('hidden', !(sel && sel.value === PROGRAM_NOT_LISTED));
+    }
+    function openCommitmentModal() {
+        if (state._commitmentPromptOpen) return;
+        const p = state.profile || {};
+        if (!['applicant', 'incoming_student'].includes(p.lifecycle_stage)) return;
+        closeApplicantCheckIn();
+        state._commitmentPromptOpen = true;
+        const inp = 'width:100%;box-sizing:border-box;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin:4px 0 12px;font-size:14px;';
+        const wrap = document.createElement('div'); wrap.id = 'commitment-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2890;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeCommitmentModal(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="commit-title" style="box-sizing:border-box;width:100%;max-width:470px;max-height:90vh;overflow:auto;padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);">
+            <div class="applicant-kicker">YOUR NEXT CHAPTER</div><h2 id="commit-title" style="margin:6px 0 5px;font-size:22px;">Starting AA school?</h2><p class="sub" style="margin:0 0 16px;">Congratulations. Tell us where you committed, and we will prepare your student dashboard without changing your premium access.</p>
+            <label>Program and campus</label><select id="commit-program" onchange="MACPrep.onCommitProgramChange()" style="${inp}">${programOptions(p.training_program || '')}</select>
+            <div id="commit-program-other-wrap" class="hidden"><label>Program name</label><input id="commit-program-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}"></div>
+            <div class="grid cols-2"><div><label>Expected matriculation date</label><input id="commit-matriculation" type="date" value="${p.matriculation_date || ''}" style="${inp}"></div><div><label>Expected graduation date</label><input id="commit-graduation" type="date" value="${p.graduation_date || ''}" style="${inp}"></div></div>
+            <label>Target board date <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></label><input id="commit-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
+            <div style="display:flex;gap:10px;"><button class="btn ghost" type="button" onclick="MACPrep.closeCommitmentModal()">Cancel</button><button class="btn" id="commit-save" type="button" style="flex:1;" onclick="MACPrep.submitCommitment()">Save commitment</button></div><div id="commit-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div>
+        </div>`;
+        document.body.appendChild(wrap); onCommitProgramChange();
+    }
+    async function submitCommitment() {
+        const btn = $('commit-save'), msg = $('commit-msg');
+        let program = ($('commit-program') && $('commit-program').value) || '';
+        let unlisted = false;
+        if (program === PROGRAM_NOT_LISTED) { program = (($('commit-program-other') && $('commit-program-other').value) || '').trim(); unlisted = true; }
+        const body = { action: 'commit', training_program: program, program_unlisted: unlisted, matriculation_date: $('commit-matriculation')?.value || '', graduation_date: $('commit-graduation')?.value || '', target_exam_date: $('commit-exam')?.value || null };
+        if (!program || !body.matriculation_date || !body.graduation_date) { if (msg) msg.textContent = 'Add your program, matriculation date, and expected graduation date.'; return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+        try {
+            const { resp, data } = await apiJSON('/api/user/lifecycle', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+            if (!resp.ok) throw new Error(data.error || 'Could not save your commitment.');
+            await loadProfile(); closeCommitmentModal();
+            if (boardPrepEnabled()) { setLoading(true); try { await Promise.all([loadQuestions(), loadQotd()]); } finally { setLoading(false); } go('dashboard'); }
+            else { go('applicant'); }
+            toast(data.lifecycle_stage === 'student' ? 'Your student dashboard is ready.' : 'Commitment saved. Your dashboard is ready for the transition.', 'ok');
+        } catch (error) { if (msg) msg.textContent = error.message; if (btn) { btn.disabled = false; btn.textContent = 'Save commitment'; } }
+    }
+
+    function closeApplicantCheckIn() { const o = $('applicant-checkin-overlay'); if (o) o.remove(); state._applicantPromptOpen = false; }
+    function maybePromptApplicantCheckIn() {
+        if (!state.token || !state.profile || !state.profile.lifecycle_checkin_due || state._applicantPromptOpen) return false;
+        if (state._namePromptOpen || state._credPromptOpen || state._commitmentPromptOpen || state._reviewPromptOpen) return false;
+        state._applicantPromptOpen = true;
+        const wrap = document.createElement('div'); wrap.id = 'applicant-checkin-overlay';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2860;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+        wrap.onclick = (e) => { if (e.target === wrap) closeApplicantCheckIn(); };
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="app-check-title" style="box-sizing:border-box;width:100%;max-width:440px;padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);"><div class="applicant-kicker">A GENTLE CHECK-IN</div><h2 id="app-check-title" style="margin:6px 0 5px;font-size:22px;">Starting AA school?</h2><p class="sub" style="margin:0 0 16px;">Congratulations if you have committed. Tell us where, and we will prepare your student dashboard.</p><button class="btn" type="button" style="width:100%;margin-bottom:9px;" onclick="MACPrep.openCommitmentModal()">I committed to a program</button><button class="btn ghost" type="button" style="width:100%;margin-bottom:14px;" onclick="MACPrep.applicantStillApplying(this)">Still applying</button><label for="app-pause-date">Pause until my next application cycle</label><div style="display:flex;gap:8px;margin-top:5px;"><input id="app-pause-date" type="date" value="${isoDateOffset(180)}" style="min-width:0;flex:1;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);"><button class="btn ghost" type="button" onclick="MACPrep.pauseApplicantCycle(this)">Pause</button></div><div id="app-check-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div></div>`;
+        document.body.appendChild(wrap); return true;
+    }
+    async function applicantCheckInAction(action, button, extra) {
+        if (button) button.disabled = true;
+        const msg = $('app-check-msg');
+        try {
+            const { resp, data } = await apiJSON('/api/user/lifecycle', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ action, ...(extra || {}) }) });
+            if (!resp.ok) throw new Error(data.error || 'Could not update your check-in.');
+            if (state.profile) state.profile.lifecycle_checkin_due = false;
+            closeApplicantCheckIn(); toast(action === 'pause_cycle' ? 'Check-in paused until the date you chose.' : 'Got it. Keep going at your pace.', 'ok');
+        } catch (error) { if (msg) msg.textContent = error.message; if (button) button.disabled = false; }
+    }
+    function applicantStillApplying(button) { return applicantCheckInAction('still_applying', button); }
+    function pauseApplicantCycle(button) { return applicantCheckInAction('pause_cycle', button, { snooze_until: $('app-pause-date')?.value || '' }); }
 
     function maybePromptForName() {
         if (!state.token || !state.profile || state._namePromptOpen || state._credPromptOpen) return;
@@ -3185,17 +3429,11 @@
         wrap.onclick = (e) => { if (e.target === wrap) closeNamePrompt(); };
         wrap.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;margin-bottom:4px;">Add your name</div>
-            <div class="sub" style="font-size:13px;margin-bottom:16px;">MACPrep now has a leaderboard. You'll appear only as your <strong>first name + last initial</strong> (e.g. &ldquo;Jordan L.&rdquo;) — never your full name or email.</div>
+            <div class="sub" style="font-size:13px;margin-bottom:16px;">Add your name so your account and application tracker feel like yours. If you later use the student leaderboard, it shows only your <strong>first name + last initial</strong> — never your full name or email.</div>
             <div style="display:flex;gap:10px;margin-bottom:12px;">
                 <div style="flex:1;"><label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">FIRST NAME</label><input id="np-first" type="text" autocomplete="given-name" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin-top:4px;"></div>
                 <div style="flex:1;"><label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">LAST NAME</label><input id="np-last" type="text" autocomplete="family-name" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin-top:4px;"></div>
             </div>
-            <label class="mono" style="font-size:10.5px;letter-spacing:.5px;color:var(--muted);">CREDENTIAL (OPTIONAL)</label>
-            <select id="np-cred" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);margin:4px 0 16px;font-size:14px;">
-                <option value="">Prefer not to say</option>
-                <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
-                <option value="CAA">CAA — Certified Anesthesiologist Assistant</option>
-            </select>
             <div style="display:flex;gap:10px;">
                 <button class="btn ghost" style="flex:none;" onclick="MACPrep.closeNamePrompt()">Not now</button>
                 <button class="btn" style="flex:1;" onclick="MACPrep.saveNamePrompt(this)">Save</button>
@@ -3203,20 +3441,17 @@
             <div id="np-msg" class="mono" style="font-size:12px;color:var(--bad);margin-top:8px;text-align:center;"></div>
         </div>`;
         document.body.appendChild(wrap);
-        if (state.profile && state.profile.credential && ['SAA', 'CAA'].includes(state.profile.credential)) { const c = $('np-cred'); if (c) c.value = state.profile.credential; }
         setTimeout(() => { const f = $('np-first'); if (f) f.focus(); }, 40);
     }
     function closeNamePrompt() { const o = $('name-prompt-overlay'); if (o) o.remove(); state._namePromptOpen = false; }
     async function saveNamePrompt(btn) {
         const first = (($('np-first') && $('np-first').value) || '').trim();
         const last = (($('np-last') && $('np-last').value) || '').trim();
-        const credential = ($('np-cred') && $('np-cred').value) || '';
         const msg = $('np-msg');
         if (!first || !last) { if (msg) msg.textContent = 'Please enter your first and last name.'; return; }
         if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
         try {
             const body = { full_name: (first + ' ' + last).replace(/\s+/g, ' ').trim() };
-            if (credential) body.credential = credential;
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
             if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
             await loadProfile();
@@ -3234,7 +3469,7 @@
     // never if they've already reviewed; "maybe later" re-asks monthly.
     function maybePromptReview() {
         if (!state.token || !state.profile || !state.profile.review_prompt_due) return false;
-        if (state._namePromptOpen || state._credPromptOpen || state._reviewPromptOpen) return false;
+        if (state._namePromptOpen || state._credPromptOpen || state._commitmentPromptOpen || state._applicantPromptOpen || state._reviewPromptOpen) return false;
         openReviewPrompt();
         return true;
     }
@@ -4701,21 +4936,35 @@
     // ---- profile ----------------------------------------------------------
     function renderProfile() {
         const p = state.profile || {};
+        const stage = p.lifecycle_stage || '';
+        const boardAccess = !!p.board_prep_enabled;
         $('prof-email').textContent = p.email || '—';
         const tier = $('prof-tier');
         if (p.is_admin) tier.innerHTML = '<span class="badge admin">ADMIN</span> <span class="badge premium">PREMIUM</span>';
         else if (p.premium_unlocked) tier.innerHTML = '<span class="badge premium">PREMIUM</span> <span class="mono" style="font-size:11px;color:var(--muted);">Full access unlocked</span>';
         else tier.innerHTML = '<span class="badge free">FREE</span>';
-        $('prof-upgrade-wrap').classList.toggle('hidden', !!(p.premium_unlocked || p.is_admin));
+        $('prof-upgrade-wrap').classList.toggle('hidden', !boardAccess || !!(p.premium_unlocked || p.is_admin));
 
         $('prof-fullname').value = p.full_name || '';
+        const stageLabels = { applicant: 'Applying to AA school', incoming_student: 'Incoming AA student', student: 'Currently enrolled in AA school', practicing: 'Practicing CAA' };
+        if ($('prof-stage')) $('prof-stage').textContent = stageLabels[stage] || 'Finish account setup';
+        const stageAction = $('prof-stage-action');
+        if (stageAction) { stageAction.classList.toggle('hidden', !['applicant', 'incoming_student'].includes(stage)); stageAction.textContent = stage === 'incoming_student' ? 'Edit commitment' : 'I committed to a program'; }
         $('prof-credential').value = p.credential || '';
         { const _pp = $('prof-program'); if (_pp) _pp.innerHTML = programOptions(p.training_program || ''); const _pw = $('prof-other-wrap'); if (_pw) _pw.classList.add('hidden'); const _po = $('prof-other'); if (_po) _po.value = ''; }
         if ($('prof-grad')) $('prof-grad').value = p.graduation_date || '';
-        onProfCredChange();
         $('prof-examdate').value = p.target_exam_date || '';
         $('prof-phone').value = p.phone || '';
+        const applicant = stage === 'applicant', incoming = stage === 'incoming_student';
+        if ($('prof-credential-wrap')) $('prof-credential-wrap').classList.toggle('hidden', applicant || incoming);
+        if ($('prof-program-wrap')) $('prof-program-wrap').classList.toggle('hidden', applicant);
+        if ($('prof-grad-wrap')) $('prof-grad-wrap').classList.toggle('hidden', !['incoming_student', 'student'].includes(stage));
+        if ($('prof-exam-wrap')) $('prof-exam-wrap').classList.toggle('hidden', applicant);
+        if ($('prof-program')) $('prof-program').disabled = incoming;
+        if ($('prof-grad')) $('prof-grad').disabled = incoming;
+        if ($('prof-examdate')) $('prof-examdate').disabled = incoming;
         refreshRemindersUI();
+        if ($('reminders-card') && !boardAccess) $('reminders-card').classList.add('hidden');
     }
 
     // ---- Push study reminders (PWA) ---------------------------------------
@@ -4860,6 +5109,7 @@
 
     async function refreshRemindersUI() {
         const card = $('reminders-card'); if (!card) return;
+        if (!boardPrepEnabled()) { card.classList.add('hidden'); return; }
         const btn = $('reminders-btn'), msg = $('reminders-msg');
         if (isNativeApp()) {
             const cfg = await pushConfig();
@@ -4880,6 +5130,7 @@
     }
     async function toggleReminders() {
         const btn = $('reminders-btn'), msg = $('reminders-msg');
+        if (!boardPrepEnabled()) return;
         if (isNativeApp()) {
             const p = nativePush();
             const cfg = await pushConfig();
@@ -4927,30 +5178,32 @@
         finally { if (btn) btn.disabled = false; refreshRemindersUI(); }
     }
 
-    // Show the graduation-date field only for students (SAA) in the profile form.
+    // Legacy export kept for older inline bindings; profile visibility follows lifecycle stage.
     function onProfCredChange() {
-        const sel = $('prof-credential'), w = $('prof-grad-wrap');
-        if (w) w.style.display = (sel && sel.value === 'SAA') ? '' : 'none';
+        const stage = state.profile && state.profile.lifecycle_stage;
+        const w = $('prof-grad-wrap');
+        if (w) w.classList.toggle('hidden', !['incoming_student', 'student'].includes(stage));
     }
     async function saveProfile() {
         const btn = $('prof-save-btn'); const msg = $('prof-save-msg');
         btn.disabled = true; msg.textContent = '';
-        const isSAA = $('prof-credential').value === 'SAA';
-        let program = $('prof-program').value;
+        const stage = (state.profile && state.profile.lifecycle_stage) || '';
+        let program = ($('prof-program') && $('prof-program').value) || '';
         let programUnlisted = false;
-        if (program === PROGRAM_NOT_LISTED) {
+        if (['student', 'practicing'].includes(stage) && program === PROGRAM_NOT_LISTED) {
             const other = (($('prof-other') && $('prof-other').value) || '').trim();
             if (!other) { msg.style.color = 'var(--bad)'; msg.textContent = 'Type your program name so we can add it.'; btn.disabled = false; return; }
             program = other; programUnlisted = true;
         }
         const body = {
             full_name: $('prof-fullname').value.trim(),
-            credential: $('prof-credential').value,
-            training_program: (program || '').trim(),
-            graduation_date: (isSAA && $('prof-grad')) ? ($('prof-grad').value || '') : null,
-            target_exam_date: $('prof-examdate').value || '',
             phone: $('prof-phone').value.trim(),
         };
+        if (['student', 'practicing'].includes(stage)) {
+            body.training_program = (program || '').trim();
+            body.target_exam_date = $('prof-examdate').value || '';
+        }
+        if (stage === 'student') body.graduation_date = $('prof-grad').value || '';
         if (programUnlisted) body.program_unlisted = true;
         try {
             const { resp, data } = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
@@ -5695,19 +5948,19 @@
 
     // ---- Command palette (⌘K / Ctrl-K) -----------------------------------
     const CMDK = [
-        { icon: '▶', label: 'Start recommended session', hint: 'smart mix', run: () => startRecommended(), auth: true },
-        { icon: '📊', label: 'Take a diagnostic', hint: 'current practice level', run: () => startDiagnostic(), auth: true },
-        { icon: '🎯', label: 'Smart review — weak areas + missed', run: () => smartReview(), auth: true },
-        { icon: '↩', label: 'Redo my missed questions', run: () => redoMissed(), auth: true },
-        { icon: '☆', label: 'Review my flagged questions', run: () => startFlagged(), auth: true },
-        { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true },
-        { icon: '❗', label: 'Review my confident misses', hint: 'sure but wrong', run: () => reviewConfidentMisses(), auth: true },
+        { icon: '▶', label: 'Start recommended session', hint: 'smart mix', run: () => startRecommended(), auth: true, boardPrep: true },
+        { icon: '📊', label: 'Take a diagnostic', hint: 'current practice level', run: () => startDiagnostic(), auth: true, boardPrep: true },
+        { icon: '🎯', label: 'Smart review — weak areas + missed', run: () => smartReview(), auth: true, boardPrep: true },
+        { icon: '↩', label: 'Redo my missed questions', run: () => redoMissed(), auth: true, boardPrep: true },
+        { icon: '☆', label: 'Review my flagged questions', run: () => startFlagged(), auth: true, boardPrep: true },
+        { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true, boardPrep: true },
+        { icon: '❗', label: 'Review my confident misses', hint: 'sure but wrong', run: () => reviewConfidentMisses(), auth: true, boardPrep: true },
         { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
-        { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true },
-        { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true },
+        { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true, boardPrep: true },
+        { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true, boardPrep: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
         { icon: '🛠', label: 'Admin review queue', run: () => reviewQueue(), admin: true },
-        { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true, hideNative: true },
+        { icon: '⭐', label: 'Upgrade to full access — $100', run: () => startCheckout(), auth: true, hidePremium: true, hideNative: true, boardPrep: true },
         { icon: '🚪', label: 'Sign out', run: () => signOut(), auth: true },
         { icon: '🔑', label: 'Log in', run: () => { window.location.href = '/login.html'; }, guest: true },
     ];
@@ -5721,6 +5974,7 @@
             if (c.admin) return isAdmin;
             if (c.guest) return !authed;
             if (c.auth && !authed) return false;
+            if (c.boardPrep && !boardPrepEnabled()) return false;
             if (c.hidePremium && isPremium) return false;
             if (c.hideNative && isNativeApp()) return false;
             return true;
@@ -5759,6 +6013,9 @@
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, beginVoucherRename, cancelVoucherRename, renameVoucherGroup, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
+        renderApplicantDashboard, toggleApplicantTask, addApplicantProgram, removeApplicantProgram, saveApplicantProgress,
+        openCommitmentModal, closeCommitmentModal, onCommitProgramChange, submitCommitment,
+        applicantStillApplying, pauseApplicantCycle, closeApplicantCheckIn,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
         startRecommended, planSelectDay, planShiftWeek, startPlanTask, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
@@ -5793,7 +6050,7 @@
             ['levelup-overlay', closeLevelUp], ['upgrade-overlay', closeUpgradeModal],
             ['boss-overlay', closeBossPicker], ['arcade-overlay', closeArcadePicker],
             ['title-overlay', closeTitlePicker],
-            ['name-prompt-overlay', closeNamePrompt], ['cred-prompt-overlay', closeCredentialPrompt], ['ce-overlay', closeCriticalEvents], ['qsearch-overlay', closeQuestionSearch],
+            ['name-prompt-overlay', closeNamePrompt], ['cred-prompt-overlay', closeCredentialPrompt], ['commitment-overlay', closeCommitmentModal], ['applicant-checkin-overlay', closeApplicantCheckIn], ['ce-overlay', closeCriticalEvents], ['qsearch-overlay', closeQuestionSearch],
             ['wn-popup', closeWhatsNewPopup], ['whatsnew-panel', closeWhatsNew], ['mock-picker', closeMockPicker],
             ['duel-overlay', closeDuelPicker], ['specialty-picker', closeSpecialtyPicker], ['cmdk', closeCmdk],
             ['calc-modal', toggleCalc], ['labs-modal', toggleLabs],
@@ -5883,6 +6140,7 @@
     // and #redeem deep links — so cohort codes never get carried into Stripe checkout).
     function goRedeem() {
         if (!state.token) { try { showSignin(); } catch (e) {} toast('Sign in first — your class-code box is on your Dashboard.', 'ok'); return; }
+        if (!boardPrepEnabled()) { go('applicant'); toast('Class and cohort codes become relevant when your student dashboard opens.'); return; }
         go('dashboard');
         setTimeout(() => {
             const el = $('redeem'); const inp = $('redeem-code');
@@ -5897,6 +6155,7 @@
             toast('Sign in first — full access is attached to your MACPrep account.', 'ok');
             return;
         }
+        if (!boardPrepEnabled()) { go('applicant'); toast('Board-prep access opens when you begin AA school.'); return; }
         go('dashboard');
         if (state.profile && (state.profile.premium_unlocked || state.profile.is_admin)) {
             toast('This account already has full access.', 'ok');

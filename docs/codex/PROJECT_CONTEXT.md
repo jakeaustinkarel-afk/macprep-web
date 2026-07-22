@@ -192,7 +192,9 @@ Domain blueprint from `BLUEPRINT.md`:
 Strategic boundaries:
 - Do not dilute MACPrep into a generic AI question bank or standardized-test-prep product. The defensible value is AA-specific clinical judgment, trusted source trails, and question quality.
 - Do not default to CRNA/SRNA expansion. Jake has identified CAA/CRNA political friction as a reason not to pursue that direction.
-- The broader expansion concept is the AA professional lifecycle: aspiring-AA preparation and interview/readiness resources, SAA board prep, then practicing-CAA recertification resources, CME, and eventual job-resource referrals. This is an explored direction, not an approved build roadmap.
+- The first AA-lifecycle expansion is implemented: applicants receive free application-planning resources, incoming students transition into the SAA experience on their matriculation date, and student accounts transition into the practicing CAA experience on their stored graduation date so professional and CME resources can be timed appropriately. This is a product lifecycle label, not independent verification of certification or licensure. `lifecycle_stage` remains separate from premium entitlement so applicants never enter SAA benchmarks or cohort analytics.
+- Admissions preparation is a free relationship-building surface, not a paid coaching product. MACPrep should point applicants toward primary program/CASAA sources and credible independent resources rather than claim admissions expertise it does not have.
+- Later lifecycle opportunities still require separate validation: richer rotation workbooks, practicing-CAA CME, and eventual job-resource referrals are not implied by the applicant launch.
 - A CAA CME collaboration with Patrick Flaherty is being explored. Confirm scope, commercial terms, accredited-provider requirements, and compliance before making public claims or implementing related flows.
 - A later jobs-resource referral to BagMask has been discussed; it is not a commitment to build a job board.
 

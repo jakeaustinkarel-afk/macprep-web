@@ -4,11 +4,13 @@ _Original audit prepared June 19, 2026. Current remediation status added July 18
 
 This document is the master list of what's broken and how to fix it, ranked by severity. Items marked **[VERIFIED]** were confirmed directly against the live database or by reading the executing code path, not inferred.
 
-## Current status — July 18, 2026
+## Current status — July 22, 2026
 
 The June findings below are retained as historical evidence, not a description of the current production architecture. The original critical failures are resolved: authentication exists; profiles use the canonical `user_profiles` table; the browser does not receive answer keys before grading; public files are explicitly allowlisted; server-side entitlements reconcile Stripe and verified Store purchases; and mock submissions, voucher claims, review edits, and learning updates use database transactions or idempotency keys.
 
 This hardening pass also moved browser sessions to HttpOnly cookies with origin checks on cookie-authenticated mutations, added shared database rate limits for sensitive routes, enabled Supabase leaked-password and current-password protections, established minimum peer-sample thresholds, and added CI plus HTTP-surface regression tests. The Supabase security advisor reports no warnings; its remaining informational notices are deliberate RLS-with-no-policy tables that deny browser access and are used only through the service-role server.
+
+The profile model now separates account lifecycle (`applicant`, `incoming_student`, `student`, `practicing`), professional credential, and premium entitlement. Applicant and incoming-student accounts are excluded from question, grading, notebook, duel, leaderboard, SAA benchmark, and faculty cohort paths. Incoming students transition on matriculation, and student accounts transition to the practicing CAA lifecycle on their stored graduation date so professional and CME resources can be timed appropriately. That product lifecycle label is not independent verification of certification or licensure.
 
 **Residual engineering risks:**
 - There is still no protected staging environment with seeded Supabase data and a signed Stripe webhook end-to-end test.

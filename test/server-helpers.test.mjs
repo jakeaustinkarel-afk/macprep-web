@@ -10,7 +10,9 @@ import {
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
     isValidProfileDate,
+    lifecycleCredential,
     mobileAccountHash,
+    normalizeLifecycleStage,
     normalizeTrainingProgram,
     normalizeVoucherLabel,
     readCookieHeader,
@@ -20,6 +22,7 @@ import {
     normalizeMobileStore,
     resolveFacultyScope,
     sanitizeAnalyticsMeta,
+    sanitizeApplicantProgress,
     selectUnansweredFreePool,
     shouldReportDatabaseHealthFailure,
     summarizeProductUsage,
@@ -136,16 +139,77 @@ test('analytics metadata rejects arbitrary and identifying fields', () => {
     }), { platform: 'web' });
 });
 
-test('registration requires a real AA program and preserves a clean program label', () => {
+test('registration separates lifecycle stage, credential, and program requirements', () => {
     assert.equal(normalizeTrainingProgram('  Nova   Southeastern University (Tampa)  '), 'Nova Southeastern University (Tampa)');
     assert.equal(normalizeTrainingProgram('Emory\u0000\nUniversity'), 'Emory University');
-    assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: '' }), 'Please select your AA program.');
-    assert.equal(registrationProfileError({ credential: 'CAA', graduationDate: null, trainingProgram: 'Program not listed' }), 'Please select your AA program.');
-    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: null, trainingProgram: 'Emory University' }), 'Students (SAA) must add a valid graduation date.');
-    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-02-30', trainingProgram: 'Emory University' }), 'Students (SAA) must add a valid graduation date.');
-    assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
+    assert.equal(normalizeLifecycleStage(' Applicant '), 'applicant');
+    assert.equal(normalizeLifecycleStage('aspiring'), null);
+    assert.equal(lifecycleCredential('applicant'), null);
+    assert.equal(lifecycleCredential('student'), 'SAA');
+    assert.equal(lifecycleCredential('practicing'), 'CAA');
+    assert.equal(registrationProfileError({ lifecycleStage: 'applicant', graduationDate: null, trainingProgram: '' }), '');
+    assert.equal(registrationProfileError({ lifecycleStage: 'incoming_student', graduationDate: null, trainingProgram: '' }), 'Please select where you are in your AA journey.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'practicing', graduationDate: null, trainingProgram: '' }), 'Please select your AA program.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'practicing', graduationDate: null, trainingProgram: 'Program not listed' }), 'Please select your AA program.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'student', graduationDate: null, trainingProgram: 'Emory University' }), 'Current AA students must add a valid expected graduation date.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'student', graduationDate: '2027-02-30', trainingProgram: 'Emory University' }), 'Current AA students must add a valid expected graduation date.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'student', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
     assert.equal(isValidProfileDate('2028-02-29'), true);
     assert.equal(isValidProfileDate('2027-02-29'), false);
+});
+
+test('applicant progress accepts only bounded planning data', () => {
+    const clean = sanitizeApplicantProgress({
+        target_cycle: '2028', shadowing_hours: 42.26,
+        tasks: { research_programs: true, hidden_admin_task: true },
+        prerequisites: { biology: 'complete', physics: 'invented' },
+        programs: [
+            { name: '  Emory   University  ', status: 'submitted', secret: 'drop me' },
+            { name: '<script>alert(1)</script>', status: 'not-real' },
+            { name: '', status: 'accepted' },
+        ],
+    });
+    assert.equal(clean.target_cycle, '2028');
+    assert.equal(clean.shadowing_hours, 42.3);
+    assert.equal(clean.tasks.research_programs, true);
+    assert.equal(Object.hasOwn(clean.tasks, 'hidden_admin_task'), false);
+    assert.equal(clean.prerequisites.biology, 'complete');
+    assert.equal(clean.prerequisites.physics, 'not_started');
+    assert.deepEqual(clean.programs, [
+        { name: 'Emory University', status: 'submitted' },
+        { name: '<script>alert(1)</script>', status: 'researching' },
+    ]);
+});
+
+test('applicant lifecycle remains excluded while dated transitions preserve entitlement', async () => {
+    const [server, migration, datedMigration, app, updates] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260722223000_applicant_lifecycle.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260722231500_auto_graduation_lifecycle.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../updates.html', import.meta.url)), 'utf8'),
+    ]);
+    const guardedRoutes = [
+        '/api/questions', '/api/study-session', '/api/questions/search', '/api/exam-export',
+        '/api/flashcards', '/api/critical-events', '/api/gamification', '/api/grade',
+        '/api/grade-batch', '/api/leaderboard', '/api/user/flag', '/api/user/flashcard',
+        '/api/duel/create', '/api/user/note', '/api/user/notebook',
+    ];
+    for (const route of guardedRoutes) {
+        const start = server.indexOf(`'${route}'`);
+        assert.ok(start >= 0, `missing route ${route}`);
+        const next = server.indexOf('\napp.', start + route.length);
+        const section = server.slice(start, next < 0 ? server.length : next);
+        assert.match(section, /requireBoardPrepLifecycle/, `${route} must enforce lifecycle server-side`);
+    }
+    assert.match(migration, /p\.lifecycle_stage = 'student'/);
+    assert.match(migration, /where lifecycle_stage in \('incoming_student', 'student', 'practicing'\)/);
+    assert.match(datedMigration, /where lifecycle_stage = 'incoming_student'[\s\S]*matriculation_date <= current_date/);
+    assert.match(datedMigration, /where lifecycle_stage = 'student'[\s\S]*graduation_date <= current_date/);
+    assert.match(datedMigration, /lifecycle_stage = 'practicing',[\s\S]*credential = 'CAA'/);
+    assert.doesNotMatch(datedMigration, /account_tier|premium_unlocked|stripe|voucher/i);
+    assert.match(server, /startLifecycleScheduler\(\)/);
+    assert.match(app + updates, /moves? into the practicing CAA experience on graduation/i);
 });
 
 test('cohort voucher labels normalize safely for generation and renaming', () => {
@@ -521,7 +585,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'question-wording-audit-20260722\.1'/);
+    assert.match(server, /build: 'applicant-lifecycle-20260722\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

@@ -11,6 +11,7 @@ Last reviewed: 2026-07-18.
 - [x] Applied atomic mock-exam, entitlement-ledger, transactional review/learning, and distributed-rate-limit migrations to the linked Supabase project on 2026-07-18.
 - [x] Moved browser authentication to HttpOnly cookies, enabled 12-character and leaked-password protections in Supabase Auth, and added CSRF/static-surface regression coverage.
 - [x] Added CI, browser/native capability handshakes, idempotent purchase reconciliation, and latest-response practice/peer metrics with minimum sample thresholds.
+- [x] Added the applicant-to-CAA lifecycle model, free applicant planning dashboard, automatic matriculation and graduation transitions, and lifecycle-safe metrics/authorization. Graduation moves the account into practicing CAA resources for CME timing without changing premium entitlement.
 
 ## Next Engineering Slice
 
