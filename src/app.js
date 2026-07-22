@@ -905,8 +905,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 39;
+    const WHATS_NEW_VERSION = 40;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 22', title: 'Cohort code groups you can rename', desc: 'Admins can now rename an existing cohort-code group directly from the generator, making it easy to add a school, class year, or send year later without changing any code or claim history. MACPrep also prevents two group names from being merged by accident. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 22', title: 'More resilient availability monitoring', desc: 'MACPrep now handles brief database slowdowns without turning a momentary delay into a service incident, while repeated failures still trigger an operational alert. Slow health checks are also stopped cleanly instead of continuing in the background. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 21', title: 'Reported answers now stay aligned', desc: 'We reviewed every open question report and corrected the affected study records. Answer submissions now carry a stable choice identity and question revision, so an older open tab refreshes safely instead of grading the same answer text as a different letter after an editorial reorder. We also clarified the obstetric failed-intubation scenario and completed several behind-the-scenes reliability fixes. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 19', title: 'Balanced answer positions across the question bank', desc: 'Correct answers are now evenly distributed across recently added question batches, so a repeated letter pattern cannot give away the answer. We audited all 1,509 published questions while keeping every clinical choice, rationale, and citation unchanged. An in-progress session opened before this correction will restart once to ensure its choice order is current. Available on the web and current MACPrep mobile shell.' },
@@ -5241,14 +5242,23 @@
             if (!resp.ok || state.adminSurface !== 'cohort-codes') return;
             const fmtDate = (s) => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
             const vs = data.vouchers || [];
-            // group by cohort label so two cohorts never get intermixed (unlabeled sorts last)
-            const groups = {};
-            vs.forEach((v) => { const k = (v.label && v.label.trim()) || '— Unlabeled'; (groups[k] = groups[k] || []).push(v); });
-            const keys = Object.keys(groups).sort((a, b) => (a.startsWith('—') ? 1 : b.startsWith('—') ? -1 : a.localeCompare(b)));
+            // Group by the stored label; null remains distinct from every admin-entered name.
+            const groups = new Map();
+            vs.forEach((v) => {
+                const key = typeof v.label === 'string' && v.label.trim() ? v.label : null;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(v);
+            });
+            const entries = [...groups.entries()].sort(([a], [b]) => {
+                if (a === null) return 1;
+                if (b === null) return -1;
+                return a.localeCompare(b);
+            });
+            state.voucherGroups = entries.map(([label, rows]) => ({ label, count: rows.length }));
             const thc = 'padding:2px 10px 8px 0;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;';
             const header = `<tr style="text-align:left;border-bottom:1px solid var(--line);"><th style="${thc}">Code</th><th style="${thc}">Status</th><th style="${thc}">Generated</th><th style="${thc}">Claimed by</th></tr>`;
-            const groupHtml = keys.map((k) => {
-                const rows = groups[k];
+            const groupHtml = entries.map(([label, rows], index) => {
+                const displayLabel = label === null ? '— Unlabeled' : label.trim();
                 const avail = rows.filter((v) => !v.is_claimed).map((v) => v.voucher_key);
                 const claimed = rows.length - avail.length;
                 const body = rows.map((v) => `<tr>
@@ -5259,9 +5269,15 @@
                 const copyBtn = avail.length ? `<button class="btn ghost" style="font-size:11px;padding:5px 10px;" data-codes="${avail.join(' ')}" onclick="MACPrep.copyCodes(this)">Copy ${avail.length} available</button>` : '';
                 return `<div style="margin-top:16px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap;">
-                        <span style="font-weight:700;font-size:13.5px;">${escapeHtml(k)} <span class="mono" style="color:var(--muted);font-weight:400;font-size:11px;">${claimed}/${rows.length} claimed</span></span>
-                        ${copyBtn}
+                        <span style="font-weight:700;font-size:13.5px;">${escapeHtml(displayLabel)} <span class="mono" style="color:var(--muted);font-weight:400;font-size:11px;">${claimed}/${rows.length} claimed</span></span>
+                        <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><button class="btn ghost" style="font-size:11px;padding:5px 10px;" onclick="MACPrep.beginVoucherRename(${index})">Rename</button>${copyBtn}</span>
                     </div>
+                    <form id="voucher-rename-${index}" class="hidden" onsubmit="event.preventDefault();MACPrep.renameVoucherGroup(${index})" style="display:flex;gap:7px;align-items:center;margin:7px 0 10px;flex-wrap:wrap;">
+                        <input id="voucher-rename-input-${index}" type="text" maxlength="80" value="${escapeHtml(label || '')}" placeholder="e.g. Emory · Class of 2027 · Sent 2026" aria-label="New cohort group name" onkeydown="if(event.key==='Escape'){event.preventDefault();MACPrep.cancelVoucherRename(${index})}" style="flex:1;min-width:220px;box-sizing:border-box;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:13px;">
+                        <button id="voucher-rename-save-${index}" class="btn" type="submit" style="font-size:11px;padding:6px 11px;">Save</button>
+                        <button class="btn ghost" type="button" style="font-size:11px;padding:6px 11px;" onclick="MACPrep.cancelVoucherRename(${index})">Cancel</button>
+                        <span id="voucher-rename-msg-${index}" class="mono" role="status" style="font-size:11px;color:var(--bad);"></span>
+                    </form>
                     <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:8px 10px;"><table style="width:100%;font-size:13px;border-collapse:collapse;">${header}${body}</table></div>
                 </div>`;
             }).join('');
@@ -5269,7 +5285,7 @@
                 <p class="sub" style="margin:0 0 12px;">Generate codes for a class or cohort — <strong>label each batch</strong> so you never send the same code to two cohorts. Each code grants one premium unlock. <span class="mono" style="color:var(--muted);">${data.claimed}/${data.total} claimed</span></p>
                 <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                     <input id="voucher-count" type="number" min="1" max="200" value="10" title="How many codes" style="width:82px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);">
-                    <input id="voucher-label" type="text" maxlength="80" placeholder="Cohort / label — e.g. Emory Class of 2027" style="flex:1;min-width:200px;box-sizing:border-box;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
+                    <input id="voucher-label" type="text" maxlength="80" placeholder="e.g. Emory · Class of 2027 · Sent 2026" aria-label="Cohort group name" style="flex:1;min-width:200px;box-sizing:border-box;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
                     <button class="btn" onclick="MACPrep.generateVouchers()">Generate codes</button>
                     <span id="voucher-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
                 </div>
@@ -5298,6 +5314,52 @@
             }
             if (msg) msg.textContent = `Generated ${codes.length}${data.label ? ' for ' + data.label : ''}.`;
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
+    }
+
+    function beginVoucherRename(index) {
+        document.querySelectorAll('[id^="voucher-rename-"]').forEach((node) => {
+            if (node.tagName === 'FORM') node.classList.add('hidden');
+        });
+        const form = $(`voucher-rename-${index}`);
+        const input = $(`voucher-rename-input-${index}`);
+        if (!form || !input || !state.voucherGroups?.[index]) return;
+        form.classList.remove('hidden');
+        input.value = state.voucherGroups[index].label || '';
+        setTimeout(() => { input.focus(); input.select(); }, 0);
+    }
+
+    function cancelVoucherRename(index) {
+        const form = $(`voucher-rename-${index}`);
+        const msg = $(`voucher-rename-msg-${index}`);
+        if (form) form.classList.add('hidden');
+        if (msg) msg.textContent = '';
+    }
+
+    async function renameVoucherGroup(index) {
+        const group = state.voucherGroups?.[index];
+        const input = $(`voucher-rename-input-${index}`);
+        const msg = $(`voucher-rename-msg-${index}`);
+        const save = $(`voucher-rename-save-${index}`);
+        if (!group || !input) return;
+        const label = input.value.trim();
+        if (!label) { if (msg) msg.textContent = 'Enter a cohort name.'; input.focus(); return; }
+        if (label === group.label) { cancelVoucherRename(index); return; }
+        if (msg) { msg.style.color = 'var(--muted)'; msg.textContent = 'Saving...'; }
+        if (save) save.disabled = true;
+        try {
+            const { resp, data } = await apiJSON('/api/admin/vouchers/label', {
+                method: 'PATCH',
+                headers: authHeaders(),
+                body: JSON.stringify({ currentLabel: group.label, label }),
+            });
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Could not rename that cohort.');
+            const changed = Number.isFinite(data.updated) ? data.updated : group.count;
+            toast(`Renamed ${changed} code${changed === 1 ? '' : 's'} to ${data.label}.`);
+            await loadVouchers();
+        } catch (error) {
+            if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = error.message; }
+            if (save) save.disabled = false;
+        }
     }
 
     // Copy a space-separated batch of codes (from a data-codes attr) to the clipboard, one per line.
@@ -5542,7 +5604,7 @@
         requestPasswordReset, redoMissed, startFlagged, toggleFlag, flagFromReview, flashcardFromReview, toggleFlashcard, startFlashcardDeck, changePassword, deleteAccount, toggleMobileNav, toggleNavMenu, closeNavMenus,
         smartReview, startSample, saveNote, reviewQueue, cohortCodes, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
-        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
+        gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, beginVoucherRename, cancelVoucherRename, renameVoucherGroup, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,

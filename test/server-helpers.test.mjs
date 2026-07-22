@@ -12,6 +12,7 @@ import {
     isValidProfileDate,
     mobileAccountHash,
     normalizeTrainingProgram,
+    normalizeVoucherLabel,
     readCookieHeader,
     registrationProfileError,
     resolveSubmittedChoiceIndex,
@@ -143,6 +144,11 @@ test('registration requires a real AA program and preserves a clean program labe
     assert.equal(registrationProfileError({ credential: 'SAA', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
     assert.equal(isValidProfileDate('2028-02-29'), true);
     assert.equal(isValidProfileDate('2027-02-29'), false);
+});
+
+test('cohort voucher labels normalize safely for generation and renaming', () => {
+    assert.equal(normalizeVoucherLabel('  VCOM-Auburn\n Class of 2027\t Sent 2026  '), 'VCOM-Auburn Class of 2027 Sent 2026');
+    assert.equal(normalizeVoucherLabel(null), '');
 });
 
 test('faculty scope is derived from the verified account assignment, not a query parameter', () => {
@@ -513,10 +519,30 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'health-monitor-resilience-20260722\.2'/);
+    assert.match(server, /build: 'editable-cohort-labels-20260722\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);
+});
+
+test('cohort group renaming is admin-only, owner-scoped, and merge-safe', async () => {
+    const [server, browser] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+    ]);
+    const start = server.indexOf("app.patch('/api/admin/vouchers/label'");
+    const end = server.indexOf("app.get('/api/admin/vouchers'", start);
+    const route = server.slice(start, end);
+    assert.ok(start > -1 && end > start);
+    assert.match(route, /getAdminUser\(req\)/);
+    assert.match(route, /eq\('owner_director_id', admin\.id\)/);
+    assert.match(route, /ilike\('label', label\)/);
+    assert.match(route, /status\(409\)/);
+    assert.match(route, /update\(\{ label \}, \{ count: 'exact' \}\)/);
+    assert.match(route, /currentLabel === null[^;]+\.is\('label', null\)/);
+    assert.match(browser, /\/api\/admin\/vouchers\/label/);
+    assert.match(browser, /beginVoucherRename/);
+    assert.match(browser, /new Map\(\)/);
 });
 
 test('full-bank tools paginate and static pricing delegates to the platform purchase flow', async () => {

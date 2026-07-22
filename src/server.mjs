@@ -1058,7 +1058,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'health-monitor-resilience-20260722.2',
+        build: 'editable-cohort-labels-20260722.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -2857,11 +2857,20 @@ function newVoucherCode() {
     return 'MACP-' + randomBytes(4).toString('hex').toUpperCase(); // e.g. MACP-9F3A1C2B
 }
 
+export function normalizeVoucherLabel(value) {
+    return String(value ?? '')
+        .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 app.post('/api/admin/vouchers', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 0, 1), 200);
-    const label = String(req.body?.label || '').trim().slice(0, 80) || null;
+    const cleanLabel = normalizeVoucherLabel(req.body?.label);
+    if (cleanLabel.length > 80) return res.status(400).json({ error: 'Cohort names must be 80 characters or fewer.' });
+    const label = cleanLabel || null;
     try {
         const rows = Array.from({ length: count }, () => ({ owner_director_id: admin.id, voucher_key: newVoucherCode(), is_claimed: false, label }));
         const { data, error } = await supabase.from('program_vouchers').insert(rows).select('voucher_key');
@@ -2870,6 +2879,55 @@ app.post('/api/admin/vouchers', async (req, res) => {
     } catch (err) {
         console.error('Voucher generate failure:', err.message);
         return res.status(500).json({ error: 'Could not generate vouchers.' });
+    }
+});
+
+app.patch('/api/admin/vouchers/label', async (req, res) => {
+    const admin = await getAdminUser(req);
+    if (!admin) return res.status(403).json({ error: 'Admin access required.' });
+    const hasCurrentLabel = Object.prototype.hasOwnProperty.call(req.body || {}, 'currentLabel');
+    const currentLabel = req.body?.currentLabel;
+    if (!hasCurrentLabel || (currentLabel !== null && typeof currentLabel !== 'string')) {
+        return res.status(400).json({ error: 'Choose a cohort group to rename.' });
+    }
+    if (typeof currentLabel === 'string' && currentLabel.length > 80) {
+        return res.status(400).json({ error: 'The current cohort name is invalid.' });
+    }
+    const label = normalizeVoucherLabel(req.body?.label);
+    if (!label) return res.status(400).json({ error: 'Enter a cohort name.' });
+    if (label.length > 80) return res.status(400).json({ error: 'Cohort names must be 80 characters or fewer.' });
+    if (label === currentLabel) return res.json({ success: true, unchanged: true, label, updated: 0 });
+
+    try {
+        let collisionQuery = supabase.from('program_vouchers')
+            .select('voucher_key')
+            .eq('owner_director_id', admin.id)
+            .ilike('label', label);
+        if (currentLabel !== null) collisionQuery = collisionQuery.neq('label', currentLabel);
+        const { data: collision, error: collisionError } = await collisionQuery.limit(1);
+        if (collisionError) throw collisionError;
+        if (collision?.length) {
+            return res.status(409).json({ error: 'That cohort name is already in use. Choose a name that includes the school and class year.' });
+        }
+
+        let sourceQuery = supabase.from('program_vouchers')
+            .select('voucher_key')
+            .eq('owner_director_id', admin.id);
+        sourceQuery = currentLabel === null ? sourceQuery.is('label', null) : sourceQuery.eq('label', currentLabel);
+        const { data: source, error: sourceError } = await sourceQuery.limit(1);
+        if (sourceError) throw sourceError;
+        if (!source?.length) return res.status(404).json({ error: 'That cohort group was not found.' });
+
+        let updateQuery = supabase.from('program_vouchers')
+            .update({ label }, { count: 'exact' })
+            .eq('owner_director_id', admin.id);
+        updateQuery = currentLabel === null ? updateQuery.is('label', null) : updateQuery.eq('label', currentLabel);
+        const { count, error: updateError } = await updateQuery;
+        if (updateError) throw updateError;
+        return res.json({ success: true, label, updated: Number.isFinite(count) ? count : null });
+    } catch (err) {
+        console.error('Voucher rename failure:', err.message);
+        return res.status(500).json({ error: 'Could not rename that cohort group.' });
     }
 });
 
