@@ -905,8 +905,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 38;
+    const WHATS_NEW_VERSION = 39;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 22', title: 'More resilient availability monitoring', desc: 'MACPrep now handles brief database slowdowns without turning a momentary delay into a service incident, while repeated failures still trigger an operational alert. Slow health checks are also stopped cleanly instead of continuing in the background. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 21', title: 'Reported answers now stay aligned', desc: 'We reviewed every open question report and corrected the affected study records. Answer submissions now carry a stable choice identity and question revision, so an older open tab refreshes safely instead of grading the same answer text as a different letter after an editorial reorder. We also clarified the obstetric failed-intubation scenario and completed several behind-the-scenes reliability fixes. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 19', title: 'Balanced answer positions across the question bank', desc: 'Correct answers are now evenly distributed across recently added question batches, so a repeated letter pattern cannot give away the answer. We audited all 1,509 published questions while keeping every clinical choice, rationale, and citation unchanged. An in-progress session opened before this correction will restart once to ensure its choice order is current. Available on the web and current MACPrep mobile shell.' },
         { tag: 'Fix', date: 'Jul 18', title: 'More reliable progress and account access', desc: 'Repeat practice now stays consistent across your Missed set, Recommended sessions, dashboard totals, and the leaderboard. Saved notes, flags, flashcards, reminders, duels, sign-out, and purchase restores now confirm the server update before reporting success. Available on the web and current MACPrep mobile shell; no action is required.' },

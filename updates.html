@@ -206,6 +206,17 @@
         </details>
 
         <div class="entry">
+            <div class="date">JULY 22, 2026</div>
+            <h3>Fixed: More resilient availability monitoring</h3>
+            <ul>
+                <li><strong>Brief database slowdowns no longer look like service incidents.</strong> Availability monitoring now waits through a reasonable latency spike and escalates only when failures repeat.</li>
+                <li><strong>Slow checks stop cleanly.</strong> A timed-out health probe is cancelled instead of continuing in the background.</li>
+                <li><strong>Real outages still surface.</strong> The public health check continues to return an unavailable status whenever its database probe fails, and repeated failures still trigger the operational alert.</li>
+                <li><strong>Available on the web and current MACPrep mobile shell.</strong> No action is required.</li>
+            </ul>
+        </div>
+
+        <div class="entry">
             <div class="date">JULY 21, 2026</div>
             <h3>Fixed: Reported answers now stay aligned</h3>
             <ul>

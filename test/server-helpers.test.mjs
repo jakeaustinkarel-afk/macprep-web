@@ -15,10 +15,12 @@ import {
     readCookieHeader,
     registrationProfileError,
     resolveSubmittedChoiceIndex,
+    runDatabaseHealthProbe,
     normalizeMobileStore,
     resolveFacultyScope,
     sanitizeAnalyticsMeta,
     selectUnansweredFreePool,
+    shouldReportDatabaseHealthFailure,
     summarizeProductUsage,
     trustedBaseUrl,
     validateAppleTransactionPayload,
@@ -161,6 +163,30 @@ test('cookie parsing matches exact names and safely decodes values', () => {
     assert.equal(readCookieHeader(header, 'macprep_access'), 'token.value');
     assert.equal(readCookieHeader(header, 'missing'), '');
     assert.equal(readCookieHeader('macprep_access=%E0%A4%A', 'macprep_access'), '');
+});
+
+test('database health probes cancel slow requests and classify the timeout', async () => {
+    let signal;
+    const startedAt = Date.now();
+    await assert.rejects(
+        runDatabaseHealthProbe((probeSignal) => {
+            signal = probeSignal;
+            return new Promise((resolve) => {
+                probeSignal.addEventListener('abort', () => resolve({ error: new Error('aborted') }), { once: true });
+            });
+        }, 20),
+        /timed out after 20 ms/
+    );
+    assert.equal(signal.aborted, true);
+    assert.ok(Date.now() - startedAt < 500, 'the timeout should bound the probe duration');
+});
+
+test('database health alerts require repeated failures and honor their cooldown', () => {
+    const base = Date.UTC(2026, 6, 22, 12);
+    assert.equal(shouldReportDatabaseHealthFailure({ consecutiveFailures: 1, lastReportedAt: 0, now: base }), false);
+    assert.equal(shouldReportDatabaseHealthFailure({ consecutiveFailures: 2, lastReportedAt: 0, now: base }), true);
+    assert.equal(shouldReportDatabaseHealthFailure({ consecutiveFailures: 3, lastReportedAt: base - 60_000, now: base }), false);
+    assert.equal(shouldReportDatabaseHealthFailure({ consecutiveFailures: 3, lastReportedAt: base - 16 * 60_000, now: base }), true);
 });
 
 test('browser code keeps authentication credentials out of JavaScript storage and headers', async () => {
@@ -487,7 +513,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'reported-answer-repairs-20260721\.1'/);
+    assert.match(server, /build: 'health-monitor-resilience-20260722\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

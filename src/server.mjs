@@ -983,32 +983,83 @@ app.use((req, res, next) => {
 // Health/version check — lets you confirm at a glance which build is live
 // (e.g. curl https://www.macprep.org/api/health). Bump `build` when deploying.
 // ---------------------------------------------------------------------------
+const DATABASE_HEALTH_TIMEOUT_MS = 5000;
+const DATABASE_HEALTH_REPORT_AFTER = 2;
+const DATABASE_HEALTH_REPORT_COOLDOWN_MS = 15 * 60 * 1000;
+let consecutiveDatabaseHealthFailures = 0;
+let lastDatabaseHealthReportAt = 0;
+
+export async function runDatabaseHealthProbe(startProbe, timeoutMs = DATABASE_HEALTH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs);
+    timeout.unref?.();
+
+    try {
+        const result = await startProbe(controller.signal);
+        if (timedOut) throw new Error(`Database health check timed out after ${timeoutMs} ms.`);
+        if (result?.error) throw result.error;
+        return result;
+    } catch (error) {
+        if (timedOut) throw new Error(`Database health check timed out after ${timeoutMs} ms.`);
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+export function shouldReportDatabaseHealthFailure({
+    consecutiveFailures,
+    lastReportedAt,
+    now = Date.now(),
+    reportAfter = DATABASE_HEALTH_REPORT_AFTER,
+    cooldownMs = DATABASE_HEALTH_REPORT_COOLDOWN_MS,
+}) {
+    return consecutiveFailures >= reportAfter
+        && (!lastReportedAt || now - lastReportedAt >= cooldownMs);
+}
+
 app.get('/api/health', async (req, res) => {
     let database = supabase ? 'reachable' : 'not_configured';
     if (supabase) {
-        let timeout;
         try {
-            const probe = supabase.from(PROFILE_TABLE).select('user_id').limit(1);
-            const { error } = await Promise.race([
-                probe,
-                new Promise((resolve) => {
-                    timeout = setTimeout(() => resolve({ error: new Error('Database health check timed out.') }), 2500);
-                    timeout.unref?.();
-                }),
-            ]);
-            if (error) throw error;
+            await runDatabaseHealthProbe((signal) => supabase
+                .from(PROFILE_TABLE)
+                .select('user_id', { head: true })
+                .limit(1)
+                .retry(false)
+                .abortSignal(signal));
+            if (consecutiveDatabaseHealthFailures) {
+                console.info(`[health.database] Probe recovered after ${consecutiveDatabaseHealthFailures} failure(s).`);
+            }
+            consecutiveDatabaseHealthFailures = 0;
         } catch (error) {
             database = 'unreachable';
-            reportOperationalError('health.database', error, { route: '/api/health' });
-        } finally {
-            if (timeout) clearTimeout(timeout);
+            consecutiveDatabaseHealthFailures += 1;
+            const now = Date.now();
+            if (shouldReportDatabaseHealthFailure({
+                consecutiveFailures: consecutiveDatabaseHealthFailures,
+                lastReportedAt: lastDatabaseHealthReportAt,
+                now,
+            })) {
+                lastDatabaseHealthReportAt = now;
+                reportOperationalError('health.database', error, {
+                    route: '/api/health',
+                    consecutiveFailures: consecutiveDatabaseHealthFailures,
+                });
+            } else {
+                console.warn(`[health.database] Probe failure ${consecutiveDatabaseHealthFailures}: ${error?.message || error}`);
+            }
         }
     }
     const ok = database !== 'unreachable';
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'reported-answer-repairs-20260721.1',
+        build: 'health-monitor-resilience-20260722.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
