@@ -996,7 +996,6 @@ export async function runDatabaseHealthProbe(startProbe, timeoutMs = DATABASE_HE
         timedOut = true;
         controller.abort();
     }, timeoutMs);
-    timeout.unref?.();
 
     try {
         const result = await startProbe(controller.signal);
@@ -1059,7 +1058,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'health-monitor-resilience-20260722.1',
+        build: 'health-monitor-resilience-20260722.2',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
