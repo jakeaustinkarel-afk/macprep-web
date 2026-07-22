@@ -54,6 +54,89 @@ export function validateQuestionForPublication(question) {
     return { valid: errors.length === 0, errors };
 }
 
+function fieldIssue(issues, questionId, field, type, detail = '') {
+    issues.push({ type, id: questionId || '(missing id)', field, detail });
+}
+
+export function auditQuestionTextQuality(questions) {
+    const issues = [];
+    const repeatedWord = /\b([a-z]{3,})\s+\1\b/i;
+    const spaceBeforePunctuation = /\s+[,;.!?]/;
+    const missingDirection = /\bplus lower esophageal sphincter tone\b/i;
+    const wrongRationaleLead = /^(?:incorrect|wrong|this is false|not correct)(?:[.:]|$)/i;
+    const correctRationaleLead = /^(?:correct|this is correct|yes)(?:[.:]|$)/i;
+
+    const inspectText = (questionId, field, value) => {
+        const normalized = typeof value === 'string' ? value : '';
+        if (!normalized.trim()) {
+            fieldIssue(issues, questionId, field, 'blank_text');
+            return;
+        }
+        const repeat = normalized.match(repeatedWord);
+        if (repeat) fieldIssue(issues, questionId, field, 'repeated_word', repeat[0]);
+        if (normalized.includes('  ')) fieldIssue(issues, questionId, field, 'double_space');
+        if (spaceBeforePunctuation.test(normalized)) fieldIssue(issues, questionId, field, 'space_before_punctuation');
+        if ((normalized.match(/\(/g) || []).length !== (normalized.match(/\)/g) || []).length) {
+            fieldIssue(issues, questionId, field, 'unbalanced_parentheses');
+        }
+        if ((normalized.match(/\[/g) || []).length !== (normalized.match(/\]/g) || []).length) {
+            fieldIssue(issues, questionId, field, 'unbalanced_brackets');
+        }
+        if (missingDirection.test(normalized)) {
+            fieldIssue(issues, questionId, field, 'missing_directional_modifier', 'Expected decreased lower esophageal sphincter tone.');
+        }
+    };
+
+    for (const question of Array.isArray(questions) ? questions : []) {
+        const questionId = text(question?.id);
+        const answer = text(question?.correct_answer ?? question?.correctAnswer).toUpperCase();
+        const choices = Array.isArray(question?.choices) ? question.choices : [];
+        inspectText(questionId, 'stem', question?.stem);
+        inspectText(questionId, 'explanation', question?.explanation);
+
+        const labels = new Set();
+        let markedCorrect = 0;
+        let alignedCorrect = 0;
+        choices.forEach((choice, index) => {
+            const explicitLabel = text(choice?.label).toUpperCase();
+            const label = explicitLabel || String.fromCharCode(65 + index);
+            const choiceText = choice && typeof choice === 'object' ? (choice.text ?? choice.value) : choice;
+            const rationale = choice && typeof choice === 'object' ? choice.rationale : '';
+            inspectText(questionId, `choice_${label || index + 1}`, choiceText);
+            inspectText(questionId, `rationale_${label || index + 1}`, rationale);
+            if (!/^[A-E]$/.test(explicitLabel)) {
+                fieldIssue(issues, questionId, `choice_${index + 1}`, 'missing_or_invalid_choice_label', explicitLabel);
+            }
+            if (label) labels.add(label);
+            if (choice?.correct === true) {
+                markedCorrect++;
+                if (label === answer) alignedCorrect++;
+            }
+
+            const rationaleLead = text(rationale);
+            if (label === answer && wrongRationaleLead.test(rationaleLead)) {
+                fieldIssue(issues, questionId, `rationale_${label}`, 'correct_choice_marked_incorrect');
+            }
+            if (label !== answer && correctRationaleLead.test(rationaleLead)) {
+                fieldIssue(issues, questionId, `rationale_${label}`, 'incorrect_choice_marked_correct');
+            }
+        });
+
+        if (choices.length < 4 || choices.length > 5) {
+            fieldIssue(issues, questionId, 'choices', 'invalid_choice_count', String(choices.length));
+        }
+        if (!/^[A-E]$/.test(answer)) fieldIssue(issues, questionId, 'correct_answer', 'invalid_answer_key', answer);
+        if (labels.size !== choices.length) fieldIssue(issues, questionId, 'choices', 'duplicate_or_missing_labels');
+        if (markedCorrect !== 1) fieldIssue(issues, questionId, 'choices', 'invalid_correct_flag_count', String(markedCorrect));
+        if (alignedCorrect !== 1) fieldIssue(issues, questionId, 'choices', 'misaligned_correct_flag');
+        if (!choices.some((choice, index) => text(choice?.label || String.fromCharCode(65 + index)).toUpperCase() === answer)) {
+            fieldIssue(issues, questionId, 'correct_answer', 'missing_answer_label', answer);
+        }
+    }
+
+    return { valid: issues.length === 0, issues };
+}
+
 function answerBatchId(id) {
     const value = text(id);
     return value.replace(/-\d+$/, '') || value;

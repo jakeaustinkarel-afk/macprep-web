@@ -1063,7 +1063,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'adaptive-learning-20260722.1',
+        build: 'question-wording-audit-20260722.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,

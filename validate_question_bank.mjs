@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { auditAnswerPositionBalance } from './src/lib/question-validation.mjs';
+import { auditAnswerPositionBalance, auditQuestionTextQuality } from './src/lib/question-validation.mjs';
 
 dotenv.config();
 
@@ -77,6 +77,7 @@ async function runLiveQualityAudit() {
     });
 
     const positionAudit = auditAnswerPositionBalance(published);
+    const textAudit = auditQuestionTextQuality(published);
 
     console.log("==========================================================================");
     console.log("📊 REAL UN-CAPPED PRODUCTION HEALTH STATUS REPORT");
@@ -101,10 +102,14 @@ async function runLiveQualityAudit() {
       dominant: `${batch.dominantAnswer} ${(batch.dominantShare * 100).toFixed(1)}%`,
       longest_run: batch.longestRun,
     })));
+    console.log("\nWORDING AND STRUCTURE AUDIT:");
+    console.log(`Issues found: ${textAudit.issues.length}`);
+    if (textAudit.issues.length) console.table(textAudit.issues.slice(0, 100));
     console.log("==========================================================================");
 
-    if (malformedCount || answerAlignmentCount || positionAudit.issues.length) {
+    if (malformedCount || answerAlignmentCount || positionAudit.issues.length || textAudit.issues.length) {
       positionAudit.issues.forEach((issue) => console.error('Answer-position issue:', issue));
+      textAudit.issues.forEach((issue) => console.error('Question-text issue:', issue));
       process.exitCode = 1;
     }
 

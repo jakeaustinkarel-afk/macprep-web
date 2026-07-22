@@ -980,8 +980,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 42;
+    const WHATS_NEW_VERSION = 43;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 22', title: 'Cleaner question wording', desc: 'A reported obstetric answer now clearly states that pregnancy decreases lower esophageal sphincter tone. We also checked every published question for matching wording, answer-alignment, rationale, spacing, punctuation, and delimiter problems, and added the same audit to future question-bank reviews. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 22', title: 'A study plan that adjusts with you', desc: 'Your dashboard now builds a two-week calendar from your exam date, unseen coverage, due reviews, recent misses, and weakest domains, then recalculates as you practice. Question debriefs now organize why the answer wins and why each distractor fails; richer CAA-reviewed teaching pivots will appear as they are approved. Behind the scenes, item-quality monitoring helps prioritize questions for clinical review without treating small samples as proof. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Clearer CAA resource links', desc: 'Helpful external links in the public footer are now grouped under CAA resources, making their purpose clearer without presenting every listed organization as a formal MACPrep partner. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Cohort code groups you can rename', desc: 'Admins can now rename an existing cohort-code group directly from the generator, making it easy to add a school, class year, or send year later without changing any code or claim history. MACPrep also prevents two group names from being merged by accident. Available on the web and current MACPrep mobile shell; no action is required.' },
