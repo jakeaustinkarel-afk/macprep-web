@@ -253,6 +253,10 @@
         return '<div class="mini"><div class="ml">' + svg(icon, 14) + esc(label) + '</div>' +
             '<div class="mrow"><span class="mn">' + cur.toLocaleString() + '</span>' + deltaChip(cur, prev) + '</div></div>';
     }
+    function countMini(icon, label, value) {
+        return '<div class="mini"><div class="ml">' + svg(icon, 14) + esc(label) + '</div>' +
+            '<div class="mrow"><span class="mn">' + Number(value || 0).toLocaleString() + '</span></div></div>';
+    }
 
     // Responsive SVG area+line chart: area = landing views, line = signups,
     // dots on the signup line, warm dots on the x-axis mark purchase days.
@@ -364,6 +368,48 @@
             html += '<tr><td>' + esc(row.label) + '</td><td><b>' + (row.total || 0).toLocaleString() + '</b></td><td>' + (byPlatform.web || 0).toLocaleString() + '</td><td>' + (byPlatform.ios || 0).toLocaleString() + '</td><td>' + (byPlatform.android || 0).toLocaleString() + '</td><td class="muted">' + (byPlatform.untagged || 0).toLocaleString() + '</td></tr>';
         });
         html += '</tbody></table></div></div>';
+
+        // Item quality: first-attempt, current-answer-revision signals only.
+        // Small samples stay visibly labeled as early so a noisy statistic never
+        // masquerades as a clinical-content verdict.
+        const iq = d.item_quality || { summary: {}, items: [], unavailable: true };
+        const iqs = iq.summary || {};
+        const iqItems = (iq.items || []).filter(row => (row.flags || []).length).slice(0, 60);
+        const flagLabels = {
+            very_difficult: 'Very difficult', very_easy: 'Very easy',
+            negative_discrimination: 'Negative discrimination', weak_discrimination: 'Weak discrimination',
+            unused_distractor: 'Unused distractor', high_confidence_misses: 'Confident misses', learner_report: 'Learner report',
+        };
+        html += '<div class="sec">' + svg('chart', 13) + ' Question quality · internal</div>';
+        if (iq.unavailable) {
+            html += '<div class="card"><div class="card-h"><span class="hl">' + svg('chart', 15) + '<h2>Item quality</h2></span><span class="pill">Unavailable</span></div><p class="muted" style="margin:0;">The item-quality rollup could not be loaded. The rest of founder metrics is unaffected.</p></div>';
+        } else {
+            const evidenceNote = (iqs.stable_items || 0) === 0
+                ? 'Early evidence only: the largest current-revision item sample is n=' + (iqs.max_sample || 0) + '. No item has reached the stable n=30 band yet, so use these flags for review priority, not automatic edits.'
+                : (iqs.stable_items || 0) + ' items have reached the stable n=30 band; smaller samples remain explicitly marked early.';
+            html += '<div class="card"><div class="card-h"><span class="hl">' + svg('chart', 15) + '<h2>Item-quality triage</h2></span><span class="pill">First attempts · current revision</span></div>' +
+                '<p class="muted" style="margin:0 0 14px;">' + esc(evidenceNote) + ' Response times exclude values outside 2 seconds to 15 minutes. Historical learner reports are counted, not assumed unresolved.</p>' +
+                '<div class="strip" style="margin-bottom:16px;">' +
+                    countMini('list', 'Published items', iqs.total_items) +
+                    countMini('activity', 'Items with attempts', iqs.items_with_attempts) +
+                    countMini('chart', 'Flagged for review', iqs.flagged_items) +
+                    countMini('crown', 'Reviewed debriefs', iqs.debrief_reviewed) +
+                '</div>' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:9px;"><div class="muted" style="font-size:12px;">Teach the Question coverage: <b style="color:var(--text);">' + (iqs.debrief_coverage_pct || 0) + '%</b> · early band n=10–29 · stable band n≥30</div><span class="pill">' + iqItems.length + ' priority items shown</span></div>' +
+                '<div style="overflow-x:auto;"><table><thead><tr><th>Question</th><th>Sample</th><th>Correct</th><th>Discrimination</th><th>Median</th><th>Choice use</th><th>Signals</th><th>Reports</th><th>Debrief</th></tr></thead><tbody>';
+            if (!iqItems.length) html += '<tr><td colspan="9" class="muted">No items currently meet a review signal.</td></tr>';
+            iqItems.forEach(row => {
+                const band = row.sample_band === 'stable' ? 'stable' : row.sample_band === 'early' ? 'early' : 'too small';
+                const counts = Object.keys(row.choice_counts || {}).sort().map(label => label + ' ' + row.choice_counts[label]).join(' · ');
+                const flags = (row.flags || []).map(flag => '<span class="badge kind" style="margin:2px 3px 2px 0;">' + esc(flagLabels[flag] || flag) + '</span>').join('');
+                const discrimination = row.discrimination == null ? '—' : Number(row.discrimination).toFixed(3);
+                html += '<tr><td><b class="email">' + esc(row.question_id) + '</b><div class="muted" style="font-size:11px;max-width:310px;">' + esc(row.category || '') + (row.subtopic ? ' · ' + esc(row.subtopic) : '') + '</div></td>' +
+                    '<td><b>n=' + (row.learners || 0) + '</b><div class="muted" style="font-size:10px;">' + esc(band) + '</div></td>' +
+                    '<td>' + (row.percent_correct == null ? '—' : row.percent_correct + '%') + '</td><td>' + discrimination + '</td><td>' + (row.median_seconds == null ? '—' : row.median_seconds + 's') + '</td>' +
+                    '<td class="muted" style="white-space:nowrap;font-size:11px;">' + esc(counts || '—') + '</td><td style="min-width:180px;">' + flags + '</td><td>' + (row.reports || 0) + '</td><td>' + (row.debrief_reviewed ? '<span style="color:var(--good);font-weight:700;">Reviewed</span>' : '<span class="muted">Pending</span>') + '</td></tr>';
+            });
+            html += '</tbody></table></div></div>';
+        }
 
         // Credential mix — SAA (students) vs CAA (certified), so you can watch the split over time
         const cm = d.credential_mix || { saa: 0, caa: 0, other: 0, unset: 0 };

@@ -43,6 +43,8 @@ test('served question lookup applies the published-content filter before grading
 
     assert.equal(result, query);
     assert.deepEqual(calls[0], ['from', 'questions']);
+    assert.match(calls[1][1], /teaching_debrief/);
+    assert.match(calls[1][1], /debrief_reviewed_at/);
     assert.deepEqual(calls[2], ['eq', 'id', 'question-42']);
     assert.deepEqual(calls[3], ['in', 'status', ['published']]);
 });

@@ -9,6 +9,8 @@
         catalog: { total: 0, categories: [] },
         qotd: null,
         session: null,       // { pool, index, answered, correct, size, domain }
+        planWeek: 0,
+        planDay: 0,
         adminSurface: null,  // keeps async admin panels from rendering over one another
         loginInFlight: false,
     };
@@ -579,12 +581,108 @@
         return shuffleArr(fresh).concat(shuffleArr(done));
     }
 
+    function planTaskIcon(kind) {
+        const paths = {
+            due: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+            missed: '<path d="M12 3 2.8 20h18.4z"/><path d="M12 9v4M12 17h.01"/>',
+            confident_missed: '<path d="M12 3 2.8 20h18.4z"/><path d="M12 9v4M12 17h.01"/>',
+            focused: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+            diagnostic: '<path d="M4 20V4M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/>',
+            recommended: '<path d="M7 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L8.52 4.65A1 1 0 0 0 7 5.5z"/>',
+        };
+        const fill = kind === 'recommended' ? 'currentColor' : 'none';
+        return `<svg viewBox="0 0 24 24" width="16" height="16" fill="${fill}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[kind] || paths.recommended}</svg>`;
+    }
+
+    function renderAdaptivePlan() {
+        const el = $('adaptive-plan-card'); if (!el) return;
+        const plan = state.profile && state.profile.adaptive_plan;
+        const days = (plan && Array.isArray(plan.days)) ? plan.days : [];
+        if (!plan || !days.length) {
+            el.innerHTML = '<h2 style="margin-top:0;">Your adaptive plan</h2><div class="mono" style="font-size:12px;color:var(--muted);">Your next study steps will appear here once your learning profile loads.</div>';
+            return;
+        }
+        const maxWeek = Math.max(0, Math.ceil(days.length / 7) - 1);
+        state.planWeek = Math.max(0, Math.min(maxWeek, Number(state.planWeek) || 0));
+        const weekStart = state.planWeek * 7;
+        const weekDays = days.slice(weekStart, weekStart + 7);
+        if (state.planDay < weekStart || state.planDay >= weekStart + weekDays.length) state.planDay = weekStart;
+        const selected = days[state.planDay] || days[0];
+        const selectedDate = new Date(`${selected.date}T12:00:00Z`);
+        const dateLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(selectedDate);
+        const percent = selected.target ? Math.min(100, Math.round((selected.completed / selected.target) * 100)) : 0;
+        const unlimited = freeUsage().unlimited;
+        const dateButtons = weekDays.map((day, offset) => {
+            const index = weekStart + offset;
+            const date = new Date(`${day.date}T12:00:00Z`);
+            const number = date.getUTCDate();
+            return `<button type="button" class="plan-day${index === state.planDay ? ' active' : ''}" aria-pressed="${index === state.planDay}" onclick="MACPrep.planSelectDay(${index})">
+                <span class="dow">${escapeHtml(day.label)}</span><span class="dom">${number}</span><span class="plan-day-count">${day.target} Q</span>
+            </button>`;
+        }).join('');
+        const tasks = (selected.tasks || []).map((entry, taskIndex) => {
+            const locked = !unlimited && entry.kind !== 'recommended';
+            const count = `${entry.count} question${entry.count === 1 ? '' : 's'}`;
+            return `<div class="plan-task">
+                <span class="plan-task-icon">${planTaskIcon(entry.kind)}</span>
+                <div><div class="plan-task-title">${escapeHtml(entry.title)}</div><div class="plan-task-detail">${escapeHtml(count + ' · ' + (entry.detail || ''))}</div></div>
+                <button class="btn${locked ? ' ghost' : ''}" type="button" onclick="MACPrep.startPlanTask(${state.planDay},${taskIndex})">${locked ? 'Full access' : 'Start'}</button>
+            </div>`;
+        }).join('') || '<div class="mono" style="font-size:12px;color:var(--muted);">No tasks scheduled for this day.</div>';
+        const examLine = plan.exam_date
+            ? `${plan.days_to_exam >= 0 ? `${plan.days_to_exam} day${plan.days_to_exam === 1 ? '' : 's'} to your exam` : 'Saved exam date has passed'}`
+            : 'No exam date set';
+        el.innerHTML = `<div class="plan-head">
+            <div><h2>Your adaptive study calendar</h2><div class="sub" style="font-size:13px;margin:0;max-width:720px;">${escapeHtml(plan.summary || '')}</div></div>
+            <div class="plan-head-actions" style="display:flex;align-items:center;gap:12px;"><span class="plan-phase">${escapeHtml(plan.phase_label || 'Adaptive plan')}</span><div class="plan-week-nav"><button class="plan-icon-btn" type="button" aria-label="Previous week" title="Previous week" onclick="MACPrep.planShiftWeek(-1)" ${state.planWeek === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;">WEEK ${state.planWeek + 1} / ${maxWeek + 1}</span><button class="plan-icon-btn" type="button" aria-label="Next week" title="Next week" onclick="MACPrep.planShiftWeek(1)" ${state.planWeek >= maxWeek ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></div>
+        </div>
+        <div class="plan-days" role="group" aria-label="Study plan days">${dateButtons}</div>
+        <div class="plan-body">
+            <div>
+                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">${escapeHtml(selected.label)} · ${escapeHtml(dateLabel)}</div>
+                <div style="font-size:28px;font-weight:750;line-height:1.1;margin-top:7px;">${selected.completed} / ${selected.target}</div>
+                <div class="plan-progress"><span style="width:${percent}%;"></span></div>
+                <div class="mono" style="font-size:11px;color:var(--muted);">${selected.is_today ? (selected.remaining ? `${selected.remaining} remaining today` : 'Today\'s target is complete') : `${selected.target}-question target`} · ${escapeHtml(examLine)}</div>
+                ${!plan.exam_date ? '<button class="btn ghost" type="button" onclick="MACPrep.go(\'profile\')" style="margin-top:13px;font-size:11.5px;padding:7px 11px;">Set exam date</button>' : ''}
+            </div>
+            <div>${tasks}</div>
+        </div>`;
+    }
+
+    function planSelectDay(index) {
+        const plan = state.profile && state.profile.adaptive_plan;
+        if (!plan || !Array.isArray(plan.days) || !plan.days[index]) return;
+        state.planDay = index;
+        renderAdaptivePlan();
+    }
+
+    function planShiftWeek(direction) {
+        const plan = state.profile && state.profile.adaptive_plan;
+        const maxWeek = Math.max(0, Math.ceil(((plan && plan.days) || []).length / 7) - 1);
+        state.planWeek = Math.max(0, Math.min(maxWeek, state.planWeek + direction));
+        state.planDay = state.planWeek * 7;
+        renderAdaptivePlan();
+    }
+
+    async function startPlanTask(dayIndex, taskIndex) {
+        const plan = state.profile && state.profile.adaptive_plan;
+        const entry = plan && plan.days && plan.days[dayIndex] && plan.days[dayIndex].tasks[taskIndex];
+        if (!entry) return;
+        if (entry.kind !== 'recommended' && !premiumGate('studymode')) return;
+        if (entry.kind === 'recommended') return startRecommended(entry.count);
+        if (entry.kind === 'diagnostic') return startDiagnostic();
+        if (entry.kind === 'due') return startFromIds(entry.question_ids || [], 'due');
+        if (entry.kind === 'missed') return startFromIds(((state.profile && state.profile.missed_ids) || []).slice(0, entry.count), 'missed');
+        if (entry.kind === 'confident_missed') return startFromIds(((state.profile && state.profile.confident_missed_ids) || []).slice(0, entry.count), 'confident misses');
+        if (entry.kind === 'focused' && entry.domain) {
+            const session = await beginServerSession({ purpose: 'specialty', size: entry.count, category: entry.domain, pool_mode: 'new' }, 'tutor');
+            if (session) track('specialty_quiz_start', { count: session.size });
+        }
+    }
+
     function renderReadiness() {
         const el = $('readiness'); if (!el) return;
         const p = state.profile || {};
-        const streak = p.streak || 0;
-        const readiness = p.readiness || 0;
-        const exam = (p.days_to_exam != null) ? p.days_to_exam : null;
         const trend = p.trend || [];
         const spark = trend.length
             ? `<div style="display:flex;align-items:flex-end;gap:7px;height:100%;">` + trend.map((t) => {
@@ -593,29 +691,6 @@
                 return `<div title="${t.day}: ${t.accuracy}%" style="flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;"><span style="width:100%;max-width:26px;height:${h}px;background:${c};border-radius:4px 4px 2px 2px;"></span></div>`;
             }).join('') + `</div>`
             : '<div class="mono" style="color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px;height:100%;"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle;flex:none;"><path d="M3 16.5l5.5-5.5 3.5 3.5 8-8"/><path d="M16 6.5h4v4"/></svg> Answer a few questions — your accuracy trend shows up here.</div>';
-        const bank = questionBankSize();
-        const planLine = (exam != null && exam > 0 && bank > 0)
-            ? `<div class="mono" style="font-size:12px;color:var(--text2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> <strong>${exam} day${exam === 1 ? '' : 's'}</strong> to your exam — about <strong>${Math.ceil((bank * 2) / exam)} questions/day</strong> to cover the full ${bank.toLocaleString()}-question bank twice before then.</div>`
-            : '';
-        const answeredToday = answeredTodayLive();
-        let goalLine = '';
-        if (exam != null && exam > 0 && bank > 0) {
-            const target = Math.ceil((bank * 2) / exam);
-            const met = answeredToday >= target;
-            const pctDone = Math.min(100, Math.round((answeredToday / target) * 100));
-            goalLine = `<div style="margin-bottom:14px;">
-                <div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:4px;">Today: <strong>${answeredToday} / ${target}</strong> ${met ? '— 🔥 on pace, goal met!' : `· <strong>${Math.max(0, target - answeredToday)} more</strong> to stay on track`}</div>
-                <div class="progress-bar"><span style="width:${pctDone}%;background:${met ? 'var(--accent)' : 'var(--warn)'};"></span></div>
-            </div>`;
-        } else if (answeredToday > 0) {
-            goalLine = `<div class="mono" style="font-size:12px;color:var(--text2);margin-bottom:14px;">Today: <strong>${answeredToday}</strong> answered</div>`;
-        }
-        // The momentum hero already shows readiness %, streak, and today's goal as rings,
-        // so this card no longer repeats them — it owns what the hero doesn't: the accuracy
-        // trend and the exam-pace plan. (De-dup keeps the dashboard from saying it twice.)
-        const examNudge = (exam == null)
-            ? `<div class="mono" style="font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg> Add your exam date in your profile to unlock a daily pace plan.</div>`
-            : '';
         // Mastery by domain — the adaptive engine's per-domain ability, as bars
         // with the difficulty tier it will serve next (our transparency wedge:
         // the learner sees exactly how the engine reads them). null = not started.
@@ -660,12 +735,9 @@
             }).join('');
             if (brows) benchBlock = `<div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:20px 0 4px;">You vs active SAA peers</div><div class="mono" style="font-size:11px;color:var(--muted);margin:0 0 11px;">Latest response per learner and question; shown only with at least 10 learners.</div>${brows}`;
         }
-        el.innerHTML = `<h3>Accuracy &amp; exam plan</h3>
+        el.innerHTML = `<h3>Accuracy &amp; mastery</h3>
             <div class="mono" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;">Accuracy — last 7 active days</div>
             <div style="height:70px;margin-bottom:16px;">${spark}</div>
-            ${planLine}
-            ${goalLine}
-            ${examNudge}
             ${masteryBlock}
             ${benchBlock}
             <button class="btn ghost" type="button" onclick="MACPrep.startDiagnostic()" style="margin-top:2px;font-size:13px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:7px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="14" width="3" height="3"/></svg> Take a diagnostic — check your current level</button>`;
@@ -793,10 +865,13 @@
     //   4. domain-balanced coverage fill of unseen material
     // Reinforcement items (1-2) are level-agnostic; new material (3-4) is
     // difficulty-matched. Degrades gracefully if `by_domain` isn't present yet.
-    async function startRecommended() {
+    async function startRecommended(requestedSize) {
         const usage = freeUsage();
         if (!usage.unlimited && usage.remaining < 1) { return startCheckout(); }
-        const target = usage.unlimited ? 20 : usage.remaining;
+        const requested = Number(requestedSize);
+        const target = usage.unlimited
+            ? (Number.isInteger(requested) && requested > 0 ? Math.min(requested, 200) : 20)
+            : usage.remaining;
         const session = await beginServerSession({ purpose: 'recommended', size: target, pool_mode: 'new' }, 'tutor');
         if (session) track('recommended_start', { size: session.size, adaptive: true });
     }
@@ -905,8 +980,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 41;
+    const WHATS_NEW_VERSION = 42;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 22', title: 'A study plan that adjusts with you', desc: 'Your dashboard now builds a two-week calendar from your exam date, unseen coverage, due reviews, recent misses, and weakest domains, then recalculates as you practice. Question debriefs now organize why the answer wins and why each distractor fails; richer CAA-reviewed teaching pivots will appear as they are approved. Behind the scenes, item-quality monitoring helps prioritize questions for clinical review without treating small samples as proof. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Clearer CAA resource links', desc: 'Helpful external links in the public footer are now grouped under CAA resources, making their purpose clearer without presenting every listed organization as a formal MACPrep partner. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Cohort code groups you can rename', desc: 'Admins can now rename an existing cohort-code group directly from the generator, making it easy to add a school, class year, or send year later without changing any code or claim history. MACPrep also prevents two group names from being merged by accident. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 22', title: 'More resilient availability monitoring', desc: 'MACPrep now handles brief database slowdowns without turning a momentary delay into a service incident, while repeated failures still trigger an operational alert. Slow health checks are also stopped cleanly instead of continuing in the background. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -1284,10 +1360,9 @@
         const g = $('dash-greeting'); if (g) g.style.display = 'none';
         const sb = $('dash-subtitle'); if (sb) sb.style.display = 'none';
         const p = state.profile || {};
-        const bank = questionBankSize();
         const answeredToday = answeredTodayLive();
-        let goal = (p.days_to_exam > 0 && bank > 0) ? Math.ceil((bank * 2) / p.days_to_exam) : 10;
-        goal = Math.max(5, Math.min(40, goal));
+        const planTarget = Number(p.adaptive_plan && p.adaptive_plan.daily_target);
+        const goal = Math.max(5, Math.min(50, Number.isFinite(planTarget) && planTarget > 0 ? Math.round(planTarget) : 10));
         const streak = p.streak || 0;
         const weekDays = Math.min(streak, 7);
         const readiness = Math.max(0, Math.min(100, p.readiness || 0));
@@ -2050,6 +2125,7 @@
         renderMomentum();
         renderPdCard();
         renderStudyModes();
+        renderAdaptivePlan();
         renderAchievements();
         renderResumeCard();
         renderExamPrompt();
@@ -3387,7 +3463,28 @@
             : `<span style="color:${GRADE_RED};font-weight:bold;">INCORRECT</span>`;
         const peerWho = (data.peer_group === 'SAA') ? 'active SAA peers' : 'test-takers';
         const peer = (data.peer_correct_pct != null) ? ` <span style="color:var(--muted);">· ${data.peer_correct_pct}% of ${peerWho} got this right <span title="Each learner's latest response only">(n=${Number(data.response_count) || 0})</span></span>` : '';
-        let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div>`;
+        const debrief = data.teaching_debrief && typeof data.teaching_debrief === 'object' ? data.teaching_debrief : null;
+        let teachingHtml;
+        if (debrief) {
+            const corrections = Object.keys(debrief.distractor_corrections || {})
+                .filter((label) => /^[A-E]$/.test(label))
+                .sort()
+                .map((label) => `<div class="teach-correction"><span class="teach-letter">${label}</span><div>${renderRich(debrief.distractor_corrections[label])}</div></div>`)
+                .join('');
+            const fullExplanation = data.explanation && data.explanation.trim() !== String(debrief.correct_principle || '').trim()
+                ? `<details style="margin-top:10px;"><summary class="q-tool" style="font-size:12px;">Full explanation</summary><div style="margin-top:8px;">${renderRich(data.explanation)}</div></details>`
+                : '';
+            teachingHtml = `<div class="teach-debrief">
+                <div class="teach-kicker">Teach the question · CAA reviewed</div>
+                <div class="teach-section"><div class="teach-label">Key takeaway</div><div>${renderRich(debrief.key_takeaway)}</div></div>
+                <div class="teach-section"><div class="teach-label">Why the correct answer wins</div><div>${renderRich(debrief.correct_principle)}</div>${fullExplanation}</div>
+                ${corrections ? `<div class="teach-section"><div class="teach-label">What would make each distractor correct?</div>${corrections}</div>` : ''}
+                <div class="teach-section"><div class="teach-label">Verify it in the source</div><div>${renderRich(debrief.source_verification)}</div></div>
+            </div>`;
+        } else {
+            teachingHtml = `<div class="teach-debrief"><div class="teach-kicker">Question debrief</div><div class="teach-section"><div class="teach-label">Why the correct answer wins</div><div>${renderRich(data.explanation || 'No explanation provided.')}</div></div><div class="teach-section" style="font-size:12px;color:var(--muted);">Why each distractor fails is shown directly beneath its answer choice.</div></div>`;
+        }
+        let html = `<div class="mono" style="font-size:12px;margin-bottom:8px;">${verdict}${peer}</div>${teachingHtml}`;
         const refs = (data.references || []).filter((r) => r && (r.url || r.source || r.title));
         if (refs.length) {
             const items = refs.map((r) => {
@@ -4925,21 +5022,23 @@
         const summary = $('review-queue-summary'); if (summary) summary.innerHTML = '';
         const wrap = $('review-queue-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue...</div>';
         try {
-            const [qr, er, rr] = await Promise.all([
+            const [qr, er, rr, dr] = await Promise.all([
                 apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() }).catch(() => ({ data: {} })),
                 apiJSON('/api/admin/edits', { headers: authHeaders() }).catch(() => ({ data: {} })),
                 apiJSON('/api/admin/reviews', { headers: authHeaders() }).catch(() => ({ data: {} })),
+                apiJSON('/api/admin/questions?status=published&debrief=missing&limit=25', { headers: authHeaders() }).catch(() => ({ data: {} })),
             ]);
             const questions = (qr.data && qr.data.questions) || [];
             const edits = (er.data && er.data.edits) || [];
+            const debriefs = (dr.data && dr.data.questions) || [];
             // Flagged user reviews (auto-held for language) land in the same queue as questions/edits.
             const flaggedReviews = ((rr.data && rr.data.reviews) || []).filter((rv) => rv.status === 'pending');
             const qc = (qr.data && qr.data.counts) || {}, ec = (er.data && er.data.counts) || {};
             if (state.adminSurface !== 'review') return;
             state.review = {
-                list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e })), ...flaggedReviews.map((rv) => ({ kind: 'review', rv }))],
+                list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e })), ...flaggedReviews.map((rv) => ({ kind: 'review', rv })), ...debriefs.map((q) => ({ kind: 'debrief', q }))],
                 index: 0,
-                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0, flaggedReviews: flaggedReviews.length },
+                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0, flaggedReviews: flaggedReviews.length, debriefMissing: (dr.data && dr.data.counts && dr.data.counts.debrief_missing) != null ? dr.data.counts.debrief_missing : debriefs.length },
             };
             renderReview();
         } catch (e) {
@@ -4955,6 +5054,7 @@
             ['Question drafts', c.sme_review || 0],
             ['Answer edits', c.editsPending || 0],
             ['Held reviews', c.flaggedReviews || 0],
+            ['Debriefs to review', c.debriefMissing || 0],
             ['Published', c.published || 0],
             ['Rejected', c.rejected || 0],
         ];
@@ -4974,23 +5074,35 @@
         const item = r.list[r.index];
         if (item.kind === 'edit') { renderEditCard(item.e); return; }
         if (item.kind === 'review') { renderReviewCard(item.rv); return; }
-        renderQuestionCard(item.q);
+        renderQuestionCard(item.q, item.kind);
     }
 
-    function renderQuestionCard(q) {
+    function renderQuestionCard(q, kind) {
         const r = state.review; const wrap = reviewQueueBody(); if (!wrap) return;
+        const debriefMode = kind === 'debrief';
+        const debrief = q.teaching_debrief && typeof q.teaching_debrief === 'object' ? q.teaching_debrief : {};
+        const correctionValues = debrief.distractor_corrections && typeof debrief.distractor_corrections === 'object' ? debrief.distractor_corrections : {};
+        const keyedAnswer = (q.correct_answer || '').toUpperCase();
         const choices = (q.choices || []).map((ch, i) => {
             const letter = String.fromCharCode(65 + i);
-            const correct = (q.correct_answer || '').toUpperCase() === letter || ch.correct === true;
+            const correct = keyedAnswer === letter || ch.correct === true;
             return `<div style="border:1px solid ${correct ? 'var(--accent)' : 'var(--line)'};border-radius:4px;padding:10px;margin:8px 0;background:${correct ? 'var(--accent-dim)' : 'var(--bg)'};">
                 <label style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);">[${letter}]${correct ? ' ✓ correct' : ''}</label>
                 <input data-edit="choice-text-${i}" value="${escapeHtml(ch.text || '')}" style="width:100%;margin:4px 0;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;">
                 <textarea data-edit="choice-rat-${i}" rows="2" style="width:100%;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:12px;">${escapeHtml(ch.rationale || '')}</textarea>
             </div>`;
         }).join('');
+        const corrections = (q.choices || []).map((ch, i) => {
+            const letter = String.fromCharCode(65 + i);
+            if (letter === keyedAnswer) return '';
+            return `<div style="margin-top:9px;"><label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);">[${letter}] What fact or stem change would make this correct?</label><textarea data-edit="debrief-correction-${letter}" rows="2" style="width:100%;margin-top:4px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:12px;">${escapeHtml(correctionValues[letter] || '')}</textarea></div>`;
+        }).join('');
         const refs = (q.references || []).map((rf) => rf.url ? `<a href="${escapeHtml(rf.url)}" target="_blank" rel="noopener">${escapeHtml(rf.title || rf.source || rf.url)}</a>` : escapeHtml(rf.source || '')).join('<br>');
+        const actionButtons = debriefMode
+            ? `<button class="btn" onclick="MACPrep.adminAction('review-debrief')">Mark reviewed &amp; save</button><button class="btn ghost" onclick="MACPrep.adminAction('save')">Save draft</button><button class="btn ghost" onclick="MACPrep.adminAction('skip')">Skip</button>`
+            : `<button class="btn" onclick="MACPrep.adminAction('publish')">Publish</button><button class="btn ghost" onclick="MACPrep.adminAction('save')">Save edits</button><button class="btn ghost" onclick="MACPrep.adminAction('skip')">Skip</button><button class="btn" style="background:var(--danger);" onclick="MACPrep.adminAction('reject')">Reject</button>`;
         wrap.innerHTML = `
-            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">New question · ${r.index + 1} of ${r.list.length} · ${escapeHtml(q.id)} · ${escapeHtml((q.category || '') + ' · ' + (q.subtopic || '') + ' · ' + (q.difficulty || ''))}</div>
+            <div class="mono" style="color:var(--muted);font-size:12px;margin-bottom:8px;">${debriefMode ? 'Teach the Question review' : 'New question'} · ${r.index + 1} of ${r.list.length} · ${escapeHtml(q.id)} · ${escapeHtml((q.category || '') + ' · ' + (q.subtopic || '') + ' · ' + (q.difficulty || ''))}</div>
             <div class="card">
                 <label>Stem</label>
                 <textarea data-edit="stem" rows="4" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:14px;margin-bottom:14px;">${escapeHtml(q.stem || '')}</textarea>
@@ -5001,11 +5113,21 @@
                 <label>Explanation</label>
                 <textarea data-edit="explanation" rows="5" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:13px;margin-bottom:10px;">${escapeHtml(q.explanation || '')}</textarea>
                 <div class="mono" style="font-size:12px;color:var(--muted);margin-bottom:16px;">Source: ${refs || '—'}</div>
+                <div style="border-top:1px solid var(--line);padding-top:17px;margin-top:4px;">
+                    <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:5px;">Teach the Question</div>
+                    <div class="sub" style="font-size:12px;margin:0 0 13px;">This structured layer is hidden from learners until you mark it clinically reviewed.</div>
+                    <label>Key takeaway</label>
+                    <textarea data-edit="debrief-key" rows="2" style="width:100%;margin:4px 0 10px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:12px;">${escapeHtml(debrief.key_takeaway || '')}</textarea>
+                    <label>Why the correct answer wins</label>
+                    <textarea data-edit="debrief-principle" rows="3" style="width:100%;margin:4px 0 10px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:12px;">${escapeHtml(debrief.correct_principle || '')}</textarea>
+                    <label>What would make each distractor correct?</label>
+                    ${corrections}
+                    <label style="display:block;margin-top:12px;">How to verify it in the source</label>
+                    <textarea data-edit="debrief-source" rows="2" style="width:100%;margin:4px 0 10px;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:12px;">${escapeHtml(debrief.source_verification || '')}</textarea>
+                    <label style="display:flex;align-items:flex-start;gap:9px;font-size:12px;color:var(--text2);margin:8px 0 17px;"><input data-edit="debrief-reviewed" type="checkbox" ${q.debrief_reviewed_at ? 'checked' : ''} style="margin-top:2px;"> I reviewed this teaching layer against the cited source.</label>
+                </div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <button class="btn" onclick="MACPrep.adminAction('publish')">✓ Publish</button>
-                    <button class="btn ghost" onclick="MACPrep.adminAction('save')">Save edits (keep reviewing)</button>
-                    <button class="btn ghost" onclick="MACPrep.adminAction('skip')">Skip →</button>
-                    <button class="btn" style="background:var(--danger);" onclick="MACPrep.adminAction('reject')">✗ Reject</button>
+                    ${actionButtons}
                 </div>
                 <span id="admin-msg" class="mono" style="font-size:12px;color:var(--accent);"></span>
             </div>`;
@@ -5023,24 +5145,53 @@
         const correctLetter = (get('correct_answer') || q.correct_answer || '').toUpperCase();
         // keep the choices[].correct flags aligned with the letter
         choices.forEach((ch, i) => { ch.correct = (String.fromCharCode(65 + i) === correctLetter); });
-        return { id: q.id, stem: get('stem'), explanation: get('explanation'), correct_answer: correctLetter, choices };
+        const corrections = {};
+        choices.forEach((choice, index) => {
+            const label = String.fromCharCode(65 + index);
+            if (label === correctLetter) return;
+            const value = get(`debrief-correction-${label}`);
+            if (value) corrections[label] = value;
+        });
+        const reviewBox = body && body.querySelector('[data-edit="debrief-reviewed"]');
+        return {
+            id: q.id,
+            stem: get('stem'),
+            explanation: get('explanation'),
+            correct_answer: correctLetter,
+            choices,
+            teaching_debrief: {
+                key_takeaway: get('debrief-key') || '',
+                correct_principle: get('debrief-principle') || '',
+                distractor_corrections: corrections,
+                source_verification: get('debrief-source') || '',
+            },
+            teaching_debrief_reviewed: !!(reviewBox && reviewBox.checked),
+        };
     }
 
     async function adminAction(action) {
         const r = state.review; if (!r) return;
         const msg = $('admin-msg');
         const body = collectReviewEdits();
+        const itemKind = r.list[r.index] && r.list[r.index].kind;
         if (action === 'publish') body.status = 'published';
         if (action === 'reject') body.status = 'rejected';
+        if (action === 'review-debrief') body.teaching_debrief_reviewed = true;
         if (action === 'skip') { r.index++; renderReview(); return; }
         try {
             const { resp, data } = await apiJSON('/api/admin/question', { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
-            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed.');
+            if (!resp.ok || !data.success) throw new Error([data.error, ...(data.issues || [])].filter(Boolean).join(' ') || 'Failed.');
             if (action === 'save') { if (msg) { msg.textContent = 'Saved ✓'; setTimeout(() => { msg.textContent = ''; }, 1500); } return; }
+            if (action === 'review-debrief') {
+                r.counts.debriefMissing = Math.max(0, (r.counts.debriefMissing || 1) - 1);
+                r.index++;
+                renderReview();
+                return;
+            }
             // publish/reject: update counts + advance
             if (action === 'publish') r.counts.published = (r.counts.published || 0) + 1;
             if (action === 'reject') r.counts.rejected = (r.counts.rejected || 0) + 1;
-            r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
+            if (itemKind === 'question') r.counts.sme_review = Math.max(0, (r.counts.sme_review || 1) - 1);
             r.index++;
             renderReview();
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
@@ -5609,7 +5760,7 @@
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
-        startRecommended, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
+        startRecommended, planSelectDay, planShiftWeek, startPlanTask, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew, closeWhatsNewPopup,

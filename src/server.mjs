@@ -19,6 +19,8 @@ import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
 import apn from '@parse/node-apn';
 import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
 import { validateQuestionForPublication } from './lib/question-validation.mjs';
+import { buildAdaptiveStudyPlan } from './lib/study-plan.mjs';
+import { normalizeTeachingDebrief, validateTeachingDebrief } from './lib/teaching-debrief.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -388,7 +390,7 @@ export function getServedQuestionQuery(client, questionId) {
     return applyServedFilter(
         client
             .from('questions')
-            .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision')
+            .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision, teaching_debrief, debrief_reviewed_at')
             .eq('id', questionId)
     );
 }
@@ -531,6 +533,9 @@ function normalizeGradeInput(question, answer = {}) {
             explanation: question.explanation || '',
             rationales: choices.map((choice) => (choice && typeof choice === 'object' ? (choice.rationale || '') : '')),
             references,
+            teaching_debrief: question.debrief_reviewed_at
+                ? normalizeTeachingDebrief(question.teaching_debrief)
+                : null,
         },
     };
 }
@@ -1589,7 +1594,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const windowDays = 30;
         const now = new Date();
         const usageSince = new Date(now.getTime() - windowDays * 86400000).toISOString();
-        const [rollup, feedbackResult, rev, analyticsRows] = await Promise.all([
+        const [rollup, feedbackResult, rev, analyticsRows, itemQualityResult] = await Promise.all([
             supabase.rpc('founder_metrics', { p_window_days: windowDays, p_daily_days: 21, p_review_emails: [...REVIEW_EMAILS] }),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
             getStripeRevenue(),
@@ -1597,9 +1602,16 @@ app.get('/api/admin/metrics', async (req, res) => {
                 console.error('[metrics] analytics usage fetch failed:', error.message);
                 return [];
             }),
+            supabase.rpc('macprep_item_quality_rollup', {
+                p_min_sample: 10,
+                p_excluded_emails: [...ADMIN_EMAILS, ...REVIEW_EMAILS],
+            }),
         ]);
         if (rollup.error) throw new Error(rollup.error.message);
         if (feedbackResult.error) throw feedbackResult.error;
+        if (itemQualityResult.error) {
+            reportOperationalError('admin.metrics.item-quality', itemQualityResult.error);
+        }
         const feedback = feedbackResult.data || [];
         const m = rollup.data;
         const thisMonth = new Date().toISOString().slice(0, 7);
@@ -1630,6 +1642,11 @@ app.get('/api/admin/metrics', async (req, res) => {
             ],
             event_counts: m.event_counts,
             product_usage: summarizeProductUsage(analyticsRows, now),
+            item_quality: itemQualityResult.error ? {
+                unavailable: true,
+                summary: {},
+                items: [],
+            } : itemQualityResult.data,
             daily: m.daily,
             monthly_signups: m.signups_by_month || [],
             recent_signups: m.recent_signups,
@@ -2510,22 +2527,32 @@ app.get('/api/admin/questions', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     const status = (req.query.status || 'sme_review').toString();
+    const debriefFilter = String(req.query.debrief || '');
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
     try {
-        const { data, error } = await supabase
+        let questionsQuery = supabase
             .from('questions')
-            .select('id, category, domain_name, subtopic, difficulty, stem, choices, correct_answer, explanation, "references", status')
+            .select('id, category, domain_name, subtopic, difficulty, stem, choices, correct_answer, explanation, "references", status, teaching_debrief, debrief_reviewed_at')
             .eq('status', status)
             .order('id', { ascending: true })
             .limit(limit);
+        if (debriefFilter === 'missing') questionsQuery = questionsQuery.is('debrief_reviewed_at', null);
+        else if (debriefFilter === 'reviewed') questionsQuery = questionsQuery.not('debrief_reviewed_at', 'is', null);
+        const { data, error } = await questionsQuery;
         if (error) throw error;
         const out = (data || []).map((q) => ({ ...q, choices: parseChoices(q.choices) }));
         // counts by status for the queue header
         const STATUSES = ['sme_review', 'published', 'rejected', 'draft', 'unreviewed'];
         const countResults = await Promise.all(STATUSES.map((st) =>
             supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', st)));
+        const debriefCount = await supabase.from('questions')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'published')
+            .is('debrief_reviewed_at', null);
+        if (debriefCount.error) throw debriefCount.error;
         const counts = {};
         STATUSES.forEach((st, i) => { counts[st] = countResults[i].count || 0; });
+        counts.debrief_missing = debriefCount.count || 0;
         return res.json({ questions: out, counts });
     } catch (err) {
         console.error('Admin list failure:', err.message);
@@ -2727,11 +2754,15 @@ app.post('/api/admin/question', async (req, res) => {
     }
     if (Array.isArray(b.choices)) update.choices = b.choices;
     if (Array.isArray(b.references)) update.references = b.references;
-    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Nothing to update.' });
+    const hasTeachingDebrief = Object.prototype.hasOwnProperty.call(b, 'teaching_debrief');
+    if (hasTeachingDebrief) update.teaching_debrief = normalizeTeachingDebrief(b.teaching_debrief);
+    if (Object.keys(update).length === 0 && !Object.prototype.hasOwnProperty.call(b, 'teaching_debrief_reviewed')) {
+        return res.status(400).json({ error: 'Nothing to update.' });
+    }
     try {
         const { data: current, error: readError } = await supabase
             .from('questions')
-            .select('id, domain, domain_name, category, subtopic, stem, choices, correct_answer, explanation, "references", status')
+            .select('id, domain, domain_name, category, subtopic, stem, choices, correct_answer, explanation, "references", status, teaching_debrief, debrief_reviewed_at, debrief_reviewed_by')
             .eq('id', id)
             .maybeSingle();
         if (readError) throw readError;
@@ -2747,6 +2778,32 @@ app.post('/api/admin/question', async (req, res) => {
                 return [];
             })(),
         };
+        const debriefReviewRequested = b.teaching_debrief_reviewed === true;
+        const reviewSensitiveContentSubmitted = hasTeachingDebrief
+            || ['stem', 'explanation', 'correct_answer'].some((field) => Object.prototype.hasOwnProperty.call(b, field))
+            || Object.prototype.hasOwnProperty.call(b, 'choices')
+            || Object.prototype.hasOwnProperty.call(b, 'references');
+        if (debriefReviewRequested) {
+            const assessment = validateTeachingDebrief(
+                candidate.teaching_debrief,
+                candidate.choices,
+                candidate.correct_answer
+            );
+            if (!assessment.valid) {
+                return res.status(422).json({
+                    error: 'Teach the Question is not ready for clinician sign-off.',
+                    issues: assessment.errors,
+                });
+            }
+            update.teaching_debrief = assessment.debrief;
+            update.debrief_reviewed_at = new Date().toISOString();
+            update.debrief_reviewed_by = admin.id;
+        } else if (reviewSensitiveContentSubmitted || b.teaching_debrief_reviewed === false) {
+            // Any clinical content, citation, or answer-layout submission invalidates
+            // the prior sign-off until an admin explicitly reviews the complete layer.
+            update.debrief_reviewed_at = null;
+            update.debrief_reviewed_by = null;
+        }
         if (candidate.status === 'published') {
             const assessment = validateQuestionForPublication(candidate);
             if (!assessment.valid) {
@@ -3715,7 +3772,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         const query = applyServedFilter(
             supabase
                 .from('questions')
-                .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision')
+                .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision, teaching_debrief, debrief_reviewed_at')
                 .in('id', questionIds)
         );
         const { data: questions, error: questionErr } = await query;
@@ -3851,6 +3908,8 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         if (error) throw error;
 
         const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
+        const planNow = new Date();
+        const planHorizon = new Date(planNow.getTime() + 14 * 86400000).toISOString();
         const [learningResult, readinessResult, flagsResult, cardsResult, dueResult, ceiling, benchmark] = await Promise.all([
             supabase.rpc('macprep_user_learning_rollup', {
                 p_user: user.id,
@@ -3863,7 +3922,11 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             }),
             supabase.from('user_flags').select('question_id').eq('user_id', user.id),
             supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
-            supabase.from('review_state').select('question_id').eq('user_id', user.id).lte('due_at', new Date().toISOString()),
+            supabase.from('review_state')
+                .select('question_id, due_at')
+                .eq('user_id', user.id)
+                .lte('due_at', planHorizon)
+                .order('due_at', { ascending: true }),
             getFreeTierCeiling(),
             getSaaBenchmark(),
         ]);
@@ -3875,13 +3938,10 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const stats = learning.stats || { answered: 0, attempts: 0, correct: 0 };
         const flagged_ids = (flagsResult.data || []).map((row) => row.question_id);
         const flashcard_ids = (cardsResult.data || []).map((row) => row.question_id);
-        const due_ids = (dueResult.data || []).map((row) => row.question_id);
-        const today = new Date();
-        let days_to_exam = null;
-        if (profile?.target_exam_date) {
-            days_to_exam = Math.ceil((new Date(profile.target_exam_date) - today) / 86400000);
-        }
-
+        const dueSchedule = dueResult.data || [];
+        const due_ids = dueSchedule
+            .filter((row) => !row.due_at || Date.parse(row.due_at) <= planNow.getTime())
+            .map((row) => row.question_id);
         // Effective credential: an SAA (student) whose graduation date has passed is
         // treated as a CAA from that day on (computed, no scheduled job) — this is what
         // gates the future CME section to CAAs. Source of truth stays credential + grad date.
@@ -3903,6 +3963,19 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
         // students compare to the whole SAA population, never their own cohort).
         const saaBenchmark = saaDomainBenchmark(benchmark);
+        const adaptivePlan = buildAdaptiveStudyPlan({
+            now: planNow,
+            timezoneOffset: tzOffset,
+            targetExamDate: profile?.target_exam_date,
+            totalQuestions: Number(readinessBasis.total) || 0,
+            answeredQuestions: Number(stats.answered) || 0,
+            answeredToday: Number(learning.answered_today) || 0,
+            dueCount: due_ids.length,
+            dueSchedule,
+            missedCount: Array.isArray(learning.missed_ids) ? learning.missed_ids.length : 0,
+            confidentMissedCount: Array.isArray(learning.confident_missed_ids) ? learning.confident_missed_ids.length : 0,
+            byDomain: Array.isArray(learning.by_domain) ? learning.by_domain : [],
+        });
 
         // Review-ask nudge: once an account is a week old, ask for a review at the next
         // sign-in — unless they already left one (any status; one review per account) or
@@ -3977,7 +4050,8 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                     total: Number(readinessBasis.total) || 0,
                     latest_accuracy: readinessBasis.latest_accuracy == null ? null : Number(readinessBasis.latest_accuracy),
                 },
-                days_to_exam,
+                adaptive_plan: adaptivePlan,
+                days_to_exam: adaptivePlan.days_to_exam,
                 answered_today: Number(learning.answered_today) || 0,
                 missed_ids: Array.isArray(learning.missed_ids) ? learning.missed_ids : [],
                 confident_missed_ids: Array.isArray(learning.confident_missed_ids) ? learning.confident_missed_ids : [],
