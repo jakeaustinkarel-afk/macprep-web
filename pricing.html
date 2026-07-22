@@ -315,12 +315,9 @@
     ['cta-free','cta-bottom'].forEach(function(id){var el=document.getElementById(id); if(el){el.textContent='Go to your dashboard'; el.setAttribute('href','/index.html');}});
     if(p&&(p.premium_unlocked||p.is_admin)){ prem.textContent='✓ You already have full access'; prem.setAttribute('href','/index.html'); return; }
     prem.textContent='Get full access — $100';
-    prem.addEventListener('click',function(e){
-      e.preventDefault(); if(prem.dataset.busy) return; prem.dataset.busy='1'; prem.textContent='Redirecting…';
-      fetch('/api/create-checkout-session',{method:'POST',headers:ah(true),body:JSON.stringify({email:(p&&p.email)||''})})
-        .then(function(r){return r.json();}).then(function(c){ if(c&&c.url){window.location.href=c.url;} else { prem.dataset.busy=''; prem.textContent='Get full access — $100'; alert('Checkout could not start — please try from your dashboard.'); } })
-        .catch(function(){ prem.dataset.busy=''; prem.textContent='Get full access — $100'; });
-    });
+    // Let the signed-in app choose Stripe on web or the platform Store in a
+    // native shell. Static public pages must never launch Stripe themselves.
+    prem.setAttribute('href','/index.html#upgrade');
   }).catch(function(){});
 }catch(e){}})();</script>
 </body>

@@ -388,7 +388,7 @@ export function getServedQuestionQuery(client, questionId) {
     return applyServedFilter(
         client
             .from('questions')
-            .select('specialty, category, correct_answer, choices, explanation, "references"')
+            .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision')
             .eq('id', questionId)
     );
 }
@@ -430,6 +430,59 @@ function parseChoices(raw) {
     return [];
 }
 
+function choiceText(choice) {
+    return String(choice && typeof choice === 'object' ? (choice.text ?? choice.value ?? '') : (choice ?? '')).trim();
+}
+
+// Choice positions can change during editorial balancing. This identifier stays
+// attached to the answer text so an old browser can never silently turn A into
+// a different answer after a reorder.
+export function answerChoiceId(questionId, choice) {
+    return createHash('sha256')
+        .update(`${String(questionId || '')}\0${choiceText(choice)}`)
+        .digest('base64url')
+        .slice(0, 20);
+}
+
+function staleQuestionError() {
+    const error = new Error('This question was updated while it was open. MACPrep will refresh it before grading.');
+    error.status = 409;
+    error.code = 'stale_question';
+    return error;
+}
+
+export function resolveSubmittedChoiceIndex(question, answer = {}) {
+    const choices = parseChoices(question?.choices);
+    if (Object.prototype.hasOwnProperty.call(answer, 'choiceId')) {
+        const submittedId = String(answer.choiceId || '');
+        const matches = choices
+            .map((choice, index) => (answerChoiceId(question?.id, choice) === submittedId ? index : -1))
+            .filter((index) => index >= 0);
+        if (matches.length !== 1) throw staleQuestionError();
+        return matches[0];
+    }
+    const selectedIndex = Number(answer.choiceIndex);
+    if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= choices.length) {
+        const error = new Error('Invalid answer choice.');
+        error.status = 400;
+        throw error;
+    }
+    return selectedIndex;
+}
+
+function assertCurrentChoiceIdentity(question, answer = {}) {
+    const currentRevision = Math.max(1, Number(question?.answer_revision) || 1);
+    if (Object.prototype.hasOwnProperty.call(answer, 'answerRevision')
+        && Number(answer.answerRevision) !== currentRevision) {
+        throw staleQuestionError();
+    }
+    // Revision 2 is the first reordered bank. Older clients only submit a
+    // position, which is unsafe for those questions and must be refreshed.
+    if (currentRevision > 1 && !Object.prototype.hasOwnProperty.call(answer, 'choiceId')) {
+        throw staleQuestionError();
+    }
+}
+
 export function resolveCorrectChoiceIndex(question) {
     const choices = parseChoices(question?.choices);
     const flagged = choices
@@ -450,12 +503,7 @@ function normalizeGradeInput(question, answer = {}) {
         error.status = 422;
         throw error;
     }
-    const selectedIndex = Number(answer.choiceIndex);
-    if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= choices.length) {
-        const error = new Error('Invalid answer choice.');
-        error.status = 400;
-        throw error;
-    }
+    const selectedIndex = resolveSubmittedChoiceIndex(question, answer);
     const timeValue = Number(answer.time_ms);
     const timeMs = Number.isFinite(timeValue) && timeValue > 0 && timeValue <= 1800000
         ? Math.round(timeValue)
@@ -479,6 +527,7 @@ function normalizeGradeInput(question, answer = {}) {
         result: {
             correct: isCorrect,
             correctIndex,
+            correctChoiceId: answerChoiceId(question?.id, choices[correctIndex]),
             explanation: question.explanation || '',
             rationales: choices.map((choice) => (choice && typeof choice === 'object' ? (choice.rationale || '') : '')),
             references,
@@ -492,8 +541,8 @@ function safeQuestionForClient(q) {
         ...rest,
         reviewed: status === 'published',
         choices: parseChoices(q.choices).map((c) => (typeof c === 'object' && c !== null
-            ? { text: c.text ?? c.value ?? '' }
-            : { text: c })),
+            ? { id: answerChoiceId(q.id, c), text: c.text ?? c.value ?? '' }
+            : { id: answerChoiceId(q.id, c), text: c })),
     };
 }
 
@@ -511,6 +560,15 @@ function applyQuestionFilters(query, { category, difficulty } = {}) {
     }
     if (difficulty && difficulty !== 'all') query = query.eq('difficulty', difficulty);
     return query;
+}
+
+async function fetchAllServedQuestionRows(select, { ids = [], category, difficulty } = {}) {
+    return fetchAllPostgrestRows((from, to) => {
+        let query = applyServedFilter(supabase.from('questions').select(select));
+        if (ids.length) query = query.in('id', ids);
+        else query = applyQuestionFilters(query, { category, difficulty });
+        return query.order('id', { ascending: true }).range(from, to);
+    });
 }
 
 async function getQuestionCatalog() {
@@ -557,7 +615,7 @@ function qotdOffset(total, now = new Date()) {
 async function fetchServedQuestionRows({ ids = [], category, difficulty, offset = 0, limit = MAX_STUDY_SESSION_SIZE } = {}) {
     let query = supabase
         .from('questions')
-        .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
+        .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status, answer_revision')
         .order('id', { ascending: true });
     query = applyServedFilter(query);
     if (ids.length) query = query.in('id', ids);
@@ -1420,7 +1478,10 @@ app.post('/api/admin/run-nudges', async (req, res) => {
         const push = (!dry && PUSH_ENABLED) ? await sendPushReminders() : { skipped: dry ? 'dry-run (no push sent)' : 'push not configured' };
         const push_native = (!dry && NATIVE_PUSH_ENABLED) ? await sendNativeReminders() : { skipped: dry ? 'dry-run (no native push sent)' : 'native push not configured' };
         res.json({ email, push, push_native });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (error) {
+        reportOperationalError('admin.run-nudges', error);
+        return res.status(500).json({ error: 'Could not run reminders.' });
+    }
 });
 
 // Record a successful purchase in the funnel exactly once per user. Webhook retries,
@@ -1478,7 +1539,7 @@ app.get('/api/admin/metrics', async (req, res) => {
         const windowDays = 30;
         const now = new Date();
         const usageSince = new Date(now.getTime() - windowDays * 86400000).toISOString();
-        const [rollup, { data: feedback }, rev, analyticsRows] = await Promise.all([
+        const [rollup, feedbackResult, rev, analyticsRows] = await Promise.all([
             supabase.rpc('founder_metrics', { p_window_days: windowDays, p_daily_days: 21, p_review_emails: [...REVIEW_EMAILS] }),
             supabase.from('user_suggestions').select('user_email, suggestion_text, created_at').order('created_at', { ascending: false }).limit(25),
             getStripeRevenue(),
@@ -1488,6 +1549,8 @@ app.get('/api/admin/metrics', async (req, res) => {
             }),
         ]);
         if (rollup.error) throw new Error(rollup.error.message);
+        if (feedbackResult.error) throw feedbackResult.error;
+        const feedback = feedbackResult.data || [];
         const m = rollup.data;
         const thisMonth = new Date().toISOString().slice(0, 7);
         const cur = (rev && rev.monthly.find((x) => x.month === thisMonth)) || { amount: 0, count: 0 };
@@ -1523,7 +1586,10 @@ app.get('/api/admin/metrics', async (req, res) => {
             feedback_count: (feedback || []).length,
             recent_feedback: (feedback || []).map((f) => ({ email: f.user_email, text: f.suggestion_text, at: f.created_at })),
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (error) {
+        reportOperationalError('admin.metrics', error);
+        return res.status(500).json({ error: 'Could not load metrics.' });
+    }
 });
 
 // Daily reminder scheduler (in-process; dormant without RESEND_API_KEY). Fires in
@@ -3069,7 +3135,12 @@ app.get('/api/demo/questions', demoLimiter, async (req, res) => {
             id: q.id,
             specialty: q.category || q.domain_name || '',   // broad category only — q.specialty is granular and can name the answer
             stem: q.stem,
-            choices: (q.choices || []).map((c) => ({ label: c.label, text: c.text })),
+            answerRevision: Math.max(1, Number(q.answer_revision) || 1),
+            choices: (q.choices || []).map((c) => ({
+                id: answerChoiceId(q.id, c),
+                label: c.label,
+                text: c.text,
+            })),
         }));
         res.json({ questions: picks });
     } catch (e) { res.status(500).json({ error: 'Demo temporarily unavailable.', questions: [] }); }
@@ -3078,21 +3149,31 @@ app.get('/api/demo/questions', demoLimiter, async (req, res) => {
 app.post('/api/demo/grade', demoLimiter, async (req, res) => {
     try {
         const id = req.body?.id;
-        const sel = req.body?.choiceIndex;
         const q = (await getDemoPool()).find((x) => x.id === id);
         if (!q) return res.status(403).json({ error: 'That question is not part of the demo.' });
         const choices = q.choices || [];
-        let chosenLabel = null;
-        if (typeof sel === 'number' && choices[sel]) chosenLabel = choices[sel].label;
-        else if (typeof sel === 'string') chosenLabel = sel;
+        assertCurrentChoiceIdentity(q, req.body);
+        const selectedIndex = resolveSubmittedChoiceIndex(q, req.body);
+        const chosenLabel = choices[selectedIndex]?.label || null;
         res.json({
             correct: chosenLabel != null && chosenLabel === q.correct_answer,
             correct_answer: q.correct_answer,
-            choices: choices.map((c) => ({ label: c.label, text: c.text, correct: !!c.correct, rationale: c.rationale })),
+            choices: choices.map((c) => ({
+                id: answerChoiceId(q.id, c),
+                label: c.label,
+                text: c.text,
+                correct: !!c.correct,
+                rationale: c.rationale,
+            })),
             explanation: q.explanation,
             references: q.references || [],
         });
-    } catch (e) { res.status(500).json({ error: 'Demo temporarily unavailable.' }); }
+    } catch (e) {
+        res.status(e.status || 500).json({
+            error: e.status ? e.message : 'Demo temporarily unavailable.',
+            stale_question: e.code === 'stale_question',
+        });
+    }
 });
 
 // ---------------------------------------------------------------------------
@@ -3173,7 +3254,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
     try {
         let query = supabase
             .from('questions')
-            .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status')
+            .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status, answer_revision')
             .order('id', { ascending: true })
             .limit(40);
         words.forEach((word) => {
@@ -3203,12 +3284,10 @@ app.get('/api/exam-export', async (req, res) => {
     const count = Math.min(Math.max(parseInt(req.query.count, 10) || 25, 1), 200);
     const category = (req.query.category || 'all').toString();
     try {
-        let query = supabase.from('questions').select('id, category, domain_name, stem, choices, correct_answer, explanation, "references"');
-        query = applyServedFilter(query);
-        if (category && category !== 'all') query = query.eq('category', category);
-        const { data, error } = await query.limit(1500);
-        if (error) throw error;
-        const pool = data || [];
+        const pool = await fetchAllServedQuestionRows(
+            'id, category, domain_name, stem, choices, correct_answer, explanation, "references"',
+            { category }
+        );
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const picked = pool.slice(0, count).map((q) => {
             const choices = parseChoices(q.choices);
@@ -3252,13 +3331,10 @@ app.get('/api/flashcards', async (req, res) => {
     const count = ids.length ? ids.length : Math.min(Math.max(parseInt(req.query.count, 10) || 20, 1), 100);
     const category = (req.query.category || 'all').toString();
     try {
-        let query = supabase.from('questions').select('id, category, domain_name, subtopic, stem, choices, correct_answer, explanation, "references"');
-        query = applyServedFilter(query);
-        if (ids.length) query = query.in('id', ids);
-        else if (category && category !== 'all') query = query.eq('category', category);
-        const { data, error } = await query.limit(1500);
-        if (error) throw error;
-        const pool = data || [];
+        const pool = await fetchAllServedQuestionRows(
+            'id, category, domain_name, subtopic, stem, choices, correct_answer, explanation, "references"',
+            { ids, category }
+        );
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const picked = pool.slice(0, count).map((q) => {
             const choices = parseChoices(q.choices);
@@ -3365,14 +3441,14 @@ app.post('/api/gamification', async (req, res) => {
 // answered (user_progress) — never from a client-reported number.
 // ---------------------------------------------------------------------------
 app.post('/api/grade', gradeLimiter, async (req, res) => {
-    const { questionId, choiceIndex } = req.body || {};
+    const { questionId, choiceIndex, choiceId } = req.body || {};
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
 
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
 
-    if (!questionId || choiceIndex === undefined) {
-        return res.status(400).json({ error: 'questionId and choiceIndex are required.' });
+    if (!questionId || (choiceIndex === undefined && choiceId === undefined)) {
+        return res.status(400).json({ error: 'questionId and an answer choice are required.' });
     }
 
     try {
@@ -3403,6 +3479,7 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         if (error) throw error;
         if (!q) return res.status(404).json({ error: 'Question not found.' });
 
+        assertCurrentChoiceIdentity(q, req.body);
         const graded = normalizeGradeInput(q, req.body);
         const { selectedIndex: selIndex, correctIndex, isCorrect, confidence, timeMs, answerChanged, choices } = graded;
 
@@ -3469,7 +3546,10 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         });
     } catch (err) {
         if (!err.status || err.status >= 500) reportOperationalError('grade.single', err);
-        return res.status(err.status || 500).json({ error: err.status ? err.message : 'Grading failure.' });
+        return res.status(err.status || 500).json({
+            error: err.status ? err.message : 'Grading failure.',
+            stale_question: err.code === 'stale_question',
+        });
     }
 });
 
@@ -3527,7 +3607,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         const query = applyServedFilter(
             supabase
                 .from('questions')
-                .select('id, specialty, category, correct_answer, choices, explanation, "references"')
+                .select('id, specialty, category, correct_answer, choices, explanation, "references", answer_revision')
                 .in('id', questionIds)
         );
         const { data: questions, error: questionErr } = await query;
@@ -3540,6 +3620,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         const gradedAnswers = answers.map((answer) => {
             const questionId = String(answer.questionId);
             const question = byId.get(questionId);
+            if (!existingSubmission?.length) assertCurrentChoiceIdentity(question, answer);
             const grade = normalizeGradeInput(question, answer);
             return { questionId, question, grade };
         });
@@ -3588,7 +3669,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         // newly supplied body that the database correctly ignored.
         const { data: persisted, error: persistedError } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id, selected_label')
+            .select('question_id, selected_label, is_correct')
             .eq('user_id', user.id)
             .eq('submission_id', submissionId);
         if (persistedError) throw persistedError;
@@ -3600,7 +3681,11 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
             const selectedLabel = String(persistedById.get(questionId)?.selected_label || '').toUpperCase();
             const selectedIndex = selectedLabel.charCodeAt(0) - 65;
             const grade = normalizeGradeInput(byId.get(questionId), { choiceIndex: selectedIndex });
-            return { questionId, ...grade.result };
+            return {
+                questionId,
+                ...grade.result,
+                correct: persistedById.get(questionId)?.is_correct === true,
+            };
         });
 
         return res.json({
@@ -3609,7 +3694,10 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         });
     } catch (err) {
         if (!err.status || err.status >= 500) reportOperationalError('grade.batch', err);
-        return res.status(err.status || 500).json({ error: err.status ? err.message : 'The exam could not be graded. No answers were recorded.' });
+        return res.status(err.status || 500).json({
+            error: err.status ? err.message : 'The exam could not be graded. No answers were recorded.',
+            stale_question: err.code === 'stale_question',
+        });
     }
 });
 
@@ -3974,11 +4062,7 @@ app.post('/api/duel/create', async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
     const count = Math.min(Math.max(parseInt(req.body?.count, 10) || 10, 5), 20);
     try {
-        let q = supabase.from('questions').select('id');
-        q = applyServedFilter(q);
-        const { data: qs, error: questionError } = await q.limit(1500);
-        if (questionError) throw questionError;
-        const pool = (qs || []).map((r) => r.id);
+        const pool = (await fetchAllServedQuestionRows('id')).map((r) => r.id);
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const ids = pool.slice(0, count);
         if (ids.length < 3) return res.status(400).json({ error: 'Not enough questions available for a duel.' });
@@ -4017,11 +4101,7 @@ app.post('/api/duel/random', async (req, res) => {
             if (claimed) return res.json({ success: true, matched: true, code: open.code, questionIds: open.question_ids || [], creatorName: open.creator_name, role: 'opponent', isRandom: true });
         }
         // 2) None open → create one and wait in the pool for the next random dueler.
-        let q = supabase.from('questions').select('id');
-        q = applyServedFilter(q);
-        const { data: qs, error: questionError } = await q.limit(1500);
-        if (questionError) throw questionError;
-        const pool = (qs || []).map((r) => r.id);
+        const pool = (await fetchAllServedQuestionRows('id')).map((r) => r.id);
         for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
         const ids = pool.slice(0, count);
         if (ids.length < 3) return res.status(400).json({ error: 'Not enough questions available for a duel.' });
@@ -4314,7 +4394,10 @@ app.post('/api/user/review-prompt-seen', async (req, res) => {
         const { error } = await supabase.from(PROFILE_TABLE).update({ review_prompt_at: new Date().toISOString() }).eq('user_id', user.id);
         if (error) throw error;
         return res.json({ ok: true });
-    } catch (e) { return res.status(500).json({ error: e.message }); }
+    } catch (error) {
+        reportOperationalError('review.prompt-seen', error);
+        return res.status(500).json({ error: 'Could not update the review reminder.' });
+    }
 });
 
 app.get('/api/admin/reviews', async (req, res) => {

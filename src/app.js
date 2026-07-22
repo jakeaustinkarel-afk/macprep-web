@@ -18,7 +18,7 @@
     function ls(k, v) { try { return v === undefined ? localStorage.getItem(k) : (v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v)); } catch (e) { return null; } }
     function ss(k, v) { try { return v === undefined ? sessionStorage.getItem(k) : (v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v)); } catch (e) { return null; } }
     const SESSION_MARKER = 'macprep_session_active';
-    const QUESTION_BANK_REVISION = '20260719-answer-balance-v1';
+    const QUESTION_BANK_REVISION = '20260721-stable-choice-ids-v2';
     function getToken() { return ss(SESSION_MARKER); }
     function setToken(active) {
         active ? ss(SESSION_MARKER, '1') : ss(SESSION_MARKER, null);
@@ -122,6 +122,12 @@
                 : `Unexpected server response (${resp.status}).`), { status: resp.status });
         }
         return { resp, data };
+    }
+
+    function restartForUpdatedQuestion(message) {
+        ls('macprep_session', null);
+        toast(message || 'That question was updated while it was open. Refreshing it now.');
+        window.setTimeout(() => window.location.reload(), 1200);
     }
 
     function analyticsPlatform() {
@@ -899,8 +905,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 37;
+    const WHATS_NEW_VERSION = 38;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 21', title: 'Reported answers now stay aligned', desc: 'We reviewed every open question report and corrected the affected study records. Answer submissions now carry a stable choice identity and question revision, so an older open tab refreshes safely instead of grading the same answer text as a different letter after an editorial reorder. We also clarified the obstetric failed-intubation scenario and completed several behind-the-scenes reliability fixes. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 19', title: 'Balanced answer positions across the question bank', desc: 'Correct answers are now evenly distributed across recently added question batches, so a repeated letter pattern cannot give away the answer. We audited all 1,509 published questions while keeping every clinical choice, rationale, and citation unchanged. An in-progress session opened before this correction will restart once to ensure its choice order is current. Available on the web and current MACPrep mobile shell.' },
         { tag: 'Fix', date: 'Jul 18', title: 'More reliable progress and account access', desc: 'Repeat practice now stays consistent across your Missed set, Recommended sessions, dashboard totals, and the leaderboard. Saved notes, flags, flashcards, reminders, duels, sign-out, and purchase restores now confirm the server update before reporting success. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 18', title: 'Repeat review answers grade normally', desc: 'Questions you have practiced before can now be answered again in Recommended, Review, Tutor, Arcade, and later mock-exam sessions without a grading error. Repeat attempts still update your spaced review and progress, while retry-safe exam submissions remain protected. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -3172,7 +3179,7 @@
                 <button class="btn ghost" style="flex:0 0 auto;" onclick="MACPrep.snoozeReviewPrompt()">Maybe later</button>
             </div>
             <div id="rvp-msg" class="mono" style="font-size:12px;color:var(--accent);margin-top:8px;"></div>
-            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:6px;">One review per account — it posts right away, and you can edit it anytime by submitting again on the Reviews page.</div>
+            <div class="mono" style="font-size:11px;color:var(--muted);margin-top:6px;">One review per account — it is reviewed before appearing publicly, and you can edit it anytime by submitting again on the Reviews page.</div>
         </div>`;
         document.body.appendChild(wrap);
     }
@@ -3481,10 +3488,22 @@
         try {
             const { resp, data } = await apiJSON('/api/grade', {
                 method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ questionId, choiceIndex: selectedIndex, confidence: state.pendingConfidence || undefined, time_ms: ((s._shownAt && s._shownAt[s.index]) ? Date.now() - s._shownAt[s.index] : undefined), answer_changed: (((s._selCount && s._selCount[s.index]) || 1) > 1) }),
+                body: JSON.stringify({
+                    questionId,
+                    choiceIndex: selectedIndex,
+                    choiceId: currentQ.choices?.[selectedIndex]?.id,
+                    answerRevision: currentQ.answer_revision,
+                    confidence: state.pendingConfidence || undefined,
+                    time_ms: ((s._shownAt && s._shownAt[s.index]) ? Date.now() - s._shownAt[s.index] : undefined),
+                    answer_changed: (((s._selCount && s._selCount[s.index]) || 1) > 1),
+                }),
             });
             if (resp.status === 401) { signOut(); return; }
             if (resp.status === 402) { showPaywall(data.limit); return; }
+            if (resp.status === 409 && data.stale_question) {
+                restartForUpdatedQuestion(data.error);
+                return;
+            }
             if (!resp.ok) throw new Error(data.error || 'Grading failed.');
 
             s.answered++;
@@ -3596,6 +3615,8 @@
                 const answers = answeredIdx.map((i) => ({
                     questionId: s.pool[i].id,
                     choiceIndex: s.answers[i].selectedIndex,
+                    choiceId: s.pool[i].choices?.[s.answers[i].selectedIndex]?.id,
+                    answerRevision: s.pool[i].answer_revision,
                     answer_changed: (((s._selCount && s._selCount[i]) || 1) > 1),
                 }));
                 const { resp, data } = await apiJSON('/api/grade-batch', {
@@ -3603,6 +3624,10 @@
                     headers: authHeaders(),
                     body: JSON.stringify({ submissionId: s.submissionId, answers }),
                 });
+                if (resp.status === 409 && data.stale_question) {
+                    restartForUpdatedQuestion(data.error);
+                    return;
+                }
                 if (!resp.ok) {
                     if (resp.status === 402) openUpgradeModal('studymode');
                     throw Object.assign(new Error(data.error || 'The exam could not be graded.'), { status: resp.status });
@@ -5649,7 +5674,25 @@
             if (inp) inp.focus();
         }, 160);
     }
-    window.addEventListener('hashchange', () => { if (location.hash === '#about') showAboutSection(); else if (location.hash === '#redeem') goRedeem(); });
+    function goUpgrade() {
+        if (location.hash === '#upgrade') history.replaceState({}, '', location.pathname + location.search);
+        if (!state.token) {
+            try { showSignin(); } catch (e) {}
+            toast('Sign in first — full access is attached to your MACPrep account.', 'ok');
+            return;
+        }
+        go('dashboard');
+        if (state.profile && (state.profile.premium_unlocked || state.profile.is_admin)) {
+            toast('This account already has full access.', 'ok');
+            return;
+        }
+        setTimeout(() => openUpgradeModal(), 160);
+    }
+    window.addEventListener('hashchange', () => {
+        if (location.hash === '#about') showAboutSection();
+        else if (location.hash === '#redeem') goRedeem();
+        else if (location.hash === '#upgrade') goUpgrade();
+    });
     window.addEventListener('load', () => {
         if (location.hash === '#about' && !state.token) setTimeout(showAboutSection, 250);
         if (location.hash === '#signin' && !state.token) setTimeout(() => { try { showSignin(); const c = $('login-form-container'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 250);
@@ -5692,5 +5735,6 @@
             go('login');
             finishNativeBoot();
         }
+        if (location.hash === '#upgrade') setTimeout(goUpgrade, 100);
     });
 })();

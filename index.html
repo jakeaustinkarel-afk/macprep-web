@@ -1922,16 +1922,16 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       function submit(){
         if(sel==null) return; var q=qs[idx];
         var s=document.getElementById('demo-submit'); s.disabled=true; s.textContent='Checking…';
-        fetchT('/api/demo/grade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:q.id,choiceIndex:sel})},9000)
-          .then(function(r){return r.json();}).then(function(g){renderGraded(q,g);})
-          .catch(function(){s.disabled=false;s.textContent='Submit answer';});
+        fetchT('/api/demo/grade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:q.id,choiceIndex:sel,choiceId:q.choices[sel]&&q.choices[sel].id,answerRevision:q.answerRevision})},9000)
+          .then(function(r){return r.json().then(function(g){if(!r.ok)throw new Error(g.error||'Could not grade this sample.');return g;});}).then(function(g){renderGraded(q,g);})
+          .catch(function(e){if(e&&/updated while it was open/i.test(e.message||'')){load(0);return;}s.disabled=false;s.textContent='Submit answer';});
       }
       function renderGraded(q,g){
-        var chosen=q.choices[sel]?q.choices[sel].label:null;
+        var chosen=q.choices[sel]?q.choices[sel].id:null;
         var html='<div class="mono" style="font-size:11px;color:var(--accent);margin-bottom:14px;">'+esc(q.specialty)+' <span style="color:'+(g.correct?'var(--accent)':'var(--bad)')+';">· '+(g.correct?'Correct ✓':'Not quite ✗')+'</span></div>';
         html+='<div style="font-size:16px;line-height:1.6;margin-bottom:18px;">'+esc(q.stem)+'</div>';
         (g.choices||[]).forEach(function(c){
-          var ok=c.correct, mine=c.label===chosen;
+          var ok=c.correct, mine=c.id===chosen;
           var bd=ok?'var(--accent)':(mine?'var(--danger)':'var(--line)'), bg=ok?'var(--accent-dim)':(mine?'var(--danger-dim)':'transparent'), mk=ok?'✓':(mine?'✗':'');
           html+='<div style="padding:12px 14px;border:1px solid '+bd+';background:'+bg+';border-radius:6px;margin-bottom:4px;font-size:14px;"><span style="font-weight:bold;margin-right:10px;color:'+(ok?'var(--accent)':(mine?'var(--bad)':'var(--muted)'))+';">'+esc(c.label)+'</span>'+esc(c.text)+(mk?(' <span style="float:right;">'+mk+'</span>'):'')+'</div>';
           html+='<div style="font-size:13px;color:var(--muted);margin:0 0 12px 8px;">'+esc(c.rationale||'')+'</div>';

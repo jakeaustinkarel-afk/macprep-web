@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
+    answerChoiceId,
     applyServedFilter,
     analyticsPlatformFromMeta,
     deleteMacprepAccount,
@@ -13,6 +14,7 @@ import {
     normalizeTrainingProgram,
     readCookieHeader,
     registrationProfileError,
+    resolveSubmittedChoiceIndex,
     normalizeMobileStore,
     resolveFacultyScope,
     sanitizeAnalyticsMeta,
@@ -46,6 +48,24 @@ test('served filter keeps the query chain intact', () => {
     const query = { in(column, values) { this.args = [column, values]; return this; } };
     assert.equal(applyServedFilter(query), query);
     assert.deepEqual(query.args, ['status', ['published']]);
+});
+
+test('stable choice ids follow answer text across an editorial reorder', () => {
+    const original = {
+        id: 'question-42',
+        choices: [{ text: 'Alpha' }, { text: 'Bravo' }, { text: 'Charlie' }],
+    };
+    const submittedId = answerChoiceId(original.id, original.choices[0]);
+    const reordered = {
+        ...original,
+        choices: [original.choices[2], original.choices[1], original.choices[0]],
+    };
+
+    assert.equal(resolveSubmittedChoiceIndex(reordered, { choiceId: submittedId }), 2);
+    assert.throws(
+        () => resolveSubmittedChoiceIndex(reordered, { choiceId: 'not-a-current-choice' }),
+        (error) => error.status === 409 && error.code === 'stale_question'
+    );
 });
 
 test('the signed-in trial only permits the recommended session', () => {
@@ -379,8 +399,9 @@ test('batch retries reveal the persisted attempt and browser sign-out waits for 
     const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
     const batch = server.slice(server.indexOf("app.post('/api/grade-batch'"), server.indexOf('// User cosmetics'));
     assert.match(batch, /eq\('submission_id', submissionId\)/);
-    assert.match(batch, /select\('question_id, selected_label'\)/);
+    assert.match(batch, /select\('question_id, selected_label, is_correct'\)/);
     assert.match(batch, /results: persistedResults/);
+    assert.match(batch, /correct: persistedById\.get\(questionId\)\?\.is_correct === true/);
     assert.doesNotMatch(batch, /results: gradedAnswers\.map/);
 
     const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
@@ -436,6 +457,53 @@ test('answer-position repair relabels choices and keys together', async () => {
     assert.doesNotMatch(retiredRandomizer, /Math\.random|\.update\(/);
 
     const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
-    assert.match(browser, /QUESTION_BANK_REVISION = '20260719-answer-balance-v1'/);
+    assert.match(browser, /QUESTION_BANK_REVISION = '20260721-stable-choice-ids-v2'/);
     assert.match(browser, /s\.questionBankRevision !== QUESTION_BANK_REVISION/);
+});
+
+test('answer revisions preserve historical labels and keep peer charts comparable', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260719211040_answer_revision_and_reliability_repairs.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /add column if not exists answer_revision integer/);
+    assert.match(migration, /trg_macprep_question_answer_revision/);
+    assert.match(migration, /trg_macprep_progress_answer_revision/);
+    assert.match(migration, /q\.answer_revision = up\.answer_revision/);
+    assert.match(migration, /when upper\(up\.selected_label\) = inferred\.old_key then affected\.current_key/);
+    assert.match(migration, /select auth\.uid\(\)/);
+    assert.match(migration, /select auth\.jwt\(\)/);
+});
+
+test('reported stale-layout attempts are repaired and future grading uses choice identity', async () => {
+    const [migration, server, browser, landing] = await Promise.all([
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260722005000_reported_question_repairs.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8'),
+    ]);
+
+    assert.match(migration, /Expected exactly one stale-layout attempt for each of five reports/);
+    assert.match(migration, /set selected_label = upper\(repair\.correct_answer\),[\s\S]+is_correct = true/);
+    assert.match(migration, /rebuild_review_state/);
+    assert.match(migration, /rebuild_domain_ability/);
+    assert.match(migration, /persistent fetal bradycardia/);
+    assert.match(server, /function answerChoiceId/);
+    assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
+    assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
+    assert.match(browser, /answerRevision: currentQ\.answer_revision/);
+    assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);
+});
+
+test('full-bank tools paginate and static pricing delegates to the platform purchase flow', async () => {
+    const [server, pricing, serviceWorker, reviews] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../pricing.html', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../sw.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../reviews.html', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(server, /function fetchAllServedQuestionRows/);
+    assert.doesNotMatch(server, /\.limit\(1500\)/);
+    assert.doesNotMatch(pricing, /\/api\/create-checkout-session/);
+    assert.match(pricing, /\/index\.html#upgrade/);
+    assert.match(serviceWorker, /client\.navigate\(target\)/);
+    assert.match(reviews, /reviewed before appearing publicly/);
+    assert.doesNotMatch(server, /status\(500\)\.json\(\{\s*error:\s*[a-zA-Z]+\.message\s*\}\)/);
 });

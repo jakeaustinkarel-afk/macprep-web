@@ -2,7 +2,7 @@
 // Strategy: network-first for HTML + app.js (so deploys land immediately, with a
 // clear offline page for navigation), stale-while-revalidate for static assets
 // (icons/fonts/images load instantly), and API calls always go to the network.
-const CACHE = 'macprep-v6';
+const CACHE = 'macprep-v7';
 const OFFLINE = '/offline.html';
 const SHELL = ['/', '/src/app.js', OFFLINE, '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest'];
 
@@ -93,7 +93,20 @@ self.addEventListener('notificationclick', (e) => {
   } catch (_) {}
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) { if ('focus' in c) return c.focus(); }
+      for (const client of list) {
+        try {
+          const current = new URL(client.url);
+          if (`${current.pathname}${current.search}${current.hash}` === target && 'focus' in client) return client.focus();
+        } catch (_) {}
+      }
+      const client = list[0];
+      if (client && 'navigate' in client) {
+        return client.navigate(target).then((navigated) => {
+          const destination = navigated || client;
+          return 'focus' in destination ? destination.focus() : destination;
+        }).catch(() => (self.clients.openWindow ? self.clients.openWindow(target) : undefined));
+      }
+      if (client && 'focus' in client) return client.focus();
       if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
