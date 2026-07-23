@@ -14,6 +14,8 @@ The profile model now separates account lifecycle (`applicant`, `incoming_studen
 
 The adaptive study calendar now uses the saved exam date to generate up to six months of daily work rather than a 14-day plan. Foundation, reinforcement, focused-review, and final-review phases are recalculated as the learner practices. The interface keeps one week visible at a time and provides phase jumps, while the server paginates the longer upcoming-review input so PostgREST's row cap cannot silently truncate the roadmap.
 
+Signed-in access now derives from a server-issued lifecycle capability map. Applicant and incoming-student accounts receive only the application workspace; student accounts receive board-prep tools; practicing accounts receive board prep plus professional resources; and the owner admin receives every lifecycle and administrative surface without changing the stored practicing-CAA profile. Client route normalization prevents restricted shells from appearing after a direct navigation attempt, while sensitive study, applicant, cohort, and admin actions remain independently authorized by the server.
+
 **Residual engineering risks:**
 - There is still no protected staging environment with seeded Supabase data and a signed Stripe webhook end-to-end test.
 - `src/server.mjs` and `src/app.js` remain large modules. Responsibility-based extraction is still the next engineering slice.

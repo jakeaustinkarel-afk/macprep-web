@@ -337,10 +337,10 @@ const ADMIN_EMAILS = new Set(
         .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 );
 const isAdminEmail = (email) => ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
-// App Store / Play review demo accounts — NOT real users. They get full premium
-// browse access (so reviewers can see everything) and are surfaced as program
-// "REVIEW" in admin metrics + exempted from the mandatory program prompt so a
-// reviewer is never blocked by an onboarding gate. Override via REVIEW_EMAILS env.
+// App Store / Play review demo accounts — NOT real users. They get premium
+// board-prep access and are surfaced as program "REVIEW" in admin metrics, but
+// they do not inherit owner-only cross-lifecycle or admin access. Override via
+// REVIEW_EMAILS env.
 const REVIEW_EMAILS = new Set(
     (process.env.REVIEW_EMAILS || 'applereview@macprep.org')
         .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
@@ -362,6 +362,16 @@ export function isValidProfileDate(value) {
 const LIFECYCLE_STAGES = new Set(['applicant', 'incoming_student', 'student', 'practicing']);
 const SIGNUP_LIFECYCLE_STAGES = new Set(['applicant', 'student', 'practicing']);
 const BOARD_PREP_LIFECYCLE_STAGES = new Set(['student', 'practicing']);
+export function resolveLifecycleCapabilities(lifecycleStage, { isAdmin = false, isReview = false } = {}) {
+    const stage = normalizeLifecycleStage(lifecycleStage);
+    const admin = !!isAdmin;
+    return {
+        applicant_workspace: admin || stage === 'applicant' || stage === 'incoming_student',
+        board_prep: admin || !!isReview || BOARD_PREP_LIFECYCLE_STAGES.has(stage),
+        professional_resources: admin || stage === 'practicing',
+        admin_tools: admin,
+    };
+}
 export function normalizeLifecycleStage(value) {
     return typeof value === 'string' && LIFECYCLE_STAGES.has(value.trim().toLowerCase())
         ? value.trim().toLowerCase()
@@ -1116,7 +1126,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'adaptive-roadmap-20260722.1',
+        build: 'lifecycle-capabilities-20260723.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -4101,10 +4111,14 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
 
         const advanced = await advanceLifecycleDates(storedProfile, user.id);
         const profile = advanced.profile;
-        const lifecycleStage = advanced.stage
-            || ((isAdminUser(user) || isReviewUser(user)) ? 'practicing' : null);
-        const boardPrepAllowed = BOARD_PREP_LIFECYCLE_STAGES.has(lifecycleStage)
-            || isAdminUser(user) || isReviewUser(user);
+        const adminUser = isAdminUser(user);
+        const reviewUser = isReviewUser(user);
+        const lifecycleStage = advanced.stage || (adminUser ? 'practicing' : reviewUser ? 'student' : null);
+        const capabilities = resolveLifecycleCapabilities(lifecycleStage, {
+            isAdmin: adminUser,
+            isReview: reviewUser,
+        });
+        const boardPrepAllowed = capabilities.board_prep;
 
         const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
         const planNow = new Date();
@@ -4158,11 +4172,13 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         let credCode = rawCred;
         if (rawCred) { const u = rawCred.trim().toUpperCase(); credCode = u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : rawCred; }
         if (lifecycleStage === 'applicant' || lifecycleStage === 'incoming_student') credCode = null;
-        const needsLifecycle = !lifecycleStage;
-        const needsCredential = needsLifecycle
+        const needsLifecycle = !adminUser && !reviewUser && !lifecycleStage;
+        const needsCredential = !adminUser && !reviewUser && (
+            needsLifecycle
             || (lifecycleStage === 'student' && (credCode !== 'SAA' || !gradDate))
-            || (lifecycleStage === 'practicing' && credCode !== 'CAA');
-        const needsProgram = !isReviewUser(user)
+            || (lifecycleStage === 'practicing' && credCode !== 'CAA')
+        );
+        const needsProgram = !adminUser && !reviewUser
             && ['incoming_student', 'student', 'practicing'].includes(lifecycleStage)
             && !normalizeTrainingProgram(profile?.training_program);
         // Peer benchmark: how this user's domains compare to ALL SAAs (anonymized aggregate;
@@ -4187,7 +4203,8 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const lifecycleLastAsk = profile?.lifecycle_checkin_at ? Date.parse(profile.lifecycle_checkin_at) : 0;
         const lifecycleSnoozed = isValidProfileDate(profile?.lifecycle_checkin_snoozed_until)
             && profile.lifecycle_checkin_snoozed_until >= today;
-        const lifecycle_checkin_due = lifecycleStage === 'applicant'
+        const lifecycle_checkin_due = !adminUser && !reviewUser
+            && lifecycleStage === 'applicant'
             && Number.isFinite(accountCreatedMs)
             && (Date.now() - accountCreatedMs) >= 30 * 86400000
             && (!lifecycleLastAsk || (Date.now() - lifecycleLastAsk) >= 30 * 86400000)
@@ -4215,10 +4232,11 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             profile: {
                 user_id: user.id,
                 email: profile?.email || user.email || null,
-                premium_unlocked: profile?.account_tier === 'premium' || isReviewUser(user),
+                premium_unlocked: profile?.account_tier === 'premium' || adminUser || reviewUser,
                 premium_unlocked_at: profile?.premium_unlocked_at || null,
-                is_admin: isAdminUser(user),
-                is_review: isReviewUser(user),
+                is_admin: adminUser,
+                is_review: reviewUser,
+                capabilities,
                 is_program_director: !!profile?.is_program_director,
                 is_faculty: !!profile?.is_faculty,
                 faculty_program: profile?.faculty_program || null,
@@ -4427,15 +4445,17 @@ app.post('/api/user/applicant-progress', profileLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Database not configured.' });
     try {
         const lifecycle = await getUserLifecycle(user);
-        if (!['applicant', 'incoming_student'].includes(lifecycle.stage)) {
+        const adminUser = isAdminUser(user);
+        if (!adminUser && !['applicant', 'incoming_student'].includes(lifecycle.stage)) {
             return res.status(403).json({ error: 'The application tracker is for applicant accounts.' });
         }
         const applicantProgress = sanitizeApplicantProgress(req.body?.progress);
         const now = new Date().toISOString();
-        const { data, error } = await supabase.from(PROFILE_TABLE)
+        let updateQuery = supabase.from(PROFILE_TABLE)
             .update({ applicant_progress: applicantProgress, updated_at: now })
-            .eq('user_id', user.id)
-            .in('lifecycle_stage', ['applicant', 'incoming_student'])
+            .eq('user_id', user.id);
+        if (!adminUser) updateQuery = updateQuery.in('lifecycle_stage', ['applicant', 'incoming_student']);
+        const { data, error } = await updateQuery
             .select('user_id')
             .maybeSingle();
         if (error) throw error;

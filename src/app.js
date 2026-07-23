@@ -166,10 +166,29 @@
         return h + '</div>';
     }
 
-    const VIEWS = ['login-view', 'applicant-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'review-queue-view', 'cohort-codes-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
+    const VIEWS = ['login-view', 'applicant-view', 'professional-view', 'dashboard-view', 'quiz-view', 'profile-view', 'feedback-view', 'admin-view', 'review-queue-view', 'cohort-codes-view', 'notebook-view', 'leaderboard-view', 'achievements-view'];
     const BOARD_PREP_VIEWS = new Set(['dashboard', 'quiz', 'notebook', 'leaderboard', 'achievements']);
-    function boardPrepEnabled() { return !!(state.profile && state.profile.board_prep_enabled); }
+    function profileCapability(name) {
+        const p = state.profile;
+        if (!p) return false;
+        if (p.capabilities && typeof p.capabilities[name] === 'boolean') return p.capabilities[name];
+        if (p.is_admin) return true;
+        if (name === 'applicant_workspace') return ['applicant', 'incoming_student'].includes(p.lifecycle_stage);
+        if (name === 'board_prep') return !!p.board_prep_enabled;
+        if (name === 'professional_resources') return p.lifecycle_stage === 'practicing';
+        if (name === 'admin_tools') return !!p.is_admin;
+        return false;
+    }
+    function boardPrepEnabled() { return profileCapability('board_prep'); }
+    function applicantWorkspaceEnabled() { return profileCapability('applicant_workspace'); }
+    function professionalResourcesEnabled() { return profileCapability('professional_resources'); }
     function isApplicantJourney() { return !!(state.profile && ['applicant', 'incoming_student'].includes(state.profile.lifecycle_stage)); }
+    function defaultHomeView() {
+        if (boardPrepEnabled()) return 'dashboard';
+        if (applicantWorkspaceEnabled()) return 'applicant';
+        if (professionalResourcesEnabled()) return 'professional';
+        return 'profile';
+    }
     function go(view) {
         closeMobileNav(); // bug fix: collapse the mobile menu on navigation
         // Guard against leaving an in-progress session by accident (progress is saved,
@@ -188,13 +207,16 @@
         // while the user was away — contradicting the "you can resume it" promise above.
         if (view !== 'quiz') stopExamTimer();
         if (view !== 'login' && !state.token) view = 'login';
-        if (state.token && state.profile && !boardPrepEnabled()) {
-            if (BOARD_PREP_VIEWS.has(view)) view = 'applicant';
-        }
         // Admin view is owner-only. A program director / faculty (or anyone non-admin) can
         // never land on it — every admin API 403s them anyway, but this closes the direct
         // go('admin') path so they never even see the shell.
-        if ((view === 'admin' || view === 'review-queue' || view === 'cohort-codes') && !(state.profile && state.profile.is_admin)) view = 'dashboard';
+        if (state.token && state.profile) {
+            const home = defaultHomeView();
+            if ((view === 'admin' || view === 'review-queue' || view === 'cohort-codes') && !profileCapability('admin_tools')) view = home;
+            if (BOARD_PREP_VIEWS.has(view) && !boardPrepEnabled()) view = home;
+            if (view === 'applicant' && !applicantWorkspaceEnabled()) view = home;
+            if (view === 'professional' && !professionalResourcesEnabled()) view = home;
+        }
         if (view !== 'admin' && view !== 'review-queue' && view !== 'cohort-codes') state.adminSurface = null;
         VIEWS.forEach((v) => $(v) && $(v).classList.toggle('hidden', v !== view + '-view'));
         const authed = !!state.token && view !== 'login';
@@ -203,11 +225,12 @@
         // nav-utils (theme/font/search) hides on the public marketing nav and shows in-app — driven by
         // the `authed` boolean so it's immune to CSS-specificity/inline-style fights (the .hidden class
         // is display:none!important). #2 from the UI pass.
-        ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger', 'nav-utils'].forEach((id) =>
+        ['nav-dashboard', 'nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical', 'nav-professional', 'nav-reviews', 'nav-whatsnew', 'nav-account-wrap', 'cmdk-trigger', 'nav-utils'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !authed));
         const canStudy = authed && boardPrepEnabled();
         ['nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !canStudy));
+        $('nav-professional') && $('nav-professional').classList.toggle('hidden', !(authed && professionalResourcesEnabled()));
         if (authed) renderWhatsNewDot();
         // Admin nav — one flat "Admin" section (no dropdown). Section shows to anyone with
         // a reason to see it (owner/admin OR a program director/faculty who can view a cohort);
@@ -217,16 +240,22 @@
         const isAdmin = authed && state.profile && state.profile.is_admin;
         const canCohort = !!(authed && state.profile && state.profile.can_view_cohort); // includes admins server-side
         const showAdminSec = isAdmin || canCohort;
+        const dashboardLabel = $('nav-dashboard-label');
+        const applicantHome = !isAdmin && applicantWorkspaceEnabled() && !boardPrepEnabled();
+        if (dashboardLabel) dashboardLabel.textContent = applicantHome ? 'Application journey' : 'Dashboard';
+        if ($('nav-dashboard')) $('nav-dashboard').setAttribute('title', applicantHome ? 'Application journey' : 'Dashboard');
         // Role-aware header: the owner sees "Admin"; a program director/faculty sees "Faculty".
         const adminSec = $('nav-sec-admin');
         if (adminSec) { adminSec.classList.toggle('hidden', !showAdminSec); adminSec.textContent = isAdmin ? 'Admin' : 'Faculty'; }
-        ['nav-admin-metrics', 'nav-admin-review', 'nav-admin-codes'].forEach((id) => $(id) && $(id).classList.toggle('hidden', !isAdmin));
+        ['nav-admin-metrics', 'nav-admin-review', 'nav-admin-codes', 'nav-admin-applicant'].forEach((id) => $(id) && $(id).classList.toggle('hidden', !isAdmin));
         $('nav-admin-cohort') && $('nav-admin-cohort').classList.toggle('hidden', !showAdminSec);
         // Tier badge shows for signed-in non-admins; admins get the Admin section instead.
         $('tier-badge') && $('tier-badge').classList.toggle('hidden', !authed || isAdmin);
         // Redesigned sidebar: highlight the active destination, fill the account block, apply collapse pref.
-        const activeNavId = { applicant: 'nav-dashboard', dashboard: 'nav-dashboard', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements', 'review-queue': 'nav-admin-review', 'cohort-codes': 'nav-admin-codes' }[view];
-        ['nav-dashboard', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-admin-review', 'nav-admin-codes'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
+        const activeNavId = view === 'applicant' && isAdmin
+            ? 'nav-admin-applicant'
+            : { applicant: 'nav-dashboard', dashboard: 'nav-dashboard', professional: 'nav-professional', notebook: 'nav-notebook', leaderboard: 'nav-leaderboard', achievements: 'nav-achievements', 'review-queue': 'nav-admin-review', 'cohort-codes': 'nav-admin-codes' }[view];
+        ['nav-dashboard', 'nav-professional', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-admin-applicant', 'nav-admin-review', 'nav-admin-codes'].forEach((idn) => { const a = $(idn); if (a) { const on = authed && idn === activeNavId; a.classList.toggle('nav-active', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); } });
         if (authed) { renderSidebarAccount(); applySidebarPref(); }
         // "Redeem code" is only useful to free users (premium/admin already have full access).
         const isPremium = state.profile && (state.profile.premium_unlocked || state.profile.account_tier === 'premium' || state.profile.is_admin);
@@ -238,6 +267,7 @@
         $('nav-login') && $('nav-login').classList.toggle('hidden', authed);
         closeNavMenus();
         if (view === 'applicant') renderApplicantDashboard();
+        if (view === 'professional') renderProfessionalResources();
         if (view === 'dashboard') { renderDashboard(); renderDailyQuests(); checkLevelUp(); }
         if (view === 'profile') { renderProfile(); renderA11yControls(); }
         if (view === 'notebook') loadNotebook();
@@ -247,7 +277,7 @@
         a11yEnhanceNav();
         // A11y (WCAG 2.4.2 / 2.4.3): update the title, announce the route, and move focus into the
         // new view so VoiceOver/keyboard users aren't stranded on the old control.
-        const _vn = { applicant: 'Application journey', dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
+        const _vn = { applicant: 'Application journey', professional: 'Professional resources', dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
         document.title = (authed || view !== 'login') ? `${_vn} — MACPrep` : 'MACPrep — NCCAA Board Review for CAAs & SAAs';
         try {
             const _vc = $(view + '-view');
@@ -544,7 +574,7 @@
             else if (p.premium_unlocked) { badge.textContent = 'PREMIUM'; badge.className = 'badge premium'; }
             else { badge.textContent = 'FREE'; badge.className = 'badge free'; }
         }
-        go(boardPrepEnabled() ? 'dashboard' : 'applicant');
+        go(defaultHomeView());
         maybeHandleCheckoutReturn();
         if (boardPrepEnabled()) initNativePush(); // study reminders only apply once the study experience is active
         const _lifecycleAsked = maybePromptCredential(); // one-time lifecycle capture for accounts made before we asked
@@ -1026,8 +1056,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 45;
+    const WHATS_NEW_VERSION = 46;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 23', title: 'The right workspace for every stage', desc: 'MACPrep now uses a server-issued capability map to shape each signed-in experience. Applicants and incoming students see application planning; SAAs see board-prep tools; practicing CAAs keep board review and gain a focused professional-resources workspace. The owner admin account can open every lifecycle surface without changing its practicing-CAA profile, while direct navigation and protected APIs keep regular accounts inside their current stage. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Your roadmap now reaches months, not weeks', desc: 'The adaptive calendar now builds an exam-anchored roadmap of up to six months instead of stopping after 14 days. It shifts from foundation to reinforcement, focused review, and final review as test day approaches; phase jumps make the full timeline easy to navigate while one week stays in focus. The plan keeps recalculating from unseen coverage, due reviews, recent misses, and weakest domains. Available on the web and current MACPrep mobile shell. Set your exam date in Profile to anchor the roadmap.' },
         { tag: 'New', date: 'Jul 22', title: 'MACPrep now starts before school', desc: 'Applicants can create a free account and use a focused dashboard for application steps, program and prerequisite tracking, shadowing preparation, interview questions, and financial or relocation planning. After committing, add your program and dates; the same account opens the SAA study experience on your matriculation date, then moves into the practicing CAA experience on graduation day so professional and CME resources arrive at the right time. Lifecycle changes never alter premium access. Available on the web and current MACPrep mobile shell. Some older accounts may be asked once to choose their current stage.' },
         { tag: 'Fix', date: 'Jul 22', title: 'Cleaner question wording', desc: 'A reported obstetric answer now clearly states that pregnancy decreases lower esophageal sphincter tone. We also checked every published question for matching wording, answer-alignment, rationale, spacing, punctuation, and delimiter problems, and added the same audit to future question-bank reviews. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -3234,7 +3265,7 @@
             if (!resp.ok) throw new Error((data && data.error) || 'Could not save.');
             await loadProfile();
             closeCredentialPrompt();
-            go(boardPrepEnabled() ? 'dashboard' : 'applicant');
+            go(defaultHomeView());
             toast('Thanks — you\'re all set.', 'ok');
         } catch (e) {
             if (msg) msg.textContent = e.message;
@@ -3282,20 +3313,31 @@
         const p = state.profile || {};
         const progress = applicantProgress();
         const incoming = p.lifecycle_stage === 'incoming_student';
+        const adminView = !!p.is_admin;
         const first = (p.full_name || '').trim().split(/\s+/)[0] || '';
-        if ($('applicant-kicker')) $('applicant-kicker').textContent = incoming ? 'INCOMING STUDENT' : 'APPLICATION JOURNEY';
-        if ($('applicant-greeting')) $('applicant-greeting').textContent = incoming
+        if ($('applicant-kicker')) $('applicant-kicker').textContent = adminView ? 'ADMIN ACCESS' : incoming ? 'INCOMING STUDENT' : 'APPLICATION JOURNEY';
+        if ($('applicant-greeting')) $('applicant-greeting').textContent = adminView
+            ? 'Applicant workspace'
+            : incoming
             ? `${first ? `${first}, y` : 'Y'}ou are on your way`
             : `${first ? `${first}, y` : 'Y'}our path to AA school`;
-        if ($('applicant-subtitle')) $('applicant-subtitle').textContent = incoming
+        if ($('applicant-subtitle')) $('applicant-subtitle').textContent = adminView
+            ? 'Use the same workspace an aspiring AA sees without changing your CAA account stage.'
+            : incoming
             ? 'Use this time to prepare for the transition. Your student dashboard opens automatically when school begins.'
             : 'Keep the moving pieces in one calm, private workspace.';
         const commitTop = $('applicant-commit-top');
-        if (commitTop) commitTop.textContent = incoming ? 'Edit commitment' : 'I committed to a program';
+        if (commitTop) {
+            commitTop.classList.toggle('hidden', adminView);
+            commitTop.textContent = incoming ? 'Edit commitment' : 'I committed to a program';
+        }
 
         const hero = $('applicant-status-card');
         if (hero) {
-            if (incoming) {
+            if (adminView) {
+                const done = APPLICANT_TASKS.filter(([key]) => progress.tasks && progress.tasks[key]).length;
+                hero.innerHTML = `<div><div class="applicant-kicker">ADMIN PREVIEW</div><h3>See exactly what aspiring students receive</h3><p class="sub">The tracker remains fully usable for quality checks, but commitment and lifecycle actions stay attached to real applicant accounts.</p><div class="applicant-hero-meta"><span>All lifecycle surfaces enabled</span><span>${done} of ${APPLICANT_TASKS.length} sample steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div>`;
+            } else if (incoming) {
                 const start = displayDate(p.matriculation_date);
                 const days = p.matriculation_date ? Math.max(0, Math.ceil((Date.parse(`${p.matriculation_date}T12:00:00`) - Date.now()) / 86400000)) : null;
                 hero.innerHTML = `<div><div class="applicant-kicker">COMMITMENT RECORDED</div><h3>${escapeHtml(p.training_program || 'Your AA program')}</h3><p class="sub">Your application tracker stays available while you prepare. On ${escapeHtml(start || 'your matriculation date')}, your account will enter the student experience automatically.</p><div class="applicant-hero-meta"><span>${days == null ? 'Start date pending' : days === 0 ? 'Student tools open today' : `${days} day${days === 1 ? '' : 's'} until matriculation`}</span>${p.graduation_date ? `<span>Expected graduation ${escapeHtml(displayDate(p.graduation_date))}</span>` : ''}</div></div><button class="btn ghost" type="button" onclick="MACPrep.openCommitmentModal()">Update details</button>`;
@@ -3317,6 +3359,17 @@
             return `<div class="applicant-prereq-name">${escapeHtml(label)}</div><select data-app-prereq="${key}" aria-label="${escapeHtml(label)} status">${APPLICANT_PREREQ_STATES.map(([value, text]) => `<option value="${value}" ${current === value ? 'selected' : ''}>${text}</option>`).join('')}</select>`;
         }).join('');
         renderApplicantPrograms(progress.programs || []);
+    }
+
+    function renderProfessionalResources() {
+        const p = state.profile || {};
+        const first = (p.full_name || '').trim().split(/\s+/)[0] || '';
+        const heading = $('professional-greeting');
+        if (heading) heading.textContent = p.is_admin
+            ? 'Practicing CAA resources'
+            : `${first ? `${first}, y` : 'Y'}our professional home`;
+        const adminNote = $('professional-admin-note');
+        if (adminNote) adminNote.classList.toggle('hidden', !p.is_admin);
     }
     function toggleApplicantTask(input) {
         const row = input && input.closest('.applicant-task');
@@ -5983,6 +6036,8 @@
         { icon: '⏰', label: 'Review due — spaced repetition', run: () => reviewDue(), auth: true, boardPrep: true },
         { icon: '❗', label: 'Review my confident misses', hint: 'sure but wrong', run: () => reviewConfidentMisses(), auth: true, boardPrep: true },
         { icon: '🏠', label: 'Go to Dashboard', run: () => go('dashboard'), auth: true },
+        { icon: 'A', label: 'Open applicant workspace', run: () => go('applicant'), admin: true },
+        { icon: 'C', label: 'Open professional resources', run: () => go('professional'), auth: true, professional: true },
         { icon: '📓', label: 'Open my Notebook', run: () => go('notebook'), auth: true, boardPrep: true },
         { icon: '🏆', label: 'Leaderboard — weekly rankings', run: () => go('leaderboard'), auth: true, boardPrep: true },
         { icon: '👤', label: 'Account & settings', run: () => go('profile'), auth: true },
@@ -6002,6 +6057,7 @@
             if (c.guest) return !authed;
             if (c.auth && !authed) return false;
             if (c.boardPrep && !boardPrepEnabled()) return false;
+            if (c.professional && !professionalResourcesEnabled()) return false;
             if (c.hidePremium && isPremium) return false;
             if (c.hideNative && isNativeApp()) return false;
             return true;

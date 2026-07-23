@@ -133,7 +133,7 @@
         html[data-textsize="l"]   { --fs: 1.15; }
         html[data-textsize="xl"]  { --fs: 1.30; }
         html[data-textsize="xxl"] { --fs: 1.50; }
-        #dashboard-view, #applicant-view, #quiz-view, #notebook-view, #leaderboard-view, #achievements-view, #profile-view, #feedback-view { zoom: var(--fs, 1); }
+        #dashboard-view, #applicant-view, #professional-view, #quiz-view, #notebook-view, #leaderboard-view, #achievements-view, #profile-view, #feedback-view { zoom: var(--fs, 1); }
         /* High Contrast — strengthen borderline tokens + widen focus rings. */
         html[data-contrast="high"] { --muted: var(--text) !important; --line: var(--text) !important; }
         html[data-contrast="high"] a.nav-app, html[data-contrast="high"] .tag, html[data-contrast="high"] .badge, html[data-contrast="high"] .lp-eyebrow, html[data-contrast="high"] .sm-tag { color: var(--text) !important; }
@@ -279,11 +279,11 @@
         :root { --dur-fast: .12s; --dur-base: .22s; --ease-out: cubic-bezier(.2,.8,.2,1); }
         :root { --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px; }  /* unified corner scale (#11) */
         @keyframes viewEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        #dashboard-view:not(.hidden), #applicant-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden) { animation: viewEnter var(--dur-base) var(--ease-out); }
+        #dashboard-view:not(.hidden), #applicant-view:not(.hidden), #professional-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden) { animation: viewEnter var(--dur-base) var(--ease-out); }
         @keyframes qEnter { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
         .q-anim { animation: qEnter var(--dur-base) var(--ease-out); }
         @media (prefers-reduced-motion: reduce) {
-          #dashboard-view:not(.hidden), #applicant-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden), .q-anim { animation: none !important; }
+          #dashboard-view:not(.hidden), #applicant-view:not(.hidden), #professional-view:not(.hidden), #quiz-view:not(.hidden), #profile-view:not(.hidden), #feedback-view:not(.hidden), #admin-view:not(.hidden), #notebook-view:not(.hidden), #leaderboard-view:not(.hidden), .q-anim { animation: none !important; }
         }
         /* Command palette (⌘K) */
         #cmdk { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; background: rgba(0,0,0,.5); }
@@ -641,7 +641,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <button id="nav-search" class="sb-only" type="button" onclick="MACPrep.openCmdk()" aria-label="Search and quick actions" title="Search &amp; quick actions (⌘K)"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg><span class="lbl">Search</span><span class="nav-kbd">⌘K</span></button>
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <div class="nav-sec sb-only">Menu</div>
-            <a id="nav-dashboard" class="hidden nav-app" onclick="MACPrep.go('dashboard')" title="Dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8"></path></svg><span class="lbl">Dashboard</span></a>
+            <a id="nav-dashboard" class="hidden nav-app" onclick="MACPrep.go('dashboard')" title="Dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8"></path></svg><span class="lbl" id="nav-dashboard-label">Dashboard</span></a>
             <span id="nav-study-wrap" class="hidden" style="position:relative;">
                 <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('study', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('study', event);}" title="Study modes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg><span class="lbl">Study modes</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
                 <div id="nav-study-menu" class="navdrop hidden" role="menu">
@@ -659,11 +659,13 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a id="nav-achievements" class="hidden nav-app" onclick="MACPrep.go('achievements')" title="Achievements"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5"></circle><path d="M9 13.4 7.5 21l4.5-2.7L16.5 21 15 13.4"></path></svg><span class="lbl">Achievements</span></a>
             <a id="nav-arcade" class="hidden nav-app" onclick="MACPrep.openArcadePicker()" title="Arcade"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg><span class="lbl">Arcade</span><span class="nav-pro" hidden>PRO</span></a>
             <a id="nav-critical" class="hidden nav-app" onclick="MACPrep.startCriticalEvents()" title="Critical Events"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 4.3 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span class="lbl">Critical Events</span><span class="nav-pro" hidden>PRO</span></a>
+            <a id="nav-professional" class="hidden nav-app" onclick="MACPrep.go('professional')" title="Professional resources"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M3 12h18"></path><path d="M10 12v2h4v-2"></path></svg><span class="lbl">Professional resources</span></a>
             <a id="nav-reviews" class="hidden nav-app" href="/reviews" title="Reviews"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.9 6 6.1.9-4.5 4.3 1.1 6.1L12 17.8 6.4 20.3l1.1-6.1L3 9.9 9.1 9z"></path></svg><span class="lbl">Reviews</span></a>
             <a id="nav-redeem" class="hidden nav-app" data-native-commerce onclick="MACPrep.goRedeem()" title="Redeem a class or cohort code" style="color:var(--accent);"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><rect x="2.5" y="7" width="19" height="5" rx="1"></rect><path d="M12 21V7"></path><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg><span class="lbl">Redeem code</span></a>
             <div class="nav-sec sb-only">Updates</div>
             <a id="nav-whatsnew" class="hidden nav-app" onclick="MACPrep.openWhatsNew()" title="What's New" style="position:relative;"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z"></path></svg><span class="lbl">What's New</span><span id="wn-dot" style="display:none;position:absolute;top:50%;right:12px;transform:translateY(-50%);width:7px;height:7px;border-radius:50%;background:var(--accent);"></span></a>
             <div class="nav-sec sb-only hidden" id="nav-sec-admin">Admin</div>
+            <a id="nav-admin-applicant" class="hidden nav-app" role="button" tabindex="0" onclick="MACPrep.go('applicant')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.go('applicant');}" title="Applicant workspace"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span class="lbl">Applicant workspace</span></a>
             <a id="nav-admin-metrics" class="hidden nav-app" href="/metrics.html" title="Metrics"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 14l3-3 3 3 5-6"></path></svg><span class="lbl">Metrics</span></a>
             <a id="nav-admin-review" class="hidden nav-app" role="button" tabindex="0" onclick="MACPrep.reviewQueue()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.reviewQueue();}" title="Items to review"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span class="lbl">Items to review</span></a>
             <a id="nav-admin-codes" class="hidden nav-app" role="button" tabindex="0" onclick="MACPrep.cohortCodes()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.cohortCodes();}" title="Cohort code generator"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-5"></path><path d="M9 17H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"></path><path d="M8 12h8"></path></svg><span class="lbl">Cohort code generator</span></a>
@@ -1179,6 +1181,54 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         </div>
 
         <div class="applicant-savebar"><span id="applicant-save-msg" class="mono" aria-live="polite"></span><button class="btn" id="applicant-save-btn" type="button" onclick="MACPrep.saveApplicantProgress()">Save application tracker</button></div>
+    </div>
+
+    <!-- PRACTICING CAA RESOURCES -->
+    <div class="wrap hidden" id="professional-view">
+        <div class="professional-page-head">
+            <div>
+                <div class="professional-kicker">PRACTICING CAA</div>
+                <h2 class="view-title" id="professional-greeting">Your professional home</h2>
+                <p class="sub">Keep your study access, then move directly into the resources that matter after graduation.</p>
+            </div>
+        </div>
+
+        <div class="professional-admin-note hidden" id="professional-admin-note">
+            <strong>Admin access:</strong> this practicing-CAA workspace is visible alongside every other lifecycle surface on your account.
+        </div>
+
+        <section class="professional-hero">
+            <div>
+                <div class="professional-kicker">LIFETIME STUDY ACCESS</div>
+                <h3>Your board-review system stays with you</h3>
+                <p>Return to the full question bank, teaching rationales, notebook, and performance history whenever you want a focused review. Your saved access follows the same MACPrep account across web and mobile.</p>
+            </div>
+            <button class="btn" type="button" onclick="MACPrep.go('dashboard')">Open board review</button>
+        </section>
+
+        <div class="professional-grid" aria-label="Independent professional resources">
+            <a class="professional-resource" href="https://cmeforcaas.com/" target="_blank" rel="noopener">
+                <img src="/partner-cmeforcaas.png" width="46" height="46" alt="">
+                <span><small>CONTINUING EDUCATION</small><strong>CME for CAAs</strong><em>NCCAA-accepted CME credits from an independent CAA resource.</em></span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+            <a class="professional-resource" href="https://bagmask.com/" target="_blank" rel="noopener">
+                <img src="/partner-bagmask.png" width="46" height="46" alt="">
+                <span><small>CAREERS</small><strong>Bag Mask</strong><em>Explore anesthesia jobs and career opportunities.</em></span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+            <a class="professional-resource" href="https://discord.com/servers/caa-706407688359247924" target="_blank" rel="noopener">
+                <img src="/partner-caa-discord.png" width="46" height="46" alt="">
+                <span><small>COMMUNITY</small><strong>CAA Discord Server</strong><em>Connect with CAAs and SAAs in an independent community.</em></span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
+        </div>
+
+        <section class="professional-boundary">
+            <div class="professional-kicker">CLEAR BOUNDARIES</div>
+            <h3>Useful links, without pretending every listing is a partnership</h3>
+            <p>These external resources are offered as convenient starting points. MACPrep keeps its board-review access, account entitlement, and study data separate from every third-party service.</p>
+        </section>
     </div>
 
     <!-- DASHBOARD -->
@@ -1730,6 +1780,30 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
       #applicant-save-msg{font-size:11px;color:var(--muted);}
       @media(max-width:820px){.applicant-grid{grid-template-columns:1fr;}.applicant-timeline-panel,.applicant-resources-panel,.applicant-preview-panel{grid-column:auto;}.applicant-checklist{grid-template-columns:repeat(2,minmax(0,1fr));}.applicant-preview-panel{grid-template-columns:1fr;}.applicant-preview-pills{justify-content:flex-start;}}
       @media(max-width:560px){.applicant-page-head{align-items:stretch;flex-direction:column;}.applicant-commit-top{width:100%;}.applicant-hero{grid-template-columns:1fr;padding:18px;}.applicant-panel{padding:16px;}.applicant-panel-head{flex-direction:column;}.applicant-checklist{grid-template-columns:1fr;}.applicant-program-row,.applicant-add-row{grid-template-columns:minmax(0,1fr) 40px;}.applicant-program-row select,.applicant-add-row select{grid-column:1/-1;grid-row:2;}.applicant-program-row button{grid-column:2;grid-row:1;}.applicant-add-row button{grid-column:2;grid-row:1;width:40px;padding:0;font-size:0;}.applicant-add-row button::before{content:"+";font-size:20px;}.applicant-prereqs{grid-template-columns:1fr;gap:5px;}.applicant-prereqs select{margin-bottom:7px;}.applicant-links{grid-template-columns:1fr;}.applicant-savebar{position:static;align-items:stretch;flex-direction:column;}.applicant-savebar .btn{width:100%;}}
+      /* Practicing CAA workspace: professional resources remain separate from student study tools. */
+      #professional-view{max-width:1120px;}
+      .professional-page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:20px;}
+      .professional-page-head .view-title{margin:4px 0;}
+      .professional-page-head .sub{margin:0;max-width:720px;}
+      .professional-kicker{font-family:ui-monospace,monospace;font-size:10px;font-weight:800;letter-spacing:1px;color:var(--accent);}
+      .professional-admin-note{margin-bottom:16px;padding:11px 13px;border-left:3px solid var(--info);background:color-mix(in srgb,var(--info) 8%,var(--panel));color:var(--text2);font-size:12.5px;line-height:1.5;}
+      .professional-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center;padding:26px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--accent-dim) 46%,var(--panel));box-shadow:0 8px 24px color-mix(in srgb,var(--text) 6%,transparent);}
+      .professional-hero h3,.professional-boundary h3{margin:5px 0 8px;font-size:22px;letter-spacing:0;}
+      .professional-hero p,.professional-boundary p{margin:0;color:var(--text2);line-height:1.6;}
+      .professional-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px;}
+      .professional-resource{display:grid;grid-template-columns:46px minmax(0,1fr) 18px;gap:12px;align-items:center;min-height:116px;padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);text-decoration:none;box-shadow:0 3px 14px color-mix(in srgb,var(--text) 4%,transparent);}
+      .professional-resource:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent-dim) 28%,var(--panel));}
+      .professional-resource img{width:46px;height:46px;border-radius:8px;object-fit:cover;background:#fff;}
+      .professional-resource span{display:flex;min-width:0;flex-direction:column;gap:4px;}
+      .professional-resource small{font-family:ui-monospace,monospace;font-size:8.5px;font-weight:800;letter-spacing:.7px;color:var(--accent);}
+      .professional-resource strong{font-size:14px;}
+      .professional-resource em{font-size:11.5px;font-style:normal;line-height:1.4;color:var(--muted);}
+      .professional-resource svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+      .professional-boundary{margin-top:18px;padding:22px 2px;border-top:1px solid var(--line);}
+      .professional-boundary h3{font-size:18px;}
+      .professional-boundary p{max-width:78ch;font-size:13px;}
+      @media(max-width:900px){.professional-grid{grid-template-columns:1fr;}.professional-resource{min-height:84px;}}
+      @media(max-width:560px){.professional-hero{grid-template-columns:1fr;padding:18px;}.professional-hero .btn{width:100%;}.professional-resource{grid-template-columns:42px minmax(0,1fr) 18px;padding:14px;}.professional-resource img{width:42px;height:42px;}}
       /* Dashboard: a calm, theme-aware study surface. These values are deliberately derived
          from each selected palette, so a member's theme and font choices still lead. */
       #dashboard-view{

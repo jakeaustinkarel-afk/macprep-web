@@ -17,6 +17,7 @@ import {
     normalizeVoucherLabel,
     readCookieHeader,
     registrationProfileError,
+    resolveLifecycleCapabilities,
     resolveSubmittedChoiceIndex,
     runDatabaseHealthProbe,
     normalizeMobileStore,
@@ -158,6 +159,45 @@ test('registration separates lifecycle stage, credential, and program requiremen
     assert.equal(isValidProfileDate('2027-02-29'), false);
 });
 
+test('lifecycle capabilities give admins every surface and keep members stage-scoped', () => {
+    assert.deepEqual(resolveLifecycleCapabilities('applicant'), {
+        applicant_workspace: true,
+        board_prep: false,
+        professional_resources: false,
+        admin_tools: false,
+    });
+    assert.deepEqual(resolveLifecycleCapabilities('incoming_student'), {
+        applicant_workspace: true,
+        board_prep: false,
+        professional_resources: false,
+        admin_tools: false,
+    });
+    assert.deepEqual(resolveLifecycleCapabilities('student'), {
+        applicant_workspace: false,
+        board_prep: true,
+        professional_resources: false,
+        admin_tools: false,
+    });
+    assert.deepEqual(resolveLifecycleCapabilities('practicing'), {
+        applicant_workspace: false,
+        board_prep: true,
+        professional_resources: true,
+        admin_tools: false,
+    });
+    assert.deepEqual(resolveLifecycleCapabilities('student', { isAdmin: true }), {
+        applicant_workspace: true,
+        board_prep: true,
+        professional_resources: true,
+        admin_tools: true,
+    });
+    assert.deepEqual(resolveLifecycleCapabilities('student', { isReview: true }), {
+        applicant_workspace: false,
+        board_prep: true,
+        professional_resources: false,
+        admin_tools: false,
+    });
+});
+
 test('applicant progress accepts only bounded planning data', () => {
     const clean = sanitizeApplicantProgress({
         target_cycle: '2028', shadowing_hours: 42.26,
@@ -182,11 +222,12 @@ test('applicant progress accepts only bounded planning data', () => {
 });
 
 test('applicant lifecycle remains excluded while dated transitions preserve entitlement', async () => {
-    const [server, migration, datedMigration, app, updates] = await Promise.all([
+    const [server, migration, datedMigration, app, landing, updates] = await Promise.all([
         readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
         readFile(fileURLToPath(new URL('../supabase/migrations/20260722223000_applicant_lifecycle.sql', import.meta.url)), 'utf8'),
         readFile(fileURLToPath(new URL('../supabase/migrations/20260722231500_auto_graduation_lifecycle.sql', import.meta.url)), 'utf8'),
         readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8'),
         readFile(fileURLToPath(new URL('../updates.html', import.meta.url)), 'utf8'),
     ]);
     const guardedRoutes = [
@@ -202,6 +243,18 @@ test('applicant lifecycle remains excluded while dated transitions preserve enti
         const section = server.slice(start, next < 0 ? server.length : next);
         assert.match(section, /requireBoardPrepLifecycle/, `${route} must enforce lifecycle server-side`);
     }
+    const applicantProgressStart = server.indexOf("app.post('/api/user/applicant-progress'");
+    const applicantProgressEnd = server.indexOf("app.post('/api/user/lifecycle'", applicantProgressStart);
+    const applicantProgressRoute = server.slice(applicantProgressStart, applicantProgressEnd);
+    assert.match(applicantProgressRoute, /const adminUser = isAdminUser\(user\)/);
+    assert.match(applicantProgressRoute, /if \(!adminUser && !\['applicant', 'incoming_student'\]\.includes\(lifecycle\.stage\)\)/);
+    assert.match(server, /capabilities = resolveLifecycleCapabilities/);
+    assert.match(app, /function profileCapability\(name\)/);
+    assert.match(app, /view === 'applicant' && !applicantWorkspaceEnabled\(\)/);
+    assert.match(app, /view === 'professional' && !professionalResourcesEnabled\(\)/);
+    assert.match(landing, /id="nav-admin-applicant"/);
+    assert.match(landing, /id="nav-professional"/);
+    assert.match(landing, /id="professional-view"/);
     assert.match(migration, /p\.lifecycle_stage = 'student'/);
     assert.match(migration, /where lifecycle_stage in \('incoming_student', 'student', 'practicing'\)/);
     assert.match(datedMigration, /where lifecycle_stage = 'incoming_student'[\s\S]*matriculation_date <= current_date/);
@@ -585,7 +638,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'adaptive-roadmap-20260722\.1'/);
+    assert.match(server, /build: 'lifecycle-capabilities-20260723\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

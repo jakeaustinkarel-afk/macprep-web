@@ -13,6 +13,7 @@ Last reviewed: 2026-07-18.
 - [x] Added CI, browser/native capability handshakes, idempotent purchase reconciliation, and latest-response practice/peer metrics with minimum sample thresholds.
 - [x] Added the applicant-to-CAA lifecycle model, free applicant planning dashboard, automatic matriculation and graduation transitions, and lifecycle-safe metrics/authorization. Graduation moves the account into practicing CAA resources for CME timing without changing premium entitlement.
 - [x] Expanded the adaptive calendar from a 14-day plan into an exam-anchored roadmap of up to six months, with phase-aware daily targets, biweekly checkpoints, phase navigation, and paginated upcoming-review inputs.
+- [x] Added an explicit lifecycle capability map so applicant, SAA, and practicing-CAA accounts receive only their relevant workspaces while the owner admin can inspect every lifecycle and administrative surface.
 
 ## Next Engineering Slice
 
