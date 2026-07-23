@@ -169,6 +169,10 @@ const gradeLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const profileLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
 const pushLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 30 });
 const mobilePurchaseLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 25, identity: requestIdentity, sharedBucket: 'mobile_purchase' });
+// Provider webhooks still authenticate every payload cryptographically, but an
+// inexpensive per-instance ceiling prevents unsigned traffic from consuming
+// unbounded signature-verification or provider-lookup work.
+const providerWebhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 300 });
 
 // Allowlist of hosts we will build absolute URLs for (password-reset links,
 // Stripe success/cancel). Prevents host-header injection from pointing those
@@ -204,6 +208,18 @@ function tokenAuthMethods(jwt) {
         const payload = JSON.parse(Buffer.from(String(jwt).split('.')[1], 'base64url').toString('utf8'));
         return Array.isArray(payload.amr) ? payload.amr.map((a) => (a && a.method) || '').filter(Boolean) : [];
     } catch (e) { return []; }
+}
+
+export function bearerTokenFromHeader(value) {
+    const authorization = String(value || '');
+    if (authorization.length > 16391 || authorization.slice(0, 7).toLowerCase() !== 'bearer ') return '';
+    const token = authorization.slice(7).trim();
+    if (!token || token.length > 16384 || /\s/.test(token)) return '';
+    return token;
+}
+
+export function escapePostgrestLikeTerm(value) {
+    return String(value == null ? '' : value).replace(/[\\%_]/g, '\\$&');
 }
 
 // ---------------------------------------------------------------------------
@@ -954,7 +970,7 @@ async function fetchPrioritySessionQuestions(userId, { size, questionIds = [], p
 // is available for signature verification. This is the ONLY webhook route.
 // Point the Stripe dashboard at: POST /api/webhooks/stripe
 // ---------------------------------------------------------------------------
-app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/webhooks/stripe', providerWebhookLimiter, express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -1094,8 +1110,10 @@ app.get(/\.html$/i, (req, res, next) => {
     const relative = normalizedPublicPath(req.path);
     if (!PUBLIC_HTML_FILES.has(relative)) return next();
     const clean = req.path.replace(/\/index\.html$/i, '/').replace(/\.html$/i, '') || '/';
-    const qs = req.originalUrl.slice(req.path.length);
-    res.redirect(301, clean + qs);
+    // Redirect only to the allowlisted canonical path. Query strings on legacy
+    // `.html` URLs are intentionally dropped so user input can never influence
+    // the Location target.
+    res.redirect(301, clean);
 });
 app.use((req, res, next) => {
     if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api/') || path.extname(req.path)) return next();
@@ -1218,7 +1236,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'security-hardening-20260723.1',
+        build: 'security-hardening-20260723.2',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -2414,12 +2432,12 @@ async function verifyGooglePubSubRequest(req) {
     const audience = String(process.env.GOOGLE_PLAY_RTDN_AUDIENCE || '').trim();
     const expectedEmail = String(process.env.GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT_EMAIL || '').trim().toLowerCase();
     if (!audience || !expectedEmail) throw new MobilePurchaseError('Google Play notifications are not configured.', 503);
-    const match = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
-    if (!match) throw new MobilePurchaseError('Missing Google Pub/Sub identity.', 401);
+    const idToken = bearerTokenFromHeader(req.headers.authorization);
+    if (!idToken) throw new MobilePurchaseError('Missing Google Pub/Sub identity.', 401);
     const client = new google.auth.OAuth2();
     let payload;
     try {
-        const ticket = await client.verifyIdToken({ idToken: match[1], audience });
+        const ticket = await client.verifyIdToken({ idToken, audience });
         payload = ticket.getPayload();
     } catch (error) {
         throw new MobilePurchaseError('Invalid Google Pub/Sub identity.', 401);
@@ -2798,15 +2816,25 @@ app.post('/api/user/change-password', authLimiter, async (req, res) => {
 });
 
 // Delete the signed-in user's account and all associated data (GDPR/privacy).
-app.post('/api/user/delete', async (req, res) => {
+app.post('/api/user/delete', authLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!supabase) return res.status(500).json({ error: 'Account deletion is not configured.' });
+    const currentPassword = String(req.body?.current_password || '');
+    if (!currentPassword) return res.status(400).json({ error: 'Your current password is required.' });
+    if (!supabase || !supabaseAuth) return res.status(500).json({ error: 'Account deletion is not configured.' });
     try {
+        const { data: reauth, error: authError } = await supabaseAuth.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword,
+        });
+        if (authError || !reauth.session?.access_token) {
+            return res.status(403).json({ error: 'Current password is incorrect.' });
+        }
         // The database function deletes the public records and auth identity in
         // one transaction. It is service-role-only and fails the request on any
         // error, instead of reporting success after partial cleanup.
         await deleteMacprepAccount(supabase, user.id);
+        clearAuthCookies(res);
         return res.json({ success: true });
     } catch (err) {
         reportOperationalError('account.delete', err);
@@ -3745,7 +3773,7 @@ app.get('/api/questions/search', studySessionLimiter, async (req, res) => {
             .order('id', { ascending: true })
             .limit(40);
         words.forEach((word) => {
-            query = query.ilike('stem', `%${word.replace(/[%_]/g, '\\$&')}%`);
+            query = query.ilike('stem', `%${escapePostgrestLikeTerm(word)}%`);
         });
         query = applyServedFilter(query);
         const { data, error } = await query;
@@ -5171,7 +5199,7 @@ app.post('/api/admin/review', async (req, res) => {
 // client-side premium flag. Both stores resolve to the same account_tier contract
 // already used by Stripe, vouchers, and program grants.
 // ---------------------------------------------------------------------------
-app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
+app.post('/api/mobile-purchases/apple-notifications', providerWebhookLimiter, async (req, res) => {
     try {
         const { notification, transaction } = await verifyAppleNotification(req.body?.signedPayload);
         const type = notification?.notificationType;
@@ -5243,7 +5271,7 @@ app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
     }
 });
 
-app.post('/api/mobile-purchases/google-notifications', async (req, res) => {
+app.post('/api/mobile-purchases/google-notifications', providerWebhookLimiter, async (req, res) => {
     try {
         await verifyGooglePubSubRequest(req);
         const encoded = req.body?.message?.data;

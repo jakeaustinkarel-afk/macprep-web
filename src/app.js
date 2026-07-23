@@ -1063,7 +1063,7 @@
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
     const WHATS_NEW_VERSION = 49;
     const WHATS_NEW = [
-        { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
+        { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Permanent account deletion confirms your current password, and study and print views apply tighter content handling. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'The right workspace for every stage', desc: 'MACPrep now uses a server-issued capability map to shape each signed-in experience. Applicants and incoming students see application planning; SAAs see board-prep tools; practicing CAAs keep board review and gain a focused professional-resources workspace. The owner admin account can open every lifecycle surface without changing its practicing-CAA profile, while direct navigation and protected APIs keep regular accounts inside their current stage. An unused mobile asset generator with unresolved build-only advisories was removed, and release checks now audit the exact locked dependency graphs for web and mobile. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -4355,20 +4355,21 @@
         const cardset = new Set((state.profile && state.profile.flashcard_ids) || []);
         const rows = log.map((r, i) => {
             const fl = r.id && flset.has(r.id), fc = r.id && cardset.has(r.id);
+            const questionId = escapeHtml(String(r.id || ''));
             const actions = r.id ? `<div style="display:flex;gap:6px;flex:none;">
-                    <button type="button" class="rev-act${fl ? ' on' : ''}" onclick="MACPrep.flagFromReview('${r.id}', this)" title="Flag this to review later — even ones you got right">${revFlagInner(fl)}</button>
-                    <button type="button" class="rev-act${fc ? ' on' : ''}" onclick="MACPrep.flashcardFromReview('${r.id}', this)" title="Add this to your flashcard deck">${revCardInner(fc)}</button>
+                    <button type="button" class="rev-act${fl ? ' on' : ''}" data-question-id="${questionId}" onclick="MACPrep.flagFromReview(this.dataset.questionId, this)" title="Flag this to review later — even ones you got right">${revFlagInner(fl)}</button>
+                    <button type="button" class="rev-act${fc ? ' on' : ''}" data-question-id="${questionId}" onclick="MACPrep.flashcardFromReview(this.dataset.questionId, this)" title="Add this to your flashcard deck">${revCardInner(fc)}</button>
                 </div>` : '';
             return `
             <div style="border-bottom:1px solid var(--line);padding:14px 0;">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px;">
-                    <div class="mono" style="font-size:11px;color:var(--muted);">${i + 1}. ${r.meta || ''}</div>
+                    <div class="mono" style="font-size:11px;color:var(--muted);">${i + 1}. ${escapeHtml(r.meta || '')}</div>
                     ${actions}
                 </div>
                 <div style="font-size:14px;margin-bottom:6px;">${renderRich(r.stem)}</div>
                 <div class="mono" style="font-size:12px;">
                     <span style="color:${r.correct ? 'var(--grade-ok, var(--accent))' : 'var(--grade-bad, var(--bad))'};">${r.correct ? '✓ Correct' : '✗ Incorrect'}</span>
-                    &nbsp;·&nbsp; Your answer: ${r.yourLetter} &nbsp;·&nbsp; Correct: ${r.correctLetter}
+                    &nbsp;·&nbsp; Your answer: ${escapeHtml(r.yourLetter)} &nbsp;·&nbsp; Correct: ${escapeHtml(r.correctLetter)}
                 </div>
                 ${r.explanation ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5;">${renderRich(r.explanation)}</div>` : ''}
             </div>`;
@@ -4387,11 +4388,11 @@
             .sort((a, b) => a.acc - b.acc || b.total - a.total);
         const chips = rows.map((r) => {
             const color = r.acc >= 75 ? 'var(--accent)' : r.acc >= 50 ? 'var(--warn)' : 'var(--bad)';
-            return `<span class="mono" style="display:inline-block;margin:0 12px 8px 0;font-size:13px;"><span style="color:${color};">${r.cat}</span> <span style="color:var(--muted);">${r.correct}/${r.total}</span></span>`;
+            return `<span class="mono" style="display:inline-block;margin:0 12px 8px 0;font-size:13px;"><span style="color:${color};">${escapeHtml(r.cat)}</span> <span style="color:var(--muted);">${r.correct}/${r.total}</span></span>`;
         }).join('');
         const weakest = rows[0];
         const cta = (weakest && weakest.acc < 100 && rows.length > 1)
-            ? `<button class="btn" type="button" onclick="MACPrep.drillSpecialty('${String(weakest.cat).replace(/'/g, "\\'")}')" style="margin-top:6px;">Drill ${weakest.cat} →</button>`
+            ? `<button class="btn" type="button" data-specialty="${escapeHtml(weakest.cat)}" onclick="MACPrep.drillSpecialty(this.dataset.specialty)" style="margin-top:6px;">Drill ${escapeHtml(weakest.cat)} →</button>`
             : '';
         el.innerHTML = `<h2 style="margin:0 0 8px;">How you did by specialty</h2><div style="margin-bottom:6px;">${chips}</div>${cta}`;
         el.classList.remove('hidden');
@@ -5027,13 +5028,25 @@
         clone.querySelectorAll('details').forEach((d) => { d.open = true; });
         const lightVars = ":root{--bg:#fff;--panel:#fff;--panel2:#f5f7f9;--line:#d5dbe2;--line2:#c3ccd6;--text:#14181d;--text2:#3a424c;--muted:#6b7280;--accent:#146A4A;--accent-2:#146A4A;--accent-dim:#e9f4ee;--danger:#b42318;--danger-dim:#fbe9e7;--good:#146A4A;--warn:#8a5a12;--warn-dim:#f4ecdb;--cat:#146A4A;--serif:'Fraunces',Georgia,serif;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;}";
         const printCss = "*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}html,body{margin:0;background:#fff;}body{padding:10px 20px;color:var(--text);font-family:var(--sans);}.ce-brand{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 12px;}.ce-card{border:0 !important;border-radius:0 !important;padding:0 !important;margin:0 !important;background:#fff !important;overflow:visible !important;break-inside:auto !important;page-break-inside:auto !important;}.ce-head{border-bottom:1px solid #d5dbe2;padding-bottom:14px;margin-bottom:16px;break-inside:avoid;}.ce-emblem{color:var(--cat,#146A4A) !important;}.ce-sec{margin-bottom:16px;}.ce-label{break-after:avoid;}.ce-keys{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 16px;padding:11px 13px;border:1px solid var(--cat,#146A4A);border-radius:10px;}.ce-keys-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--cat,#146A4A);font-weight:700;}.ce-key{font-family:var(--mono);font-size:12.5px;font-weight:600;color:#111;background:#f5f7f9;border:1px solid #d5dbe2;border-radius:6px;padding:4px 9px;}.ce-keys,figure.ce-photo,.ce-photo,table.ce-drugs tr,ol.ce-actions li,ul.ce-suspect li,ul.ce-pitfalls li,ul.ce-sources li,.ce-node{break-inside:avoid;page-break-inside:avoid;}.ce-photo-sec{max-width:460px;}.ce-photo img{max-height:240px !important;}.ce-src-det>summary{list-style:none;}.ce-src-det>summary::-webkit-details-marker{display:none;}.ce-src-det .ce-src-count{display:none;}.ce-src-det .ce-label{display:inline-block;margin-bottom:10px;}a{color:var(--accent);}@page{margin:14mm 12mm;}";
-        const doc = "<!doctype html><html><head><meta charset='utf-8'><title>" + ceEsc(title) + " — MACPrep Critical Events</title><style>" + lightVars + cardCss + appCss + printCss + "</style></head><body><div class='ce-brand'>MACPrep · Critical Events</div>" + clone.outerHTML + "</body></html>";
         const frame = document.createElement('iframe');
         frame.setAttribute('aria-hidden', 'true');
         frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
         document.body.appendChild(frame);
         const idoc = frame.contentWindow.document;
-        idoc.open(); idoc.write(doc); idoc.close();
+        const head = idoc.createElement('head');
+        const charset = idoc.createElement('meta');
+        charset.setAttribute('charset', 'utf-8');
+        const titleNode = idoc.createElement('title');
+        titleNode.textContent = title + ' — MACPrep Critical Events';
+        const style = idoc.createElement('style');
+        style.textContent = lightVars + cardCss + appCss + printCss;
+        head.append(charset, titleNode, style);
+        const body = idoc.createElement('body');
+        const brand = idoc.createElement('div');
+        brand.className = 'ce-brand';
+        brand.textContent = 'MACPrep · Critical Events';
+        body.append(brand, idoc.importNode(clone, true));
+        idoc.documentElement.replaceChildren(head, body);
         let printed = false;
         const go = () => { if (printed) return; printed = true; try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) {} setTimeout(() => frame.remove(), 1500); };
         const img = idoc.querySelector('img');
@@ -5493,8 +5506,15 @@
     async function deleteAccount() {
         if (!confirm('Delete your account and all study data permanently? This cannot be undone.')) return;
         if (!confirm('Are you absolutely sure? This will erase your progress and cancel access.')) return;
+        const current = prompt('Confirm your CURRENT password to permanently delete this account:');
+        if (current == null) return;
+        if (!current) { toast('Your current password is required.'); return; }
         try {
-            const { resp, data } = await apiJSON('/api/user/delete', { method: 'POST', headers: authHeaders() });
+            const { resp, data } = await apiJSON('/api/user/delete', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ current_password: current }),
+            });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not delete account.');
             toast('Your account has been deleted.', 'ok');
             signOut();

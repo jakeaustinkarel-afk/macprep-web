@@ -41,6 +41,13 @@ repository still require owner verification.
 - Native purchase controls now remain unavailable when the corresponding server
   verifier is not configured. The next iOS bridge also leaves StoreKit
   transactions unfinished until MACPrep records the entitlement successfully.
+- Account deletion now requires the current password in addition to an active
+  session, and is protected by the shared authentication attempt ceiling.
+- User-controlled specialty labels and server-provided card content no longer
+  flow through the identified string-to-HTML print paths. Search wildcard
+  escaping now also handles literal backslashes.
+- Stripe, Apple, and Google provider webhooks now have a local resource ceiling
+  in addition to their mandatory signature or identity verification.
 - Weekly dependency audits, Dependabot updates, and CodeQL analysis are now
   versioned with CI. Third-party GitHub Actions are pinned to commit hashes.
 - Local ignored credential files were changed from group/world-readable mode to
@@ -63,14 +70,17 @@ repository still require owner verification.
    forwarded proxy identities. This can bypass Cloudflare edge controls and
    weaken IP rate limits. Restrict the origin to Cloudflare and configure a known
    proxy topology before relying on forwarded IPs as an abuse boundary.
+4. Production currently reports Apple and Google purchase verification as
+   unconfigured. The new safety gate prevents an unverified charge attempt, but
+   Apple purchase and restore controls will remain unavailable until the App
+   Store verifier credentials and trust roots are configured in Render. Resolve
+   this before App Review.
 
 ### Medium
 
-4. Admin and faculty authorization does not require MFA/AAL2. Enroll every
+5. Admin and faculty authorization does not require MFA/AAL2. Enroll every
    privileged account first, then enforce AAL2 and recent step-up authentication
    on privileged reads and mutations.
-5. Account deletion accepts any currently valid session. Require a recent
-   password, OTP, or AAL2 reauthentication before irreversible deletion.
 6. Existing unclaimed eight-hex-character voucher codes remain shorter than the
    new format. Do not invalidate distributed codes blindly; inventory each
    cohort, replace undistributed codes, and expire old codes after a communicated
@@ -90,9 +100,10 @@ repository still require owner verification.
 
 ### Low / defense in depth
 
-10. The CSP still permits inline scripts. No exploitable DOM XSS path was found,
-   and authentication cookies are not JavaScript-readable, but moving inline
-   handlers into modules is required before removing `script-src 'unsafe-inline'`.
+10. The CSP still permits inline scripts. The CodeQL-identified stored-content
+   and print-document paths were removed, and authentication cookies are not
+   JavaScript-readable, but moving inline handlers into modules is required
+   before removing `script-src 'unsafe-inline'`.
 11. Static marketing pages inside the native WebView can still mention Stripe
     web terms. Open those pages externally or make their payment copy
     native-aware before Android submission.
@@ -115,9 +126,11 @@ repository still require owner verification.
 - Production database checks confirmed no anonymous/authenticated access to
   questions, vouchers, or legacy learning functions; the service role retains
   required access.
-- JavaScript syntax checks, all 72 Node tests, Capacitor sync, and the iOS
+- JavaScript syntax checks, all 74 Node tests, Capacitor sync, and the iOS
   simulator build passed. Android compilation could not run because this Mac has
   no Java runtime; the unchanged Android purchase bridge remains covered by
   source tests and the mobile dependency audit, but a Gradle build is still a
   residual verification gap.
-- Post-deploy production probes remain the final release gate for this change.
+- Post-deploy production probes confirmed the new build marker and release notes.
+  Native purchase verification intentionally reports unavailable until the
+  corresponding Store verifier credentials are configured in production.

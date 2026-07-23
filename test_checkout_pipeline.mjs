@@ -15,7 +15,7 @@ const STRIPE_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_secret_ke
 
 async function executeSimulatedCheckoutSequence() {
     console.log('🏁 Initializing Sandbox Merchant Validation Sequence...');
-    console.log(`🔑 Utilizing signing token key layout: ${STRIPE_SECRET.substring(0, 10)}...`);
+    console.log('🔑 Using the configured sandbox signing token (value hidden).');
     
     const mockStripeEventId = `evt_sandbox_${crypto.randomBytes(8).toString('hex')}`;
     const mockTimestamp = Math.floor(Date.now() / 1000);

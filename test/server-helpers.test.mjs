@@ -7,8 +7,10 @@ import {
     answerChoiceId,
     applyServedFilter,
     analyticsPlatformFromMeta,
+    bearerTokenFromHeader,
     configuredStripePriceIds,
     deleteMacprepAccount,
+    escapePostgrestLikeTerm,
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
     isValidProfileDate,
@@ -474,6 +476,32 @@ test('browser code keeps authentication credentials out of JavaScript storage an
     assert.match(passwordSection, /\/auth\/v1\/user/);
     assert.match(passwordSection, /current_password/);
     assert.doesNotMatch(passwordSection, /admin\.updateUserById\([^)]*password/s);
+
+    const deleteSection = server.slice(server.indexOf("app.post('/api/user/delete'"), server.indexOf("app.post('/api/user/reset-progress'"));
+    assert.match(deleteSection, /app\.post\('\/api\/user\/delete', authLimiter/);
+    assert.match(deleteSection, /current_password/);
+    assert.match(deleteSection, /signInWithPassword/);
+    assert.match(deleteSection, /clearAuthCookies\(res\)/);
+});
+
+test('scanner-identified webhook, logging, and DOM sink regressions stay closed', async () => {
+    const [server, browser, checkoutHarness] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../test_checkout_pipeline.mjs', import.meta.url)), 'utf8'),
+    ]);
+    for (const route of [
+        '/api/webhooks/stripe',
+        '/api/mobile-purchases/apple-notifications',
+        '/api/mobile-purchases/google-notifications',
+    ]) {
+        const section = server.slice(server.indexOf(`app.post('${route}'`), server.indexOf(`app.post('${route}'`) + 220);
+        assert.match(section, /providerWebhookLimiter/);
+    }
+    assert.doesNotMatch(server, /\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
+    assert.doesNotMatch(browser, /idoc\.write\(/);
+    assert.match(browser, /data-specialty="\$\{escapeHtml\(weakest\.cat\)\}"/);
+    assert.doesNotMatch(checkoutHarness, /STRIPE_SECRET\.(?:substring|slice)\(/);
 });
 
 test('publication validation requires one aligned answer, rationales, blueprint tags, and a real source', () => {
@@ -560,6 +588,14 @@ test('redirect bases require an allowlisted HTTPS origin', () => {
     assert.equal(trustedBaseUrl('https://www.macprep.org/checkout'), 'https://www.macprep.org');
     assert.equal(trustedBaseUrl('http://www.macprep.org'), '');
     assert.equal(trustedBaseUrl('https://macprep.org.attacker.example'), '');
+});
+
+test('bearer parsing and PostgREST search escaping reject ambiguous input', () => {
+    assert.equal(bearerTokenFromHeader('Bearer header.payload.signature'), 'header.payload.signature');
+    assert.equal(bearerTokenFromHeader('bearer header.payload.signature'), 'header.payload.signature');
+    assert.equal(bearerTokenFromHeader('Bearer token with spaces'), '');
+    assert.equal(bearerTokenFromHeader(`Bearer ${'a'.repeat(16385)}`), '');
+    assert.equal(escapePostgrestLikeTerm(String.raw`100%_safe\term`), String.raw`100\%\_safe\\term`);
 });
 
 test('PostgREST pagination collects every page and stops after a short page', async () => {

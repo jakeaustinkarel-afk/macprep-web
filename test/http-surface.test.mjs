@@ -48,7 +48,7 @@ test('the HTTP surface serves public assets and denies repository internals', as
 
     const canonical = await fetch(`${base}/pricing.html?from=test`, { redirect: 'manual' });
     assert.equal(canonical.status, 301);
-    assert.equal(canonical.headers.get('location'), '/pricing?from=test');
+    assert.equal(canonical.headers.get('location'), '/pricing');
 
     for (const privatePath of [
         '/.env', '/AGENTS.md', '/package.json', '/src/server.mjs',
