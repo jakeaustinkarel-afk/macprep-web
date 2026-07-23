@@ -659,7 +659,17 @@
         setLoading(true);
         try {
             const pool = await requestStudySession(options);
-            if (!pool.length) { toast('No questions are available for that selection right now.'); return null; }
+            const strictUnused = options && options.pool_mode === 'unused';
+            const requested = Math.max(1, Number(options && options.size) || 1);
+            if (!pool.length) {
+                toast(strictUnused
+                    ? 'You have already answered or starred every question matching those filters.'
+                    : 'No questions are available for that selection right now.');
+                return null;
+            }
+            if (strictUnused && pool.length < requested) {
+                toast(`Only ${pool.length} unused question${pool.length === 1 ? '' : 's'} matched. Previously answered or starred questions were not added.`, 'ok');
+            }
             state.questions = pool;
             beginSession(pool, mode || 'tutor');
             if (typeof onReady === 'function') onReady(state.session, pool);
@@ -1178,8 +1188,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 51;
+    const WHATS_NEW_VERSION = 52;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 23', title: 'Unused now means no repeats', desc: 'Custom quizzes set to Unused now exclude questions you have answered or starred before, even if a question was revised after your earlier attempt. If fewer unused questions match the selected specialty and difficulty, MACPrep starts with only those remaining questions instead of silently filling the session with repeats. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 23', title: 'Study progress that stays accurate', desc: 'Study-session retries can no longer duplicate attempts or grade against a question that changed after the session began. Recommended, diagnostic, and mock sessions now use current question revisions, due reviews, unseen coverage, and the intended exam-domain mix; saved study actions, reminders, reports, sign-out, and purchase recovery also wait for server confirmation before showing success. App loading and keyboard navigation are more resilient, including accurate page titles for each admin workspace. Available on the web and current MACPrep mobile shell; improved Android purchase recovery and launcher resources are prepared for the next Android build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Permanent account deletion confirms your current password, and study and print views apply tighter content handling. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -2521,6 +2532,10 @@
         }
         n = Math.min(n === Infinity ? Math.min(pool.total, 200) : n, pool.total, 200);
         if (startBtn) startBtn.disabled = false;
+        if (pool.mode === 'unused') {
+            $('session-hint').textContent = `Up to ${n} unused question${n === 1 ? '' : 's'}. Questions you have answered or starred will not be used to fill the session.`;
+            return;
+        }
         $('session-hint').textContent = `This session: ${n} question${n === 1 ? '' : 's'} from ${pool.total} available${capNote}.`;
     }
 
@@ -2538,7 +2553,7 @@
         const difficulty = $('difficulty-select') ? $('difficulty-select').value : 'all';
         await beginServerSession({
             purpose: usage.unlimited ? 'custom' : 'recommended', size: n, category, difficulty,
-            pool_mode: pool.mode === 'unused' ? 'new' : 'all', question_ids: pool.ids,
+            pool_mode: pool.mode === 'unused' ? 'unused' : 'all', question_ids: pool.ids,
         }, $('mode-select') ? $('mode-select').value : 'tutor');
     }
 

@@ -894,6 +894,13 @@ export function selectUnansweredFreePool(pool, answeredIds, size) {
     return pool.filter((question) => !answered.has(String(question.id))).slice(0, size);
 }
 
+export function selectStrictUnusedQuestionIds(questionRows, answeredIds, size) {
+    const answered = new Set(Array.from(answeredIds || []).map(String));
+    const limit = Math.max(0, Number(size) || 0);
+    const unused = (questionRows || []).filter((question) => !answered.has(String(question.id)));
+    return pickRandom(unused, Math.min(limit, unused.length)).map((question) => String(question.id));
+}
+
 async function fetchFixedFreePool(userId, size) {
     const catalog = await getQuestionCatalog();
     const poolSize = Math.min(FREE_STUDY_POOL_SIZE, catalog.total);
@@ -948,6 +955,22 @@ async function getCurrentRevisionAnsweredIds(userId, currentQuestions) {
         .map((row) => String(row.question_id)));
 }
 
+async function getPreviouslyUsedQuestionIds(userId) {
+    const [progress, flags] = await Promise.all([
+        fetchAllPostgrestRows((from, to) => supabase
+            .from(PROGRESS_TABLE)
+            .select('question_id')
+            .eq('user_id', userId)
+            .range(from, to)),
+        fetchAllPostgrestRows((from, to) => supabase
+            .from('user_flags')
+            .select('question_id')
+            .eq('user_id', userId)
+            .range(from, to)),
+    ]);
+    return new Set([...progress, ...flags].map((row) => String(row.question_id)));
+}
+
 async function fetchPremiumSessionQuestions(userId, {
     size,
     category = 'all',
@@ -957,6 +980,18 @@ async function fetchPremiumSessionQuestions(userId, {
     poolMode = 'all',
     answeredIds,
 }) {
+    if (poolMode === 'unused') {
+        const idRows = await fetchAllServedQuestionRows('id', {
+            ids: questionIds,
+            category,
+            domain,
+            difficulty,
+        });
+        if (!idRows.length) return [];
+        const usedIds = answeredIds || await getPreviouslyUsedQuestionIds(userId);
+        const selectedIds = selectStrictUnusedQuestionIds(idRows, usedIds, size);
+        return selectedIds.length ? fetchServedQuestionRows({ ids: selectedIds }) : [];
+    }
     if (questionIds.length) return fetchServedQuestionRows({ ids: questionIds.slice(0, size) });
     if (poolMode === 'new') {
         const idRows = await fetchAllServedQuestionRows('id, answer_revision', { category, domain, difficulty });
@@ -4000,7 +4035,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
     const purpose = String(req.body?.purpose || 'custom');
     const category = typeof req.body?.category === 'string' ? req.body.category.slice(0, 160) : 'all';
     const difficulty = ['easy', 'medium', 'hard', 'all'].includes(req.body?.difficulty) ? req.body.difficulty : 'all';
-    const poolMode = ['all', 'new'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
+    const poolMode = ['all', 'new', 'unused'].includes(req.body?.pool_mode) ? req.body.pool_mode : 'all';
     const questionIds = Array.from(new Set((Array.isArray(req.body?.question_ids) ? req.body.question_ids : [])
         .map((id) => String(id).trim()).filter(Boolean))).slice(0, MAX_STUDY_SESSION_SIZE);
     try {

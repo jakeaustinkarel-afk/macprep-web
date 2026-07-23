@@ -34,6 +34,7 @@ import {
     resolveFacultyScope,
     sanitizeAnalyticsMeta,
     sanitizeApplicantProgress,
+    selectStrictUnusedQuestionIds,
     selectUnansweredFreePool,
     shouldReportDatabaseHealthFailure,
     stripeCheckoutIdempotencyKey,
@@ -106,6 +107,39 @@ test('a resumed trial serves only unanswered questions from its fixed pool', () 
         selectUnansweredFreePool(pool, ['question-1', 'question-2', 'question-3'], 25),
         []
     );
+});
+
+test('custom unused pools never backfill historically answered questions', async () => {
+    const questions = [
+        { id: 'question-1' },
+        { id: 'question-2' },
+        { id: 'question-3' },
+        { id: 'question-4' },
+    ];
+    const selected = selectStrictUnusedQuestionIds(
+        questions,
+        new Set(['question-1', 'question-3']),
+        25
+    );
+    assert.equal(selected.length, 2);
+    assert.deepEqual(new Set(selected), new Set(['question-2', 'question-4']));
+
+    const [server, client] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+    ]);
+    const premiumPool = server.slice(
+        server.indexOf('async function getPreviouslyUsedQuestionIds'),
+        server.indexOf('async function getRecommendedPriorities')
+    );
+    assert.match(server, /\['all', 'new', 'unused'\]\.includes\(req\.body\?\.pool_mode\)/);
+    assert.match(premiumPool, /poolMode === 'unused'/);
+    assert.match(premiumPool, /getPreviouslyUsedQuestionIds\(userId\)/);
+    assert.match(premiumPool, /\.select\('question_id'\)/);
+    assert.match(premiumPool, /\.from\('user_flags'\)/);
+    assert.doesNotMatch(premiumPool.slice(0, premiumPool.indexOf("if (poolMode === 'new')")), /seenIds/);
+    assert.match(client, /pool\.mode === 'unused' \? 'unused' : 'all'/);
+    assert.match(client, /Questions you have answered or starred will not be used to fill the session/);
 });
 
 test('diagnostics cover all six domains while mock exams follow the NCCAA blueprint', () => {
@@ -770,7 +804,7 @@ test('SAA benchmarks use the same Eastern graduation boundary as lifecycle trans
 test('new-question pools count only attempts against the current answer revision', async () => {
     const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
     const start = server.indexOf('async function getCurrentRevisionAnsweredIds');
-    const end = server.indexOf('async function getRecommendedPriorities', start);
+    const end = server.indexOf('async function getPreviouslyUsedQuestionIds', start);
     const sessionSelection = server.slice(start, end);
     assert.ok(start >= 0 && end > start);
     assert.match(sessionSelection, /\.select\('question_id, answer_revision'\)/);
