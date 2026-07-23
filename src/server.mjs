@@ -361,7 +361,8 @@ export function isValidProfileDate(value) {
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 const LIFECYCLE_STAGES = new Set(['applicant', 'incoming_student', 'student', 'practicing']);
-const SIGNUP_LIFECYCLE_STAGES = new Set(['applicant', 'student', 'practicing']);
+const PROFILE_SELECTION_LIFECYCLE_STAGES = new Set(['applicant', 'student', 'practicing']);
+const SIGNUP_LIFECYCLE_STAGES = new Set([...PROFILE_SELECTION_LIFECYCLE_STAGES, 'incoming_student']);
 const BOARD_PREP_LIFECYCLE_STAGES = new Set(['student', 'practicing']);
 export function resolveLifecycleCapabilities(lifecycleStage, { isAdmin = false, isReview = false } = {}) {
     const stage = normalizeLifecycleStage(lifecycleStage);
@@ -383,16 +384,53 @@ export function lifecycleCredential(stage) {
     if (stage === 'practicing') return 'CAA';
     return null;
 }
-export function registrationProfileError({ lifecycleStage, credential, graduationDate, trainingProgram }) {
+export function resolveSignupLifecycleStage(lifecycleStage, matriculationDate, today = new Date().toISOString().slice(0, 10)) {
+    const stage = normalizeLifecycleStage(lifecycleStage);
+    if (stage === 'incoming_student' && isValidProfileDate(matriculationDate) && matriculationDate <= today) {
+        return 'student';
+    }
+    return stage;
+}
+export function registrationProfileError({ lifecycleStage, credential, matriculationDate, graduationDate, trainingProgram }) {
     const stage = normalizeLifecycleStage(lifecycleStage)
         || (credential === 'SAA' ? 'student' : credential === 'CAA' ? 'practicing' : null);
     if (!SIGNUP_LIFECYCLE_STAGES.has(stage)) return 'Please select where you are in your AA journey.';
     if (stage === 'applicant') return '';
+    if (stage === 'incoming_student' && !isValidProfileDate(matriculationDate)) {
+        return 'Accepted students must add a valid expected matriculation date.';
+    }
     if (stage === 'student' && !isValidProfileDate(graduationDate)) return 'Current AA students must add a valid expected graduation date.';
+    if (stage === 'incoming_student' && !isValidProfileDate(graduationDate)) {
+        return 'Accepted students must add a valid expected graduation date.';
+    }
+    if (stage === 'incoming_student' && graduationDate <= matriculationDate) {
+        return 'Graduation must be after matriculation.';
+    }
     if (!normalizeTrainingProgram(trainingProgram) || normalizeTrainingProgram(trainingProgram).toLowerCase() === 'program not listed') {
         return 'Please select your AA program.';
     }
     return '';
+}
+
+const DAY_MS = 86400000;
+export function applicantCheckInDue({
+    lifecycleStage,
+    accountCreatedAt,
+    lastCheckinAt,
+    snoozedUntil,
+    now = Date.now(),
+    isAdmin = false,
+    isReview = false,
+} = {}) {
+    if (isAdmin || isReview || normalizeLifecycleStage(lifecycleStage) !== 'applicant') return false;
+    const nowMs = now instanceof Date ? now.getTime() : Number(now);
+    const createdMs = Date.parse(accountCreatedAt || '');
+    if (!Number.isFinite(nowMs) || !Number.isFinite(createdMs) || nowMs - createdMs < 30 * DAY_MS) return false;
+    const lastCheckinMs = Date.parse(lastCheckinAt || '');
+    if (Number.isFinite(lastCheckinMs) && nowMs - lastCheckinMs < 30 * DAY_MS) return false;
+    const today = new Date(nowMs).toISOString().slice(0, 10);
+    if (isValidProfileDate(snoozedUntil) && snoozedUntil > today) return false;
+    return true;
 }
 
 const APPLICANT_TASK_KEYS = new Set([
@@ -1127,7 +1165,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'applicant-information-20260723.1',
+        build: 'applicant-transition-20260723.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -2497,7 +2535,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
     const name = req.body?.name || '';
     const requestedLifecycle = normalizeLifecycleStage(req.body?.lifecycle_stage)
         || (req.body?.credential === 'SAA' ? 'student' : req.body?.credential === 'CAA' ? 'practicing' : null);
-    const credential = lifecycleCredential(requestedLifecycle);
+    const matriculationDate = isValidProfileDate(req.body?.matriculation_date) ? req.body.matriculation_date : null;
     const gradDate = isValidProfileDate(req.body?.graduation_date) ? req.body.graduation_date : null;
     const examDate = isValidProfileDate(req.body?.target_exam_date) ? req.body.target_exam_date : null;
     const trainingProgram = normalizeTrainingProgram(req.body?.training_program);
@@ -2510,8 +2548,18 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             if (password.length < MIN_PASSWORD_LENGTH) {
                 return res.status(400).json({ success: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
             }
-            const profileError = registrationProfileError({ lifecycleStage: requestedLifecycle, graduationDate: gradDate, trainingProgram });
+            const profileError = registrationProfileError({
+                lifecycleStage: requestedLifecycle,
+                matriculationDate,
+                graduationDate: gradDate,
+                trainingProgram,
+            });
             if (profileError) return res.status(400).json({ success: false, error: profileError });
+            if (examDate && gradDate && examDate < gradDate) {
+                return res.status(400).json({ success: false, error: 'The target board date cannot be before graduation.' });
+            }
+            const signupLifecycle = resolveSignupLifecycleStage(requestedLifecycle, matriculationDate);
+            const credential = lifecycleCredential(signupLifecycle);
             const { data, error } = await supabaseAuth.auth.signUp({
                 email,
                 password,
@@ -2522,7 +2570,8 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
             // Create the profile row so the payment webhook has a target to match
             // by email, and so premium status has somewhere to live.
             if (supabase && data.user) {
-                const applicant = requestedLifecycle === 'applicant';
+                const applicant = signupLifecycle === 'applicant';
+                const boardPrepSignup = signupLifecycle === 'student' || signupLifecycle === 'practicing';
                 const { error: pErr } = await supabase
                     .from(PROFILE_TABLE)
                     .upsert({
@@ -2530,13 +2579,16 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
                         email,
                         account_tier: 'free',
                         full_name: (typeof name === 'string' && name.trim()) ? name.trim().replace(/\s+/g, ' ') : null,
-                        lifecycle_stage: requestedLifecycle,
+                        lifecycle_stage: signupLifecycle,
                         lifecycle_updated_at: new Date().toISOString(),
                         credential,
                         training_program: applicant ? null : trainingProgram,
-                        graduation_date: requestedLifecycle === 'student' ? gradDate : null,
-                        target_exam_date: requestedLifecycle === 'student' ? examDate : null,
-                        leaderboard_opt_in: !applicant,
+                        matriculation_date: requestedLifecycle === 'incoming_student' ? matriculationDate : null,
+                        graduation_date: ['incoming_student', 'student'].includes(requestedLifecycle) ? gradDate : null,
+                        target_exam_date: ['incoming_student', 'student'].includes(requestedLifecycle) ? examDate : null,
+                        lifecycle_checkin_at: requestedLifecycle === 'incoming_student' ? new Date().toISOString() : null,
+                        lifecycle_checkin_snoozed_until: null,
+                        leaderboard_opt_in: boardPrepSignup,
                     }, { onConflict: 'user_id' });
                 if (pErr) {
                     console.error(`Profile create failure: ${pErr.message}`);
@@ -2550,7 +2602,7 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
                 success: true,
                 needsConfirmation: !data.session, // true when email confirmation is on
                 authenticated: !!data.session,
-                profile: { email, premium_unlocked: false, lifecycle_stage: requestedLifecycle },
+                profile: { email, premium_unlocked: false, lifecycle_stage: signupLifecycle },
             });
         }
 
@@ -4207,16 +4259,15 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         });
 
         const accountCreatedMs = profile?.created_at ? Date.parse(profile.created_at) : NaN;
-        const today = planNow.toISOString().slice(0, 10);
-        const lifecycleLastAsk = profile?.lifecycle_checkin_at ? Date.parse(profile.lifecycle_checkin_at) : 0;
-        const lifecycleSnoozed = isValidProfileDate(profile?.lifecycle_checkin_snoozed_until)
-            && profile.lifecycle_checkin_snoozed_until >= today;
-        const lifecycle_checkin_due = !adminUser && !reviewUser
-            && lifecycleStage === 'applicant'
-            && Number.isFinite(accountCreatedMs)
-            && (Date.now() - accountCreatedMs) >= 30 * 86400000
-            && (!lifecycleLastAsk || (Date.now() - lifecycleLastAsk) >= 30 * 86400000)
-            && !lifecycleSnoozed;
+        const lifecycle_checkin_due = applicantCheckInDue({
+            lifecycleStage,
+            accountCreatedAt: profile?.created_at,
+            lastCheckinAt: profile?.lifecycle_checkin_at,
+            snoozedUntil: profile?.lifecycle_checkin_snoozed_until,
+            now: planNow,
+            isAdmin: adminUser,
+            isReview: reviewUser,
+        });
         // Review-ask nudge: once an account is a week old, ask for a review at the next
         // sign-in — unless they already left one (any status; one review per account) or
         // were asked within the last 30 days ("maybe later" → monthly cadence). The App
@@ -4326,7 +4377,7 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     const update = {};
     if (Object.prototype.hasOwnProperty.call(b, 'lifecycle_stage')) {
         const stage = normalizeLifecycleStage(b.lifecycle_stage);
-        if (!SIGNUP_LIFECYCLE_STAGES.has(stage)) {
+        if (!PROFILE_SELECTION_LIFECYCLE_STAGES.has(stage)) {
             return res.status(400).json({ error: 'Select applying, currently enrolled, or practicing CAA.' });
         }
         update.lifecycle_stage = stage;
@@ -4486,7 +4537,7 @@ app.post('/api/user/lifecycle', profileLimiter, async (req, res) => {
         const now = new Date();
         const nowIso = now.toISOString();
 
-        if (action === 'still_applying') {
+        if (action === 'checkin_seen' || action === 'still_applying') {
             if (lifecycle.stage !== 'applicant') return res.status(409).json({ error: 'Your account is no longer in the applicant stage.' });
             const { error } = await supabase.from(PROFILE_TABLE).update({
                 lifecycle_checkin_at: nowIso,

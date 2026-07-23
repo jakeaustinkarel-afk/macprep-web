@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
+    applicantCheckInDue,
     answerChoiceId,
     applyServedFilter,
     analyticsPlatformFromMeta,
@@ -18,6 +19,7 @@ import {
     readCookieHeader,
     registrationProfileError,
     resolveLifecycleCapabilities,
+    resolveSignupLifecycleStage,
     resolveSubmittedChoiceIndex,
     runDatabaseHealthProbe,
     normalizeMobileStore,
@@ -149,7 +151,25 @@ test('registration separates lifecycle stage, credential, and program requiremen
     assert.equal(lifecycleCredential('student'), 'SAA');
     assert.equal(lifecycleCredential('practicing'), 'CAA');
     assert.equal(registrationProfileError({ lifecycleStage: 'applicant', graduationDate: null, trainingProgram: '' }), '');
-    assert.equal(registrationProfileError({ lifecycleStage: 'incoming_student', graduationDate: null, trainingProgram: '' }), 'Please select where you are in your AA journey.');
+    assert.equal(registrationProfileError({ lifecycleStage: 'incoming_student', graduationDate: null, trainingProgram: '' }), 'Accepted students must add a valid expected matriculation date.');
+    assert.equal(registrationProfileError({
+        lifecycleStage: 'incoming_student',
+        matriculationDate: '2027-08-15',
+        graduationDate: null,
+        trainingProgram: 'Emory University',
+    }), 'Accepted students must add a valid expected graduation date.');
+    assert.equal(registrationProfileError({
+        lifecycleStage: 'incoming_student',
+        matriculationDate: '2027-08-15',
+        graduationDate: '2027-08-14',
+        trainingProgram: 'Emory University',
+    }), 'Graduation must be after matriculation.');
+    assert.equal(registrationProfileError({
+        lifecycleStage: 'incoming_student',
+        matriculationDate: '2027-08-15',
+        graduationDate: '2029-05-12',
+        trainingProgram: 'Emory University',
+    }), '');
     assert.equal(registrationProfileError({ lifecycleStage: 'practicing', graduationDate: null, trainingProgram: '' }), 'Please select your AA program.');
     assert.equal(registrationProfileError({ lifecycleStage: 'practicing', graduationDate: null, trainingProgram: 'Program not listed' }), 'Please select your AA program.');
     assert.equal(registrationProfileError({ lifecycleStage: 'student', graduationDate: null, trainingProgram: 'Emory University' }), 'Current AA students must add a valid expected graduation date.');
@@ -157,6 +177,26 @@ test('registration separates lifecycle stage, credential, and program requiremen
     assert.equal(registrationProfileError({ lifecycleStage: 'student', graduationDate: '2027-05-01', trainingProgram: 'Emory University' }), '');
     assert.equal(isValidProfileDate('2028-02-29'), true);
     assert.equal(isValidProfileDate('2027-02-29'), false);
+    assert.equal(resolveSignupLifecycleStage('incoming_student', '2027-08-15', '2027-08-14'), 'incoming_student');
+    assert.equal(resolveSignupLifecycleStage('incoming_student', '2027-08-15', '2027-08-15'), 'student');
+    assert.equal(resolveSignupLifecycleStage('applicant', null, '2027-08-15'), 'applicant');
+});
+
+test('applicant acceptance check-ins are monthly and honor a paused cycle', () => {
+    const now = Date.parse('2027-08-15T12:00:00Z');
+    const base = {
+        lifecycleStage: 'applicant',
+        accountCreatedAt: '2027-06-01T12:00:00Z',
+        now,
+    };
+    assert.equal(applicantCheckInDue(base), true);
+    assert.equal(applicantCheckInDue({ ...base, accountCreatedAt: '2027-07-17T12:00:00Z' }), false);
+    assert.equal(applicantCheckInDue({ ...base, lastCheckinAt: '2027-07-17T12:00:00Z' }), false);
+    assert.equal(applicantCheckInDue({ ...base, lastCheckinAt: '2027-07-16T12:00:00Z' }), true);
+    assert.equal(applicantCheckInDue({ ...base, snoozedUntil: '2027-08-16' }), false);
+    assert.equal(applicantCheckInDue({ ...base, snoozedUntil: '2027-08-15' }), true);
+    assert.equal(applicantCheckInDue({ ...base, lifecycleStage: 'incoming_student' }), false);
+    assert.equal(applicantCheckInDue({ ...base, isAdmin: true }), false);
 });
 
 test('lifecycle capabilities give admins every surface and keep members stage-scoped', () => {
@@ -253,6 +293,8 @@ test('applicant lifecycle remains excluded while dated transitions preserve enti
     assert.match(app, /view === 'applicant' && !applicantWorkspaceEnabled\(\)/);
     assert.match(app, /view === 'professional' && !professionalResourcesEnabled\(\)/);
     assert.match(landing, /id="nav-admin-applicant"/);
+    assert.match(landing, /id="su-applicant-accepted"/);
+    assert.match(landing, /id="su-matriculation"/);
     assert.match(landing, /id="nav-professional"/);
     assert.match(landing, /id="professional-view"/);
     assert.match(migration, /p\.lifecycle_stage = 'student'/);
@@ -262,6 +304,9 @@ test('applicant lifecycle remains excluded while dated transitions preserve enti
     assert.match(datedMigration, /lifecycle_stage = 'practicing',[\s\S]*credential = 'CAA'/);
     assert.doesNotMatch(datedMigration, /account_tier|premium_unlocked|stripe|voucher/i);
     assert.match(server, /startLifecycleScheduler\(\)/);
+    assert.match(server, /action === 'checkin_seen'/);
+    assert.match(app, /markApplicantCheckInSeen\(\)/);
+    assert.match(app, /25-question free trial automatically when school begins/);
     assert.match(app + updates, /moves? into the practicing CAA experience on graduation/i);
 });
 
@@ -638,7 +683,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'applicant-information-20260723\.1'/);
+    assert.match(server, /build: 'applicant-transition-20260723\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

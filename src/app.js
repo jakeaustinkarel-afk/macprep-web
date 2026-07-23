@@ -396,6 +396,9 @@
         const last = (($('su-last') && $('su-last').value) || '').trim();
         const name = (first + ' ' + last).replace(/\s+/g, ' ').trim();
         const lifecycleStage = ($('su-cred') && $('su-cred').value) || '';
+        const acceptedApplicant = lifecycleStage === 'applicant' && !!($('su-applicant-accepted') && $('su-applicant-accepted').checked);
+        const signupLifecycleStage = acceptedApplicant ? 'incoming_student' : lifecycleStage;
+        const matriculationDate = ($('su-matriculation') && $('su-matriculation').value) || '';
         const gradDate = ($('su-grad') && $('su-grad').value) || '';
         const examDate = ($('su-exam') && $('su-exam').value) || '';
         let program = ($('su-program') && $('su-program').value) || '';
@@ -405,10 +408,11 @@
         const fail = (m) => { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = m; } };
         if (!first || !last) { fail('Please enter your first and last name.'); return; }
         if (!lifecycleStage) { fail('Please select where you are in your AA journey.'); return; }
-        if (lifecycleStage === 'student' && !gradDate) { fail('Please add your expected graduation date.'); return; }
-        if (lifecycleStage !== 'applicant' && !program) { fail('Please select your AA program.'); return; }
+        if (signupLifecycleStage === 'incoming_student' && !matriculationDate) { fail('Please add your expected matriculation date.'); return; }
+        if (['incoming_student', 'student'].includes(signupLifecycleStage) && !gradDate) { fail('Please add your expected graduation date.'); return; }
+        if (signupLifecycleStage !== 'applicant' && !program) { fail('Please select your AA program.'); return; }
         let programUnlisted = false;
-        if (lifecycleStage !== 'applicant' && program === PROGRAM_NOT_LISTED) {
+        if (signupLifecycleStage !== 'applicant' && program === PROGRAM_NOT_LISTED) {
             const other = (($('su-program-other') && $('su-program-other').value) || '').trim();
             if (!other) { fail('Please type your program name so we can add it.'); return; }
             program = other;
@@ -421,14 +425,15 @@
         if (msg) msg.textContent = '';
         try {
             const { resp, data } = await apiJSON('/api/authenticate', { method: 'POST', headers: authHeaders(), body: JSON.stringify({
-                action: 'register', name, email, password, lifecycle_stage: lifecycleStage,
-                training_program: lifecycleStage === 'applicant' ? null : program,
-                program_unlisted: lifecycleStage === 'applicant' ? false : programUnlisted,
-                graduation_date: lifecycleStage === 'student' ? gradDate : null,
-                target_exam_date: lifecycleStage === 'student' ? examDate : null,
+                action: 'register', name, email, password, lifecycle_stage: signupLifecycleStage,
+                training_program: signupLifecycleStage === 'applicant' ? null : program,
+                program_unlisted: signupLifecycleStage === 'applicant' ? false : programUnlisted,
+                matriculation_date: signupLifecycleStage === 'incoming_student' ? matriculationDate : null,
+                graduation_date: ['incoming_student', 'student'].includes(signupLifecycleStage) ? gradDate : null,
+                target_exam_date: signupLifecycleStage === 'student' ? examDate : null,
             }) });
             if (!resp.ok || !data.success) throw new Error(data.error || 'Could not create your account.');
-            track('signup', { lifecycle_stage: lifecycleStage });
+            track('signup', { lifecycle_stage: signupLifecycleStage });
             if (data.authenticated || data.token) {
                 state.token = '1'; setToken(true); setRefresh();
                 state.justSignedUp = true;
@@ -1056,8 +1061,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 47;
+    const WHATS_NEW_VERSION = 48;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'The right workspace for every stage', desc: 'MACPrep now uses a server-issued capability map to shape each signed-in experience. Applicants and incoming students see application planning; SAAs see board-prep tools; practicing CAAs keep board review and gain a focused professional-resources workspace. The owner admin account can open every lifecycle surface without changing its practicing-CAA profile, while direct navigation and protected APIs keep regular accounts inside their current stage. An unused mobile asset generator with unresolved build-only advisories was removed, and release checks now audit the exact locked dependency graphs for web and mobile. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Your roadmap now reaches months, not weeks', desc: 'The adaptive calendar now builds an exam-anchored roadmap of up to six months instead of stopping after 14 days. It shifts from foundation to reinforcement, focused review, and final review as test day approaches; phase jumps make the full timeline easy to navigate while one week stays in focus. The plan keeps recalculating from unseen coverage, due reviews, recent misses, and weakest domains. Available on the web and current MACPrep mobile shell. Set your exam date in Profile to anchor the roadmap.' },
@@ -3083,19 +3089,33 @@
     function onCredChange() {
         const sel = $('su-cred'), box = $('su-saa-fields'), programWrap = $('su-program-wrap'), hint = $('su-program-hint'), programSelect = $('su-program'), note = $('su-stage-note');
         const stage = sel ? sel.value : '';
-        if (box) box.classList.toggle('hidden', stage !== 'student');
-        if (programWrap) programWrap.classList.toggle('hidden', !['student', 'practicing'].includes(stage));
-        if (programSelect) { programSelect.disabled = !['student', 'practicing'].includes(stage); programSelect.required = ['student', 'practicing'].includes(stage); }
-        if ($('su-grad')) $('su-grad').required = stage === 'student';
+        const acceptedApplicant = stage === 'applicant' && !!($('su-applicant-accepted') && $('su-applicant-accepted').checked);
+        const studentDatesRequired = stage === 'student' || acceptedApplicant;
+        const programRequired = ['student', 'practicing'].includes(stage) || acceptedApplicant;
+        if ($('su-applicant-accepted-wrap')) $('su-applicant-accepted-wrap').classList.toggle('hidden', stage !== 'applicant');
+        if (box) box.classList.toggle('hidden', !studentDatesRequired);
+        if ($('su-matriculation-wrap')) $('su-matriculation-wrap').classList.toggle('hidden', !acceptedApplicant);
+        if ($('su-exam-wrap')) $('su-exam-wrap').classList.toggle('hidden', acceptedApplicant);
+        if (programWrap) programWrap.classList.toggle('hidden', !programRequired);
+        if (programSelect) { programSelect.disabled = !programRequired; programSelect.required = programRequired; }
+        if ($('su-matriculation')) $('su-matriculation').required = acceptedApplicant;
+        if ($('su-grad')) $('su-grad').required = studentDatesRequired;
         if (hint) hint.textContent = stage === 'practicing'
             ? 'Select the AA program where you teach or from which you graduated.'
-            : stage === 'student' ? 'Select the AA program you attend.' : 'Select your current stage first.';
+            : acceptedApplicant ? 'Select the program and campus where you plan to begin school.'
+                : stage === 'student' ? 'Select the AA program you attend.' : 'Select your current stage first.';
+        if ($('su-transition-note')) $('su-transition-note').textContent = acceptedApplicant
+            ? 'Your account stays in the applicant experience until this start date, then automatically opens the SAA dashboard and 25-question free trial. Premium access remains separate.'
+            : 'On your graduation date, your account moves into the practicing CAA experience so professional and CME resources arrive at the right time.';
         if (note) note.textContent = stage === 'applicant'
-            ? 'Your free dashboard will focus on applications, programs, prerequisites, shadowing, and planning.'
+            ? acceptedApplicant
+                ? 'We will prepare your student dashboard now and open it automatically on your matriculation date.'
+                : 'Your free dashboard will focus on sourced applicant information and private planning tools.'
             : stage === 'student' ? 'Your student dashboard includes 25 free questions before premium access is required.'
                 : stage === 'practicing' ? 'Your CAA dashboard includes certification and professional resources alongside board review.'
                     : 'We will shape your dashboard around this stage. Your access level stays separate.';
     }
+    function onApplicantAcceptedChange() { onCredChange(); }
     function onCredModalChange() {
         const sel = $('cp-cred'), box = $('cp-saa'), program = $('cp-program-wrap');
         const stage = sel ? sel.value : '';
@@ -3596,6 +3616,17 @@
     }
 
     function closeApplicantCheckIn() { const o = $('applicant-checkin-overlay'); if (o) o.remove(); state._applicantPromptOpen = false; }
+    function markApplicantCheckInSeen() {
+        if (state.profile) state.profile.lifecycle_checkin_due = false;
+        try {
+            fetch('/api/user/lifecycle', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ action: 'checkin_seen' }),
+                keepalive: true,
+            }).catch(() => {});
+        } catch (e) {}
+    }
     function maybePromptApplicantCheckIn() {
         if (!state.token || !state.profile || !state.profile.lifecycle_checkin_due || state._applicantPromptOpen) return false;
         if (state._namePromptOpen || state._credPromptOpen || state._commitmentPromptOpen || state._reviewPromptOpen) return false;
@@ -3603,8 +3634,10 @@
         const wrap = document.createElement('div'); wrap.id = 'applicant-checkin-overlay';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2860;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
         wrap.onclick = (e) => { if (e.target === wrap) closeApplicantCheckIn(); };
-        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="app-check-title" style="box-sizing:border-box;width:100%;max-width:440px;padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);"><div class="applicant-kicker">A GENTLE CHECK-IN</div><h2 id="app-check-title" style="margin:6px 0 5px;font-size:22px;">Starting AA school?</h2><p class="sub" style="margin:0 0 16px;">Congratulations if you have committed. Tell us where, and we will prepare your student dashboard.</p><button class="btn" type="button" style="width:100%;margin-bottom:9px;" onclick="MACPrep.openCommitmentModal()">I committed to a program</button><button class="btn ghost" type="button" style="width:100%;margin-bottom:14px;" onclick="MACPrep.applicantStillApplying(this)">Still applying</button><label for="app-pause-date">Pause until my next application cycle</label><div style="display:flex;gap:8px;margin-top:5px;"><input id="app-pause-date" type="date" value="${isoDateOffset(180)}" style="min-width:0;flex:1;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);"><button class="btn ghost" type="button" onclick="MACPrep.pauseApplicantCycle(this)">Pause</button></div><div id="app-check-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div></div>`;
-        document.body.appendChild(wrap); return true;
+        wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="app-check-title" style="box-sizing:border-box;width:100%;max-width:440px;padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);"><div class="applicant-kicker">MONTHLY CHECK-IN</div><h2 id="app-check-title" style="margin:6px 0 5px;font-size:22px;">Accepted since we last checked?</h2><p class="sub" style="margin:0 0 16px;">Add your program and start date once you know where you will attend. MACPrep will open your SAA dashboard and 25-question free trial automatically when school begins. Premium access stays separate.</p><button class="btn" type="button" style="width:100%;margin-bottom:9px;" onclick="MACPrep.openCommitmentModal()">Yes, I accepted an offer</button><button class="btn ghost" type="button" style="width:100%;margin-bottom:14px;" onclick="MACPrep.applicantStillApplying(this)">Remind me in 30 days</button><label for="app-pause-date">Pause until my next application cycle</label><div style="display:flex;gap:8px;margin-top:5px;"><input id="app-pause-date" type="date" value="${isoDateOffset(180)}" style="min-width:0;flex:1;padding:9px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);"><button class="btn ghost" type="button" onclick="MACPrep.pauseApplicantCycle(this)">Pause</button></div><div id="app-check-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div></div>`;
+        document.body.appendChild(wrap);
+        markApplicantCheckInSeen();
+        return true;
     }
     async function applicantCheckInAction(action, button, extra) {
         if (button) button.disabled = true;
@@ -6218,7 +6251,7 @@
         smartReview, startSample, saveNote, reviewQueue, cohortCodes, adminAction, editAction, reviewCardAct, _editLen,
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, beginVoucherRename, cancelVoucherRename, renameVoucherGroup, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
-        onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
+        onCredChange, onApplicantAcceptedChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
         renderApplicantDashboard, filterApplicantDirectory, trackApplicantDirectoryProgram, toggleApplicantTask, addApplicantProgram, removeApplicantProgram, saveApplicantProgress,
         openCommitmentModal, closeCommitmentModal, onCommitProgramChange, submitCommitment,
         applicantStillApplying, pauseApplicantCycle, closeApplicantCheckIn,

@@ -842,10 +842,17 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                                 </select>
                                 <div id="su-stage-note" class="sub" style="font-size:11px;margin:7px 0 0;color:var(--muted);">We will shape your dashboard around this stage. Your access level stays separate.</div>
                             </div>
+                            <div id="su-applicant-accepted-wrap" class="hidden" style="margin:-2px 0 14px;padding:12px 13px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--accent-dim) 45%,var(--panel));">
+                                <label style="display:flex;align-items:flex-start;gap:10px;margin:0;color:var(--text);font-size:13px;font-weight:700;text-transform:none;letter-spacing:0;cursor:pointer;">
+                                    <input type="checkbox" id="su-applicant-accepted" onchange="MACPrep.onApplicantAcceptedChange()" style="width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);flex:none;">
+                                    <span>Already accepted and know where you will attend?<small style="display:block;margin-top:3px;color:var(--muted);font-size:11px;font-weight:400;line-height:1.45;">Optional. Add your program dates now and MACPrep will open your student tools automatically when school begins.</small></span>
+                                </label>
+                            </div>
                             <div id="su-saa-fields" class="hidden">
+                                <div class="form-group hidden" id="su-matriculation-wrap"><label>Expected matriculation date</label><input type="date" id="su-matriculation"></div>
                                 <div class="form-group"><label>Expected graduation date</label><input type="date" id="su-grad"></div>
-                                <div class="form-group"><label>Exam date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label><input type="date" id="su-exam"></div>
-                                <div class="sub" style="font-size:11px;margin:-8px 0 12px;color:var(--muted);">On your graduation date, your account moves into the practicing CAA experience so professional and CME resources arrive at the right time.</div>
+                                <div class="form-group" id="su-exam-wrap"><label>Exam date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label><input type="date" id="su-exam"></div>
+                                <div class="sub" id="su-transition-note" style="font-size:11px;margin:-8px 0 12px;color:var(--muted);">On your graduation date, your account moves into the practicing CAA experience so professional and CME resources arrive at the right time.</div>
                             </div>
                             <div id="su-program-wrap" class="form-group hidden">
                                 <label>AA program</label>
