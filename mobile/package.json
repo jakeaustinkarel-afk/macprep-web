@@ -20,8 +20,5 @@
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
     "@macprep/purchases": "file:plugins/macprep-purchases"
-  },
-  "devDependencies": {
-    "@capacitor/assets": "^3.0.5"
   }
 }

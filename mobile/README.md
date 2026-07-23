@@ -33,9 +33,11 @@ store resubmission for web/content/feature changes.
 
 ## App icon + splash — ✅ DONE
 Generated from the brand pulse-tile mark. Sources in `assets-src/*.svg` → rendered to
-`assets/*.png` → `npx @capacitor/assets generate`. To change the mark later: edit
-`assets-src/`, re-render (`rsvg-convert -w 1024 -h 1024 assets-src/icon-only.svg -o assets/icon-only.png`, etc.),
-then re-run `npx @capacitor/assets generate` and `npx cap sync`.
+`assets/*.png`, with the generated native resources committed in `ios/` and `android/`.
+The current `@capacitor/assets` release is intentionally not installed because its
+build-only dependency tree has unresolved security advisories. To change the mark later,
+edit `assets-src/` and re-render the PNG sources, then wait for a patched asset generator
+before regenerating native resources and running `npx cap sync`.
 
 ## Push notifications — code complete, credentials still required
 `@capacitor/push-notifications`, native token registration, and the server's APNs/FCM

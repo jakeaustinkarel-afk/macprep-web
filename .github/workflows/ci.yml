@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Use the pinned npm audit client
+        run: npm install --global npm@11.12.1
       - name: Install web dependencies
         run: npm ci
       - name: Syntax checks
@@ -28,8 +30,17 @@ jobs:
       - name: Test
         run: npm test
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          for attempt in 1 2 3; do
+            npm audit --omit=dev --package-lock-only --audit-level=high && break
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 5))
+          done
       - name: Install and audit mobile dependencies
         run: |
           npm ci --prefix mobile
-          npm audit --prefix mobile --omit=dev --audit-level=high
+          for attempt in 1 2 3; do
+            npm audit --prefix mobile --package-lock-only --audit-level=high && break
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 5))
+          done
