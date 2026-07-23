@@ -16,7 +16,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
-    "dotenv": "^16.4.0",
+    "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "firebase-admin": "^14.2.0",
     "googleapis": "^173.0.0",
