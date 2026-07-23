@@ -1061,8 +1061,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 48;
+    const WHATS_NEW_VERSION = 49;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'The right workspace for every stage', desc: 'MACPrep now uses a server-issued capability map to shape each signed-in experience. Applicants and incoming students see application planning; SAAs see board-prep tools; practicing CAAs keep board review and gain a focused professional-resources workspace. The owner admin account can open every lifecycle surface without changing its practicing-CAA profile, while direct navigation and protected APIs keep regular accounts inside their current stage. An unused mobile asset generator with unresolved build-only advisories was removed, and release checks now audit the exact locked dependency graphs for web and mobile. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -4652,6 +4653,10 @@
         if (!plugin) throw new Error('This app version needs to be updated before in-app purchase is available.');
         if (typeof plugin.getCapabilities !== 'function') throw new Error('Update MACPrep before purchasing full access.');
         const [cfg, capabilities] = await Promise.all([runtimeConfig(), plugin.getCapabilities()]);
+        const platform = nativePurchasePlatform();
+        if (!platform || cfg?.nativePurchaseVerificationConfigured?.[platform] !== true) {
+            throw new Error('Store purchase verification is temporarily unavailable. No charge has been started.');
+        }
         const requiredVersion = Number(cfg?.nativePurchaseBridgeMinVersion || 1);
         const bridgeVersion = Number(capabilities?.bridgeVersion || 0);
         if (!Number.isInteger(bridgeVersion) || bridgeVersion < requiredVersion) {
@@ -4718,6 +4723,19 @@
             if (transaction?.status === 'pending') { toast('Your purchase is pending. Return after Google Play completes it.', 'ok'); return; }
             if (btn) btn.textContent = 'Verifying purchase...';
             await verifyNativePurchase(platform, transaction);
+            if (
+                platform === 'ios'
+                && transaction?.transactionId
+                && typeof plugin.finishTransaction === 'function'
+            ) {
+                try {
+                    await plugin.finishTransaction({ transactionId: transaction.transactionId });
+                } catch (finishError) {
+                    // Access is already recorded. Leave the StoreKit transaction
+                    // unfinished so the next restore can retry completion.
+                    console.warn('Apple transaction completion will retry:', finishError?.message || finishError);
+                }
+            }
             await loadProfile();
             closeUpgradeModal();
             renderDashboard();

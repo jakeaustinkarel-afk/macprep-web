@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 9 * * 1'
 
 permissions:
   contents: read
@@ -13,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -32,7 +34,7 @@ jobs:
       - name: Audit production dependencies
         run: |
           for attempt in 1 2 3; do
-            npm audit --omit=dev --package-lock-only --audit-level=high && break
+            npm audit --package-lock-only --audit-level=moderate && break
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 5))
           done
@@ -40,7 +42,7 @@ jobs:
         run: |
           npm ci --prefix mobile
           for attempt in 1 2 3; do
-            npm audit --prefix mobile --package-lock-only --audit-level=high && break
+            npm audit --prefix mobile --package-lock-only --audit-level=moderate && break
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 5))
           done

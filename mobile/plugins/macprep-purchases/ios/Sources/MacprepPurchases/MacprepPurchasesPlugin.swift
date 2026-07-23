@@ -11,12 +11,13 @@ public class MacprepPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getCapabilities", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finishTransaction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise)
     ]
 
     @objc public func getCapabilities(_ call: CAPPluginCall) {
         call.resolve([
-            "bridgeVersion": 1,
+            "bridgeVersion": 2,
             "productIds": [Self.premiumProductId],
             "supportsPurchase": true,
             "supportsRestore": true
@@ -55,7 +56,6 @@ public class MacprepPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 switch result {
                 case .success(let verification):
                     let transaction = try verifiedTransaction(from: verification)
-                    defer { Task { await transaction.finish() } }
                     call.resolve(transactionPayload(transaction))
                 case .pending:
                     call.resolve(["status": "pending"])
@@ -64,6 +64,30 @@ public class MacprepPurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 @unknown default:
                     call.reject("The purchase could not be completed.")
                 }
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    @objc public func finishTransaction(_ call: CAPPluginCall) {
+        guard let rawTransactionId = call.getString("transactionId"),
+              let transactionId = UInt64(rawTransactionId) else {
+            call.reject("A valid Apple transaction is required.")
+            return
+        }
+
+        Task {
+            do {
+                for await verification in Transaction.unfinished {
+                    let transaction = try verifiedTransaction(from: verification)
+                    guard transaction.id == transactionId,
+                          transaction.productID == Self.premiumProductId else { continue }
+                    await transaction.finish()
+                    call.resolve(["finished": true])
+                    return
+                }
+                call.resolve(["finished": false])
             } catch {
                 call.reject(error.localizedDescription)
             }

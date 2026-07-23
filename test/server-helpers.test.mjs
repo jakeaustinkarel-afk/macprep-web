@@ -7,12 +7,15 @@ import {
     answerChoiceId,
     applyServedFilter,
     analyticsPlatformFromMeta,
+    configuredStripePriceIds,
     deleteMacprepAccount,
     getServedQuestionQuery,
     isFreeTrialSessionPurpose,
     isValidProfileDate,
     lifecycleCredential,
     mobileAccountHash,
+    mobilePurchaseVerificationConfigured,
+    newVoucherCode,
     normalizeLifecycleStage,
     normalizeTrainingProgram,
     normalizeVoucherLabel,
@@ -28,6 +31,7 @@ import {
     sanitizeApplicantProgress,
     selectUnansweredFreePool,
     shouldReportDatabaseHealthFailure,
+    stripeCheckoutIdempotencyKey,
     summarizeProductUsage,
     trustedBaseUrl,
     validateAppleTransactionPayload,
@@ -313,6 +317,97 @@ test('applicant lifecycle remains excluded while dated transitions preserve enti
 test('cohort voucher labels normalize safely for generation and renaming', () => {
     assert.equal(normalizeVoucherLabel('  VCOM-Auburn\n Class of 2027\t Sent 2026  '), 'VCOM-Auburn Class of 2027 Sent 2026');
     assert.equal(normalizeVoucherLabel(null), '');
+});
+
+test('voucher codes use 128 bits of bearer-token entropy', () => {
+    const codes = new Set(Array.from({ length: 100 }, () => newVoucherCode()));
+    assert.equal(codes.size, 100);
+    for (const code of codes) assert.match(code, /^MACP-[A-F0-9]{32}$/);
+});
+
+test('Stripe refund recovery accepts configured historical full-access prices only', () => {
+    assert.deepEqual(configuredStripePriceIds({
+        STRIPE_PRODUCTION_PRICE_ID: 'price_current',
+        STRIPE_FULL_ACCESS_PRICE_IDS: ' price_legacy_50,price_current,price_legacy_75 ',
+    }), ['price_current', 'price_legacy_50', 'price_legacy_75']);
+    assert.deepEqual(configuredStripePriceIds({}), []);
+});
+
+test('Stripe checkout retries share a bounded account-scoped idempotency key', () => {
+    const start = Date.UTC(2026, 6, 23, 12, 1);
+    const first = stripeCheckoutIdempotencyKey('account-a', 'price-100', start);
+    assert.equal(first, stripeCheckoutIdempotencyKey('account-a', 'price-100', start + 20 * 60 * 1000));
+    assert.notEqual(first, stripeCheckoutIdempotencyKey('account-a', 'price-100', start + 31 * 60 * 1000));
+    assert.notEqual(first, stripeCheckoutIdempotencyKey('account-b', 'price-100', start));
+    assert.match(first, /^macprep-checkout-[a-f0-9]{64}$/);
+});
+
+test('native purchases expose only configuration readiness, never credentials', () => {
+    const roots = Buffer.from('certificate').toString('base64');
+    const google = Buffer.from(JSON.stringify({
+        client_email: 'iap@example.test',
+        private_key: 'private-key',
+    })).toString('base64');
+    assert.deepEqual(mobilePurchaseVerificationConfigured({
+        APPLE_IAP_PRIVATE_KEY: 'private-key',
+        APPLE_IAP_KEY_ID: 'KEY123',
+        APPLE_IAP_ISSUER_ID: 'issuer',
+        APPLE_IAP_APP_ID: '123456789',
+        APPLE_IAP_ROOT_CERTIFICATES_BASE64: JSON.stringify([roots]),
+        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: google,
+    }), { ios: true, android: true });
+    assert.deepEqual(mobilePurchaseVerificationConfigured({
+        APPLE_IAP_PRIVATE_KEY: 'private-key',
+        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: 'not-json',
+    }), { ios: false, android: false });
+});
+
+test('security migrations preserve server-only question, voucher, and learning boundaries', async () => {
+    const [vouchers, passwords, content] = await Promise.all([
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723070000_restrict_voucher_access_to_server.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723071000_remove_deprecated_plaintext_password.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723072000_lock_server_owned_content_and_learning_rpcs.sql', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(vouchers, /create table if not exists public\.program_vouchers/);
+    assert.match(vouchers, /alter table public\.program_vouchers enable row level security/);
+    assert.match(vouchers, /revoke all on table public\.program_vouchers from public, anon, authenticated/);
+    assert.match(vouchers, /grant all on table public\.program_vouchers to service_role/);
+    assert.match(passwords, /drop column if exists password/);
+    assert.match(content, /alter table public\.questions enable row level security/);
+    assert.match(content, /revoke all on table public\.questions from public, anon, authenticated/);
+    for (const signature of [
+        'distinct_answered\\(uuid\\)',
+        'sm2_review\\(uuid, text, integer\\)',
+        'enforce_free_tier_ceiling\\(\\)',
+    ]) {
+        assert.match(content, new RegExp(`revoke all on function public\\.${signature}`));
+        assert.match(content, new RegExp(`grant execute on function public\\.${signature} to service_role`));
+    }
+});
+
+test('native purchase flow checks server readiness and finishes Apple transactions after entitlement delivery', async () => {
+    const [browser, swift] = await Promise.all([
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../mobile/plugins/macprep-purchases/ios/Sources/MacprepPurchases/MacprepPurchasesPlugin.swift', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(browser, /nativePurchaseVerificationConfigured\?\.\[platform\] !== true/);
+    assert.match(browser, /await verifyNativePurchase\(platform, transaction\)[\s\S]+await plugin\.finishTransaction/);
+    assert.match(swift, /bridgeVersion": 2/);
+    assert.match(swift, /CAPPluginMethod\(name: "finishTransaction"/);
+    const purchaseStart = swift.indexOf('@objc public func purchase');
+    const finishStart = swift.indexOf('@objc public func finishTransaction');
+    assert.doesNotMatch(swift.slice(purchaseStart, finishStart), /transaction\.finish\(\)/);
+});
+
+test('provider reactivation is derived from fresh Stripe and Apple state', async () => {
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    assert.match(server, /if \(status === 'active'\) status = await currentStripeEntitlementStatus\(paymentIntent\)/);
+    const appleStart = server.indexOf('if (type === NotificationTypeV2.REFUND_REVERSED)');
+    const appleEnd = server.indexOf('} else if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE]', appleStart);
+    const appleReversal = server.slice(appleStart, appleEnd);
+    assert.match(appleReversal, /await verifyApplePurchase/);
+    assert.match(appleReversal, /allowReactivate: true/);
+    assert.doesNotMatch(appleReversal, /setEntitlementStatus/);
 });
 
 test('faculty scope is derived from the verified account assignment, not a query parameter', () => {
@@ -683,7 +778,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'applicant-transition-20260723\.1'/);
+    assert.match(server, /build: 'security-hardening-20260723\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

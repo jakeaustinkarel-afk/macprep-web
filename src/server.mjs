@@ -328,6 +328,55 @@ const MOBILE_PURCHASE_TABLE = 'mobile_purchase_entitlements';
 const MOBILE_PREMIUM_PRODUCT_ID = process.env.MOBILE_PREMIUM_PRODUCT_ID || 'org.macprep.app.full_access';
 const MOBILE_APP_BUNDLE_ID = process.env.MOBILE_APP_BUNDLE_ID || 'org.macprep.app';
 
+export function configuredStripePriceIds(env = process.env) {
+    const configured = [
+        env.STRIPE_PRODUCTION_PRICE_ID,
+        ...String(env.STRIPE_FULL_ACCESS_PRICE_IDS || '').split(','),
+    ]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean);
+    return [...new Set(configured)];
+}
+
+export function stripeCheckoutIdempotencyKey(userId, priceId, now = Date.now()) {
+    const thirtyMinuteWindow = Math.floor(Number(now) / (30 * 60 * 1000));
+    const digest = createHash('sha256')
+        .update(`${String(userId)}:${String(priceId)}:${thirtyMinuteWindow}`)
+        .digest('hex');
+    return `macprep-checkout-${digest}`;
+}
+
+export function mobilePurchaseVerificationConfigured(env = process.env) {
+    let appleRootsConfigured = false;
+    try {
+        const roots = JSON.parse(String(env.APPLE_IAP_ROOT_CERTIFICATES_BASE64 || ''));
+        appleRootsConfigured = Array.isArray(roots) && roots.some((entry) => {
+            try { return Buffer.from(String(entry), 'base64').length > 0; }
+            catch (error) { return false; }
+        });
+    } catch (error) { /* false below */ }
+
+    let googleCredentialsConfigured = false;
+    try {
+        const raw = String(env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || '').trim();
+        const credentials = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+        googleCredentialsConfigured = !!(credentials?.client_email && credentials?.private_key);
+    } catch (error) { /* false below */ }
+
+    const appleAppId = Number(env.APPLE_IAP_APP_ID);
+    return {
+        ios: !!(
+            env.APPLE_IAP_PRIVATE_KEY
+            && env.APPLE_IAP_KEY_ID
+            && env.APPLE_IAP_ISSUER_ID
+            && Number.isSafeInteger(appleAppId)
+            && appleAppId > 0
+            && appleRootsConfigured
+        ),
+        android: googleCredentialsConfigured,
+    };
+}
+
 // Site admin is an explicit allowlist of account emails — the OWNER only. This is
 // deliberately decoupled from the `is_program_director` profile flag: a program
 // director is a paying customer persona (cohort licenses), NOT a site admin, and
@@ -969,8 +1018,12 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         } else if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
             const dispute = event.data.object;
             const paymentIntent = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
-            const status = event.type === 'charge.dispute.closed' && dispute.status === 'won' ? 'active' : 'disputed';
+            let status = event.type === 'charge.dispute.closed' && dispute.status === 'won' ? 'active' : 'disputed';
             if (paymentIntent) {
+                // Stripe does not guarantee webhook order. A delayed dispute win
+                // may reactivate access only after a fresh provider lookup confirms
+                // the charge has not since been refunded or disputed again.
+                if (status === 'active') status = await currentStripeEntitlementStatus(paymentIntent);
                 const matched = await syncStripePaymentStatus({
                     paymentIntentId: paymentIntent,
                     status,
@@ -1165,7 +1218,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'applicant-transition-20260723.1',
+        build: 'security-hardening-20260723.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -1220,6 +1273,7 @@ app.get('/api/config', (req, res) => {
         referralCode: referralCodeFor(),
         nativePurchaseBridgeMinVersion: 1,
         nativePremiumProductId: MOBILE_PREMIUM_PRODUCT_ID,
+        nativePurchaseVerificationConfigured: mobilePurchaseVerificationConfigured(),
     });
 });
 
@@ -1954,7 +2008,18 @@ async function requireBoardPrepLifecycle(user, res) {
     }
 }
 
-async function grantEntitlement({ userId, email, source, sourceReference, externalPaymentId = null, productId = null, amountTotal = null, currency = null, metadata = {} }) {
+async function grantEntitlement({
+    userId,
+    email,
+    source,
+    sourceReference,
+    externalPaymentId = null,
+    productId = null,
+    amountTotal = null,
+    currency = null,
+    metadata = {},
+    allowReactivate = false,
+}) {
     if (!supabase || !userId) return false;
     const providerSource = ['stripe', 'apple', 'google_play'].includes(source);
     const args = {
@@ -1970,7 +2035,7 @@ async function grantEntitlement({ userId, email, source, sourceReference, extern
     };
     if (providerSource) {
         args.p_status = 'active';
-        args.p_allow_reactivate = false;
+        args.p_allow_reactivate = !!allowReactivate;
     }
     const { data, error } = await supabase.rpc(
         providerSource ? 'sync_macprep_provider_entitlement' : 'grant_macprep_entitlement',
@@ -2012,14 +2077,14 @@ async function setEntitlementStatus({ source, sourceReference = null, externalPa
 }
 
 async function verifyStripeCheckoutProduct(session) {
-    const expectedPriceId = String(process.env.STRIPE_PRODUCTION_PRICE_ID || '').trim();
-    if (!stripe || !expectedPriceId) throw new Error('Stripe price verification is not configured.');
+    const allowedPriceIds = new Set(configuredStripePriceIds());
+    if (!stripe || !allowedPriceIds.size) throw new Error('Stripe price verification is not configured.');
     if (!session?.id || session.mode !== 'payment' || session.payment_status !== 'paid') {
         throw new Error('Stripe checkout is not a completed one-time payment.');
     }
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
     const rows = lineItems?.data || [];
-    if (rows.length !== 1 || rows[0]?.price?.id !== expectedPriceId || rows[0]?.quantity !== 1) {
+    if (rows.length !== 1 || !allowedPriceIds.has(rows[0]?.price?.id) || rows[0]?.quantity !== 1) {
         throw new Error('Stripe checkout does not match the MACPrep full-access product.');
     }
     return rows[0];
@@ -2050,15 +2115,15 @@ async function currentStripeEntitlementStatus(paymentIntentId) {
 
 async function resolveStripeEntitlementContext(paymentIntentId, fallbackEmail = '') {
     if (!stripe || !paymentIntentId) return null;
-    const expectedPriceId = String(process.env.STRIPE_PRODUCTION_PRICE_ID || '').trim();
-    if (!expectedPriceId) throw new Error('Stripe price verification is not configured.');
+    const allowedPriceIds = new Set(configuredStripePriceIds());
+    if (!allowedPriceIds.size) throw new Error('Stripe price verification is not configured.');
 
     const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 10 });
     for (const session of sessions?.data || []) {
         if (session.mode !== 'payment' || session.payment_status !== 'paid') continue;
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
         const rows = lineItems?.data || [];
-        if (rows.length !== 1 || rows[0]?.price?.id !== expectedPriceId || rows[0]?.quantity !== 1) continue;
+        if (rows.length !== 1 || !allowedPriceIds.has(rows[0]?.price?.id) || rows[0]?.quantity !== 1) continue;
         const lineItem = rows[0];
         const email = (session.customer_details?.email || session.customer_email || fallbackEmail || '').toLowerCase().trim();
         let userId = session.client_reference_id || session.metadata?.user_id || null;
@@ -2070,14 +2135,15 @@ async function resolveStripeEntitlementContext(paymentIntentId, fallbackEmail = 
     // New checkouts copy the account/product marker onto the PaymentIntent, which
     // gives refund recovery a second exact path if a Checkout listing is delayed.
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    if (paymentIntent?.metadata?.macprep_product_id !== expectedPriceId) return null;
+    const metadataPriceId = paymentIntent?.metadata?.macprep_product_id;
+    if (!allowedPriceIds.has(metadataPriceId)) return null;
     const userId = paymentIntent.metadata?.user_id;
     if (!validUuid(userId)) throw new Error('Verified MACPrep payment has no resolvable account.');
     return {
         userId,
         email: String(fallbackEmail || '').toLowerCase().trim(),
         session: { id: `payment_intent:${paymentIntentId}`, amount_total: paymentIntent.amount, currency: paymentIntent.currency },
-        lineItem: { price: { id: expectedPriceId } },
+        lineItem: { price: { id: metadataPriceId } },
     };
 }
 
@@ -3161,8 +3227,8 @@ app.post('/api/admin/edit', async (req, res) => {
 // Cohort vouchers — a program director generates codes and hands them to their
 // students; each code grants one premium unlock when redeemed.
 // ---------------------------------------------------------------------------
-function newVoucherCode() {
-    return 'MACP-' + randomBytes(4).toString('hex').toUpperCase(); // e.g. MACP-9F3A1C2B
+export function newVoucherCode() {
+    return 'MACP-' + randomBytes(16).toString('hex').toUpperCase();
 }
 
 export function normalizeVoucherLabel(value) {
@@ -5119,10 +5185,29 @@ app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
         const sourceReference = String(transaction.originalTransactionId || transaction.transactionId || '');
         if (!sourceReference) return res.status(400).json({ error: 'Notification has no transaction reference.' });
 
-        if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE, NotificationTypeV2.REFUND_REVERSED].includes(type)) {
-            const status = type === NotificationTypeV2.REFUND
-                ? 'refunded'
-                : type === NotificationTypeV2.REVOKE ? 'revoked' : 'active';
+        if (type === NotificationTypeV2.REFUND_REVERSED) {
+            // Notification delivery is unordered. Re-fetch the transaction from
+            // Apple before reactivating so a stale reversal cannot override a
+            // newer refund or revocation.
+            if (!validUuid(transaction.appAccountToken)) {
+                reportOperationalError('apple.entitlement.unmatched', new Error('An Apple refund reversal did not match an account.'), { notificationType: type });
+                return res.status(200).end();
+            }
+            const entitlement = await verifyApplePurchase(
+                transaction.appAccountToken,
+                String(transaction.transactionId || '')
+            );
+            await syncProviderEntitlement({
+                userId: transaction.appAccountToken,
+                source: 'apple',
+                sourceReference: entitlement.transactionId,
+                productId: entitlement.productId,
+                status: 'active',
+                metadata: { notification_uuid: notification.notificationUUID || null },
+                allowReactivate: true,
+            });
+        } else if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE].includes(type)) {
+            const status = type === NotificationTypeV2.REFUND ? 'refunded' : 'revoked';
             const matched = await setEntitlementStatus({ source: 'apple', sourceReference, status });
             if (!matched && validUuid(transaction.appAccountToken)) {
                 await syncProviderEntitlement({
@@ -5132,7 +5217,6 @@ app.post('/api/mobile-purchases/apple-notifications', async (req, res) => {
                     productId: transaction.productId,
                     status,
                     metadata: { notification_uuid: notification.notificationUUID || null },
-                    allowReactivate: type === NotificationTypeV2.REFUND_REVERSED,
                 });
             } else if (!matched) {
                 reportOperationalError('apple.entitlement.unmatched', new Error('An Apple status event did not match an account.'), { notificationType: type });
@@ -5278,6 +5362,9 @@ app.post('/api/mobile-purchases/verify', mobilePurchaseLimiter, async (req, res)
                 environment: entitlement.environment || null,
                 purchased_at: entitlement.purchasedAt || null,
             },
+            // This path just performed a fresh provider lookup and may safely
+            // restore a purchase after a reversed refund or resolved dispute.
+            allowReactivate: true,
         });
         if (!premiumUnlocked) {
             throw new MobilePurchaseError('This store purchase has been refunded or revoked.', 422);
@@ -5347,6 +5434,8 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
                 ? { automatic_tax: { enabled: true } } : {}),
             success_url: `${base}/?session_id={CHECKOUT_SESSION_ID}&status=success`,
             cancel_url: `${base}/?status=cancelled`,
+        }, {
+            idempotencyKey: stripeCheckoutIdempotencyKey(user.id, priceId),
         });
 
         res.json({ url: session.url });
