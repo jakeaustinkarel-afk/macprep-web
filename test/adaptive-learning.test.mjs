@@ -29,7 +29,8 @@ test('adaptive plans prioritize due work and the weakest measured domain', () =>
     });
 
     assert.equal(plan.phase, 'build');
-    assert.equal(plan.days.length, 14);
+    assert.equal(plan.days.length, 50);
+    assert.equal(plan.plan_end_date, '2026-09-09');
     assert.equal(plan.weakest_domains[0].domain, 'Pharmacology');
     assert.equal(plan.days[0].completed, 4);
     assert.equal(plan.days[0].tasks[0].kind, 'due');
@@ -67,7 +68,58 @@ test('an impossible exam pace is capped and described honestly', () => {
     assert.equal(plan.daily_target, 50);
     assert.ok(plan.raw_coverage_pace > plan.daily_target);
     assert.match(plan.summary, /instead of assigning an unrealistic/);
-    assert.ok(plan.days.some((day) => day.tasks.some((task) => task.kind === 'diagnostic')));
+    assert.equal(plan.days.length, 8);
+    assert.equal(plan.plan_end_date, '2026-07-29');
+});
+
+test('exam-dated plans span the full four-to-six-month preparation window', () => {
+    const plan = buildAdaptiveStudyPlan({
+        now: new Date('2026-07-22T14:00:00Z'),
+        timezoneOffset: 240,
+        targetExamDate: '2026-12-15',
+        totalQuestions: 1509,
+        answeredQuestions: 100,
+        byDomain: DOMAINS,
+    });
+
+    assert.equal(plan.days.length, 146);
+    assert.equal(plan.window_label, '5-month roadmap');
+    assert.equal(plan.plan_end_date, '2026-12-14');
+    assert.equal(plan.continues_to_exam, false);
+    assert.deepEqual(plan.roadmap.map((stage) => stage.phase), ['foundation', 'build', 'final', 'taper']);
+    assert.deepEqual(plan.roadmap.map((stage) => stage.start_index), [0, 56, 116, 139]);
+    assert.match(plan.summary, /5-month roadmap/);
+});
+
+test('farther exam dates receive a rolling six-month adaptive window', () => {
+    const plan = buildAdaptiveStudyPlan({
+        now: new Date('2026-07-22T14:00:00Z'),
+        timezoneOffset: 240,
+        targetExamDate: '2027-03-01',
+        totalQuestions: 1509,
+        answeredQuestions: 100,
+        byDomain: DOMAINS,
+    });
+
+    assert.equal(plan.days.length, 183);
+    assert.equal(plan.window_label, '6-month roadmap');
+    assert.equal(plan.continues_to_exam, true);
+    assert.match(plan.summary, /six-month adaptive window/);
+});
+
+test('plans without an exam date use a sustainable rolling four-month horizon', () => {
+    const plan = buildAdaptiveStudyPlan({
+        now: new Date('2026-07-22T14:00:00Z'),
+        timezoneOffset: 240,
+        totalQuestions: 1509,
+        answeredQuestions: 0,
+        byDomain: DOMAINS,
+    });
+
+    assert.equal(plan.days.length, 120);
+    assert.equal(plan.window_label, '4-month roadmap');
+    assert.equal(plan.daily_target, 20);
+    assert.match(plan.summary, /Add your exam date/);
 });
 
 test('checkpoint targets include reviews scheduled for the same day', () => {
@@ -79,14 +131,25 @@ test('checkpoint targets include reviews scheduled for the same day', () => {
         dueCount: 5,
         dueSchedule: Array.from({ length: 5 }, (_, index) => ({
             question_id: `checkpoint-due-${index}`,
-            due_at: '2026-07-28T14:00:00Z',
+            due_at: '2026-08-04T14:00:00Z',
         })),
         byDomain: DOMAINS,
     });
 
-    const checkpoint = plan.days[6];
+    const checkpoint = plan.days[13];
     assert.deepEqual(checkpoint.tasks.map((task) => task.kind), ['due', 'diagnostic']);
     assert.equal(checkpoint.target, checkpoint.tasks.reduce((sum, task) => sum + task.count, 0));
+});
+
+test('the profile endpoint paginates review inputs across the six-month horizon', async () => {
+    const server = await readFile(new URL('../src/server.mjs', import.meta.url), 'utf8');
+    const start = server.indexOf("app.get('/api/user/profile'");
+    const end = server.indexOf("app.post('/api/user/profile'", start);
+    const profileRoute = server.slice(start, end);
+
+    assert.match(server, /buildAdaptiveStudyPlan, MAX_ADAPTIVE_PLAN_DAYS/);
+    assert.match(profileRoute, /MAX_ADAPTIVE_PLAN_DAYS \* 86400000/);
+    assert.match(profileRoute, /fetchAllPostgrestRows\([\s\S]*from\('review_state'\)[\s\S]*\.range\(from, to\)/);
 });
 
 test('teaching debriefs normalize allowed fields and require every distractor pivot', () => {

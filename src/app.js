@@ -630,6 +630,7 @@
         const selected = days[state.planDay] || days[0];
         const selectedDate = new Date(`${selected.date}T12:00:00Z`);
         const dateLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(selectedDate);
+        const shortDate = (value) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`));
         const percent = selected.target ? Math.min(100, Math.round((selected.completed / selected.target) * 100)) : 0;
         const unlimited = freeUsage().unlimited;
         const dateButtons = weekDays.map((day, offset) => {
@@ -652,14 +653,20 @@
         const examLine = plan.exam_date
             ? `${plan.days_to_exam >= 0 ? `${plan.days_to_exam} day${plan.days_to_exam === 1 ? '' : 's'} to your exam` : 'Saved exam date has passed'}`
             : 'No exam date set';
+        const roadmap = (Array.isArray(plan.roadmap) ? plan.roadmap : []).map((stage) => {
+            const active = state.planDay >= stage.start_index && state.planDay <= stage.end_index;
+            const range = stage.start_date === stage.end_date ? shortDate(stage.start_date) : `${shortDate(stage.start_date)} – ${shortDate(stage.end_date)}`;
+            return `<button type="button" class="plan-roadmap-step${active ? ' active' : ''}" onclick="MACPrep.planJumpTo(${stage.start_index})" ${active ? 'aria-current="step"' : ''}><span>${escapeHtml(stage.label)}</span><small>${escapeHtml(range)}</small></button>`;
+        }).join('');
         el.innerHTML = `<div class="plan-head">
             <div><h2>Your adaptive study calendar</h2><div class="sub" style="font-size:13px;margin:0;max-width:720px;">${escapeHtml(plan.summary || '')}</div></div>
-            <div class="plan-head-actions" style="display:flex;align-items:center;gap:12px;"><span class="plan-phase">${escapeHtml(plan.phase_label || 'Adaptive plan')}</span><div class="plan-week-nav"><button class="plan-icon-btn" type="button" aria-label="Previous week" title="Previous week" onclick="MACPrep.planShiftWeek(-1)" ${state.planWeek === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;">WEEK ${state.planWeek + 1} / ${maxWeek + 1}</span><button class="plan-icon-btn" type="button" aria-label="Next week" title="Next week" onclick="MACPrep.planShiftWeek(1)" ${state.planWeek >= maxWeek ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></div>
+            <div class="plan-head-actions" style="display:flex;align-items:center;gap:12px;"><span class="plan-phase">${escapeHtml(plan.window_label || plan.phase_label || 'Adaptive plan')}</span><div class="plan-week-nav"><button class="plan-icon-btn" type="button" aria-label="Previous week" title="Previous week" onclick="MACPrep.planShiftWeek(-1)" ${state.planWeek === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;">WEEK ${state.planWeek + 1} / ${maxWeek + 1}</span><button class="plan-icon-btn" type="button" aria-label="Next week" title="Next week" onclick="MACPrep.planShiftWeek(1)" ${state.planWeek >= maxWeek ? 'disabled' : ''}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></div>
         </div>
+        ${roadmap ? `<div class="plan-roadmap" aria-label="Study roadmap phases">${roadmap}</div>` : ''}
         <div class="plan-days" role="group" aria-label="Study plan days">${dateButtons}</div>
         <div class="plan-body">
             <div>
-                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">${escapeHtml(selected.label)} · ${escapeHtml(dateLabel)}</div>
+                <div class="mono" style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);">${escapeHtml(selected.phase_label || plan.phase_label || '')} · ${escapeHtml(selected.label)} · ${escapeHtml(dateLabel)}</div>
                 <div style="font-size:28px;font-weight:750;line-height:1.1;margin-top:7px;">${selected.completed} / ${selected.target}</div>
                 <div class="plan-progress"><span style="width:${percent}%;"></span></div>
                 <div class="mono" style="font-size:11px;color:var(--muted);">${selected.is_today ? (selected.remaining ? `${selected.remaining} remaining today` : 'Today\'s target is complete') : `${selected.target}-question target`} · ${escapeHtml(examLine)}</div>
@@ -667,6 +674,17 @@
             </div>
             <div>${tasks}</div>
         </div>`;
+        window.requestAnimationFrame(() => {
+            const activePhase = el.querySelector('.plan-roadmap-step.active');
+            const activeDay = el.querySelector('.plan-day.active');
+            const centerHorizontally = (item) => {
+                const scroller = item && item.parentElement;
+                if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+                scroller.scrollLeft = item.offsetLeft - ((scroller.clientWidth - item.offsetWidth) / 2);
+            };
+            centerHorizontally(activePhase);
+            centerHorizontally(activeDay);
+        });
     }
 
     function planSelectDay(index) {
@@ -681,6 +699,14 @@
         const maxWeek = Math.max(0, Math.ceil(((plan && plan.days) || []).length / 7) - 1);
         state.planWeek = Math.max(0, Math.min(maxWeek, state.planWeek + direction));
         state.planDay = state.planWeek * 7;
+        renderAdaptivePlan();
+    }
+
+    function planJumpTo(index) {
+        const plan = state.profile && state.profile.adaptive_plan;
+        if (!plan || !Array.isArray(plan.days) || !plan.days[index]) return;
+        state.planDay = index;
+        state.planWeek = Math.floor(index / 7);
         renderAdaptivePlan();
     }
 
@@ -1000,11 +1026,12 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 44;
+    const WHATS_NEW_VERSION = 45;
     const WHATS_NEW = [
+        { tag: 'Improved', date: 'Jul 22', title: 'Your roadmap now reaches months, not weeks', desc: 'The adaptive calendar now builds an exam-anchored roadmap of up to six months instead of stopping after 14 days. It shifts from foundation to reinforcement, focused review, and final review as test day approaches; phase jumps make the full timeline easy to navigate while one week stays in focus. The plan keeps recalculating from unseen coverage, due reviews, recent misses, and weakest domains. Available on the web and current MACPrep mobile shell. Set your exam date in Profile to anchor the roadmap.' },
         { tag: 'New', date: 'Jul 22', title: 'MACPrep now starts before school', desc: 'Applicants can create a free account and use a focused dashboard for application steps, program and prerequisite tracking, shadowing preparation, interview questions, and financial or relocation planning. After committing, add your program and dates; the same account opens the SAA study experience on your matriculation date, then moves into the practicing CAA experience on graduation day so professional and CME resources arrive at the right time. Lifecycle changes never alter premium access. Available on the web and current MACPrep mobile shell. Some older accounts may be asked once to choose their current stage.' },
         { tag: 'Fix', date: 'Jul 22', title: 'Cleaner question wording', desc: 'A reported obstetric answer now clearly states that pregnancy decreases lower esophageal sphincter tone. We also checked every published question for matching wording, answer-alignment, rationale, spacing, punctuation, and delimiter problems, and added the same audit to future question-bank reviews. Available on the web and current MACPrep mobile shell; no action is required.' },
-        { tag: 'New', date: 'Jul 22', title: 'A study plan that adjusts with you', desc: 'Your dashboard now builds a two-week calendar from your exam date, unseen coverage, due reviews, recent misses, and weakest domains, then recalculates as you practice. Question debriefs now organize why the answer wins and why each distractor fails; richer CAA-reviewed teaching pivots will appear as they are approved. Behind the scenes, item-quality monitoring helps prioritize questions for clinical review without treating small samples as proof. Available on the web and current MACPrep mobile shell; no action is required.' },
+        { tag: 'New', date: 'Jul 22', title: 'A study plan that adjusts with you', desc: 'Your dashboard now builds a long-range calendar from your exam date, unseen coverage, due reviews, recent misses, and weakest domains, then recalculates as you practice. Question debriefs now organize why the answer wins and why each distractor fails; richer CAA-reviewed teaching pivots will appear as they are approved. Behind the scenes, item-quality monitoring helps prioritize questions for clinical review without treating small samples as proof. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Clearer CAA resource links', desc: 'Helpful external links in the public footer are now grouped under CAA resources, making their purpose clearer without presenting every listed organization as a formal MACPrep partner. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Cohort code groups you can rename', desc: 'Admins can now rename an existing cohort-code group directly from the generator, making it easy to add a school, class year, or send year later without changing any code or claim history. MACPrep also prevents two group names from being merged by accident. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 22', title: 'More resilient availability monitoring', desc: 'MACPrep now handles brief database slowdowns without turning a momentary delay into a service incident, while repeated failures still trigger an operational alert. Slow health checks are also stopped cleanly instead of continuing in the background. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -6018,7 +6045,7 @@
         applicantStillApplying, pauseApplicantCycle, closeApplicantCheckIn,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
         openQuestionSearch, closeQuestionSearch, runQuestionSearch, searchStartQuestion,
-        startRecommended, planSelectDay, planShiftWeek, startPlanTask, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
+        startRecommended, planSelectDay, planShiftWeek, planJumpTo, startPlanTask, toggleCustomize, toggleMoreModes, openCmdk, closeCmdk, cmdkInput, cmdkKey, cmdkRun,
         reportQuestion, setConfidence, reviewConfidentMisses,
         drillSpecialty, openSpecialtyPicker, closeSpecialtyPicker, startSpecialtyQuiz, reviewDue, resumeSession, discardSession,
         startMockExam, openMockPicker, closeMockPicker, startQuick, jumpToCard, openWhatsNew, closeWhatsNew, closeWhatsNewPopup,

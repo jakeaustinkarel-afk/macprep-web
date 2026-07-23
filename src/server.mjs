@@ -19,7 +19,7 @@ import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
 import apn from '@parse/node-apn';
 import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
 import { validateQuestionForPublication } from './lib/question-validation.mjs';
-import { buildAdaptiveStudyPlan } from './lib/study-plan.mjs';
+import { buildAdaptiveStudyPlan, MAX_ADAPTIVE_PLAN_DAYS } from './lib/study-plan.mjs';
 import { normalizeTeachingDebrief, validateTeachingDebrief } from './lib/teaching-debrief.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1116,7 +1116,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'applicant-lifecycle-20260722.1',
+        build: 'adaptive-roadmap-20260722.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -4108,7 +4108,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
 
         const tzOffset = Math.max(-840, Math.min(840, Number(req.query.tz) || 0));
         const planNow = new Date();
-        const planHorizon = new Date(planNow.getTime() + 14 * 86400000).toISOString();
+        const planHorizon = new Date(planNow.getTime() + MAX_ADAPTIVE_PLAN_DAYS * 86400000).toISOString();
         let learningResult = { data: {}, error: null };
         let readinessResult = { data: {}, error: null };
         let flagsResult = { data: [], error: null };
@@ -4129,11 +4129,14 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 }),
                 supabase.from('user_flags').select('question_id').eq('user_id', user.id),
                 supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
-                supabase.from('review_state')
+                fetchAllPostgrestRows((from, to) => supabase.from('review_state')
                     .select('question_id, due_at')
                     .eq('user_id', user.id)
                     .lte('due_at', planHorizon)
-                    .order('due_at', { ascending: true }),
+                    .order('due_at', { ascending: true })
+                    .order('question_id', { ascending: true })
+                    .range(from, to))
+                    .then((data) => ({ data, error: null }), (error) => ({ data: [], error })),
                 getFreeTierCeiling(),
                 getSaaBenchmark(),
             ]);

@@ -12,6 +12,7 @@ Last reviewed: 2026-07-18.
 - [x] Moved browser authentication to HttpOnly cookies, enabled 12-character and leaked-password protections in Supabase Auth, and added CSRF/static-surface regression coverage.
 - [x] Added CI, browser/native capability handshakes, idempotent purchase reconciliation, and latest-response practice/peer metrics with minimum sample thresholds.
 - [x] Added the applicant-to-CAA lifecycle model, free applicant planning dashboard, automatic matriculation and graduation transitions, and lifecycle-safe metrics/authorization. Graduation moves the account into practicing CAA resources for CME timing without changing premium entitlement.
+- [x] Expanded the adaptive calendar from a 14-day plan into an exam-anchored roadmap of up to six months, with phase-aware daily targets, biweekly checkpoints, phase navigation, and paginated upcoming-review inputs.
 
 ## Next Engineering Slice
 

@@ -1,4 +1,6 @@
 const DAY_MS = 86400000;
+export const MAX_ADAPTIVE_PLAN_DAYS = 183;
+export const DEFAULT_ADAPTIVE_PLAN_DAYS = 120;
 
 const PHASES = {
     steady: { label: 'Steady practice', target: 20, focusShare: 0.35 },
@@ -84,37 +86,74 @@ function task(kind, title, detail, count, extra = {}) {
     return { kind, title, detail, count: Math.max(0, Math.round(count)), ...extra };
 }
 
-function planSummary({ phase, daysToExam, dailyTarget, rawCoveragePace, remainingUnseen }) {
+function planWindowLabel(days) {
+    if (days >= 90) return `${Math.max(3, Math.round(days / 30))}-month roadmap`;
+    return `${Math.max(1, Math.ceil(days / 7))}-week roadmap`;
+}
+
+function planSummary({ phase, daysToExam, dailyTarget, rawCoveragePace, remainingUnseen, horizon, continuesToExam }) {
     if (phase === 'expired') return 'Your saved exam date has passed. Update it when you know your next testing date.';
-    if (daysToExam == null) return `A sustainable ${dailyTarget}-question rhythm, recalculated as your strengths and review queue change.`;
-    if (remainingUnseen === 0) return `You have covered the bank. The next ${daysToExam} days prioritize retention, weak areas, and checkpoints.`;
+    const windowLabel = planWindowLabel(horizon).toLowerCase();
+    if (daysToExam == null) return `A rolling ${windowLabel} built around a sustainable ${dailyTarget}-question rhythm. Add your exam date to anchor every phase to test day.`;
+    if (remainingUnseen === 0) return `You have covered the bank. This ${windowLabel} prioritizes retention, weak areas, and checkpoints on the way to your exam.`;
     if (rawCoveragePace > dailyTarget) return `There are ${daysToExam} days left. The plan prioritizes your highest-value work instead of assigning an unrealistic ${rawCoveragePace} questions every day.`;
-    return `${daysToExam} day${daysToExam === 1 ? '' : 's'} to your exam. This pace covers unseen material while protecting time for recall and weak areas.`;
+    if (continuesToExam) return `${daysToExam} days to your exam. This six-month adaptive window starts the work now and keeps rolling forward as you practice.`;
+    return `${daysToExam} day${daysToExam === 1 ? '' : 's'} to your exam. This ${windowLabel} covers unseen material while protecting time for recall, checkpoints, and weak areas.`;
+}
+
+function roadmapFromDays(days) {
+    const roadmap = [];
+    for (let index = 0; index < days.length; index++) {
+        const day = days[index];
+        const previous = roadmap[roadmap.length - 1];
+        if (previous && previous.phase === day.phase) {
+            previous.end_date = day.date;
+            previous.end_index = index;
+            previous.days += 1;
+            continue;
+        }
+        roadmap.push({
+            phase: day.phase,
+            label: day.phase_label,
+            start_date: day.date,
+            end_date: day.date,
+            start_index: index,
+            end_index: index,
+            days: 1,
+        });
+    }
+    return roadmap;
 }
 
 /**
- * Build a deterministic two-week plan from the learner's current state.
- * Nothing is persisted: every profile refresh recalculates the next best work.
+ * Build a deterministic exam roadmap from the learner's current state.
+ * The detailed calendar spans up to six months and recalculates on every profile
+ * refresh, while the client presents one week at a time.
  */
 export function buildAdaptiveStudyPlan(options = {}) {
     const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
     const timezoneOffset = clamp(Math.round(finiteNumber(options.timezoneOffset)), -840, 840);
-    const horizon = clamp(Math.round(finiteNumber(options.horizon, 14)), 7, 21);
     const todayKey = localDateKey(now, timezoneOffset);
     const examDate = /^\d{4}-\d{2}-\d{2}$/.test(String(options.targetExamDate || ''))
         ? String(options.targetExamDate)
         : null;
     const daysToExam = examDate ? differenceInDays(examDate, todayKey) : null;
     const phase = phaseFor(daysToExam);
-    const phaseConfig = PHASES[phase];
+    const customHorizon = options.horizon !== undefined && options.horizon !== null && Number.isFinite(Number(options.horizon));
+    const horizon = customHorizon
+        ? clamp(Math.round(Number(options.horizon)), 1, MAX_ADAPTIVE_PLAN_DAYS)
+        : daysToExam == null
+            ? DEFAULT_ADAPTIVE_PLAN_DAYS
+            : daysToExam < 0
+                ? 14
+                : clamp(Math.max(1, daysToExam), 1, MAX_ADAPTIVE_PLAN_DAYS);
     const totalQuestions = Math.max(0, Math.round(finiteNumber(options.totalQuestions)));
     const answeredQuestions = clamp(Math.round(finiteNumber(options.answeredQuestions)), 0, totalQuestions || Number.MAX_SAFE_INTEGER);
     const answeredToday = Math.max(0, Math.round(finiteNumber(options.answeredToday)));
     const remainingUnseen = Math.max(0, totalQuestions - answeredQuestions);
-    const planningDays = daysToExam == null ? 30 : Math.max(1, daysToExam - (phase === 'taper' ? 1 : Math.min(7, Math.ceil(daysToExam * 0.1))));
+    const planningDays = daysToExam == null ? horizon : Math.max(1, daysToExam - (phase === 'taper' ? 1 : Math.min(7, Math.ceil(daysToExam * 0.1))));
     const rawCoveragePace = remainingUnseen ? Math.ceil(remainingUnseen / planningDays) : 0;
     const reviewPressure = Math.min(12, Math.ceil(Math.max(0, finiteNumber(options.dueCount)) / 3));
-    const dailyTarget = clamp(Math.max(phaseConfig.target, rawCoveragePace + reviewPressure), 10, 50);
     const domains = normalizedDomains(options.byDomain);
     const dueByDate = normalizeDueSchedule(options.dueSchedule, todayKey, horizon, timezoneOffset);
     const missedCount = Math.max(0, Math.round(finiteNumber(options.missedCount)));
@@ -123,9 +162,12 @@ export function buildAdaptiveStudyPlan(options = {}) {
 
     for (let index = 0; index < horizon; index++) {
         const date = addDays(todayKey, index);
+        const dayPhase = phaseFor(daysToExam == null ? null : daysToExam - index);
+        const phaseConfig = PHASES[dayPhase];
         const dueIds = dueByDate.get(date) || [];
         const focus = domains.length ? domains[index % Math.min(3, domains.length)] : null;
-        let target = dailyTarget;
+        const phaseTarget = clamp(Math.max(phaseConfig.target, rawCoveragePace + (index === 0 ? reviewPressure : 0)), 10, 50);
+        let target = phaseTarget;
         const tasks = [];
 
         if (dueIds.length) {
@@ -139,7 +181,7 @@ export function buildAdaptiveStudyPlan(options = {}) {
             ));
         }
 
-        const isCheckpoint = index > 0 && index % 6 === 0;
+        const isCheckpoint = index > 0 && (index + 1) % 14 === 0;
         if (isCheckpoint) {
             // Due reviews still come first on checkpoint days. Keep the displayed
             // target equal to the work actually assigned instead of quietly adding
@@ -180,21 +222,31 @@ export function buildAdaptiveStudyPlan(options = {}) {
             completed,
             remaining: Math.max(0, target - completed),
             is_today: index === 0,
+            phase: dayPhase,
+            phase_label: phaseConfig.label,
             tasks,
         });
     }
 
+    const dailyTarget = days[0]?.target || 0;
+    const continuesToExam = daysToExam != null && daysToExam > horizon;
+
     return {
         generated_at: now.toISOString(),
         phase,
-        phase_label: phaseConfig.label,
+        phase_label: PHASES[phase].label,
         exam_date: examDate,
         days_to_exam: daysToExam,
         daily_target: dailyTarget,
         remaining_unseen: remainingUnseen,
         raw_coverage_pace: rawCoveragePace,
         weakest_domains: domains.slice(0, 3),
-        summary: planSummary({ phase, daysToExam, dailyTarget, rawCoveragePace, remainingUnseen }),
+        plan_days: horizon,
+        plan_end_date: days[days.length - 1]?.date || todayKey,
+        window_label: planWindowLabel(horizon),
+        continues_to_exam: continuesToExam,
+        roadmap: roadmapFromDays(days),
+        summary: planSummary({ phase, daysToExam, dailyTarget, rawCoveragePace, remainingUnseen, horizon, continuesToExam }),
         days,
     };
 }

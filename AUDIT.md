@@ -12,6 +12,8 @@ This hardening pass also moved browser sessions to HttpOnly cookies with origin 
 
 The profile model now separates account lifecycle (`applicant`, `incoming_student`, `student`, `practicing`), professional credential, and premium entitlement. Applicant and incoming-student accounts are excluded from question, grading, notebook, duel, leaderboard, SAA benchmark, and faculty cohort paths. Incoming students transition on matriculation, and student accounts transition to the practicing CAA lifecycle on their stored graduation date so professional and CME resources can be timed appropriately. That product lifecycle label is not independent verification of certification or licensure.
 
+The adaptive study calendar now uses the saved exam date to generate up to six months of daily work rather than a 14-day plan. Foundation, reinforcement, focused-review, and final-review phases are recalculated as the learner practices. The interface keeps one week visible at a time and provides phase jumps, while the server paginates the longer upcoming-review input so PostgREST's row cap cannot silently truncate the roadmap.
+
 **Residual engineering risks:**
 - There is still no protected staging environment with seeded Supabase data and a signed Stripe webhook end-to-end test.
 - `src/server.mjs` and `src/app.js` remain large modules. Responsibility-based extraction is still the next engineering slice.
