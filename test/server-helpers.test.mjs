@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
     applicantCheckInDue,
+    allocateSessionDomains,
     answerChoiceId,
     applyServedFilter,
     analyticsPlatformFromMeta,
@@ -21,6 +22,8 @@ import {
     normalizeLifecycleStage,
     normalizeTrainingProgram,
     normalizeVoucherLabel,
+    productDateOffset,
+    productDateKey,
     readCookieHeader,
     registrationProfileError,
     resolveLifecycleCapabilities,
@@ -38,6 +41,7 @@ import {
     trustedBaseUrl,
     validateAppleTransactionPayload,
     validateGooglePurchasePayload,
+    wrapAsyncHandler,
 } from '../src/server.mjs';
 import { fetchAllPostgrestRows } from '../src/lib/postgrest-pagination.mjs';
 import { auditAnswerPositionBalance, validateQuestionForPublication } from '../src/lib/question-validation.mjs';
@@ -104,6 +108,24 @@ test('a resumed trial serves only unanswered questions from its fixed pool', () 
     );
 });
 
+test('diagnostics cover all six domains while mock exams follow the NCCAA blueprint', () => {
+    const domains = [
+        { domain: 'Principles of Anesthesia', weight: 9, total: 100 },
+        { domain: 'Physiology, Pathophysiology & Management', weight: 19, total: 100 },
+        { domain: 'Instrumentation, Monitoring & Anesthetic Delivery Systems', weight: 15, total: 100 },
+        { domain: 'Subspecialty Care', weight: 31, total: 100 },
+        { domain: 'Pharmacology', weight: 15, total: 100 },
+        { domain: 'Regional Anesthesia & Pain Management', weight: 8, total: 100 },
+    ];
+    const diagnostic = allocateSessionDomains(domains, 24, 'diagnostic');
+    assert.equal(diagnostic.length, 6);
+    assert.deepEqual(diagnostic.map((entry) => entry.count), [4, 4, 4, 4, 4, 4]);
+
+    const mock = allocateSessionDomains(domains, 180, 'mock');
+    assert.equal(mock.reduce((sum, entry) => sum + entry.count, 0), 180);
+    assert.ok(mock.find((entry) => entry.domain === 'Subspecialty Care').count > mock.find((entry) => entry.domain === 'Principles of Anesthesia').count);
+});
+
 test('mobile store names are allowlisted', () => {
     assert.equal(normalizeMobileStore('apple'), 'apple');
     assert.equal(normalizeMobileStore('google_play'), 'google_play');
@@ -118,6 +140,7 @@ test('product analytics keeps native, web, and legacy events separate', () => {
         { name: 'session_start', user_id: 'web-user', meta: { platform: 'web' }, created_at: '2026-07-15T12:00:00Z' },
         { name: 'session_complete', user_id: 'web-user', meta: { platform: 'web' }, created_at: '2026-07-15T12:10:00Z' },
         { name: 'critical_events_open', user_id: 'legacy-user', meta: {}, created_at: '2026-07-01T12:00:00Z' },
+        { name: 'checkout_started', user_id: 'buyer-only', meta: { platform: 'web' }, created_at: '2026-07-17T10:00:00Z' },
     ];
     const usage = summarizeProductUsage(rows, now);
     const ios = usage.platforms.find((row) => row.platform === 'ios');
@@ -129,6 +152,7 @@ test('product analytics keeps native, web, and legacy events separate', () => {
     assert.deepEqual(ios, { platform: 'ios', active_30d: 1, active_7d: 1, entries: 1, sessions: 0, completed: 0 });
     assert.deepEqual(web, { platform: 'web', active_30d: 1, active_7d: 1, entries: 0, sessions: 1, completed: 1 });
     assert.equal(untagged.active_30d, 1);
+    assert.equal(usage.platforms.reduce((sum, row) => sum + row.active_30d, 0), 3);
     assert.deepEqual(mock.by_platform, { web: 0, ios: 1, android: 0, untagged: 0 });
     assert.deepEqual(critical.by_platform, { web: 0, ios: 0, android: 0, untagged: 1 });
     assert.equal(analyticsPlatformFromMeta({ platform: 'android' }), 'android');
@@ -186,6 +210,20 @@ test('registration separates lifecycle stage, credential, and program requiremen
     assert.equal(resolveSignupLifecycleStage('incoming_student', '2027-08-15', '2027-08-14'), 'incoming_student');
     assert.equal(resolveSignupLifecycleStage('incoming_student', '2027-08-15', '2027-08-15'), 'student');
     assert.equal(resolveSignupLifecycleStage('applicant', null, '2027-08-15'), 'applicant');
+    assert.equal(registrationProfileError({
+        lifecycleStage: 'student',
+        graduationDate: '2027-08-15',
+        trainingProgram: 'Emory University',
+        today: '2027-08-15',
+    }), 'Expected graduation must be a future date.');
+    assert.equal(productDateKey('2027-08-15T03:30:00Z'), '2027-08-14');
+});
+
+test('async Express handlers forward promise rejections to the error middleware', async () => {
+    const expected = new Error('database unavailable');
+    const wrapped = wrapAsyncHandler(async () => { throw expected; });
+    const forwarded = await new Promise((resolve) => wrapped({}, {}, resolve));
+    assert.equal(forwarded, expected);
 });
 
 test('applicant acceptance check-ins are monthly and honor a paused cycle', () => {
@@ -203,6 +241,13 @@ test('applicant acceptance check-ins are monthly and honor a paused cycle', () =
     assert.equal(applicantCheckInDue({ ...base, snoozedUntil: '2027-08-15' }), true);
     assert.equal(applicantCheckInDue({ ...base, lifecycleStage: 'incoming_student' }), false);
     assert.equal(applicantCheckInDue({ ...base, isAdmin: true }), false);
+});
+
+test('lifecycle calendar boundaries use the MACPrep Eastern product date', () => {
+    const eveningBeforeUtcMidnight = new Date('2026-07-24T02:30:00.000Z');
+    assert.equal(productDateKey(eveningBeforeUtcMidnight), '2026-07-23');
+    assert.equal(productDateOffset(1, eveningBeforeUtcMidnight), '2026-07-24');
+    assert.equal(productDateOffset(730, eveningBeforeUtcMidnight), '2028-07-22');
 });
 
 test('lifecycle capabilities give admins every surface and keep members stage-scoped', () => {
@@ -393,7 +438,9 @@ test('native purchase flow checks server readiness and finishes Apple transactio
         readFile(fileURLToPath(new URL('../mobile/plugins/macprep-purchases/ios/Sources/MacprepPurchases/MacprepPurchasesPlugin.swift', import.meta.url)), 'utf8'),
     ]);
     assert.match(browser, /nativePurchaseVerificationConfigured\?\.\[platform\] !== true/);
-    assert.match(browser, /await verifyNativePurchase\(platform, transaction\)[\s\S]+await plugin\.finishTransaction/);
+    assert.match(browser, /const verification = await verifyNativePurchase\(platform, transaction\)/);
+    assert.match(browser, /async function finishAppleTransaction[\s\S]+await plugin\.finishTransaction/);
+    assert.match(browser, /restoreNativePurchases[\s\S]+finishAppleTransaction\(plugin, transaction\)/);
     assert.match(swift, /bridgeVersion": 2/);
     assert.match(swift, /CAPPluginMethod\(name: "finishTransaction"/);
     const purchaseStart = swift.indexOf('@objc public func purchase');
@@ -404,12 +451,13 @@ test('native purchase flow checks server readiness and finishes Apple transactio
 test('provider reactivation is derived from fresh Stripe and Apple state', async () => {
     const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
     assert.match(server, /if \(status === 'active'\) status = await currentStripeEntitlementStatus\(paymentIntent\)/);
-    const appleStart = server.indexOf('if (type === NotificationTypeV2.REFUND_REVERSED)');
-    const appleEnd = server.indexOf('} else if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE]', appleStart);
-    const appleReversal = server.slice(appleStart, appleEnd);
-    assert.match(appleReversal, /await verifyApplePurchase/);
-    assert.match(appleReversal, /allowReactivate: true/);
-    assert.doesNotMatch(appleReversal, /setEntitlementStatus/);
+    const appleStart = server.indexOf("app.post('/api/mobile-purchases/apple-notifications'");
+    const appleEnd = server.indexOf("app.post('/api/mobile-purchases/google-notifications'", appleStart);
+    const appleNotifications = server.slice(appleStart, appleEnd);
+    assert.match(appleNotifications, /await fetchAppleTransactionPayload/);
+    assert.match(appleNotifications, /current\.revocationDate/);
+    assert.match(appleNotifications, /status === 'active'/);
+    assert.match(appleNotifications, /setEntitlementStatus/);
 });
 
 test('faculty scope is derived from the verified account assignment, not a query parameter', () => {
@@ -524,6 +572,35 @@ test('publication validation requires one aligned answer, rationales, blueprint 
     assert.equal(unsafe.valid, false);
     assert.match(unsafe.errors.join(' '), /does not match/);
     assert.match(unsafe.errors.join(' '), /placeholder/);
+
+    const numericChoices = validateQuestionForPublication({
+        ...question,
+        correct_answer: 'A',
+        choices: ['2', '1', '3', '4'].map((text, index) => ({
+            text,
+            rationale: `This numeric option ${index === 0 ? 'matches' : 'does not match'} the calculated result.`,
+            correct: index === 0,
+        })),
+    });
+    assert.equal(numericChoices.valid, true);
+
+    const blankChoice = validateQuestionForPublication({
+        ...question,
+        choices: [{ ...question.choices[0], text: ' ' }, ...question.choices.slice(1)],
+    });
+    assert.equal(blankChoice.valid, false);
+    assert.match(blankChoice.errors.join(' '), /Choice 1 is missing text/);
+});
+
+test('published live questions receive guarded clinical subtopic tags', async () => {
+    const migration = await readFile(fileURLToPath(new URL(
+        '../supabase/migrations/20260723201000_fill_published_question_subtopics.sql',
+        import.meta.url,
+    )), 'utf8');
+    assert.equal([...migration.matchAll(/\('authored-batch-live-\d{3}',/g)].length, 25);
+    assert.match(migration, /question\.status = 'published'/);
+    assert.match(migration, /trim\(coalesce\(question\.subtopic, ''\)\) = ''/);
+    assert.match(migration, /Expected 25 tagged authored-batch-live questions/);
 });
 
 test('Apple entitlement payload requires the expected app, product, and account token', () => {
@@ -544,7 +621,7 @@ test('Apple entitlement payload requires the expected app, product, and account 
     assert.equal(entitlement.productId, payload.productId);
 
     assert.throws(
-        () => validateAppleTransactionPayload({ ...payload, appAccountToken: '8b8bbd37-9c0d-4b0e-8f6a-fd0b891afb49' }, { userId, transactionId: payload.transactionId }),
+        () => validateAppleTransactionPayload({ ...payload, appAccountToken: userId.replace(/^d2/, 'c3') }, { userId, transactionId: payload.transactionId }),
         /different MACPrep account/
     );
     assert.throws(
@@ -646,6 +723,62 @@ test('exam submission migration makes batch retries idempotent', async () => {
     assert.match(migration, /\(user_id, submission_id, question_id\)/);
 });
 
+test('tutor grading migration is idempotent, revision-locked, and enforces the free ceiling', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260723193000_atomic_tutor_grading_and_lifecycle_integrity.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /create trigger trg_enforce_free_tier/);
+    assert.match(migration, /new\.answer_revision <> v_current_revision/);
+    assert.match(migration, /create or replace function public\.grade_macprep_tutor_attempt/);
+    assert.match(migration, /pg_advisory_xact_lock/);
+    assert.match(migration, /perform public\.sm2_review/);
+    assert.match(migration, /grant execute on function public\.grade_macprep_tutor_attempt[\s\S]+to service_role/);
+});
+
+test('exam grading writes answers and spaced reviews in one idempotent transaction', async () => {
+    const [migration, server] = await Promise.all([
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723202000_atomic_exam_grading.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(migration, /create or replace function public\.grade_macprep_exam_attempts/);
+    assert.match(migration, /pg_advisory_xact_lock/);
+    assert.match(migration, /raise exception 'submission_conflict'/);
+    assert.match(migration, /raise exception 'stale_question'/);
+    assert.match(migration, /insert into public\.user_progress[\s\S]+perform public\.sm2_review/);
+    assert.match(migration, /grant execute on function public\.grade_macprep_exam_attempts\(uuid, uuid, jsonb\)[\s\S]+to service_role/);
+
+    const batch = server.slice(server.indexOf("app.post('/api/grade-batch'"), server.indexOf('// User cosmetics'));
+    assert.match(batch, /supabase\.rpc\('grade_macprep_exam_attempts'/);
+    assert.doesNotMatch(batch, /supabase\.rpc\('sm2_review'/);
+    assert.doesNotMatch(batch, /\.upsert\(progressRows/);
+});
+
+test('learning analytics exclude superseded answer revisions', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260723194000_current_revision_learning_analytics.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /q\.answer_revision = up\.answer_revision/);
+    assert.match(migration, /sq\.answer_revision = up\.answer_revision/);
+    assert.match(migration, /rebuild_macprep_user_domain_ability/);
+    assert.match(migration, /trg_macprep_rebuild_ability_after_question_change/);
+});
+
+test('SAA benchmarks use the same Eastern graduation boundary as lifecycle transitions', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260723204000_eastern_lifecycle_benchmark_boundary.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /now\(\) at time zone 'America\/New_York'/);
+    assert.doesNotMatch(migration, /graduation_date > current_date/);
+    assert.match(migration, /revoke all on function public\.macprep_saa_benchmark\(text\[\]\)/);
+    assert.match(migration, /grant execute on function public\.macprep_saa_benchmark\(text\[\]\)[\s\S]+to service_role/);
+});
+
+test('new-question pools count only attempts against the current answer revision', async () => {
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    const start = server.indexOf('async function getCurrentRevisionAnsweredIds');
+    const end = server.indexOf('async function getRecommendedPriorities', start);
+    const sessionSelection = server.slice(start, end);
+    assert.ok(start >= 0 && end > start);
+    assert.match(sessionSelection, /\.select\('question_id, answer_revision'\)/);
+    assert.match(sessionSelection, /currentRevisions\.get\(String\(row\.question_id\)\)/);
+    assert.match(sessionSelection, /fetchAllServedQuestionRows\('id, answer_revision'/);
+    assert.doesNotMatch(sessionSelection, /\.select\('question_id'\)/);
+});
+
 test('repeat-attempt migration removes only the legacy per-question uniqueness rule', async () => {
     const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260718192649_allow_repeat_question_attempts.sql', import.meta.url)), 'utf8');
     assert.match(migration, /drop constraint if exists unique_user_question/);
@@ -726,17 +859,37 @@ test('batch retries reveal the persisted attempt and browser sign-out waits for 
     const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
     const batch = server.slice(server.indexOf("app.post('/api/grade-batch'"), server.indexOf('// User cosmetics'));
     assert.match(batch, /eq\('submission_id', submissionId\)/);
-    assert.match(batch, /select\('question_id, selected_label, is_correct'\)/);
+    assert.match(batch, /grade_macprep_exam_attempts/);
+    assert.match(batch, /select\('question_id, selected_label, is_correct, answer_revision'\)/);
     assert.match(batch, /results: persistedResults/);
     assert.match(batch, /correct: persistedById\.get\(questionId\)\?\.is_correct === true/);
     assert.doesNotMatch(batch, /results: gradedAnswers\.map/);
 
     const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
-    const signOut = browser.slice(browser.indexOf('async function signOut()'), browser.indexOf('// Forgot-password'));
+    const signOut = browser.slice(browser.indexOf('async function signOut('), browser.indexOf('// Forgot-password'));
     assert.match(signOut, /const response = await fetch\('\/api\/auth\/logout'/);
     assert.match(signOut, /if \(!response\.ok\) throw/);
-    assert.ok(signOut.indexOf('await fetch') < signOut.indexOf('setToken(null)'));
+    assert.match(signOut, /if \(forceLocal\) return await clearLocalSignedOutState\(\)/);
+    const localCleanup = browser.slice(browser.indexOf('async function clearLocalSignedOutState'), browser.indexOf('async function signOut('));
+    assert.match(localCleanup, /setToken\(null\)/);
+    assert.match(browser, /catch \(e\) \{ if \(e\.status !== 401\) showStartupError\(\); \}/);
     assert.match(browser, /wasAlreadyAnswered/);
+
+    const logoutRoute = server.slice(server.indexOf("app.post('/api/auth/logout'"), server.indexOf('// Send a password-reset email'));
+    assert.match(logoutRoute, /reportOperationalError\('auth\.logout'/);
+    assert.match(logoutRoute, /clearAuthCookies\(res\)/);
+    assert.doesNotMatch(logoutRoute, /status\(503\)/);
+});
+
+test('grading RPC repair preserves text return types and service-role-only execution', async () => {
+    const migration = await readFile(fileURLToPath(new URL('../supabase/migrations/20260723203000_fix_grading_rpc_return_types.sql', import.meta.url)), 'utf8');
+    assert.match(migration, /function public\.grade_macprep_tutor_attempt/);
+    assert.match(migration, /function public\.grade_macprep_exam_attempts/);
+    assert.equal((migration.match(/up\.selected_label::text/g) || []).length, 4);
+    assert.match(migration, /revoke all on function public\.grade_macprep_tutor_attempt[\s\S]+from public, anon, authenticated/);
+    assert.match(migration, /revoke all on function public\.grade_macprep_exam_attempts[\s\S]+from public, anon, authenticated/);
+    assert.match(migration, /grant execute on function public\.grade_macprep_tutor_attempt[\s\S]+to service_role/);
+    assert.match(migration, /grant execute on function public\.grade_macprep_exam_attempts[\s\S]+to service_role/);
 });
 
 test('user save routes inspect Supabase errors instead of returning false success', async () => {
@@ -814,7 +967,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'security-hardening-20260723\.3'/);
+    assert.match(server, /build: 'study-integrity-20260723\.1'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);
@@ -831,13 +984,56 @@ test('cohort group renaming is admin-only, owner-scoped, and merge-safe', async 
     assert.ok(start > -1 && end > start);
     assert.match(route, /getAdminUser\(req\)/);
     assert.match(route, /eq\('owner_director_id', admin\.id\)/);
-    assert.match(route, /ilike\('label', label\)/);
+    assert.match(route, /ilike\('label', escapePostgrestLikeTerm\(label\)\)/);
     assert.match(route, /status\(409\)/);
     assert.match(route, /update\(\{ label \}, \{ count: 'exact' \}\)/);
     assert.match(route, /currentLabel === null[^;]+\.is\('label', null\)/);
     assert.match(browser, /\/api\/admin\/vouchers\/label/);
     assert.match(browser, /beginVoucherRename/);
     assert.match(browser, /new Map\(\)/);
+});
+
+test('question reports are revision-bound and automatically retire after a clinical edit', async () => {
+    const [migration, server, browser] = await Promise.all([
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723195000_structured_question_reports.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(migration, /add column if not exists question_id text/);
+    assert.match(migration, /add column if not exists answer_revision integer/);
+    assert.match(migration, /trg_resolve_macprep_superseded_question_reports/);
+    assert.match(migration, /\[resolved_question_report\]/);
+    assert.match(server, /\.eq\('answer_revision', answerRevision\)/);
+    assert.match(server, /question_id: questionId/);
+    assert.match(browser, /answerRevision: q\.answer_revision/);
+});
+
+test('checkout sessions are reusable, server-only, and cleared after verified payment', async () => {
+    const [migration, server] = await Promise.all([
+        readFile(fileURLToPath(new URL('../supabase/migrations/20260723200000_reusable_stripe_checkout_sessions.sql', import.meta.url)), 'utf8'),
+        readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8'),
+    ]);
+    assert.match(migration, /primary key \(user_id, price_id\)/);
+    assert.match(migration, /revoke all on table public\.stripe_checkout_sessions/);
+    assert.match(server, /existing\.status === 'open'/);
+    assert.match(server, /return res\.json\(\{ url: existing\.url, reused: true \}\)/);
+    assert.match(server, /stripe\.checkout-cache-clear/);
+});
+
+test('service worker activates only with a complete core shell and refreshes version-sensitive assets first', async () => {
+    const worker = await readFile(fileURLToPath(new URL('../sw.js', import.meta.url)), 'utf8');
+    assert.match(worker, /await cache\.addAll\(CORE_SHELL\)/);
+    assert.doesNotMatch(worker, /addAll\([^)]*\)\.catch\(\(\) => \{\}\)/);
+    assert.match(worker, /url\.pathname\.endsWith\('\.css'\)/);
+    assert.match(worker, /url\.pathname\.endsWith\('\.js'\)/);
+    assert.match(worker, /cached \|\| Response\.error\(\)/);
+});
+
+test('reminder registration preserves opt-in during a temporary configuration outage', async () => {
+    const browser = await readFile(fileURLToPath(new URL('../src/app.js', import.meta.url)), 'utf8');
+    assert.match(browser, /const config = await pushConfig\(\);\s*if \(config\?\.unavailable\) return;\s*if \(!nativePushConfigured\(config\)\)/);
+    assert.match(browser, /await apiJSONOrThrow\('\/api\/push\/register-native'/);
+    assert.match(browser, /await apiJSONOrThrow\('\/api\/push\/unsubscribe'/);
 });
 
 test('full-bank tools paginate and static pricing delegates to the platform purchase flow', async () => {

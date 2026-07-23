@@ -29,7 +29,9 @@ export function validateQuestionForPublication(question) {
     choices.forEach((choice, index) => {
         const choiceText = text(choice && typeof choice === 'object' ? (choice.text ?? choice.value) : choice);
         const rationale = text(choice && typeof choice === 'object' ? choice.rationale : '');
-        if (choiceText.length < 2) errors.push(`Choice ${index + 1} is missing text.`);
+        if (choiceText.length < 2 && !/^\d$/.test(choiceText)) {
+            errors.push(`Choice ${index + 1} is missing text.`);
+        }
         if (rationale.length < 12) errors.push(`Choice ${index + 1} needs a specific teaching rationale.`);
         if (choice && typeof choice === 'object' && choice.correct === true) correctIndexes.push(index);
     });

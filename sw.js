@@ -1,14 +1,22 @@
 // MACPrep service worker — installable PWA with an app-shell cache.
 // Strategy: network-first for HTML + app.js (so deploys land immediately, with a
-// clear offline page for navigation), stale-while-revalidate for static assets
-// (icons/fonts/images load instantly), and API calls always go to the network.
-const CACHE = 'macprep-v7';
+// clear offline page for navigation), network-first for version-sensitive CSS,
+// and stale-while-revalidate only for immutable-looking media. API calls always
+// go to the network.
+const CACHE = 'macprep-v8';
 const OFFLINE = '/offline.html';
-const SHELL = ['/', '/src/app.js', OFFLINE, '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest'];
+const CORE_SHELL = ['/', '/src/app.js', '/public-shell.css?v=33', '/product-refresh.css?v=33', OFFLINE];
+const OPTIONAL_SHELL = ['/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(async (cache) => {
+        // A partial core shell must not replace the previous working cache.
+        await cache.addAll(CORE_SHELL);
+        await Promise.allSettled(OPTIONAL_SHELL.map((asset) => cache.add(asset)));
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -30,8 +38,8 @@ function networkFirst(req) {
   }).catch(() => {
     if (req.mode === 'navigate') return caches.match(OFFLINE);
     return caches.match(req).then((m) => {
-    if (m) return m;
-    return Response.error();
+      if (m) return m;
+      return Response.error();
     });
   });
 }
@@ -41,7 +49,7 @@ function staleWhileRevalidate(req) {
     const fetching = fetch(req).then((res) => {
       if (res && res.ok) c.put(req, res.clone()).catch(() => {});
       return res;
-    }).catch(() => cached);
+    }).catch(() => cached || Response.error());
     return cached || fetching;
   }));
 }
@@ -57,7 +65,11 @@ self.addEventListener('fetch', (e) => {
 
   // HTML shell + app logic -> network-first so a deploy is picked up right away;
   // navigation falls back to an explicit offline page when there's no network.
-  if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname === '/src/app.js') {
+  if (req.mode === 'navigate'
+      || url.pathname === '/'
+      || url.pathname.endsWith('.html')
+      || url.pathname.endsWith('.js')
+      || url.pathname.endsWith('.css')) {
     e.respondWith(networkFirst(req));
     return;
   }
@@ -67,9 +79,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === location.origin) e.respondWith(staleWhileRevalidate(req));
 });
 
-// --- Push notifications (Level 5 scaffold) --------------------------------------
-// The send-side (VAPID keys + a server job) is not wired yet; these handlers make the
-// SW ready to receive/display pushes once it is, so no client change is needed later.
+// --- Push notifications ----------------------------------------------------------
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) { data = { body: e.data && e.data.text() }; }

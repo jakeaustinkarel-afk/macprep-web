@@ -48,7 +48,7 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
         JSObject result = new JSObject();
         JSArray productIds = new JSArray();
         productIds.put(PREMIUM_PRODUCT_ID);
-        result.put("bridgeVersion", 1);
+        result.put("bridgeVersion", 2);
         result.put("productIds", productIds);
         result.put("supportsPurchase", true);
         result.put("supportsRestore", true);
@@ -109,7 +109,11 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
                 }
                 JSArray transactions = new JSArray();
                 for (Purchase purchase : purchases) {
-                    if (isPremiumPurchase(purchase)) transactions.put(serializePurchase(purchase));
+                    if (isPremiumProduct(purchase)
+                        && (purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
+                            || purchase.getPurchaseState() == Purchase.PurchaseState.PENDING)) {
+                        transactions.put(serializePurchase(purchase));
+                    }
                 }
                 JSObject response = new JSObject();
                 response.put("transactions", transactions);
@@ -138,7 +142,7 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
             return;
         }
         for (Purchase purchase : purchases) {
-            if (isPremiumPurchase(purchase)) {
+            if (isPremiumProduct(purchase)) {
                 call.resolve(serializePurchase(purchase));
                 return;
             }
@@ -187,9 +191,8 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
         });
     }
 
-    private boolean isPremiumPurchase(Purchase purchase) {
-        return purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED
-            && purchase.getProducts().contains(PREMIUM_PRODUCT_ID);
+    private boolean isPremiumProduct(Purchase purchase) {
+        return purchase.getProducts().contains(PREMIUM_PRODUCT_ID);
     }
 
     private JSObject serializeProduct(ProductDetails product) {
@@ -205,7 +208,10 @@ public class MacprepPurchasesPlugin extends Plugin implements PurchasesUpdatedLi
 
     private JSObject serializePurchase(Purchase purchase) {
         JSObject result = new JSObject();
-        result.put("status", "purchased");
+        result.put(
+            "status",
+            purchase.getPurchaseState() == Purchase.PurchaseState.PENDING ? "pending" : "purchased"
+        );
         result.put("purchaseToken", purchase.getPurchaseToken());
         result.put("productId", PREMIUM_PRODUCT_ID);
         return result;

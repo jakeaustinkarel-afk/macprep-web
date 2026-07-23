@@ -49,6 +49,20 @@
     function authHeaders(extra) {
         return Object.assign({ 'Content-Type': 'application/json' }, extra || {});
     }
+    function productDateKey(date = new Date()) {
+        try {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).formatToParts(date);
+            const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+            return `${values.year}-${values.month}-${values.day}`;
+        } catch (error) {
+            return date.toISOString().slice(0, 10);
+        }
+    }
     // Only allow http(s) links to be rendered as anchors (defends against
     // javascript:/data: hrefs in stored question sources).
     function safeUrl(u) { return (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : null; }
@@ -126,6 +140,18 @@
         return { resp, data };
     }
 
+    async function apiJSONOrThrow(url, opts, fallbackMessage) {
+        const { resp, data } = await apiJSON(url, opts);
+        if (!resp.ok) {
+            const error = Object.assign(
+                new Error(data?.error || fallbackMessage || `Request failed (${resp.status}).`),
+                { status: resp.status, data }
+            );
+            throw error;
+        }
+        return data;
+    }
+
     function restartForUpdatedQuestion(message) {
         ls('macprep_session', null);
         toast(message || 'That question was updated while it was open. Refreshing it now.');
@@ -147,7 +173,9 @@
                 body: JSON.stringify({ name, meta: { ...details, platform: analyticsPlatform() } }),
                 keepalive: true,
             }).catch(() => {});
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            // Analytics must never interrupt or mislabel the user's active workflow.
+        }
     }
 
     // Global loading overlay.
@@ -230,6 +258,7 @@
         const canStudy = authed && boardPrepEnabled();
         ['nav-study-wrap', 'nav-notebook', 'nav-leaderboard', 'nav-achievements', 'nav-arcade', 'nav-critical'].forEach((id) =>
             $(id) && $(id).classList.toggle('hidden', !canStudy));
+        $('nav-account-title') && $('nav-account-title').classList.toggle('hidden', !canStudy);
         $('nav-professional') && $('nav-professional').classList.toggle('hidden', !(authed && professionalResourcesEnabled()));
         if (authed) renderWhatsNewDot();
         // Admin nav — one flat "Admin" section (no dropdown). Section shows to anyone with
@@ -347,6 +376,46 @@
         toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4500);
     }
 
+    function showStartupError() {
+        let overlay = $('startup-error');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'startup-error';
+            overlay.setAttribute('role', 'alertdialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(9,12,16,.72);backdrop-filter:blur(6px);';
+            const panel = document.createElement('div');
+            panel.style.cssText = 'width:min(430px,100%);padding:26px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 24px 70px rgba(0,0,0,.35);text-align:center;';
+            const title = document.createElement('h2');
+            title.textContent = 'MACPrep is having trouble loading';
+            title.style.margin = '0 0 10px';
+            const body = document.createElement('p');
+            body.textContent = 'Your account and study progress are safe. Please retry in a moment.';
+            body.className = 'sub';
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.className = 'btn';
+            retry.textContent = 'Retry';
+            retry.addEventListener('click', async () => {
+                retry.disabled = true;
+                retry.textContent = 'Retrying…';
+                try {
+                    await bootAuthedSession();
+                    overlay.remove();
+                } catch (error) {
+                    retry.disabled = false;
+                    retry.textContent = 'Retry';
+                    toast('MACPrep is still unavailable. Please try again shortly.');
+                }
+            });
+            panel.append(title, body, retry);
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+        }
+        const retry = overlay.querySelector('button');
+        if (retry) setTimeout(() => retry.focus(), 0);
+    }
+
     // Screen-reader live announcement (clear-then-set forces re-announcement).
     function announce(msg) {
         const el = $('sr-announce'); if (!el) return;
@@ -378,7 +447,8 @@
             track('login');
             await bootAuthedSession();
         } catch (err) {
-            toast('Login failed: ' + err.message);
+            if (state.token && err.status >= 500) showStartupError();
+            else toast('Login failed: ' + err.message);
         } finally {
             state.loginInFlight = false;
             if (btn) btn.textContent = 'Sign In';
@@ -443,7 +513,13 @@
                 if (pane) pane.innerHTML = '<div style="text-align:center;padding:10px 0;"><div style="font-size:34px;margin-bottom:8px;">✉️</div><h2 style="margin:0 0 8px;">Check your email</h2><p class="sub" style="margin:0;">We sent a confirmation link to <strong>' + email.replace(/[<>&"]/g, '') + '</strong>. Click it and your free questions are ready.</p></div>';
             }
         } catch (err) {
-            if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = err.message; }
+            if (state.token && Number(err.status) >= 500) {
+                if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = 'Your account was created, but MACPrep could not finish loading it.'; }
+                showStartupError();
+            } else if (msg) {
+                msg.style.color = 'var(--bad)';
+                msg.textContent = err.message;
+            }
             if (btn) { btn.disabled = false; btn.textContent = 'Create my free account →'; }
         } finally {
             state.signupInFlight = false;
@@ -451,19 +527,31 @@
     }
 
     let signOutInFlight = false;
-    async function signOut() {
+    async function clearLocalSignedOutState() {
+        if (_gamSyncTimer) { clearTimeout(_gamSyncTimer); _gamSyncTimer = null; }
+        if (_gamSyncRetryTimer) { clearTimeout(_gamSyncRetryTimer); _gamSyncRetryTimer = null; }
+        try {
+            const webSubscription = pushSupported() ? await currentPushSub() : null;
+            if (webSubscription) await webSubscription.unsubscribe();
+        } catch (error) { /* the server-side subscription has already been removed */ }
+        try { localStorage.removeItem('macprep_reminders_on'); } catch (error) {}
+        setToken(null); setRefresh();
+        ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
+        state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
+        $('startup-error')?.remove();
+        go('login');
+        return true;
+    }
+    async function signOut({ forceLocal = false } = {}) {
         if (signOutInFlight) return false;
         signOutInFlight = true;
         stopExamTimer();
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST', headers: authHeaders(), keepalive: true });
             if (!response.ok) throw new Error('The server did not confirm sign-out.');
-            setToken(null); setRefresh();
-            ls('macprep_premium_unlocked', null); ls('macprep_user_email', null); ls('macprep_session', null);
-            state.token = null; state.profile = null; state.questions = []; state.catalog = { total: 0, categories: [] }; state.qotd = null; state.session = null; state.gam = null;
-            go('login');
-            return true;
+            return await clearLocalSignedOutState();
         } catch (error) {
+            if (forceLocal) return await clearLocalSignedOutState();
             toast('Could not sign out. Check your connection and try again.');
             return false;
         } finally {
@@ -490,12 +578,18 @@
     async function loadProfile() {
         const tz = (function () { try { return new Date().getTimezoneOffset(); } catch (e) { return 0; } })();
         const { resp, data } = await apiJSON('/api/user/profile?tz=' + tz, { headers: authHeaders() });
-        if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
-        state.profile = data.profile || null;
+        if (resp.status === 401) {
+            await signOut({ forceLocal: true });
+            throw Object.assign(new Error('Session expired.'), { status: 401 });
+        }
+        if (!resp.ok || !data?.profile) {
+            throw Object.assign(new Error(data?.error || 'Could not load your account.'), { status: resp.status });
+        }
+        state.profile = data.profile;
         if (state.profile) {
             const P = state.profile;
             state.gam = { bonus_xp: Number(P.bonus_xp) || 0, ach_claimed: Array.isArray(P.ach_claimed) ? P.ach_claimed.slice() : [], daily_state: (P.daily_state && typeof P.daily_state === 'object') ? P.daily_state : {} };
-            try { migrateLocalGamification(); recomputeBonusXp(); } catch (e) {}
+            try { clearLegacyGamification(); recomputeBonusXp(); } catch (e) {}
         }
         // Theme & font follow your ACCOUNT across devices: the saved profile value is the
         // source of truth and is applied on load. setTheme/setFont also update this device's
@@ -515,9 +609,15 @@
 
     async function loadQuestions() {
         const { resp, data } = await apiJSON('/api/questions', { headers: authHeaders() });
-        if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
+        if (resp.status === 401) {
+            await signOut({ forceLocal: true });
+            throw Object.assign(new Error('Session expired.'), { status: 401 });
+        }
+        if (!resp.ok || !data?.catalog) {
+            throw Object.assign(new Error(data?.error || 'Could not load the question catalog.'), { status: resp.status });
+        }
         state.questions = [];
-        state.catalog = (data && data.catalog) || { total: 0, categories: [] };
+        state.catalog = data.catalog;
         return state.questions;
     }
 
@@ -527,7 +627,10 @@
         const { resp, data } = await apiJSON('/api/study-session', {
             method: 'POST', headers: authHeaders(), body: JSON.stringify(options || {}),
         });
-        if (resp.status === 401) { signOut(); throw new Error('Session expired.'); }
+        if (resp.status === 401) {
+            await signOut({ forceLocal: true });
+            throw Object.assign(new Error('Session expired.'), { status: 401 });
+        }
         if (resp.status === 402) {
             if (!isNativeApp()) startCheckout();
             else openUpgradeModal('studymode');
@@ -883,7 +986,7 @@
         // Show the goal chooser only until the user has picked a goal or set an exam date.
         if (!state.token || p.target_exam_date || p.study_goal) { el.classList.add('hidden'); return; }
         el.classList.remove('hidden');
-        const today = new Date().toISOString().slice(0, 10);
+        const today = productDateKey();
         el.innerHTML = `<h3 style="margin-top:0;">What brings you to MACPrep?</h3>
             <p class="sub" style="margin:0 0 16px;">Pick what fits — it just tailors your dashboard. You can change it anytime in your profile.</p>
             <div style="border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;">
@@ -1061,8 +1164,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 49;
+    const WHATS_NEW_VERSION = 50;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 23', title: 'Study progress that stays accurate', desc: 'Study-session retries can no longer duplicate attempts or grade against a question that changed after the session began. Recommended, diagnostic, and mock sessions now use current question revisions, due reviews, unseen coverage, and the intended exam-domain mix; saved study actions, reminders, reports, sign-out, and purchase recovery also wait for server confirmation before showing success. App loading and keyboard navigation are more resilient as well. Available on the web and current MACPrep mobile shell; improved Android purchase recovery and launcher resources are prepared for the next Android build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Permanent account deletion confirms your current password, and study and print views apply tighter content handling. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
@@ -1262,32 +1366,44 @@
     // XP = 4 per question answered + 8 more for each correct (an attempt = 4 XP, a correct answer = 12).
     // Cost to go from level L to L+1 = 50 + (L-1)*25, capped at 100 — fast early levels, gently steepening.
     // Bonus XP earned from quests/chests (accumulates on top of the stats-derived XP).
-    function bonusXp() { if (state.gam && typeof state.gam.bonus_xp === 'number') return state.gam.bonus_xp; try { return parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; } catch (e) { return 0; } }
+    function bonusXp() { return state.gam && typeof state.gam.bonus_xp === 'number' ? state.gam.bonus_xp : 0; }
     function addBonusXp(n) {
         n = n || 0; if (!n) return;
-        try { localStorage.setItem('macprep_bonus_xp', String((parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0) + n)); } catch (e) {}
         if (state.gam) { state.gam.bonus_xp = (state.gam.bonus_xp || 0) + n; scheduleGamSync(); }
     }
     let _gamSyncTimer = null;
+    let _gamSyncRetryTimer = null;
+    let _gamSyncFailures = 0;
     function scheduleGamSync() { if (!state.gam || !state.token) return; clearTimeout(_gamSyncTimer); _gamSyncTimer = setTimeout(() => { _gamSyncTimer = null; pushGamSync(); }, 1200); }
     async function pushGamSync() {
         if (!state.gam || !state.token) return;
         try {
             const g = state.gam;
-            const { resp, data } = await apiJSON('/api/gamification', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ bonus_xp: g.bonus_xp || 0, ach_claimed: g.ach_claimed || [], daily_state: g.daily_state || {} }) });
-            if (resp && resp.ok && data && state.gam) {
+            const { data } = await apiJSONOrThrow('/api/gamification', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ bonus_xp: g.bonus_xp || 0, ach_claimed: g.ach_claimed || [], daily_state: g.daily_state || {} }) });
+            _gamSyncFailures = 0;
+            if (data && state.gam) {
                 state.gam.bonus_xp = Math.max(state.gam.bonus_xp || 0, data.bonus_xp || 0);
                 if (Array.isArray(data.ach_claimed)) state.gam.ach_claimed = data.ach_claimed;
                 if (data.daily_state && typeof data.daily_state === 'object') state.gam.daily_state = data.daily_state;
             }
-        } catch (e) {}
+        } catch (error) {
+            if (!state.gam || !state.token || _gamSyncRetryTimer) return;
+            _gamSyncFailures += 1;
+            const delay = Math.min(30000, 2000 * (2 ** Math.min(_gamSyncFailures - 1, 4)));
+            _gamSyncRetryTimer = setTimeout(() => {
+                _gamSyncRetryTimer = null;
+                pushGamSync();
+            }, delay);
+        }
     }
-    function migrateLocalGamification() {
-        if (!state.gam) return; let changed = false;
-        try { const lb = parseInt(localStorage.getItem('macprep_bonus_xp') || '0', 10) || 0; if (lb > (state.gam.bonus_xp || 0)) { state.gam.bonus_xp = lb; changed = true; } } catch (e) {}
-        try { const la = JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]'); if (Array.isArray(la) && la.length) { const set = new Set(state.gam.ach_claimed || []); la.forEach((t) => { if (typeof t === 'string' && !set.has(t)) { set.add(t); changed = true; } }); state.gam.ach_claimed = Array.from(set); } } catch (e) {}
-        try { const k = qotdDayKey(); const ld = JSON.parse(localStorage.getItem('macprep_daily_' + k) || 'null'); if (ld && typeof ld === 'object') { const c = state.gam.daily_state[k] || {}; state.gam.daily_state[k] = { answered: Math.max(+c.answered || 0, +ld.answered || 0), correct: Math.max(+c.correct || 0, +ld.correct || 0), specs: [...new Set([...(c.specs || []), ...(ld.specs || [])])], rewarded: [...new Set([...(c.rewarded || []), ...(ld.rewarded || [])])], chest: !!(c.chest || ld.chest) }; changed = true; } } catch (e) {}
-        if (changed) scheduleGamSync();
+    function clearLegacyGamification() {
+        try {
+            const exact = ['macprep_bonus_xp', 'macprep_ach_claimed', 'macprep_questdays', 'macprep_last_level'];
+            exact.forEach((key) => localStorage.removeItem(key));
+            Object.keys(localStorage)
+                .filter((key) => key.startsWith('macprep_daily_'))
+                .forEach((key) => localStorage.removeItem(key));
+        } catch (e) {}
     }
     function recomputeBonusXp() {
         if (!state.gam) return; let xp = 0;
@@ -1315,10 +1431,11 @@
     };
     // Fires when the user's level increased since we last checked. First run after ship = baseline only.
     function checkLevelUp() {
-        if (!state.token) return;
+        if (!state.token || !state.profile?.user_id) return;
         const cur = xpLevel(state.profile || {}).level;
-        const prev = parseInt(ls('macprep_last_level') || '', 10);
-        try { localStorage.setItem('macprep_last_level', String(cur)); } catch (e) {}
+        const key = `macprep_last_level_${state.profile.user_id}`;
+        const prev = parseInt(ls(key) || '', 10);
+        try { localStorage.setItem(key, String(cur)); } catch (e) {}
         if (isNaN(prev)) return;           // baseline the existing level silently — no spurious celebration
         if (cur > prev) showLevelUp(cur, prev);
     }
@@ -1356,13 +1473,12 @@
     function closeLevelUp() { const o = $('levelup-overlay'); if (o) o.remove(); }
 
     // ---- Daily Quests (reset at 7:00 AM ET, same boundary as the Question of the Day) ----
-    function dailyKey() { return 'macprep_daily_' + qotdDayKey(); }
-    function getDaily() { if (state.gam) { return state.gam.daily_state[qotdDayKey()] || {}; } try { return JSON.parse(localStorage.getItem(dailyKey()) || '{}'); } catch (e) { return {}; } }
+    function getDaily() { return state.gam ? (state.gam.daily_state[qotdDayKey()] || {}) : {}; }
     // Questions answered today, LIVE — the client daily counter (incremented on every
     // answer) or the server's value, whichever is higher. Keeps the momentum rings and
     // daily quests consistent and reflecting the current session, not a stale profile.
     function answeredTodayLive() { const p = state.profile || {}; return Math.max(p.answered_today || 0, (getDaily().answered || 0)); }
-    function saveDaily(d) { try { localStorage.setItem(dailyKey(), JSON.stringify(d)); } catch (e) {} if (state.gam) { state.gam.daily_state[qotdDayKey()] = d; scheduleGamSync(); } }
+    function saveDaily(d) { if (state.gam) { state.gam.daily_state[qotdDayKey()] = d; scheduleGamSync(); } }
     function bumpDaily(patch) {
         const d = getDaily();
         if (patch.answered) d.answered = (d.answered || 0) + patch.answered;
@@ -1370,7 +1486,10 @@
         if (patch.specialty) { d.specs = d.specs || []; if (d.specs.indexOf(patch.specialty) < 0) d.specs.push(patch.specialty); }
         saveDaily(d);
     }
-    function questDayCount() { try { return (JSON.parse(localStorage.getItem('macprep_questdays') || '[]') || []).length; } catch (e) { return 0; } }
+    function questDayCount() {
+        const days = state.gam?.daily_state || {};
+        return Object.values(days).filter((day) => day && day.chest === true).length;
+    }
     const QUEST_XP = 15, CHEST_XP = 50;
     function dailyQuests() {
         const p = state.profile || {}, d = getDaily();
@@ -1408,11 +1527,6 @@
         if (!dq.allDone || dq.chestOpened) return;
         const d = getDaily(); d.chest = true; saveDaily(d);
         addBonusXp(CHEST_XP);
-        try {
-            const days = JSON.parse(localStorage.getItem('macprep_questdays') || '[]');
-            const k = qotdDayKey();
-            if (days.indexOf(k) < 0) { days.push(k); localStorage.setItem('macprep_questdays', JSON.stringify(days.slice(-400))); }
-        } catch (e) {}
         try { toast('+' + CHEST_XP + ' XP — chest opened!'); } catch (e) {}
         renderDailyQuests(); renderMomentum(); checkLevelUp();
     }
@@ -1756,7 +1870,7 @@
     // In auto mode, persist the current most-recent title so it also shows on the
     // leaderboard (server-sourced). Fire-and-forget; only writes when it actually changes.
     function maybeAutoApplyTitle() {
-        if (!state.profile || !titleAutoOn()) return;
+        if (!state.profile || !boardPrepEnabled() || !titleAutoOn()) return;
         const auto = mostRecentEarnedTitle();
         if (!auto || auto === state.profile.selected_title) return;
         state.profile.selected_title = auto;
@@ -1772,7 +1886,7 @@
     async function saveTitle(t) {
         closeTitlePicker();
         try {
-            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: t || '', auto: false }) });
+            await apiJSONOrThrow('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: t || '', auto: false }) }, 'Could not save title.');
             if (state.profile) { state.profile.selected_title = t || null; state.profile.title_auto = false; }
             renderSidebarAccount(); if ($('momentum-card')) renderMomentum();
             toast(t ? `Title set: ${t}` : 'Title cleared.', 'ok');
@@ -1783,7 +1897,7 @@
         closeTitlePicker();
         const auto = mostRecentEarnedTitle();
         try {
-            await apiJSON('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: auto || '', auto: true }) });
+            await apiJSONOrThrow('/api/user/cosmetics', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ title: auto || '', auto: true }) }, 'Could not save title.');
             if (state.profile) { state.profile.title_auto = true; state.profile.selected_title = auto || null; }
             renderSidebarAccount(); if ($('momentum-card')) renderMomentum();
             toast(auto ? `Automatic — showing ${auto}` : 'Automatic — your newest title will show here.', 'ok');
@@ -1791,6 +1905,7 @@
     }
     function openTitlePicker() {
         closeNavMenus();
+        if (!boardPrepEnabled()) return;
         const titles = unlockedTitles();
         const auto = titleAutoOn();
         // A specific title / "No title" is "active" only when the user has turned OFF
@@ -1835,11 +1950,10 @@
     function grantAchievementXp() {
         if (!state.profile) return;
         const A = computeAchievements();
-        let claimed; try { claimed = new Set(state.gam ? (state.gam.ach_claimed || []) : JSON.parse(localStorage.getItem('macprep_ach_claimed') || '[]')); } catch (e) { claimed = new Set(); }
+        const claimed = new Set(state.gam ? (state.gam.ach_claimed || []) : []);
         let gained = 0, n = 0;
         A.forEach((a) => { const key = achievementKey(a); if (a.met && !claimed.has(key)) { claimed.add(key); gained += (a.xp || 0); n++; } });
         if (gained > 0) {
-            try { localStorage.setItem('macprep_ach_claimed', JSON.stringify(Array.from(claimed))); } catch (e) {}
             if (state.gam) { state.gam.ach_claimed = Array.from(claimed); scheduleGamSync(); }
             addBonusXp(gained);
             toast(`+${gained} XP — ${n} achievement${n === 1 ? '' : 's'} unlocked!`, 'ok');
@@ -2629,7 +2743,7 @@
         const flags = new Set((state.profile && state.profile.flagged_ids) || []);
         const willFlag = !flags.has(id);
         try {
-            await apiJSON('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, flagged: willFlag }) });
+            await apiJSONOrThrow('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, flagged: willFlag }) }, 'Could not update flag.');
             if (willFlag) flags.add(id); else flags.delete(id);
             if (state.profile) state.profile.flagged_ids = Array.from(flags);
             if (btn) { btn.classList.toggle('on', willFlag); btn.innerHTML = revFlagInner(willFlag); }
@@ -2641,7 +2755,7 @@
         const cards = new Set((state.profile && state.profile.flashcard_ids) || []);
         const willAdd = !cards.has(id);
         try {
-            await apiJSON('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, saved: willAdd }) });
+            await apiJSONOrThrow('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: id, saved: willAdd }) }, 'Could not update your deck.');
             if (willAdd) cards.add(id); else cards.delete(id);
             if (state.profile) state.profile.flashcard_ids = Array.from(cards);
             if (btn) { btn.classList.toggle('on', willAdd); btn.innerHTML = revCardInner(willAdd); }
@@ -2653,12 +2767,12 @@
         const cards = new Set((state.profile && state.profile.flashcard_ids) || []);
         const willAdd = !cards.has(q.id);
         try {
-            await apiJSON('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, saved: willAdd }) });
+            await apiJSONOrThrow('/api/user/flashcard', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, saved: willAdd }) }, 'Could not update your deck.');
             if (willAdd) cards.add(q.id); else cards.delete(q.id);
             if (state.profile) state.profile.flashcard_ids = Array.from(cards);
             updateFlashcardBtn();
             toast(willAdd ? 'Added to your flashcard deck.' : 'Removed from your deck.', 'ok');
-        } catch (e) { /* ignore */ }
+        } catch (e) { toast(e.message || 'Could not update your deck right now.'); }
     }
     function updateFlashcardBtn() {
         const btn = $('flashcard-btn'); const s = state.session; if (!btn || !s) return;
@@ -2847,11 +2961,11 @@
         const flags = new Set((state.profile && state.profile.flagged_ids) || []);
         const willFlag = !flags.has(q.id);
         try {
-            await apiJSON('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, flagged: willFlag }) });
+            await apiJSONOrThrow('/api/user/flag', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: q.id, flagged: willFlag }) }, 'Could not update flag.');
             if (willFlag) flags.add(q.id); else flags.delete(q.id);
             if (state.profile) state.profile.flagged_ids = Array.from(flags);
             updateFlagButton();
-        } catch (e) { /* ignore */ }
+        } catch (e) { toast(e.message || 'Could not update flag right now.'); }
     }
 
     function updateFlagButton() {
@@ -2867,18 +2981,21 @@
         const q = s.pool[s.index]; if (!q) return;
         ta.value = ''; ta.dataset.qid = q.id;
         try {
-            const { data } = await apiJSON('/api/user/note?questionId=' + encodeURIComponent(q.id), { headers: authHeaders() });
+            const data = await apiJSONOrThrow('/api/user/note?questionId=' + encodeURIComponent(q.id), { headers: authHeaders() }, 'Could not load your note.');
             if (ta.dataset.qid === q.id) ta.value = data.note || '';
-        } catch (e) { /* ignore */ }
+        } catch (e) { toast(e.message || 'Could not load your note.'); }
     }
 
     async function saveNote() {
         const ta = $('note-text'); if (!ta || !ta.dataset.qid) return;
         const msg = $('note-msg');
         try {
-            await apiJSON('/api/user/note', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: ta.dataset.qid, note: ta.value }) });
+            await apiJSONOrThrow('/api/user/note', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ questionId: ta.dataset.qid, note: ta.value }) }, 'Could not save your note.');
             if (msg) { msg.textContent = 'Saved'; setTimeout(() => { msg.textContent = ''; }, 1500); }
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            if (msg) msg.textContent = 'Not saved';
+            toast(e.message || 'Could not save your note.');
+        }
     }
 
     // Report a content problem with the current question → feedback queue.
@@ -2889,10 +3006,15 @@
         if (!txt) { ta && ta.focus(); return; }
         const msg = $('report-msg');
         try {
-            await apiJSON('/api/feedback', {
+            await apiJSONOrThrow('/api/feedback', {
                 method: 'POST', headers: authHeaders(),
-                body: JSON.stringify({ kind: 'question_report', message: `Question ${q.id} [${q.category || q.domain_name || '?'}]: ${txt}` }),
-            });
+                body: JSON.stringify({
+                    kind: 'question_report',
+                    questionId: q.id,
+                    answerRevision: q.answer_revision,
+                    message: `Question ${q.id} [${q.category || q.domain_name || '?'}]: ${txt}`,
+                }),
+            }, 'Could not send the question report.');
             if (ta) ta.value = '';
             if (msg) { msg.textContent = 'Thanks — reported.'; setTimeout(() => { msg.textContent = ''; }, 2500); }
             toast("Thanks — we'll review this question.", 'ok');
@@ -3029,7 +3151,7 @@
         try {
             const r1 = await apiJSON('/api/user/profile', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ full_name }) });
             if (!r1.resp.ok) throw new Error((r1.data && r1.data.error) || 'Could not save.');
-            await apiJSON('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ opt_in: true }) });
+            await apiJSONOrThrow('/api/leaderboard/settings', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ opt_in: true }) }, 'Could not join the leaderboard.');
             await loadProfile();
             await loadLeaderboard();
         } catch (e) { if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = e.message; } }
@@ -3323,7 +3445,12 @@
     ];
     let applicantDirectoryData = null;
     let applicantDirectoryPromise = null;
-    function isoDateOffset(days) { const d = new Date(Date.now() + days * 86400000); return d.toISOString().slice(0, 10); }
+    function isoDateOffset(days) {
+        const current = productDateKey();
+        const date = new Date(`${current}T12:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
+    }
     function displayDate(value) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return '';
         const d = new Date(`${value}T12:00:00`);
@@ -3590,10 +3717,10 @@
         wrap.onclick = (e) => { if (e.target === wrap) closeCommitmentModal(); };
         wrap.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="commit-title" style="box-sizing:border-box;width:100%;max-width:470px;max-height:90vh;overflow:auto;padding:22px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);">
             <div class="applicant-kicker">YOUR NEXT CHAPTER</div><h2 id="commit-title" style="margin:6px 0 5px;font-size:22px;">Starting AA school?</h2><p class="sub" style="margin:0 0 16px;">Congratulations. Tell us where you committed, and we will prepare your student dashboard without changing your premium access.</p>
-            <label>Program and campus</label><select id="commit-program" onchange="MACPrep.onCommitProgramChange()" style="${inp}">${programOptions(p.training_program || '')}</select>
-            <div id="commit-program-other-wrap" class="hidden"><label>Program name</label><input id="commit-program-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}"></div>
-            <div class="grid cols-2"><div><label>Expected matriculation date</label><input id="commit-matriculation" type="date" value="${p.matriculation_date || ''}" style="${inp}"></div><div><label>Expected graduation date</label><input id="commit-graduation" type="date" value="${p.graduation_date || ''}" style="${inp}"></div></div>
-            <label>Target board date <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></label><input id="commit-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
+            <label for="commit-program">Program and campus</label><select id="commit-program" onchange="MACPrep.onCommitProgramChange()" style="${inp}">${programOptions(p.training_program || '')}</select>
+            <div id="commit-program-other-wrap" class="hidden"><label for="commit-program-other">Program name</label><input id="commit-program-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}"></div>
+            <div class="grid cols-2"><div><label for="commit-matriculation">Expected matriculation date</label><input id="commit-matriculation" type="date" value="${p.matriculation_date || ''}" style="${inp}"></div><div><label for="commit-graduation">Expected graduation date</label><input id="commit-graduation" type="date" value="${p.graduation_date || ''}" style="${inp}"></div></div>
+            <label for="commit-exam">Target board date <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></label><input id="commit-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
             <div style="display:flex;gap:10px;"><button class="btn ghost" type="button" onclick="MACPrep.closeCommitmentModal()">Cancel</button><button class="btn" id="commit-save" type="button" style="flex:1;" onclick="MACPrep.submitCommitment()">Save commitment</button></div><div id="commit-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div>
         </div>`;
         document.body.appendChild(wrap); onCommitProgramChange();
@@ -4055,6 +4182,11 @@
         // TUTOR mode: grade immediately.
         if (s.locked) return;
         const currentQ = s.pool[s.index];
+        s.tutorSubmissionIds = s.tutorSubmissionIds || {};
+        const tutorSubmissionKey = `${s.index}:${String(currentQ.id)}:${Number(currentQ.answer_revision) || 1}`;
+        const submissionId = s.tutorSubmissionIds[tutorSubmissionKey] || newSubmissionId();
+        s.tutorSubmissionIds[tutorSubmissionKey] = submissionId;
+        saveSession();
         s.locked = true;
         const buttons = Array.from($('choices-container').querySelectorAll('.choice-option-node'));
         buttons.forEach((b) => { b.disabled = true; b.style.cursor = 'default'; });
@@ -4063,6 +4195,7 @@
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({
                     questionId,
+                    submissionId,
                     choiceIndex: selectedIndex,
                     choiceId: currentQ.choices?.[selectedIndex]?.id,
                     answerRevision: currentQ.answer_revision,
@@ -4071,7 +4204,7 @@
                     answer_changed: (((s._selCount && s._selCount[s.index]) || 1) > 1),
                 }),
             });
-            if (resp.status === 401) { signOut(); return; }
+            if (resp.status === 401) { await signOut({ forceLocal: true }); return; }
             if (resp.status === 402) { showPaywall(data.limit); return; }
             if (resp.status === 409 && data.stale_question) {
                 restartForUpdatedQuestion(data.error);
@@ -4102,6 +4235,7 @@
             }
             bumpDaily({ answered: 1, correct: data.correct ? 1 : 0, specialty: currentQ.category || currentQ.domain_name }); // daily-quest progress
             s.answers[s.index] = { selectedIndex, graded: data };
+            saveSession();
             applyGradedView(data, selectedIndex);
             $('confidence-row') && ($('confidence-row').style.display = 'none');
             announce(data.correct ? 'Correct.' : `Incorrect. The correct answer is ${String.fromCharCode(65 + (data.correctIndex || 0))}.`);
@@ -4648,8 +4782,7 @@
         return platform === 'ios' || platform === 'android' ? platform : null;
     }
 
-    async function loadNativePremiumProduct() {
-        if (_nativePremiumProduct) return _nativePremiumProduct;
+    async function nativePurchaseContext() {
         const plugin = nativePurchasePlugin();
         if (!plugin) throw new Error('This app version needs to be updated before in-app purchase is available.');
         if (typeof plugin.getCapabilities !== 'function') throw new Error('Update MACPrep before purchasing full access.');
@@ -4668,6 +4801,12 @@
             : NATIVE_PREMIUM_PRODUCT_ID;
         const supportedProducts = Array.isArray(capabilities?.productIds) ? capabilities.productIds : [];
         if (!supportedProducts.includes(productId)) throw new Error('This app version does not support the current full-access product.');
+        return { plugin, platform, productId };
+    }
+
+    async function loadNativePremiumProduct() {
+        if (_nativePremiumProduct) return _nativePremiumProduct;
+        const { plugin, productId } = await nativePurchaseContext();
         const data = await plugin.getProducts({ productId });
         const product = Array.isArray(data?.products)
             ? data.products.find((item) => item && item.productId === productId)
@@ -4692,56 +4831,58 @@
     async function verifyNativePurchase(platform, transaction) {
         if (platform === 'ios') {
             if (!transaction?.transactionId) throw new Error('Apple did not return a transaction.');
-            const { resp, data } = await apiJSON('/api/mobile-purchases/verify', {
+            const { data } = await apiJSONOrThrow('/api/mobile-purchases/verify', {
                 method: 'POST', headers: authHeaders(),
                 body: JSON.stringify({ store: 'apple', transaction_id: transaction.transactionId }),
             });
-            if (!resp.ok || !data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Apple purchase.');
+            if (!data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Apple purchase.');
             return data;
         }
         if (!transaction?.purchaseToken) throw new Error('Google Play did not return a purchase.');
-        const { resp, data } = await apiJSON('/api/mobile-purchases/verify', {
+        const { data } = await apiJSONOrThrow('/api/mobile-purchases/verify', {
             method: 'POST', headers: authHeaders(),
             body: JSON.stringify({ store: 'google_play', purchase_token: transaction.purchaseToken }),
         });
-        if (!resp.ok || !data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Google Play purchase.');
+        if (!data?.premium_unlocked) throw new Error(data?.error || 'Could not verify this Google Play purchase.');
         return data;
+    }
+
+    async function finishAppleTransaction(plugin, transaction) {
+        if (!transaction?.transactionId || typeof plugin.finishTransaction !== 'function') return false;
+        const result = await plugin.finishTransaction({ transactionId: transaction.transactionId });
+        return result?.finished !== false;
     }
 
     async function startNativePurchase(btn) {
         if (!state.token || !state.profile?.user_id) { toast('Sign in before purchasing full access.', 'bad'); return; }
         if (state.profile.premium_unlocked) { closeUpgradeModal(); toast('This account already has full access.', 'ok'); return; }
-        const plugin = nativePurchasePlugin();
-        const platform = nativePurchasePlatform();
-        if (!plugin || !platform) { toast('In-app purchase is unavailable in this app version.', 'bad'); return; }
         if (btn) { btn.disabled = true; btn.dataset.prev = btn.textContent; btn.textContent = 'Waiting for store...'; }
         try {
+            const product = await loadNativePremiumProduct();
+            const { plugin, platform } = await nativePurchaseContext();
             const transaction = await plugin.purchase({
-                productId: NATIVE_PREMIUM_PRODUCT_ID,
+                productId: product.productId,
                 appAccountToken: state.profile.user_id,
             });
             if (transaction?.status === 'cancelled') return;
-            if (transaction?.status === 'pending') { toast('Your purchase is pending. Return after Google Play completes it.', 'ok'); return; }
+            if (transaction?.status === 'pending') { toast('Your purchase is pending with the store. Full access will unlock after it completes.', 'ok'); return; }
             if (btn) btn.textContent = 'Verifying purchase...';
-            await verifyNativePurchase(platform, transaction);
-            if (
-                platform === 'ios'
-                && transaction?.transactionId
-                && typeof plugin.finishTransaction === 'function'
-            ) {
+            const verification = await verifyNativePurchase(platform, transaction);
+            let finalizationPending = platform === 'android' && verification?.acknowledged !== true;
+            if (platform === 'ios') {
                 try {
-                    await plugin.finishTransaction({ transactionId: transaction.transactionId });
+                    finalizationPending = !(await finishAppleTransaction(plugin, transaction));
                 } catch (finishError) {
-                    // Access is already recorded. Leave the StoreKit transaction
-                    // unfinished so the next restore can retry completion.
-                    console.warn('Apple transaction completion will retry:', finishError?.message || finishError);
+                    finalizationPending = true;
                 }
             }
             await loadProfile();
             closeUpgradeModal();
             renderDashboard();
             track('upgrade_success', { via: platform });
-            toast('Full access is unlocked on every device using this MACPrep account.', 'ok');
+            toast(finalizationPending
+                ? 'Full access is unlocked. Use Restore purchases shortly to finish the store receipt.'
+                : 'Full access is unlocked on every device using this MACPrep account.', 'ok');
         } catch (error) {
             toast(error.message || 'Could not complete this purchase.', 'bad');
         } finally {
@@ -4751,18 +4892,32 @@
 
     async function restoreNativePurchases() {
         if (!state.token || !state.profile?.user_id) { toast('Sign in before restoring purchases.', 'bad'); return; }
-        const plugin = nativePurchasePlugin();
-        const platform = nativePurchasePlatform();
-        if (!plugin || !platform) { toast('In-app purchase is unavailable in this app version.', 'bad'); return; }
         try {
+            const { plugin, platform } = await nativePurchaseContext();
             const result = await plugin.restorePurchases();
             const transactions = Array.isArray(result?.transactions) ? result.transactions : [];
-            for (const transaction of transactions) await verifyNativePurchase(platform, transaction);
+            let finalizationPending = false;
+            let verifiedCount = 0;
+            for (const transaction of transactions) {
+                if (transaction?.status === 'pending' || transaction?.status === 'cancelled') continue;
+                const verification = await verifyNativePurchase(platform, transaction);
+                verifiedCount += 1;
+                if (platform === 'android' && verification?.acknowledged !== true) finalizationPending = true;
+                if (platform === 'ios') {
+                    try {
+                        if (!(await finishAppleTransaction(plugin, transaction))) finalizationPending = true;
+                    } catch (finishError) {
+                        finalizationPending = true;
+                    }
+                }
+            }
             await loadProfile();
-            if (state.profile?.premium_unlocked) {
+            if (verifiedCount > 0 && state.profile?.premium_unlocked) {
                 closeUpgradeModal();
                 renderDashboard();
-                toast('Full access restored to this device.', 'ok');
+                toast(finalizationPending
+                    ? 'Full access is restored. The store receipt still needs another finalization attempt.'
+                    : 'Full access restored to this device.', 'ok');
             } else {
                 toast('No Store purchase was found for this MACPrep account. Web and program access can be restored with Refresh account access.', 'bad');
             }
@@ -4886,7 +5041,7 @@
         toast('Loading Critical Events…');
         try {
             const { resp, data } = await apiJSON('/api/critical-events', { headers: authHeaders() });
-            if (resp.status === 401) { signOut(); return; }
+            if (resp.status === 401) { await signOut({ forceLocal: true }); return; }
             if (resp.status === 402) { openUpgradeModal('critical'); return; }
             if (!resp.ok || !data || !data.html) throw new Error((data && data.error) || 'Unavailable.');
             try { track('critical_events_open', { count: data.count || 0 }); } catch (e) {}
@@ -5065,7 +5220,7 @@
         try {
             const qstr = (ids && ids.length) ? ('ids=' + encodeURIComponent(ids.slice(0, 200).join(','))) : ('count=' + (count || 20));
             const { resp, data } = await apiJSON('/api/flashcards?' + qstr, { headers: authHeaders() });
-            if (resp.status === 401) { signOut(); return; }
+            if (resp.status === 401) { await signOut({ forceLocal: true }); return; }
             if (resp.status === 402) { openUpgradeModal('flashcards'); return; }
             if (!resp.ok || !Array.isArray(data.cards) || !data.cards.length) throw new Error(data.error || 'No cards available.');
             state.flash = { cards: data.cards, i: 0, revealed: false, right: 0, input: '' };
@@ -5246,8 +5401,13 @@
     let _pushVapid = null; // cached { enabled, publicKey }
     async function pushConfig() {
         if (_pushVapid) return _pushVapid;
-        try { const { data } = await apiJSON('/api/push/vapid-public'); _pushVapid = data || { enabled: false }; } catch (e) { _pushVapid = { enabled: false }; }
-        return _pushVapid;
+        try {
+            const { data } = await apiJSONOrThrow('/api/push/vapid-public');
+            _pushVapid = data || { enabled: false };
+            return _pushVapid;
+        } catch (error) {
+            return { enabled: false, native: false, unavailable: true };
+        }
     }
     async function currentPushSub() {
         try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
@@ -5257,24 +5417,68 @@
     // Fully inert in a browser (window.Capacitor absent) so the Web Push path below is untouched.
     function isNativeApp() { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
     function nativePush() { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null; }
+    function nativePushConfigured(config) {
+        const platform = (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || '';
+        return config?.nativePlatforms ? !!config.nativePlatforms[platform] : !!config?.native;
+    }
     let _nativeListenersBound = false;
+    let _nativeRegistrationWaiter = null;
+    function settleNativeRegistration(error, value) {
+        const waiter = _nativeRegistrationWaiter;
+        if (!waiter) return;
+        _nativeRegistrationWaiter = null;
+        clearTimeout(waiter.timeout);
+        if (error) waiter.reject(error);
+        else waiter.resolve(value);
+    }
     function bindNativePushListeners() {
         const p = nativePush(); if (!p || _nativeListenersBound) return; _nativeListenersBound = true;
         try {
             // Fires after register() and on every APNs/FCM token refresh → keep the server current.
-            p.addListener('registration', (t) => {
+            p.addListener('registration', async (t) => {
                 const token = t && t.value; if (!token) return;
+                if (!_nativeRegistrationWaiter && localStorage.getItem('macprep_reminders_on') !== '1') return;
                 const platform = (window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || 'ios';
-                apiJSON('/api/push/register-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ token, platform }) }).catch(() => {});
+                try {
+                    await apiJSONOrThrow('/api/push/register-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ token, platform }) });
+                    settleNativeRegistration(null, token);
+                } catch (error) {
+                    settleNativeRegistration(error);
+                }
             });
-            p.addListener('registrationError', (e) => { console.warn('native push registration error', e); });
+            p.addListener('registrationError', (error) => {
+                const message = error?.error || error?.message || 'Native notification registration failed.';
+                settleNativeRegistration(new Error(message));
+            });
         } catch (e) { /* not a native platform */ }
     }
-    // On launch, refresh the token for users who already opted in (never auto-registers otherwise).
-    function initNativePush() {
-        if (!isNativeApp() || localStorage.getItem('macprep_reminders_on') !== '1') return;
+    function registerNativePushConfirmed() {
+        const p = nativePush();
+        if (!p) return Promise.reject(new Error('Native notifications are unavailable.'));
+        if (_nativeRegistrationWaiter) return _nativeRegistrationWaiter.promise;
         bindNativePushListeners();
-        const p = nativePush(); if (p) p.register().catch(() => {});
+        let resolveWaiter;
+        let rejectWaiter;
+        const promise = new Promise((resolve, reject) => { resolveWaiter = resolve; rejectWaiter = reject; });
+        const timeout = setTimeout(() => settleNativeRegistration(new Error('Notification registration timed out.')), 15000);
+        _nativeRegistrationWaiter = { promise, resolve: resolveWaiter, reject: rejectWaiter, timeout };
+        Promise.resolve(p.register()).catch((error) => settleNativeRegistration(error));
+        return promise;
+    }
+    // On launch, refresh the token for users who already opted in (never auto-registers otherwise).
+    async function initNativePush() {
+        if (!isNativeApp() || localStorage.getItem('macprep_reminders_on') !== '1') return;
+        const config = await pushConfig();
+        if (config?.unavailable) return;
+        if (!nativePushConfigured(config)) {
+            localStorage.removeItem('macprep_reminders_on');
+            return;
+        }
+        try {
+            await registerNativePushConfirmed();
+        } catch (error) {
+            localStorage.removeItem('macprep_reminders_on');
+        }
     }
 
     // ---- Native shell polish (Capacitor plugins) — status bar, splash, haptics, in-app
@@ -5380,7 +5584,7 @@
         const btn = $('reminders-btn'), msg = $('reminders-msg');
         if (isNativeApp()) {
             const cfg = await pushConfig();
-            if (!cfg.native) { card.classList.add('hidden'); return; } // dormant until native keys are set
+            if (!nativePushConfigured(cfg)) { card.classList.add('hidden'); return; } // dormant until this platform's provider is ready
             card.classList.remove('hidden');
             const on = localStorage.getItem('macprep_reminders_on') === '1';
             if (btn) btn.textContent = on ? 'Turn off reminders' : 'Enable reminders';
@@ -5401,20 +5605,19 @@
         if (isNativeApp()) {
             const p = nativePush();
             const cfg = await pushConfig();
-            if (!p || !cfg.native) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }
+            if (!p || !nativePushConfigured(cfg)) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }
             const on = localStorage.getItem('macprep_reminders_on') === '1';
             if (btn) btn.disabled = true;
             try {
                 if (on) {
-                    try { await apiJSON('/api/push/unregister-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({}) }); } catch (e) {}
+                    await apiJSONOrThrow('/api/push/unregister-native', { method: 'POST', headers: authHeaders(), body: JSON.stringify({}) });
                     localStorage.removeItem('macprep_reminders_on');
                     toast('Study reminders off.');
                 } else {
                     let st = await p.checkPermissions();
                     if (st.receive !== 'granted') st = await p.requestPermissions();
                     if (st.receive !== 'granted') { if (msg) msg.textContent = 'Allow notifications to turn on reminders.'; return; }
-                    bindNativePushListeners();
-                    await p.register(); // fires 'registration' → POST /api/push/register-native
+                    await registerNativePushConfirmed();
                     localStorage.setItem('macprep_reminders_on', '1');
                     toast('Study reminders on ✓');
                 }
@@ -5428,20 +5631,26 @@
         if (!cfg.enabled) { if (msg) msg.textContent = 'Reminders aren’t available yet.'; return; }
         const existing = await currentPushSub();
         if (btn) btn.disabled = true;
+        let created = null;
         try {
             if (existing) {
-                try { await apiJSON('/api/push/unsubscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ endpoint: existing.endpoint }) }); } catch (e) {}
+                await apiJSONOrThrow('/api/push/unsubscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ endpoint: existing.endpoint }) });
                 await existing.unsubscribe();
                 toast('Study reminders off.');
             } else {
                 const perm = await Notification.requestPermission();
                 if (perm !== 'granted') { if (msg) msg.textContent = 'Allow notifications to turn on reminders.'; return; }
                 const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.publicKey) });
-                await apiJSON('/api/push/subscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ subscription: sub.toJSON ? sub.toJSON() : sub }) });
+                created = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.publicKey) });
+                await apiJSONOrThrow('/api/push/subscribe', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ subscription: created.toJSON ? created.toJSON() : created }) });
                 toast('Study reminders on ✓');
             }
-        } catch (e) { if (msg) msg.textContent = 'Could not update reminders: ' + (e.message || e); }
+        } catch (e) {
+            if (created) {
+                try { await created.unsubscribe(); } catch (rollbackError) {}
+            }
+            if (msg) msg.textContent = 'Could not update reminders: ' + (e.message || e);
+        }
         finally { if (btn) btn.disabled = false; refreshRemindersUI(); }
     }
 
@@ -5550,23 +5759,23 @@
         const summary = $('review-queue-summary'); if (summary) summary.innerHTML = '';
         const wrap = $('review-queue-body'); if (wrap) wrap.innerHTML = '<div class="mono" style="color:var(--muted);">Loading review queue...</div>';
         try {
-            const [qr, er, rr, dr] = await Promise.all([
-                apiJSON('/api/admin/questions?status=sme_review', { headers: authHeaders() }).catch(() => ({ data: {} })),
-                apiJSON('/api/admin/edits', { headers: authHeaders() }).catch(() => ({ data: {} })),
-                apiJSON('/api/admin/reviews', { headers: authHeaders() }).catch(() => ({ data: {} })),
-                apiJSON('/api/admin/questions?status=published&debrief=missing&limit=25', { headers: authHeaders() }).catch(() => ({ data: {} })),
+            const [questionsData, editsData, reviewsData, debriefData] = await Promise.all([
+                apiJSONOrThrow('/api/admin/questions?status=sme_review', { headers: authHeaders() }, 'Could not load question drafts.'),
+                apiJSONOrThrow('/api/admin/edits', { headers: authHeaders() }, 'Could not load answer edits.'),
+                apiJSONOrThrow('/api/admin/reviews', { headers: authHeaders() }, 'Could not load held reviews.'),
+                apiJSONOrThrow('/api/admin/questions?status=published&debrief=missing&limit=25', { headers: authHeaders() }, 'Could not load debriefs.'),
             ]);
-            const questions = (qr.data && qr.data.questions) || [];
-            const edits = (er.data && er.data.edits) || [];
-            const debriefs = (dr.data && dr.data.questions) || [];
+            const questions = questionsData.questions || [];
+            const edits = editsData.edits || [];
+            const debriefs = debriefData.questions || [];
             // Flagged user reviews (auto-held for language) land in the same queue as questions/edits.
-            const flaggedReviews = ((rr.data && rr.data.reviews) || []).filter((rv) => rv.status === 'pending');
-            const qc = (qr.data && qr.data.counts) || {}, ec = (er.data && er.data.counts) || {};
+            const flaggedReviews = (reviewsData.reviews || []).filter((rv) => rv.status === 'pending');
+            const qc = questionsData.counts || {}, ec = editsData.counts || {};
             if (state.adminSurface !== 'review') return;
             state.review = {
                 list: [...questions.map((q) => ({ kind: 'question', q })), ...edits.map((e) => ({ kind: 'edit', e })), ...flaggedReviews.map((rv) => ({ kind: 'review', rv })), ...debriefs.map((q) => ({ kind: 'debrief', q }))],
                 index: 0,
-                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0, flaggedReviews: flaggedReviews.length, debriefMissing: (dr.data && dr.data.counts && dr.data.counts.debrief_missing) != null ? dr.data.counts.debrief_missing : debriefs.length },
+                counts: { sme_review: qc.sme_review != null ? qc.sme_review : questions.length, published: qc.published || 0, rejected: qc.rejected || 0, editsPending: ec.pending != null ? ec.pending : edits.length, editsApproved: ec.approved || 0, flaggedReviews: flaggedReviews.length, debriefMissing: debriefData.counts?.debrief_missing != null ? debriefData.counts.debrief_missing : debriefs.length },
             };
             renderReview();
         } catch (e) {
@@ -6481,7 +6690,7 @@
         $('note-text') && $('note-text').addEventListener('blur', saveNote);
         if (state.token) {
             try { await bootAuthedSession(); }
-            catch (e) { go('login'); }
+            catch (e) { if (e.status !== 401) showStartupError(); }
             finally { finishNativeBoot(); }
         } else {
             go('login');

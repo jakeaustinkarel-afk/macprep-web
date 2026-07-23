@@ -1,0 +1,7 @@
+# Reviewed historical placeholders, deterministic test data, and an inactive
+# Stripe-shaped key. Fingerprint scoping keeps every new or changed match visible.
+8b70acb6d616e1b876ce5ef335cae474db8af469:test/server-helpers.test.mjs:generic-api-key:85
+b083f2e9c63152eb950a84abf0028cc8ebd06567:.expo/dev/logs/start.log:generic-api-key:3
+c1d0b74ead4d066ce28cda1dd87e34e070d0a5a0:.env:generic-api-key:5
+8713eb13df1c40e739f7c51d82df5e1a640d1fd8:.env:stripe-access-token:2
+8713eb13df1c40e739f7c51d82df5e1a640d1fd8:.env:generic-api-key:5

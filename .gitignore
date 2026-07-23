@@ -61,3 +61,6 @@ AuthKey_*.p8
 
 # Supabase CLI runtime state. Versioned migrations above this directory are source.
 supabase/.temp/
+
+# Swift Package Manager workspace state generated while resolving local plugins.
+.swiftpm/

@@ -13,7 +13,7 @@
     <script>try{window.__demoQ=fetch('/api/demo/questions').then(function(r){return r.json();}).catch(function(){return null;});}catch(e){}</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
-    <title>MACPrep — NCCAA Board Review for CAAs & SAAs</title>
+    <title>MACPrep — NCCAA Board Review for CAAs &amp; SAAs</title>
     <meta name="description" content="MACPrep is an in-depth NCCAA board review question bank for student anesthesiologist assistants (SAAs) preparing for the certification exam and Certified Anesthesiologist Assistants (CAAs) reviewing for recertification.">
     <link rel="canonical" href="https://www.macprep.org/">
     <!-- Social link previews (LinkedIn / Facebook / Discord / X) -->
@@ -596,6 +596,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 /* final cta */
 .lp-finalcta{position:relative;overflow:hidden;border-radius:18px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));background:linear-gradient(140deg,color-mix(in srgb,var(--accent) 16%,var(--panel)),var(--panel) 70%);padding:60px 32px;text-align:center;}
 .lp-finalcta .lp-dots{opacity:.4;}
+.skip-link{position:fixed;top:8px;left:8px;z-index:10000;transform:translateY(-160%);padding:10px 14px;border-radius:6px;background:var(--text);color:var(--bg);font-weight:700;text-decoration:none;}
+.skip-link:focus{transform:translateY(0);outline:3px solid var(--accent);outline-offset:2px;}
 
 </style>
 
@@ -604,6 +606,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.macprep.org/#organization","name":"MACPrep","url":"https://www.macprep.org/","logo":"https://www.macprep.org/icon-512.png","description":"NCCAA board-review question bank for CAAs and SAAs — a cited source and a full rationale on every question.","sameAs":["https://www.facebook.com/profile.php?id=61591253695681","https://www.instagram.com/macprep_/","https://www.linkedin.com/company/130213953/","https://x.com/MACPrep_"]}</script>
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <!-- Header (shown when authenticated) -->
     <div id="global-loading" class="hidden" aria-hidden="true"><div class="spinner"></div></div>
     <div id="native-boot" role="status" aria-label="MACPrep is preparing your study space">
@@ -636,13 +639,13 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         </div>
         <button id="sidebar-collapse" class="sb-only" type="button" onclick="MACPrep.toggleSidebar()" aria-label="Collapse menu" title="Collapse menu"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path><path d="M15.5 9.5 13 12l2.5 2.5" class="sb-caret"></path></svg></button>
         </div>
-        <button class="nav-toggle" aria-label="Menu" aria-controls="main-nav" onclick="MACPrep.toggleMobileNav()">☰</button>
+        <button class="nav-toggle" type="button" aria-label="Menu" aria-controls="main-nav" onclick="MACPrep.toggleMobileNav()">☰</button>
         <nav class="nav" id="main-nav">
             <button id="nav-search" class="sb-only" type="button" onclick="MACPrep.openCmdk()" aria-label="Search and quick actions" title="Search &amp; quick actions (⌘K)"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg><span class="lbl">Search</span><span class="nav-kbd">⌘K</span></button>
             <span id="tier-badge" class="badge free hidden">FREE</span>
             <div class="nav-sec sb-only">Menu</div>
             <a id="nav-dashboard" class="hidden nav-app" onclick="MACPrep.go('dashboard')" title="Dashboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8"></path></svg><span class="lbl" id="nav-dashboard-label">Dashboard</span></a>
-            <span id="nav-study-wrap" class="hidden" style="position:relative;">
+            <div id="nav-study-wrap" class="hidden" style="position:relative;display:inline-flex;">
                 <a role="button" tabindex="0" class="nav-app" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('study', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('study', event);}" title="Study modes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg><span class="lbl">Study modes</span><svg class="nav-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></a>
                 <div id="nav-study-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.startRecommended();">Recommended</a>
@@ -653,7 +656,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.openBossPicker();">Domain Bosses</a>
                     <a onclick="MACPrep.closeNavMenus(); MACPrep.go('dashboard'); MACPrep.toggleCustomize();">Custom</a>
                 </div>
-            </span>
+            </div>
             <a id="nav-notebook" class="hidden nav-app" onclick="MACPrep.go('notebook')" title="Notebook"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2-1.4-4.7-1.9-8-1v13c3.3-.9 6-.4 8 1 2-1.4 4.7-1.9 8-1V5c-3.3-.9-6-.4-8 1z"></path><path d="M12 6v13"></path></svg><span class="lbl">Notebook</span></a>
             <a id="nav-leaderboard" class="hidden nav-app" onclick="MACPrep.go('leaderboard')" title="Leaderboard"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5h8V8a4 4 0 0 1-8 0V4.5z"></path><path d="M8 6H5.5v1.2A2.5 2.5 0 0 0 8 9.7"></path><path d="M16 6h2.5v1.2A2.5 2.5 0 0 1 16 9.7"></path><path d="M9.5 20h5"></path><path d="M12 12.5V20"></path></svg><span class="lbl">Leaderboard</span></a>
             <a id="nav-achievements" class="hidden nav-app" onclick="MACPrep.go('achievements')" title="Achievements"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5"></circle><path d="M9 13.4 7.5 21l4.5-2.7L16.5 21 15 13.4"></path></svg><span class="lbl">Achievements</span></a>
@@ -682,11 +685,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <a class="nav-market" href="/about">About</a>
             <a id="nav-login" href="/login.html" onclick="event.preventDefault(); MACPrep.showSignin(); var c=document.getElementById('login-form-container'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});">Log in</a>
             <a class="nav-landing nav-cta" href="#signup-pane" onclick="document.getElementById('main-nav').classList.remove('nav-open'); if(window.MACPrep&&MACPrep.showSignup){event.preventDefault();MACPrep.showSignup();var c=document.getElementById('login-form-container'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});}" style="background:var(--accent);color:var(--on-accent);padding:7px 15px;border-radius:8px;font-weight:700;white-space:nowrap;">Start Free →</a>
-            <span id="nav-account-wrap" class="hidden" style="position:relative;">
+            <div id="nav-account-wrap" class="hidden" style="position:relative;display:inline-flex;">
                 <a class="nav-acct" role="button" tabindex="0" aria-haspopup="menu" onclick="MACPrep.toggleNavMenu('account', event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();MACPrep.toggleNavMenu('account', event);}"><span class="nav-acct-av" id="nav-acct-initials">·</span><span class="nav-acct-meta"><span class="nav-acct-name" id="nav-acct-name">Account</span><span class="nav-acct-sub" id="nav-acct-sub">View menu</span></span><svg class="nav-acct-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4"></path><path d="M8 15l4 4 4-4"></path></svg></a>
                 <div id="nav-account-menu" class="navdrop hidden" role="menu">
                     <a onclick="MACPrep.go('profile')">Profile</a>
-                    <a onclick="MACPrep.openTitlePicker()">Title</a>
+                    <a id="nav-account-title" onclick="MACPrep.openTitlePicker()">Title</a>
                     <a onclick="MACPrep.go('feedback')">Feedback</a>
                     <a href="/reviews">Reviews</a>
                     <a href="/updates.html">Updates</a>
@@ -696,14 +699,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <hr>
                     <a onclick="MACPrep.signOut()">Sign out</a>
                 </div>
-            </span>
-                    <span id="nav-utils" style="display:inline-flex;align-items:center;"><button id="cmdk-trigger" class="hidden" type="button" onclick="MACPrep.openCmdk()" aria-label="Search &amp; quick actions" title="Search &amp; quick actions (⌘K)" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;margin-right:14px;display:inline-flex;align-items:center;line-height:1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg></button><span style="position:relative;display:inline-flex;align-items:center;margin-right:14px;"><button id="font-toggle" onclick="_fontMenu(event)" aria-haspopup="menu" aria-label="Choose a font" title="Font" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;font-weight:700;letter-spacing:.5px;">Aa</button><div id="font-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:150px;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div></span><span style="position:relative;display:inline-flex;align-items:center;">
-                        <button id="theme-toggle" onclick="_themeMenu(event)" aria-haspopup="menu" aria-label="Choose a theme" title="Theme" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:0;line-height:1;"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.4-.5-.7-.5-1.1 0-.9.8-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-3.9-4-7.3-9-7.3z"></path><circle cx="7.5" cy="10.5" r="1.1"></circle><circle cx="12" cy="7.5" r="1.1"></circle><circle cx="16.5" cy="10.5" r="1.1"></circle></svg></button>
+            </div>
+                    <div id="nav-utils" style="display:inline-flex;align-items:center;"><button id="cmdk-trigger" class="hidden" type="button" onclick="MACPrep.openCmdk()" aria-label="Search &amp; quick actions" title="Search &amp; quick actions (⌘K)" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;margin-right:14px;display:inline-flex;align-items:center;line-height:1;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg></button><div style="position:relative;display:inline-flex;align-items:center;margin-right:14px;"><button id="font-toggle" type="button" onclick="_fontMenu(event)" aria-haspopup="menu" aria-label="Choose a font" title="Font" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;font-weight:700;letter-spacing:.5px;">Aa</button><div id="font-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:150px;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div></div><div style="position:relative;display:inline-flex;align-items:center;">
+                        <button id="theme-toggle" type="button" onclick="_themeMenu(event)" aria-haspopup="menu" aria-label="Choose a theme" title="Theme" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:0;line-height:1;"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.4-.5-.7-.5-1.1 0-.9.8-1.6 1.7-1.6H16a5 5 0 0 0 5-5c0-3.9-4-7.3-9-7.3z"></path><circle cx="7.5" cy="10.5" r="1.1"></circle><circle cx="12" cy="7.5" r="1.1"></circle><circle cx="16.5" cy="10.5" r="1.1"></circle></svg></button>
                         <div id="theme-menu" class="hidden" style="position:absolute;top:24px;right:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:182px;max-height:min(72vh,360px);overflow-y:auto;z-index:1000;box-shadow:0 12px 32px rgba(0,0,0,.28);"></div>
-                    </span></span>
+                    </div></div>
         </nav>
     </div>
 
+    <main id="main-content" tabindex="-1">
     <!-- LANDING (logged out) -->
     <div id="login-view">
 
@@ -715,7 +719,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <span class="lp-eyebrow">NCCAA board review · for SAAs &amp; CAAs</span>
                     <h1 class="lp-h1">Make your next<br>study step <span class="grad-text">obvious.</span></h1>
                     <p class="lp-lead" style="max-width:34ch;"><strong style="color:var(--text);">1,500+ clinician-written questions</strong> — a rationale for <em>every</em> answer, a verifiable journal citation, progress tracking, and a <strong style="color:var(--text);">100% Pass Guarantee</strong>.</p>
-                    <div class="lp-proof-points" aria-label="MACPrep quality standards">
+                    <div class="lp-proof-points" role="group" aria-label="MACPrep quality standards">
                         <span>CAA-specific blueprint</span>
                         <span>Clinician-reviewed</span>
                         <span>Cited explanations</span>
@@ -724,7 +728,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                         <a href="#signup-pane" class="lp-btn lp-btn-primary lp-btn-lg">Start free →</a>
                         <a href="#demo-card" class="lp-btn lp-btn-ghost lp-btn-lg">See sample questions</a>
                     </div>
-                    <div class="lp-hero-path" aria-label="How MACPrep gets you started">
+                    <div class="lp-hero-path" role="group" aria-label="How MACPrep gets you started">
                         <div><span class="lp-path-num">01</span><span><strong>Try 3 real questions</strong><small>No account required</small></span></div>
                         <div><span class="lp-path-num">02</span><span><strong>Find your next focus</strong><small>25 questions free with an account</small></span></div>
                         <div data-native-commerce><span class="lp-path-num">03</span><span><strong>Unlock your full plan</strong><small>$100 once, lifetime access</small></span></div>
@@ -829,11 +833,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                         <div class="lp-benefit" style="margin-bottom:16px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> <span>Your account grows with your AA journey</span></div>
                         <form onsubmit="event.preventDefault(); MACPrep.signupInline();">
                             <div class="form-group" style="display:flex;gap:10px;margin-bottom:0;">
-                                <div style="flex:1;"><label>First name</label><input type="text" id="su-first" autocomplete="given-name" placeholder="Jordan" required></div>
-                                <div style="flex:1;"><label>Last name</label><input type="text" id="su-last" autocomplete="family-name" placeholder="Lee" required></div>
+                                <div style="flex:1;"><label for="su-first">First name</label><input type="text" id="su-first" autocomplete="given-name" placeholder="Jordan" required></div>
+                                <div style="flex:1;"><label for="su-last">Last name</label><input type="text" id="su-last" autocomplete="family-name" placeholder="Lee" required></div>
                             </div>
                             <div class="sub" style="font-size:11px;margin:4px 0 12px;color:var(--muted);">Shown on the leaderboard as your first name + last initial (e.g. “Jordan L.”).</div>
-                            <div class="form-group"><label>Where are you in your AA journey?</label>
+                            <div class="form-group"><label for="su-cred">Where are you in your AA journey?</label>
                                 <select id="su-cred" required onchange="MACPrep.onCredChange()" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
                                     <option value="" disabled selected>Select your current stage…</option>
                                     <option value="applicant">Applying to AA school</option>
@@ -849,25 +853,25 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                                 </label>
                             </div>
                             <div id="su-saa-fields" class="hidden">
-                                <div class="form-group hidden" id="su-matriculation-wrap"><label>Expected matriculation date</label><input type="date" id="su-matriculation"></div>
-                                <div class="form-group"><label>Expected graduation date</label><input type="date" id="su-grad"></div>
-                                <div class="form-group" id="su-exam-wrap"><label>Exam date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label><input type="date" id="su-exam"></div>
+                                <div class="form-group hidden" id="su-matriculation-wrap"><label for="su-matriculation">Expected matriculation date</label><input type="date" id="su-matriculation"></div>
+                                <div class="form-group"><label for="su-grad">Expected graduation date</label><input type="date" id="su-grad"></div>
+                                <div class="form-group" id="su-exam-wrap"><label for="su-exam">Exam date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(optional)</span></label><input type="date" id="su-exam"></div>
                                 <div class="sub" id="su-transition-note" style="font-size:11px;margin:-8px 0 12px;color:var(--muted);">On your graduation date, your account moves into the practicing CAA experience so professional and CME resources arrive at the right time.</div>
                             </div>
                             <div id="su-program-wrap" class="form-group hidden">
-                                <label>AA program</label>
+                                <label for="su-program">AA program</label>
                                 <div id="su-program-hint" class="sub" style="font-size:11px;margin:-2px 0 6px;color:var(--muted);">Select your credential first.</div>
                                 <select id="su-program" onchange="MACPrep.onSignupProgramChange()" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);font-size:14px;">
                                     <option value="" selected>Select your program…</option>
                                 </select>
                                 <div id="su-program-other-wrap" class="hidden" style="margin-top:10px;">
-                                    <label>Program name</label>
+                                    <label for="su-program-other">Program name</label>
                                     <input type="text" id="su-program-other" maxlength="120" autocomplete="organization" placeholder="Program / institution name">
                                 </div>
                                 <div class="sub" style="font-size:11px;margin:7px 0 0;color:var(--muted);">Verified faculty or program directors assigned to your selected program may view your name, email, credential, study activity, and performance in their cohort dashboard. <a href="/privacy.html" target="_blank" rel="noopener">Privacy details</a></div>
                             </div>
-                            <div class="form-group"><label>Email</label><input type="email" id="su-email" autocomplete="email" required></div>
-                            <div class="form-group"><label>Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="12" placeholder="12+ characters" required></div>
+                            <div class="form-group"><label for="su-email">Email</label><input type="email" id="su-email" autocomplete="email" required></div>
+                            <div class="form-group"><label for="su-password">Password</label><input type="password" id="su-password" autocomplete="new-password" minlength="12" placeholder="12+ characters" required></div>
                             <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin:0 0 14px;"><input type="checkbox" id="su-terms" required style="width:auto;margin-top:2px;"> I agree to the <a href="/terms.html" target="_blank">Terms</a> &amp; <a href="/privacy.html" target="_blank">Privacy</a>.</label>
                             <button type="submit" id="su-submit" class="lp-btn lp-btn-primary lp-btn-lg" style="width:100%;">Create my free account →</button>
                             <div id="su-msg" class="mono" style="font-size:12px;margin-top:10px;text-align:center;"></div>
@@ -877,8 +881,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                     <div id="signin-pane" class="hidden">
                         <h2 style="font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px;">Welcome back</h2>
                         <form onsubmit="event.preventDefault(); MACPrep.login();">
-                            <div class="form-group"><label>Email</label><input type="email" id="login-email" autocomplete="username email" required></div>
-                            <div class="form-group"><label>Password</label><input type="password" id="login-password" autocomplete="current-password" required></div>
+                            <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" autocomplete="username" required></div>
+                            <div class="form-group"><label for="login-password">Password</label><input type="password" id="login-password" autocomplete="current-password" required></div>
                             <button type="submit" id="login-submit-trigger" class="lp-btn lp-btn-primary lp-btn-lg" style="width:100%;">Sign In</button>
                         </form>
                         <div class="footer-links" style="margin-top:14px;"><a href="#" onclick="event.preventDefault(); MACPrep.requestPasswordReset();">Forgot password?</a></div>
@@ -1224,7 +1228,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 
 	            <section class="applicant-panel applicant-preview-panel">
 	                <div><div class="applicant-kicker">WHERE MACPREP FITS</div><h3>Your same account becomes your student study space</h3><p class="sub">This applicant information hub is free. On your matriculation date, MACPrep opens the sourced question bank, per-choice teaching rationales, adaptive study calendar, notebook, readiness analytics, and the 25-question free student experience. Premium access remains a separate purchase, program code, or existing entitlement.</p></div>
-	                <div class="applicant-preview-pills" aria-label="Student tools preview"><span>Study modes</span><span>Adaptive calendar</span><span>Teaching debriefs</span><span>Readiness analytics</span></div>
+		                <div class="applicant-preview-pills" role="group" aria-label="Student tools preview"><span>Study modes</span><span>Adaptive calendar</span><span>Teaching debriefs</span><span>Readiness analytics</span></div>
 	            </section>
 	        </div>
 	    </div>
@@ -1252,7 +1256,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <button class="btn" type="button" onclick="MACPrep.go('dashboard')">Open board review</button>
         </section>
 
-        <div class="professional-grid" aria-label="Independent professional resources">
+	        <div class="professional-grid" role="group" aria-label="Independent professional resources">
             <a class="professional-resource" href="https://cmeforcaas.com/" target="_blank" rel="noopener">
                 <img src="/partner-cmeforcaas.png" width="46" height="46" alt="">
                 <span><small>CONTINUING EDUCATION</small><strong>CME for CAAs</strong><em>NCCAA-accepted CME credits from an independent CAA resource.</em></span>
@@ -1326,7 +1330,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <h3>Free Tier Usage</h3>
             <div id="free-allowance-text" class="mono" style="font-size:13px;color:var(--muted);">—</div>
             <div class="progress-bar"><span id="free-allowance-bar" style="width:0%"></span></div>
-            <button class="btn" data-native-commerce style="margin-top:16px;" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $100</button>
+	            <button class="btn" type="button" data-native-commerce style="margin-top:16px;" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $100</button>
             <div id="redeem" data-native-commerce style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
                 <label style="font-weight:600;color:var(--text);">Have a class or cohort code?</label>
                 <div id="redeem-copy" class="sub" style="font-size:12px;margin:2px 0 8px;">Paste it here to unlock premium for free<span data-native-commerce> — <strong>don't</strong> enter it at checkout.</span></div>
@@ -1346,7 +1350,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <h2 style="margin-top:0;">Ready to study?</h2>
             <p class="sub" id="recommended-sub">A focused ~20-question set from your due reviews, missed questions, and weakest areas.</p>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-                <button class="btn" id="start-recommended-btn" onclick="MACPrep.startRecommended()" style="font-size:16px;padding:15px 28px;display:inline-flex;align-items:center;gap:9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L8.52 4.65A1 1 0 0 0 7 5.5z"/></svg>Start recommended session</button>
+	                <button class="btn" id="start-recommended-btn" type="button" onclick="MACPrep.startRecommended()" style="font-size:16px;padding:15px 28px;display:inline-flex;align-items:center;gap:9px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5.5v13a1 1 0 0 0 1.52.85l10.5-6.5a1 1 0 0 0 0-1.7L8.52 4.65A1 1 0 0 0 7 5.5z"/></svg>Start recommended session</button>
                 <button class="btn ghost" type="button" onclick="MACPrep.toggleCustomize()" style="display:inline-flex;align-items:center;gap:7px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Customize</button>
             </div>
         </div>
@@ -1357,11 +1361,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
 
             <div class="grid cols-2">
                 <div class="form-group">
-                    <label>Content Area / Specialty</label>
+                    <label for="domain-select">Content Area / Specialty</label>
                     <select id="domain-select"><option value="all">All areas</option></select>
                 </div>
                 <div class="form-group">
-                    <label>Difficulty</label>
+                    <label for="difficulty-select">Difficulty</label>
                     <select id="difficulty-select">
                         <option value="all">All difficulties</option>
                         <option value="easy">Easy</option>
@@ -1372,7 +1376,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             </div>
 
             <div class="form-group" style="max-width:340px;">
-                <label>Mode</label>
+                <label for="mode-select">Mode</label>
                 <select id="mode-select">
                     <option value="tutor">Tutor — feedback after each question</option>
                     <option value="exam">Exam — answer all, score at the end</option>
@@ -1383,12 +1387,12 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div class="chip-row" id="count-chips" style="margin-bottom:18px;"></div>
 
             <div id="custom-count-wrap" class="form-group" style="max-width:240px;">
-                <label>Or enter a custom amount</label>
+                <label for="custom-count">Or enter a custom amount</label>
                 <input type="number" id="custom-count" min="1" placeholder="e.g. 40">
             </div>
 
             <div class="form-group" style="max-width:340px;">
-                <label>Question pool</label>
+                <label for="pool-mode">Question pool</label>
                 <select id="pool-mode">
                     <option value="all">All questions</option>
                     <option value="unused">Unused — haven't answered yet</option>
@@ -1397,7 +1401,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 </select>
             </div>
 
-            <button class="btn" id="start-session-btn" onclick="MACPrep.startSession()">Start Session</button>
+	            <button class="btn" id="start-session-btn" type="button" onclick="MACPrep.startSession()">Start Session</button>
             <button class="btn ghost" type="button" onclick="MACPrep.downloadExam(this)" style="margin-left:10px;display:inline-flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>Printable exam (PDF)</button>
             <div id="session-hint" class="mono" style="font-size:12px;color:var(--muted);margin-top:12px;"></div>
         </div>
@@ -1406,7 +1410,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
     <!-- QUIZ -->
     <div class="wrap hidden" id="quiz-view">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-            <button class="nav" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
+	            <button class="nav" type="button" style="color:var(--muted);background:none;border:none;cursor:pointer;font-family:ui-monospace,monospace;" onclick="MACPrep.go('dashboard')">&larr; Dashboard</button>
             <span id="exam-timer" class="mono" role="timer" aria-live="off" aria-label="Time remaining" style="display:none;font-size:14px;font-weight:bold;color:var(--muted);"></span>
         </div>
         <div id="quiz-progress-wrap" style="position:sticky;top:0;z-index:40;background:var(--bg);padding:10px 0 11px;margin-bottom:14px;border-bottom:1px solid var(--line);">
@@ -1429,7 +1433,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
             <div id="explanation-pane" class="hidden" style="margin-top:22px;padding:18px;background:var(--accent-dim);border:1px solid var(--line);border-radius:10px;font-size:14px;line-height:1.6;"></div>
             <div id="quiz-actions" style="margin-top:24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                 <button class="btn ghost" id="prev-btn" type="button" onclick="MACPrep.prevQuestion()" style="display:none;">&laquo; Previous</button>
-                <button class="btn secondary" id="advance-vignette-trigger" onclick="MACPrep.advance()">Next Question &raquo;</button>
+	                <button class="btn secondary" id="advance-vignette-trigger" type="button" onclick="MACPrep.advance()">Next Question &raquo;</button>
                 <button class="btn" id="submit-exam-btn" type="button" onclick="MACPrep.submitExam()" style="display:none;">Submit Exam</button>
                 <button id="flag-btn" type="button" onclick="MACPrep.toggleFlag()" class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>Flag for review</button>
                 <button id="flashcard-btn" type="button" onclick="MACPrep.toggleFlashcard()" class="q-tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>Add to flashcards</button>
@@ -1471,7 +1475,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 <div><label>Membership</label><div id="prof-tier" style="padding:8px 0;"></div></div>
             </div>
             <div id="prof-upgrade-wrap" data-native-commerce style="margin-top:8px;">
-                <button class="btn" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $100</button>
+	                <button class="btn" type="button" onclick="MACPrep.startCheckout(this)">Upgrade to Full Access — $100</button>
                 <span class="mono" style="font-size:11px;color:var(--muted);margin-left:10px;">One-time payment · lifetime access to the full bank</span>
                 <div style="margin-top:12px;"><span style="display:inline-flex;gap:8px;align-items:center;padding:8px 14px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-dim);font-size:13px;color:var(--text);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><strong>100% Pass Guarantee</strong> — pass the boards or your $100 back</span></div>
             </div>
@@ -1480,9 +1484,9 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div class="card">
             <h2>Personal Information</h2>
             <div class="grid cols-2">
-                <div class="form-group"><label>Full name</label><input id="prof-fullname" type="text" placeholder="Jane Doe, CAA"></div>
+                <div class="form-group"><label for="prof-fullname">Full name</label><input id="prof-fullname" type="text" placeholder="Jane Doe, CAA"></div>
                 <div class="form-group"><label>Your AA journey</label><div id="prof-stage" style="padding:11px 0;font-weight:700;">—</div><button class="btn ghost hidden" id="prof-stage-action" type="button" onclick="MACPrep.openCommitmentModal()" style="margin-top:3px;">I committed to a program</button></div>
-                <div class="form-group" id="prof-credential-wrap"><label>Credential</label>
+                <div class="form-group" id="prof-credential-wrap"><label for="prof-credential">Credential</label>
                     <select id="prof-credential" disabled aria-describedby="prof-credential-note">
                         <option value="">Select…</option>
                         <option value="SAA">SAA — Student Anesthesiologist Assistant</option>
@@ -1492,11 +1496,11 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 </div>
                 <div class="form-group" id="prof-program-wrap"><label for="prof-program">Training program / institution</label><select id="prof-program" onchange="MACPrep.onProfProgramChange()"></select><div class="sub" style="font-size:11px;margin:7px 0 0;color:var(--muted);">Verified faculty or program directors assigned to this program may view your name, email, credential, study activity, and performance. <a href="/privacy.html" target="_blank" rel="noopener">Privacy details</a></div></div>
                 <div class="form-group hidden" id="prof-other-wrap"><label for="prof-other">Which program? <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(we'll add it)</span></label><input id="prof-other" type="text" maxlength="120" placeholder="Program / institution name"></div>
-                <div class="form-group" id="prof-grad-wrap"><label>Expected graduation date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(students)</span></label><input id="prof-grad" type="date"></div>
-                <div class="form-group" id="prof-exam-wrap"><label>Target exam date</label><input id="prof-examdate" type="date"></div>
-                <div class="form-group"><label>Phone (optional)</label><input id="prof-phone" type="tel"></div>
+                <div class="form-group" id="prof-grad-wrap"><label for="prof-grad">Expected graduation date <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">(students)</span></label><input id="prof-grad" type="date"></div>
+                <div class="form-group" id="prof-exam-wrap"><label for="prof-examdate">Target exam date</label><input id="prof-examdate" type="date"></div>
+                <div class="form-group"><label for="prof-phone">Phone (optional)</label><input id="prof-phone" type="tel"></div>
             </div>
-            <button class="btn" id="prof-save-btn" onclick="MACPrep.saveProfile()">Save Changes</button>
+	            <button class="btn" id="prof-save-btn" type="button" onclick="MACPrep.saveProfile()">Save Changes</button>
             <span id="prof-save-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
 
@@ -1547,7 +1551,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <p class="sub">Found a problem with a question, hit a bug, or have a suggestion? Tell us — we read everything. <strong style="color:var(--accent);">🔒 It's completely anonymous</strong> — we never see who sent it, so feel free to be candid.</p>
         <div class="card">
             <div class="form-group">
-                <label>Type</label>
+                <label for="fb-kind">Type</label>
                 <select id="fb-kind">
                     <option value="suggestion">Suggestion</option>
                     <option value="bug">Bug report</option>
@@ -1556,10 +1560,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
                 </select>
             </div>
             <div class="form-group">
-                <label>Message</label>
+                <label for="fb-message">Message</label>
                 <textarea id="fb-message" rows="6" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--text);font-size:14px;font-family:inherit;" placeholder="Describe the issue or idea…"></textarea>
             </div>
-            <button class="btn" id="fb-submit" onclick="MACPrep.submitFeedback()">Submit</button>
+	            <button class="btn" id="fb-submit" type="button" onclick="MACPrep.submitFeedback()">Submit</button>
             <span id="fb-msg" class="mono" style="font-size:12px;color:var(--accent);margin-left:12px;"></span>
         </div>
     </div>
@@ -1751,6 +1755,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
   </div>
   <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#828b9a);margin-top:20px;">© 2026 MACPrep LLC · Exam preparation only — not medical advice.</div>
 </footer>
+    </main>
     <div id="toast" role="status" aria-live="polite"></div>
     <div id="sr-announce" aria-live="polite" class="sr-only"></div>
     <style>
@@ -2089,10 +2094,10 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed #main-nav{display:none;position:absolute;top:60px;right:12px;left:12px;flex-direction:column;align-items:stretch;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;z-index:900;box-shadow:0 16px 40px rgba(0,0,0,.22);}
         body.app-authed #main-nav.nav-open{display:flex;}
         body.app-authed #main-nav>#tier-badge{align-self:flex-start;margin:0 0 4px 4px;}
-        body.app-authed #main-nav>a.nav-app,body.app-authed #main-nav>span>a.nav-app{padding:11px 12px;border-radius:10px;font-size:15px;color:var(--text2);}
-        body.app-authed #main-nav>a.nav-app:hover,body.app-authed #main-nav>span>a.nav-app:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);}
+        body.app-authed #main-nav>a.nav-app,body.app-authed #main-nav>div>a.nav-app{padding:11px 12px;border-radius:10px;font-size:15px;color:var(--text2);}
+        body.app-authed #main-nav>a.nav-app:hover,body.app-authed #main-nav>div>a.nav-app:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);}
         body.app-authed #main-nav>a.nav-active{background:var(--accent-dim);color:var(--accent);}
-        body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>span>a.nav-app .lbl{flex:1;}
+        body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>div>a.nav-app .lbl{flex:1;}
         body.app-authed #nav-admin-wrap>a.nav-app .nav-caret{margin-left:auto;}
         /* Theme + font switchers are an in-app affordance — hidden on the public/marketing nav so the landing's first impression stays deterministic and conversion-focused. */
         body:not(.app-authed) #nav-utils{display:none !important;}
@@ -2114,9 +2119,9 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed .nav-toggle{display:none;}
         body.app-authed #main-nav{display:flex;flex:1;flex-direction:column;align-items:stretch;gap:1px;width:100%;min-height:0;}
         body.app-authed #main-nav>#tier-badge{align-self:flex-start;width:auto;margin:0 0 10px 4px;}
-        body.app-authed #main-nav>a,body.app-authed #main-nav>span>a{box-sizing:border-box;width:100%;padding:10px 12px;border-radius:8px;margin:0;cursor:pointer;font-size:14px;}
-        body.app-authed #main-nav>a:hover,body.app-authed #main-nav>span>a:hover{background:var(--accent-dim);}
-        body.app-authed #main-nav>span{width:100%;}
+        body.app-authed #main-nav>a,body.app-authed #main-nav>div>a{box-sizing:border-box;width:100%;padding:10px 12px;border-radius:8px;margin:0;cursor:pointer;font-size:14px;}
+        body.app-authed #main-nav>a:hover,body.app-authed #main-nav>div>a:hover{background:var(--accent-dim);}
+        body.app-authed #main-nav>div{width:100%;}
         body.app-authed #main-nav>.nav-market,body.app-authed #main-nav>#nav-login{display:none;}
         body.app-authed .header-bar .brand-logo{margin:0;font-size:20px;}
         body.app-authed .brand-row{display:flex;align-items:center;justify-content:space-between;width:100%;box-sizing:border-box;margin:0 0 14px;padding:0 2px;}
@@ -2128,15 +2133,15 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed #nav-search .lbl{flex:1;text-align:left;}
         body.app-authed .nav-sec{display:block;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:none;color:var(--muted);padding:0 8px;margin:13px 0 5px;}
         body.app-authed #main-nav>#tier-badge{display:none;}
-        body.app-authed #main-nav>a.nav-app,body.app-authed #main-nav>span>a.nav-app{display:flex;align-items:center;gap:12px;padding:9px 11px;border-radius:10px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text2);position:relative;}
-        body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>span>a.nav-app .lbl{flex:1;}
-        body.app-authed #main-nav>a.nav-app:hover,body.app-authed #main-nav>span>a.nav-app:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);}
+        body.app-authed #main-nav>a.nav-app,body.app-authed #main-nav>div>a.nav-app{display:flex;align-items:center;gap:12px;padding:9px 11px;border-radius:10px;font-size:14px;text-transform:none;letter-spacing:0;color:var(--text2);position:relative;}
+        body.app-authed #main-nav>a.nav-app .lbl,body.app-authed #main-nav>div>a.nav-app .lbl{flex:1;}
+        body.app-authed #main-nav>a.nav-app:hover,body.app-authed #main-nav>div>a.nav-app:hover{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);}
         body.app-authed #main-nav>a.nav-active,body.app-authed #main-nav>a.nav-active:hover{background:var(--panel);color:var(--accent);font-weight:600;border:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 14px -8px rgba(0,0,0,.22);}
         body.app-authed #main-nav>a.nav-active::before{content:"";position:absolute;left:3px;top:50%;transform:translateY(-50%);width:3px;height:18px;border-radius:3px;background:var(--accent);}
         body.app-authed #nav-admin-wrap>a.nav-app .nav-caret{margin-left:auto;}
         body.app-authed #main-nav>#nav-utils{order:8;margin-top:auto;position:static;top:auto;right:auto;display:flex;align-items:stretch;gap:8px;width:100%;padding:0;margin-bottom:10px;z-index:auto;}
         body.app-authed #nav-utils #cmdk-trigger{display:none!important;}
-        body.app-authed #nav-utils>span{position:relative;flex:1;margin:0!important;}
+        body.app-authed #nav-utils>div{position:relative;flex:1;margin:0!important;}
         body.app-authed #nav-utils #font-toggle,body.app-authed #nav-utils #theme-toggle{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;padding:8px!important;border:1px solid var(--line)!important;border-radius:9px;margin:0!important;color:var(--text2);text-transform:none;}
         body.app-authed #nav-utils #font-toggle:hover,body.app-authed #nav-utils #theme-toggle:hover{background:color-mix(in srgb,var(--text) 6%,transparent);color:var(--text);}
         body.app-authed #font-menu,body.app-authed #theme-menu{top:auto!important;bottom:calc(100% + 6px)!important;right:auto!important;left:0!important;}
@@ -2152,7 +2157,7 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         body.app-authed.sidebar-collapsed .brand-row{flex-direction:column;gap:12px;margin:0 0 14px;padding:0;justify-content:center;}
         body.app-authed.sidebar-collapsed .brand-logo>span{display:none;}
         body.app-authed.sidebar-collapsed .lbl,body.app-authed.sidebar-collapsed .nav-sec,body.app-authed.sidebar-collapsed .nav-kbd,body.app-authed.sidebar-collapsed .nav-caret,body.app-authed.sidebar-collapsed .nav-acct-meta,body.app-authed.sidebar-collapsed .nav-acct-caret{display:none!important;}
-        body.app-authed.sidebar-collapsed #main-nav>a.nav-app,body.app-authed.sidebar-collapsed #main-nav>span>a.nav-app,body.app-authed.sidebar-collapsed #nav-search,body.app-authed.sidebar-collapsed #nav-utils #font-toggle,body.app-authed.sidebar-collapsed #nav-utils #theme-toggle,body.app-authed.sidebar-collapsed .nav-acct{justify-content:center;padding-left:0;padding-right:0;gap:0;}
+        body.app-authed.sidebar-collapsed #main-nav>a.nav-app,body.app-authed.sidebar-collapsed #main-nav>div>a.nav-app,body.app-authed.sidebar-collapsed #nav-search,body.app-authed.sidebar-collapsed #nav-utils #font-toggle,body.app-authed.sidebar-collapsed #nav-utils #theme-toggle,body.app-authed.sidebar-collapsed .nav-acct{justify-content:center;padding-left:0;padding-right:0;gap:0;}
         body.app-authed.sidebar-collapsed #nav-search{margin-bottom:10px;}
         body.app-authed.sidebar-collapsed #main-nav>#nav-utils{flex-direction:column;gap:6px;}
         body.app-authed.sidebar-collapsed #main-nav>a.nav-active::before{display:none;}
@@ -2200,8 +2205,8 @@ body:not(.app-authed) .header-bar{position:sticky;top:0;z-index:80;backdrop-filt
         <div style="font-weight:700;font-size:13.5px;color:var(--text);">Install MACPrep</div>
         <div id="pwa-install-sub" style="font-size:12px;color:var(--muted);">Open full-screen and enable optional streak reminders.</div>
       </div>
-      <button id="pwa-install-btn" class="btn" style="padding:8px 14px;font-size:12px;flex:none;">Install</button>
-      <button id="pwa-install-x" aria-label="Dismiss" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;">✕</button>
+      <button id="pwa-install-btn" class="btn" type="button" style="padding:8px 14px;font-size:12px;flex:none;">Install</button>
+      <button id="pwa-install-x" type="button" aria-label="Dismiss" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;">✕</button>
     </div>
     <script>
     (function(){

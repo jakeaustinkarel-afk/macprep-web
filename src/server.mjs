@@ -9,7 +9,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { randomBytes, createHmac, createHash } from 'crypto';
+import { randomBytes, randomUUID, createHmac, createHash } from 'crypto';
 import { AppStoreServerAPIClient, Environment, NotificationTypeV2, SignedDataVerifier, Type as AppleProductType } from '@apple/app-store-server-library';
 import { google } from 'googleapis';
 import * as Sentry from '@sentry/node';
@@ -29,6 +29,26 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 export const app = express();
 app.disable('x-powered-by');
+
+export function wrapAsyncHandler(handler) {
+    if (typeof handler !== 'function' || handler.constructor?.name !== 'AsyncFunction') return handler;
+    if (handler.length === 4) {
+        return function wrappedAsyncErrorHandler(error, req, res, next) {
+            return Promise.resolve(handler(error, req, res, next)).catch(next);
+        };
+    }
+    return function wrappedAsyncHandler(req, res, next) {
+        return Promise.resolve(handler(req, res, next)).catch(next);
+    };
+}
+
+// Express 4 does not forward rejected async handlers to its error middleware.
+// Install one central wrapper before routes/middleware are registered so a
+// database/auth rejection cannot leave the browser waiting forever.
+for (const method of ['use', 'get', 'post', 'put', 'patch', 'delete']) {
+    const register = app[method].bind(app);
+    app[method] = (...args) => register(...args.map(wrapAsyncHandler));
+}
 
 function reportOperationalError(area, error, context = {}) {
     const message = error?.message || String(error || 'Unknown error');
@@ -339,6 +359,7 @@ if (IS_PROD) {
 // is the row's own gen_random_uuid). There is no `is_premium` column.
 const PROFILE_TABLE = 'user_profiles';
 const MOBILE_PURCHASE_TABLE = 'mobile_purchase_entitlements';
+const STRIPE_CHECKOUT_TABLE = 'stripe_checkout_sessions';
 // This product identifier is intentionally shared by both stores. It must match the
 // non-consumable / managed product created in App Store Connect and Play Console.
 const MOBILE_PREMIUM_PRODUCT_ID = process.env.MOBILE_PREMIUM_PRODUCT_ID || 'org.macprep.app.full_access';
@@ -425,6 +446,42 @@ export function isValidProfileDate(value) {
     const parsed = new Date(`${value}T00:00:00Z`);
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
+export function productDateKey(now = new Date()) {
+    const date = now instanceof Date ? now : new Date(now);
+    if (!Number.isFinite(date.getTime())) return '';
+    try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).formatToParts(date);
+        const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        return `${values.year}-${values.month}-${values.day}`;
+    } catch (error) {
+        return date.toISOString().slice(0, 10);
+    }
+}
+export function productHour(now = new Date()) {
+    const date = now instanceof Date ? now : new Date(now);
+    if (!Number.isFinite(date.getTime())) return -1;
+    try {
+        return Number(new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            hour: '2-digit',
+            hourCycle: 'h23',
+        }).format(date));
+    } catch (error) {
+        return date.getUTCHours();
+    }
+}
+export function productDateOffset(days, now = new Date()) {
+    const current = productDateKey(now);
+    if (!isValidProfileDate(current)) return '';
+    const date = new Date(`${current}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + Math.trunc(Number(days) || 0));
+    return date.toISOString().slice(0, 10);
+}
 const LIFECYCLE_STAGES = new Set(['applicant', 'incoming_student', 'student', 'practicing']);
 const PROFILE_SELECTION_LIFECYCLE_STAGES = new Set(['applicant', 'student', 'practicing']);
 const SIGNUP_LIFECYCLE_STAGES = new Set([...PROFILE_SELECTION_LIFECYCLE_STAGES, 'incoming_student']);
@@ -449,14 +506,21 @@ export function lifecycleCredential(stage) {
     if (stage === 'practicing') return 'CAA';
     return null;
 }
-export function resolveSignupLifecycleStage(lifecycleStage, matriculationDate, today = new Date().toISOString().slice(0, 10)) {
+export function resolveSignupLifecycleStage(lifecycleStage, matriculationDate, today = productDateKey()) {
     const stage = normalizeLifecycleStage(lifecycleStage);
     if (stage === 'incoming_student' && isValidProfileDate(matriculationDate) && matriculationDate <= today) {
         return 'student';
     }
     return stage;
 }
-export function registrationProfileError({ lifecycleStage, credential, matriculationDate, graduationDate, trainingProgram }) {
+export function registrationProfileError({
+    lifecycleStage,
+    credential,
+    matriculationDate,
+    graduationDate,
+    trainingProgram,
+    today = productDateKey(),
+}) {
     const stage = normalizeLifecycleStage(lifecycleStage)
         || (credential === 'SAA' ? 'student' : credential === 'CAA' ? 'practicing' : null);
     if (!SIGNUP_LIFECYCLE_STAGES.has(stage)) return 'Please select where you are in your AA journey.';
@@ -467,6 +531,9 @@ export function registrationProfileError({ lifecycleStage, credential, matricula
     if (stage === 'student' && !isValidProfileDate(graduationDate)) return 'Current AA students must add a valid expected graduation date.';
     if (stage === 'incoming_student' && !isValidProfileDate(graduationDate)) {
         return 'Accepted students must add a valid expected graduation date.';
+    }
+    if (['incoming_student', 'student'].includes(stage) && graduationDate <= today) {
+        return 'Expected graduation must be a future date.';
     }
     if (stage === 'incoming_student' && graduationDate <= matriculationDate) {
         return 'Graduation must be after matriculation.';
@@ -493,7 +560,7 @@ export function applicantCheckInDue({
     if (!Number.isFinite(nowMs) || !Number.isFinite(createdMs) || nowMs - createdMs < 30 * DAY_MS) return false;
     const lastCheckinMs = Date.parse(lastCheckinAt || '');
     if (Number.isFinite(lastCheckinMs) && nowMs - lastCheckinMs < 30 * DAY_MS) return false;
-    const today = new Date(nowMs).toISOString().slice(0, 10);
+    const today = productDateKey(new Date(nowMs));
     if (isValidProfileDate(snoozedUntil) && snoozedUntil > today) return false;
     return true;
 }
@@ -722,6 +789,14 @@ const MAX_STUDY_SESSION_SIZE = 200;
 const FREE_STUDY_POOL_SIZE = FREE_TIER_LIMIT;
 const QUESTION_CATALOG_TTL = 10 * 60 * 1000;
 let _questionCatalog = { at: 0, value: { total: 0, categories: [] } };
+const BLUEPRINT_DOMAINS = [
+    { domain: 'Principles of Anesthesia', weight: 9 },
+    { domain: 'Physiology, Pathophysiology & Management', weight: 19 },
+    { domain: 'Instrumentation, Monitoring & Anesthetic Delivery Systems', weight: 15 },
+    { domain: 'Subspecialty Care', weight: 31 },
+    { domain: 'Pharmacology', weight: 15 },
+    { domain: 'Regional Anesthesia & Pain Management', weight: 8 },
+];
 
 function applyQuestionFilters(query, { category, difficulty } = {}) {
     if (category && category !== 'all') {
@@ -734,11 +809,14 @@ function applyQuestionFilters(query, { category, difficulty } = {}) {
     return query;
 }
 
-async function fetchAllServedQuestionRows(select, { ids = [], category, difficulty } = {}) {
+async function fetchAllServedQuestionRows(select, { ids = [], category, domain, difficulty } = {}) {
     return fetchAllPostgrestRows((from, to) => {
         let query = applyServedFilter(supabase.from('questions').select(select));
         if (ids.length) query = query.in('id', ids);
-        else query = applyQuestionFilters(query, { category, difficulty });
+        else {
+            query = applyQuestionFilters(query, { category, difficulty });
+            if (domain) query = query.eq('domain_name', domain);
+        }
         return query.order('id', { ascending: true }).range(from, to);
     });
 }
@@ -749,15 +827,23 @@ async function getQuestionCatalog() {
         supabase.from('questions').select('category, domain_name')
     ).range(from, to));
     const categories = {};
+    const domains = {};
     rows.forEach((q) => {
         const category = q.category || q.domain_name || 'General';
         categories[category] = (categories[category] || 0) + 1;
+        const domain = q.domain_name || 'General';
+        domains[domain] = (domains[domain] || 0) + 1;
     });
     const value = {
         total: rows.length,
         categories: Object.entries(categories)
             .map(([category, total]) => ({ category, total }))
             .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category)),
+        domains: BLUEPRINT_DOMAINS.map(({ domain, weight }) => ({
+            domain,
+            weight,
+            total: domains[domain] || 0,
+        })),
     };
     _questionCatalog = { at: Date.now(), value };
     return value;
@@ -784,14 +870,18 @@ function qotdOffset(total, now = new Date()) {
     return createHash('sha256').update(qotdDayKey(now)).digest().readUInt32BE(0) % total;
 }
 
-async function fetchServedQuestionRows({ ids = [], category, difficulty, offset = 0, limit = MAX_STUDY_SESSION_SIZE } = {}) {
+async function fetchServedQuestionRows({ ids = [], category, domain, difficulty, offset = 0, limit = MAX_STUDY_SESSION_SIZE } = {}) {
     let query = supabase
         .from('questions')
         .select('id, specialty, domain, domain_name, subtopic, category, difficulty, stem, choices, telemetry, status, answer_revision')
         .order('id', { ascending: true });
     query = applyServedFilter(query);
     if (ids.length) query = query.in('id', ids);
-    else query = applyQuestionFilters(query, { category, difficulty }).range(offset, offset + limit - 1);
+    else {
+        query = applyQuestionFilters(query, { category, difficulty });
+        if (domain) query = query.eq('domain_name', domain);
+        query = query.range(offset, offset + limit - 1);
+    }
     const { data, error } = await query;
     if (error) throw error;
     if (!ids.length) return data || [];
@@ -829,73 +919,110 @@ async function fetchQuestionOfTheDay() {
     return fetchServedQuestionRows({ offset: qotdOffset(catalog.total), limit: 1 });
 }
 
-async function countServedQuestions({ category, difficulty } = {}) {
+async function countServedQuestions({ category, domain, difficulty } = {}) {
     let query = supabase.from('questions').select('id', { count: 'exact', head: true });
     query = applyServedFilter(query);
     query = applyQuestionFilters(query, { category, difficulty });
+    if (domain) query = query.eq('domain_name', domain);
     const { count, error } = await query;
     if (error) throw error;
     return count || 0;
 }
 
+async function getCurrentRevisionAnsweredIds(userId, currentQuestions) {
+    const questions = currentQuestions || await fetchAllServedQuestionRows('id, answer_revision');
+    if (!questions.length) return new Set();
+    const currentRevisions = new Map(questions.map((row) => [
+        String(row.id),
+        Math.max(1, Number(row.answer_revision) || 1),
+    ]));
+    const progress = await fetchAllPostgrestRows((from, to) => supabase
+        .from(PROGRESS_TABLE)
+        .select('question_id, answer_revision')
+        .eq('user_id', userId)
+        .range(from, to));
+    return new Set(progress
+        .filter((row) =>
+            Math.max(1, Number(row.answer_revision) || 1) === currentRevisions.get(String(row.question_id))
+        )
+        .map((row) => String(row.question_id)));
+}
+
 async function fetchPremiumSessionQuestions(userId, {
     size,
     category = 'all',
+    domain,
     difficulty = 'all',
     questionIds = [],
     poolMode = 'all',
     answeredIds,
 }) {
     if (questionIds.length) return fetchServedQuestionRows({ ids: questionIds.slice(0, size) });
-    const filteredTotal = await countServedQuestions({ category, difficulty });
+    if (poolMode === 'new') {
+        const idRows = await fetchAllServedQuestionRows('id, answer_revision', { category, domain, difficulty });
+        if (!idRows.length) return [];
+        const answered = answeredIds || await getCurrentRevisionAnsweredIds(userId, idRows);
+        const unseenIds = idRows.filter((row) => !answered.has(String(row.id))).map((row) => String(row.id));
+        const seenIds = idRows.filter((row) => answered.has(String(row.id))).map((row) => String(row.id));
+        const selectedIds = [
+            ...pickRandom(unseenIds, Math.min(size, unseenIds.length)),
+            ...pickRandom(seenIds, Math.max(0, size - unseenIds.length)),
+        ].slice(0, size);
+        return fetchServedQuestionRows({ ids: selectedIds });
+    }
+    const filteredTotal = await countServedQuestions({ category, domain, difficulty });
     if (!filteredTotal) return [];
 
     const candidateCount = Math.min(Math.max(size * 4, 100), 500, filteredTotal);
     const offset = Math.floor(Math.random() * Math.max(1, filteredTotal));
-    const first = await fetchServedQuestionRows({ category, difficulty, offset, limit: candidateCount });
+    const first = await fetchServedQuestionRows({ category, domain, difficulty, offset, limit: candidateCount });
     const candidates = first.length >= candidateCount || offset === 0
         ? first
-        : [...first, ...await fetchServedQuestionRows({ category, difficulty, offset: 0, limit: candidateCount - first.length })];
-    if (poolMode !== 'new') return pickRandom(candidates, size);
-
-    const answered = answeredIds || new Set((await fetchAllPostgrestRows((from, to) => supabase
-        .from(PROGRESS_TABLE)
-        .select('question_id')
-        .eq('user_id', userId)
-        .range(from, to))).map((row) => String(row.question_id)));
-    const unseen = candidates.filter((q) => !answered.has(String(q.id)));
-    return pickRandom([...unseen, ...candidates.filter((q) => answered.has(String(q.id)))], size);
+        : [...first, ...await fetchServedQuestionRows({ category, domain, difficulty, offset: 0, limit: candidateCount - first.length })];
+    return pickRandom(candidates, size);
 }
 
-function proportionalCategoryAllocations(categories, size) {
-    const total = categories.reduce((sum, category) => sum + category.total, 0);
-    if (!total || !size) return [];
-    const allocations = categories.map((category) => {
-        const exact = (size * category.total) / total;
-        return { ...category, count: Math.floor(exact), remainder: exact % 1 };
+export function allocateSessionDomains(domains, size, purpose = 'mock') {
+    const available = (domains || []).filter((entry) => Number(entry.total) > 0);
+    const target = Math.min(Math.max(0, Number(size) || 0), available.reduce((sum, entry) => sum + Number(entry.total), 0));
+    if (!available.length || !target) return [];
+    const weighted = available.map((entry) => ({
+        ...entry,
+        allocationWeight: purpose === 'diagnostic' ? 1 : Number(entry.weight) || 1,
+    }));
+    const weightTotal = weighted.reduce((sum, entry) => sum + entry.allocationWeight, 0);
+    const allocations = weighted.map((entry) => {
+        const exact = target * entry.allocationWeight / weightTotal;
+        const count = Math.min(Number(entry.total), Math.floor(exact));
+        return { domain: entry.domain, total: Number(entry.total), count, remainder: exact - Math.floor(exact) };
     });
-    let remaining = size - allocations.reduce((sum, category) => sum + category.count, 0);
-    allocations.sort((a, b) => b.remainder - a.remainder || b.total - a.total || a.category.localeCompare(b.category));
-    for (let index = 0; remaining > 0 && allocations.length; index = (index + 1) % allocations.length) {
-        allocations[index].count += 1;
-        remaining -= 1;
+    let remaining = target - allocations.reduce((sum, entry) => sum + entry.count, 0);
+    const order = allocations.slice().sort((a, b) =>
+        b.remainder - a.remainder || b.total - a.total || a.domain.localeCompare(b.domain)
+    );
+    while (remaining > 0) {
+        let progressed = false;
+        for (const entry of order) {
+            if (entry.count >= entry.total) continue;
+            entry.count += 1;
+            remaining -= 1;
+            progressed = true;
+            if (!remaining) break;
+        }
+        if (!progressed) break;
     }
-    return allocations.filter((category) => category.count > 0);
+    return allocations.filter((entry) => entry.count > 0).map(({ domain, count }) => ({ domain, count }));
 }
 
-async function fetchBalancedPremiumSessionQuestions(userId, { size, poolMode = 'all' }) {
+async function fetchBalancedPremiumSessionQuestions(userId, { size, poolMode = 'all', purpose = 'mock' }) {
     const catalog = await getQuestionCatalog();
-    const allocations = proportionalCategoryAllocations(catalog.categories, Math.min(size, catalog.total));
+    const allocations = allocateSessionDomains(catalog.domains, Math.min(size, catalog.total), purpose);
     const answeredIds = poolMode === 'new'
-        ? new Set((await fetchAllPostgrestRows((from, to) => supabase
-            .from(PROGRESS_TABLE)
-            .select('question_id')
-            .eq('user_id', userId)
-            .range(from, to))).map((row) => String(row.question_id)))
+        ? await getCurrentRevisionAnsweredIds(userId)
         : undefined;
     const groups = await Promise.all(allocations.map((allocation) => fetchPremiumSessionQuestions(userId, {
         size: allocation.count,
-        category: allocation.category,
+        domain: allocation.domain,
         poolMode,
         answeredIds,
     })));
@@ -903,14 +1030,14 @@ async function fetchBalancedPremiumSessionQuestions(userId, { size, poolMode = '
     const selectedIds = new Set(selected.map((question) => String(question.id)));
     if (selected.length >= size) return pickRandom(selected, size);
     const fill = await fetchPremiumSessionQuestions(userId, {
-        size: size - selected.length,
+        size: Math.max((size - selected.length) * 3, 20),
         poolMode,
         answeredIds,
     });
     return [...selected, ...fill.filter((question) => !selectedIds.has(String(question.id)))].slice(0, size);
 }
 
-async function getRecommendedPriorityIds(userId, size) {
+async function getRecommendedPriorities(userId, size) {
     const dueCap = Math.max(1, Math.ceil(size * 0.4));
     const missedCap = Math.max(1, Math.ceil(size * 0.4));
     let due = [];
@@ -929,13 +1056,18 @@ async function getRecommendedPriorityIds(userId, size) {
 
     const progress = await fetchAllPostgrestRows((from, to) => supabase
         .from(PROGRESS_TABLE)
-        .select('id, question_id, is_correct, created_at')
+        .select('id, question_id, answer_revision, is_correct, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .range(from, to));
+    const currentQuestions = await fetchAllServedQuestionRows('id, answer_revision');
+    const currentRevisions = new Map(currentQuestions.map((row) => [String(row.id), Number(row.answer_revision)]));
+    const currentProgress = progress.filter((row) =>
+        Number(row.answer_revision) === currentRevisions.get(String(row.question_id))
+    );
     const latest = new Map();
-    progress.forEach((row) => {
+    currentProgress.forEach((row) => {
         const questionId = String(row.question_id);
         if (!latest.has(questionId)) latest.set(questionId, row);
     });
@@ -943,26 +1075,91 @@ async function getRecommendedPriorityIds(userId, size) {
         .filter(([, row]) => !row.is_correct)
         .map(([questionId]) => questionId)
         .slice(0, missedCap);
-    return Array.from(new Set([...due, ...missed]));
+    const currentAttempted = new Set(currentProgress.map((row) => String(row.question_id)));
+    const ids = Array.from(new Set([
+        ...due.filter((questionId) => currentAttempted.has(questionId)),
+        ...missed,
+    ]));
+
+    let focus = null;
+    try {
+        const catalog = await getQuestionCatalog();
+        const { data, error } = await supabase.from('user_domain_ability')
+            .select('domain, ability, attempts')
+            .eq('user_id', userId);
+        if (error) throw error;
+        const abilityByDomain = new Map((data || []).map((row) => [row.domain, row]));
+        const candidates = (catalog.domains || []).filter((entry) => entry.total > 0).map((entry) => {
+            const ability = abilityByDomain.get(entry.domain);
+            return {
+                domain: entry.domain,
+                attempts: Number(ability?.attempts) || 0,
+                ability: Number(ability?.ability) || 1100,
+            };
+        });
+        candidates.sort((a, b) =>
+            (a.attempts > 0) - (b.attempts > 0)
+            || a.ability - b.ability
+            || a.domain.localeCompare(b.domain)
+        );
+        if (candidates[0]) {
+            const target = candidates[0].ability + 40;
+            focus = {
+                domain: candidates[0].domain,
+                difficulty: target >= 1200 ? 'hard' : target >= 1000 ? 'medium' : 'easy',
+            };
+        }
+    } catch (error) {
+        console.warn('Recommended-session ability lookup:', error.message);
+    }
+    return { ids, focus };
 }
 
 async function fetchPrioritySessionQuestions(userId, { size, questionIds = [], purpose }) {
-    const priorityIds = purpose === 'recommended'
-        ? await getRecommendedPriorityIds(userId, size)
-        : questionIds;
+    const recommended = purpose === 'recommended'
+        ? await getRecommendedPriorities(userId, size)
+        : { ids: questionIds, focus: null };
+    const priorityIds = recommended.ids;
     const priority = priorityIds.length
         ? await fetchServedQuestionRows({ ids: priorityIds.slice(0, size) })
         : [];
-    if (priority.length >= size) return pickRandom(priority, size);
-    const fill = await fetchPremiumSessionQuestions(userId, {
-        size: Math.max((size - priority.length) * 2, 20),
+    if (priority.length >= size) return purpose === 'recommended' ? priority.slice(0, size) : pickRandom(priority, size);
+    const selected = priority.slice();
+    const selectedIds = new Set(selected.map((q) => String(q.id)));
+    const addUnique = (rows) => {
+        for (const question of rows || []) {
+            if (selected.length >= size) break;
+            const id = String(question.id);
+            if (!selectedIds.has(id)) {
+                selectedIds.add(id);
+                selected.push(question);
+            }
+        }
+    };
+    const needed = size - selected.length;
+    if (recommended.focus && needed > 0) {
+        addUnique(await fetchPremiumSessionQuestions(userId, {
+            size: Math.max(needed * 2, 12),
+            domain: recommended.focus.domain,
+            difficulty: recommended.focus.difficulty,
+            poolMode: 'new',
+        }));
+        if (selected.length < size) {
+            addUnique(await fetchPremiumSessionQuestions(userId, {
+                size: Math.max((size - selected.length) * 2, 12),
+                domain: recommended.focus.domain,
+                poolMode: 'new',
+            }));
+        }
+    }
+    if (selected.length < size) addUnique(await fetchPremiumSessionQuestions(userId, {
+        size: Math.max((size - selected.length) * 3, 20),
         category: 'all',
         difficulty: 'all',
         questionIds: [],
         poolMode: 'new',
-    });
-    const seen = new Set(priority.map((q) => String(q.id)));
-    return [...priority, ...fill.filter((q) => !seen.has(String(q.id)))].slice(0, size);
+    }));
+    return selected.slice(0, size);
 }
 
 // ---------------------------------------------------------------------------
@@ -1231,7 +1428,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'security-hardening-20260723.3',
+        build: 'study-integrity-20260723.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -1279,12 +1476,11 @@ function startReferralCodeScheduler() {
 // Public runtime config for the browser (no secrets — browser Sentry DSNs are public
 // by design). Set SENTRY_BROWSER_DSN on Render to turn on error monitoring.
 app.get('/api/config', (req, res) => {
-    ensureReferralCode(); // fire-and-forget; idempotent, creates the new month's code on first hit
     res.json({
         sentryDsn: process.env.SENTRY_BROWSER_DSN || null,
         environment: process.env.NODE_ENV || 'production',
         referralCode: referralCodeFor(),
-        nativePurchaseBridgeMinVersion: 1,
+        nativePurchaseBridgeMinVersion: 2,
         nativePremiumProductId: MOBILE_PREMIUM_PRODUCT_ID,
         nativePurchaseVerificationConfigured: mobilePurchaseVerificationConfigured(),
     });
@@ -1299,22 +1495,50 @@ app.get('/api/public/aa-programs', (req, res) => {
 
 // Public live count of published questions — powers the landing "X+ questions
 // and growing" counter. Cached 10 min.
-let _statsCache = { at: 0, published: 0, users: 0 };
+let _statsCache = { at: 0, attemptedAt: 0, published: 0, users: 0, stale: true };
+let _statsLastFailureReportAt = 0;
 app.get('/api/stats', async (req, res) => {
+    let stale = !supabase || _statsCache.stale;
     try {
-        if (supabase && Date.now() - _statsCache.at > 10 * 60 * 1000) {
-            const [{ count }, { count: users }] = await Promise.all([
+        const now = Date.now();
+        if (supabase
+            && now - _statsCache.at > 10 * 60 * 1000
+            && now - _statsCache.attemptedAt > 30 * 1000) {
+            _statsCache.attemptedAt = now;
+            const [questionResult, userResult] = await Promise.all([
                 supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'published'),
                 supabase.from(PROFILE_TABLE).select('id', { count: 'exact', head: true }),
             ]);
+            const failures = [questionResult.error, userResult.error].filter(Boolean);
+            stale = failures.length > 0;
+            if (failures.length && now - _statsLastFailureReportAt > 15 * 60 * 1000) {
+                _statsLastFailureReportAt = now;
+                reportOperationalError('public-stats.refresh', failures[0], { failures: failures.length });
+            }
+            const anySuccess = !questionResult.error || !userResult.error;
             _statsCache = {
-                at: Date.now(),
-                published: typeof count === 'number' ? count : _statsCache.published,
-                users: typeof users === 'number' ? users : _statsCache.users,
+                // Retry a partial/failed refresh after a short backoff instead of
+                // hammering the database on every public page request.
+                at: failures.length ? _statsCache.at : now,
+                attemptedAt: now,
+                published: !questionResult.error && typeof questionResult.count === 'number'
+                    ? questionResult.count : _statsCache.published,
+                users: !userResult.error && typeof userResult.count === 'number'
+                    ? userResult.count : _statsCache.users,
+                stale,
             };
+            if (!anySuccess) stale = true;
         }
-    } catch (e) { /* serve cached value */ }
-    res.json({ published: _statsCache.published, users: _statsCache.users });
+    } catch (error) {
+        stale = true;
+        _statsCache.stale = true;
+        const now = Date.now();
+        if (now - _statsLastFailureReportAt > 15 * 60 * 1000) {
+            _statsLastFailureReportAt = now;
+            reportOperationalError('public-stats.refresh', error);
+        }
+    }
+    res.json({ published: _statsCache.published, users: _statsCache.users, stale });
 });
 
 // ---------------------------------------------------------------------------
@@ -1583,10 +1807,12 @@ async function sendNativeTest(userId) {
 
 // Expose the VAPID public key so the client can subscribe (returns enabled:false if keys aren't set).
 app.get('/api/push/vapid-public', (req, res) => {
-    // `native` is surfaced even when VAPID is unset so the store apps can show the
-    // reminders card off the native flag alone.
-    if (!PUSH_ENABLED) return res.json({ enabled: false, native: NATIVE_PUSH_ENABLED });
-    res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY, native: NATIVE_PUSH_ENABLED });
+    // Report initialized providers, not merely the presence of environment
+    // variables. A malformed credential must not produce an enabled toggle.
+    const nativePlatforms = { ios: !!apnProvider, android: !!fcm };
+    const native = nativePlatforms.ios || nativePlatforms.android;
+    if (!PUSH_ENABLED) return res.json({ enabled: false, native, nativePlatforms });
+    res.json({ enabled: true, publicKey: VAPID_PUBLIC_KEY, native, nativePlatforms });
 });
 app.post('/api/push/subscribe', pushLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
@@ -1841,25 +2067,46 @@ app.get('/api/admin/metrics', async (req, res) => {
 function startReminderScheduler() {
     if (!(RESEND_API_KEY || PUSH_ENABLED || NATIVE_PUSH_ENABLED)) return;
     let _lastNudgeDay = null;
-    setInterval(async () => {
+    let running = false;
+    const run = async () => {
+        if (running) return;
+        running = true;
         try {
             const now = new Date();
-            const day = now.toISOString().slice(0, 10);
-            const h = now.getUTCHours();
-            if (h >= 13 && h < 15 && _lastNudgeDay !== day) {
+            const day = productDateKey(now);
+            const hour = productHour(now);
+            if (hour >= 8 && hour < 11 && _lastNudgeDay !== day) {
                 _lastNudgeDay = day;
-                const { data: claimed, error: claimError } = await supabase.rpc('claim_macprep_daily_job', {
-                    p_job_name: 'study-reminders',
-                    p_run_day: day,
-                });
-                if (claimError) throw claimError;
-                if (!claimed) return;
-                if (RESEND_API_KEY) { const r = await sendRetentionNudges(); console.log(`[nudges] daily email run: sent ${r.sent}/${r.eligible} eligible (${r.candidates} due)`); }
-                if (PUSH_ENABLED) { const rp = await sendPushReminders(); console.log(`[push] daily run: sent ${rp.sent}/${rp.eligible} eligible (${rp.candidates} due)`); }
-                if (NATIVE_PUSH_ENABLED) { const rn = await sendNativeReminders(); console.log(`[native-push] daily run: sent ${rn.sent}/${rn.eligible} eligible (${rn.candidates} due)`); }
+                const jobs = [
+                    RESEND_API_KEY && ['study-reminders-email', 'email', sendRetentionNudges],
+                    PUSH_ENABLED && ['study-reminders-web', 'push', sendPushReminders],
+                    (apnProvider || fcm) && ['study-reminders-native', 'native-push', sendNativeReminders],
+                ].filter(Boolean);
+                for (const [jobName, logName, send] of jobs) {
+                    try {
+                        const { data: claimed, error: claimError } = await supabase.rpc('claim_macprep_daily_job', {
+                            p_job_name: jobName,
+                            p_run_day: day,
+                        });
+                        if (claimError) throw claimError;
+                        if (!claimed) continue;
+                        const result = await send();
+                        console.log(`[${logName}] daily run: sent ${result.sent}/${result.eligible} eligible (${result.candidates} due)`);
+                    } catch (error) {
+                        reportOperationalError(`${logName}.scheduler`, error);
+                    }
+                }
             }
-        } catch (e) { console.error('[nudges] scheduler error:', e.message); }
-    }, 30 * 60 * 1000);
+        } catch (e) {
+            reportOperationalError('reminder.scheduler', e);
+        } finally {
+            running = false;
+        }
+    };
+    const firstRun = setTimeout(run, 15 * 1000);
+    if (typeof firstRun.unref === 'function') firstRun.unref();
+    const interval = setInterval(run, 30 * 60 * 1000);
+    if (typeof interval.unref === 'function') interval.unref();
     console.log(`[nudges] daily reminder scheduler active (email:${!!RESEND_API_KEY} push:${PUSH_ENABLED} native:${NATIVE_PUSH_ENABLED})`);
 }
 
@@ -1919,7 +2166,7 @@ function inferLifecycleStage(profile) {
 }
 
 function dateHasArrived(value) {
-    return isValidProfileDate(value) && value <= new Date().toISOString().slice(0, 10);
+    return isValidProfileDate(value) && value <= productDateKey();
 }
 
 async function advanceLifecycleDates(profile, userId) {
@@ -1928,11 +2175,12 @@ async function advanceLifecycleDates(profile, userId) {
     if (!supabase || !userId) return { profile: next, stage };
     if (stage === 'incoming_student' && dateHasArrived(next?.matriculation_date)) {
         const now = new Date().toISOString();
+        const today = productDateKey();
         const { data, error } = await supabase.from(PROFILE_TABLE)
             .update({ lifecycle_stage: 'student', credential: 'SAA', lifecycle_updated_at: now, updated_at: now })
             .eq('user_id', userId)
             .eq('lifecycle_stage', 'incoming_student')
-            .lte('matriculation_date', now.slice(0, 10))
+            .lte('matriculation_date', today)
             .select('lifecycle_stage, credential, matriculation_date, graduation_date')
             .maybeSingle();
         if (error) throw error;
@@ -1941,11 +2189,12 @@ async function advanceLifecycleDates(profile, userId) {
     }
     if (stage === 'student' && dateHasArrived(next?.graduation_date)) {
         const now = new Date().toISOString();
+        const today = productDateKey();
         const { data, error } = await supabase.from(PROFILE_TABLE)
             .update({ lifecycle_stage: 'practicing', credential: 'CAA', lifecycle_updated_at: now, updated_at: now })
             .eq('user_id', userId)
             .eq('lifecycle_stage', 'student')
-            .lte('graduation_date', now.slice(0, 10))
+            .lte('graduation_date', today)
             .select('lifecycle_stage, credential, matriculation_date, graduation_date')
             .maybeSingle();
         if (error) throw error;
@@ -1958,7 +2207,7 @@ async function advanceLifecycleDates(profile, userId) {
 async function advanceDueLifecycleProfiles() {
     if (!supabase) return { incoming: 0, graduates: 0 };
     const now = new Date().toISOString();
-    const today = now.slice(0, 10);
+    const today = productDateKey();
     const { data: incoming, error: incomingError } = await supabase.from(PROFILE_TABLE)
         .update({ lifecycle_stage: 'student', credential: 'SAA', lifecycle_updated_at: now, updated_at: now })
         .eq('lifecycle_stage', 'incoming_student')
@@ -2202,6 +2451,12 @@ async function syncPaidStripeCheckout({ session, lineItem, userId, email, metada
         currency: session.currency,
         metadata,
     });
+    if (supabase && session?.id) {
+        const { error } = await supabase.from(STRIPE_CHECKOUT_TABLE)
+            .delete()
+            .eq('session_id', session.id);
+        if (error) reportOperationalError('stripe.checkout-cache-clear', error, { sessionId: session.id });
+    }
     return { hasAccess, paymentIntentId, status };
 }
 
@@ -2352,7 +2607,7 @@ async function verifyAppleNotification(signedPayload) {
     throw new MobilePurchaseError('Invalid Apple notification signature.', 400);
 }
 
-async function verifyApplePurchase(userId, transactionId) {
+async function fetchAppleTransactionPayload(transactionId) {
     assertMobilePurchase(/^\d{1,64}$/.test(String(transactionId || '')), 'Invalid Apple transaction.');
     const credentials = appleCredentials();
     let lastError = null;
@@ -2373,8 +2628,7 @@ async function verifyApplePurchase(userId, transactionId) {
                 environment
             );
             const response = await client.getTransactionInfo(transactionId);
-            const payload = await appleVerifier(environment).verifyAndDecodeTransaction(response.signedTransactionInfo);
-            return validateAppleTransactionPayload(payload, { userId, transactionId });
+            return await appleVerifier(environment).verifyAndDecodeTransaction(response.signedTransactionInfo);
         } catch (error) {
             if (error instanceof MobilePurchaseError && error.status === 503) throw error;
             lastError = error;
@@ -2385,6 +2639,11 @@ async function verifyApplePurchase(userId, transactionId) {
     }
     console.warn('[mobile-purchase] Apple transaction verification failed:', lastError?.message || 'unknown error');
     throw new MobilePurchaseError('We could not verify this Apple purchase.', 422);
+}
+
+async function verifyApplePurchase(userId, transactionId) {
+    const payload = await fetchAppleTransactionPayload(transactionId);
+    return validateAppleTransactionPayload(payload, { userId, transactionId });
 }
 
 function googlePublisherClient() {
@@ -2473,20 +2732,25 @@ async function claimMobileEntitlement(userId, entitlement) {
 
 async function acknowledgeGooglePlayPurchase(publisher, purchaseToken, acknowledgementState) {
     if (acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED') return true;
-    try {
-        await publisher.purchases.products.acknowledge({
-            packageName: MOBILE_APP_BUNDLE_ID,
-            productId: configuredMobileProductId(),
-            token: purchaseToken,
-            requestBody: {},
-        });
-        return true;
-    } catch (error) {
-        // The user already has the server-recorded entitlement. A later restore retries
-        // acknowledgement, avoiding accidental loss of purchased access on a transient API error.
-        console.error('[mobile-purchase] Google Play acknowledgement failed:', error?.message || 'unknown error');
-        return false;
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+            await publisher.purchases.products.acknowledge({
+                packageName: MOBILE_APP_BUNDLE_ID,
+                productId: configuredMobileProductId(),
+                token: purchaseToken,
+                requestBody: {},
+            });
+            return true;
+        } catch (error) {
+            lastError = error;
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 200 * (2 ** attempt)));
+        }
     }
+    // The user already has the server-recorded entitlement. A later restore retries
+    // acknowledgement, while the RTDN endpoint returns an error so Pub/Sub retries too.
+    console.error('[mobile-purchase] Google Play acknowledgement failed:', lastError?.message || 'unknown error');
+    return false;
 }
 
 // Returns the authenticated user only if their (verified) account email is on the
@@ -2722,10 +2986,27 @@ app.post('/api/auth/refresh', sessionLimiter, async (req, res) => {
 app.post('/api/auth/logout', sessionLimiter, async (req, res) => {
     const auth = req.headers.authorization || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : authCookie(req, ACCESS_COOKIE);
-    clearAuthCookies(res);
     if (token && supabase) {
-        try { await supabase.auth.admin.signOut(token, 'global'); } catch (e) { /* cookie clearing still succeeds */ }
+        try {
+            const user = await getUserFromToken(req);
+            if (user) {
+                const [webPush, nativePush] = await Promise.all([
+                    supabase.from('push_subscriptions').delete().eq('user_id', user.id),
+                    supabase.from('native_device_tokens').delete().eq('user_id', user.id),
+                ]);
+                if (webPush.error) throw webPush.error;
+                if (nativePush.error) throw nativePush.error;
+            }
+            const { error } = await supabase.auth.admin.signOut(token, 'global');
+            if (error) throw error;
+        } catch (error) {
+            // An expired access token can no longer authorize global revocation.
+            // Report the incomplete remote cleanup, but never trap the person in
+            // the app by retaining this browser's HttpOnly cookies.
+            reportOperationalError('auth.logout', error);
+        }
     }
+    clearAuthCookies(res);
     return res.json({ success: true });
 });
 
@@ -2958,6 +3239,13 @@ const FEATURE_EVENT_LABELS = new Map([
     ['arcade_start', 'Arcade'],
     ['boss_start', 'Boss Fight'],
 ]);
+const ACTIVE_USAGE_EVENTS = new Set([
+    'page_view', 'login', 'session_start', 'session_complete',
+    'app_open', 'app_foreground', 'recommended_start', 'diagnostic_start',
+    'specialty_quiz_start', 'mock_exam_start', 'flashcards_start',
+    'flashcards_done', 'critical_events_open', 'arcade_start', 'arcade_over',
+    'boss_start', 'applicant_progress_saved',
+]);
 
 export function analyticsPlatformFromMeta(meta) {
     const platform = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta.platform : null;
@@ -3014,7 +3302,7 @@ export function summarizeProductUsage(rows, now = new Date()) {
         const platform = analyticsPlatformFromMeta(row?.meta);
         const bucket = buckets[platform];
         const createdAt = new Date(row?.created_at || 0).getTime();
-        if (row?.user_id) {
+        if (row?.user_id && ACTIVE_USAGE_EVENTS.has(row?.name)) {
             bucket.active30.add(row.user_id);
             if (createdAt >= weekAgo) bucket.active7.add(row.user_id);
         }
@@ -3299,7 +3587,7 @@ app.patch('/api/admin/vouchers/label', async (req, res) => {
         let collisionQuery = supabase.from('program_vouchers')
             .select('voucher_key')
             .eq('owner_director_id', admin.id)
-            .ilike('label', label);
+            .ilike('label', escapePostgrestLikeTerm(label));
         if (currentLabel !== null) collisionQuery = collisionQuery.neq('label', currentLabel);
         const { data: collision, error: collisionError } = await collisionQuery.limit(1);
         if (collisionError) throw collisionError;
@@ -3332,11 +3620,12 @@ app.get('/api/admin/vouchers', async (req, res) => {
     const admin = await getAdminUser(req);
     if (!admin) return res.status(403).json({ error: 'Admin access required.' });
     try {
-        const { data, error } = await supabase.from('program_vouchers')
+        const list = await fetchAllPostgrestRows((from, to) => supabase.from('program_vouchers')
             .select('voucher_key, is_claimed, claimed_by_email, claimed_at, created_at, label')
-            .eq('owner_director_id', admin.id).order('created_at', { ascending: false }).limit(500);
-        if (error) throw error;
-        const list = data || [];
+            .eq('owner_director_id', admin.id)
+            .order('created_at', { ascending: false })
+            .order('voucher_key', { ascending: true })
+            .range(from, to));
         return res.json({ vouchers: list, total: list.length, claimed: list.filter((v) => v.is_claimed).length });
     } catch (err) {
         return res.status(500).json({ error: 'Could not load vouchers.' });
@@ -3692,7 +3981,7 @@ app.get('/api/questions', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
         if (!user) return res.status(401).json({ error: 'Authentication required.', questions: [] });
-        if (!supabase) return res.json({ questions: [], catalog: { total: 0, categories: [] } });
+        if (!supabase) return res.status(503).json({ error: 'Question catalog is temporarily unavailable.' });
         if (!(await requireBoardPrepLifecycle(user, res))) return;
         return res.json({ questions: [], catalog: await getQuestionCatalog() });
     } catch (err) {
@@ -3734,7 +4023,7 @@ app.post('/api/study-session', studySessionLimiter, async (req, res) => {
             questions = ['recommended', 'review'].includes(purpose)
                 ? await fetchPrioritySessionQuestions(user.id, { size: requested, questionIds, purpose })
                 : ['mock', 'diagnostic'].includes(purpose)
-                    ? await fetchBalancedPremiumSessionQuestions(user.id, { size: requested, poolMode })
+                    ? await fetchBalancedPremiumSessionQuestions(user.id, { size: requested, poolMode, purpose })
                 : await fetchPremiumSessionQuestions(user.id, {
                     size: requested,
                     category,
@@ -3965,6 +4254,9 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
     if (!questionId || (choiceIndex === undefined && choiceId === undefined)) {
         return res.status(400).json({ error: 'questionId and an answer choice are required.' });
     }
+    if (req.body?.submissionId && !validUuid(req.body.submissionId)) {
+        return res.status(400).json({ error: 'A valid tutor submission id is required.' });
+    }
 
     try {
         const fullAccess = await hasFullAccess(user);
@@ -3976,10 +4268,11 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         if (!fullAccess) {
             const ceiling = await getFreeTierCeiling();
             // Cheap first: re-answering a question already seen is always free.
-            const { count: seenThis } = await supabase
+            const { count: seenThis, error: seenError } = await supabase
                 .from(PROGRESS_TABLE)
                 .select('question_id', { count: 'exact', head: true })
                 .eq('user_id', user.id).eq('question_id', String(questionId));
+            if (seenError) throw seenError;
             if (!seenThis) {
                 // Only then check the distinct count — server-side, not a full table pull.
                 const { data: distinctCount, error: dcErr } = await supabase.rpc('distinct_answered', { p_user: user.id });
@@ -3995,21 +4288,31 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
         if (!q) return res.status(404).json({ error: 'Question not found.' });
 
         assertCurrentChoiceIdentity(q, req.body);
-        const graded = normalizeGradeInput(q, req.body);
-        const { selectedIndex: selIndex, correctIndex, isCorrect, confidence, timeMs, answerChanged, choices } = graded;
-
-        // Record the attempt before revealing the answer. Unexpected persistence
-        // failures must never be reported as a successfully graded question.
-        const { error: pErr } = await supabase.from(PROGRESS_TABLE).insert({
-            user_id: user.id,
-            question_id: String(questionId),
-            specialty: q.specialty || null,
-            category: q.category || null,
-            selected_label: String.fromCharCode(65 + selIndex),
-            is_correct: isCorrect,
+        const requestedGrade = normalizeGradeInput(q, req.body);
+        const {
+            selectedIndex: requestedIndex,
+            isCorrect: requestedCorrect,
             confidence,
-            time_ms: timeMs,
-            answer_changed: answerChanged,
+            timeMs,
+            answerChanged,
+        } = requestedGrade;
+        const submissionId = validUuid(req.body?.submissionId) ? req.body.submissionId : randomUUID();
+        const sm2q = requestedCorrect
+            ? (confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3)
+            : (confidence === 'high' ? 0 : 2);
+        const { data: persistedRows, error: pErr } = await supabase.rpc('grade_macprep_tutor_attempt', {
+            p_user: user.id,
+            p_question: String(questionId),
+            p_submission: submissionId,
+            p_answer_revision: Number(q.answer_revision) || 1,
+            p_specialty: q.specialty || null,
+            p_category: q.category || null,
+            p_selected_label: String.fromCharCode(65 + requestedIndex),
+            p_is_correct: requestedCorrect,
+            p_confidence: confidence,
+            p_time_ms: timeMs,
+            p_answer_changed: answerChanged,
+            p_quality: sm2q,
         });
         if (pErr) {
             // The DB trigger rejects free-tier users who slip past the app-level check
@@ -4017,16 +4320,36 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
             if (/free_tier/i.test(pErr.message || '') || pErr.code === '23514') {
                 return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
             }
+            if (/stale_question/i.test(pErr.message || '')) {
+                const stale = new Error('This question changed while it was open. Reload it before answering.');
+                stale.status = 409;
+                stale.code = 'stale_question';
+                throw stale;
+            }
+            if (/submission_conflict/i.test(pErr.message || '')) {
+                const conflict = new Error('This answer submission id was already used for another question.');
+                conflict.status = 409;
+                throw conflict;
+            }
             throw pErr;
         }
-
-        // Update the spaced-repetition (SM-2) schedule for this question — best-effort.
-        // Map correctness + stated confidence to a 0-5 recall quality.
-        const sm2q = isCorrect
-            ? (confidence === 'high' ? 5 : confidence === 'medium' ? 4 : 3)
-            : (confidence === 'high' ? 0 : 2);
-        supabase.rpc('sm2_review', { p_user: user.id, p_question: String(questionId), p_quality: sm2q })
-            .then(({ error: sErr }) => { if (sErr) console.warn(`sm2_review warning: ${sErr.message}`); }, () => {});
+        const persisted = Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+        const selectedLabel = String(persisted?.selected_label || '').toUpperCase();
+        const persistedIndex = selectedLabel.charCodeAt(0) - 65;
+        if (!Number.isInteger(persistedIndex) || persistedIndex < 0) {
+            throw new Error('The stored answer could not be reconstructed.');
+        }
+        if (Number(persisted?.answer_revision) !== Number(q.answer_revision)) {
+            const stale = new Error('This question changed while it was open. Reload it before answering.');
+            stale.status = 409;
+            stale.code = 'stale_question';
+            throw stale;
+        }
+        const graded = normalizeGradeInput(q, { choiceIndex: persistedIndex });
+        const { choices } = graded;
+        if (graded.isCorrect !== (persisted?.is_correct === true)) {
+            throw new Error('The stored answer no longer matches the active answer layout.');
+        }
 
         // Peer stats: % correct + per-choice answer distribution for this question
         // (so tutor mode can show how the user's pick compares to everyone else's).
@@ -4054,6 +4377,8 @@ app.post('/api/grade', gradeLimiter, async (req, res) => {
 
         return res.json({
             ...graded.result,
+            submissionId,
+            replayed: persisted?.inserted !== true,
             peer_correct_pct: peerPct,
             peer_group: 'SAA',
             choice_distribution: choiceDistribution,
@@ -4093,7 +4418,7 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         if (fullAccess === null) return accessLookupUnavailable(res);
         const { data: existingSubmission, error: existingSubmissionError } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id')
+            .select('question_id, answer_revision, selected_label, is_correct')
             .eq('user_id', user.id)
             .eq('submission_id', submissionId);
         if (existingSubmissionError) throw existingSubmissionError;
@@ -4132,6 +4457,18 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
         if (byId.size !== questionIds.length) {
             return res.status(404).json({ error: 'One or more exam questions are no longer available.' });
         }
+        if (existingSubmission?.length) {
+            const existingById = new Map(existingSubmission.map((row) => [String(row.question_id), row]));
+            const changed = questionIds.some((questionId) =>
+                Number(existingById.get(questionId)?.answer_revision) !== Number(byId.get(questionId)?.answer_revision)
+            );
+            if (changed) {
+                return res.status(409).json({
+                    error: 'One or more questions changed after this exam was submitted. Reload before reviewing the results.',
+                    stale_question: true,
+                });
+            }
+        }
 
         const gradedAnswers = answers.map((answer) => {
             const questionId = String(answer.questionId);
@@ -4140,10 +4477,8 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
             const grade = normalizeGradeInput(question, answer);
             return { questionId, question, grade };
         });
-        const progressRows = gradedAnswers.map(({ questionId, question, grade }) => ({
-            user_id: user.id,
+        const examAttempts = gradedAnswers.map(({ questionId, question, grade }) => ({
             question_id: questionId,
-            submission_id: submissionId,
             specialty: question.specialty || null,
             category: question.category || null,
             selected_label: String.fromCharCode(65 + grade.selectedIndex),
@@ -4151,41 +4486,43 @@ app.post('/api/grade-batch', sessionLimiter, async (req, res) => {
             confidence: grade.confidence,
             time_ms: grade.timeMs,
             answer_changed: grade.answerChanged,
+            answer_revision: Number(question.answer_revision) || 1,
+            quality: grade.isCorrect
+                ? (grade.confidence === 'high' ? 5 : grade.confidence === 'medium' ? 4 : 3)
+                : (grade.confidence === 'high' ? 0 : 2),
         }));
 
-        const { data: inserted, error: progressErr } = await supabase
-            .from(PROGRESS_TABLE)
-            .upsert(progressRows, {
-                onConflict: 'user_id,submission_id,question_id',
-                ignoreDuplicates: true,
-            })
-            .select('question_id');
+        const { data: atomicRows, error: progressErr } = await supabase.rpc('grade_macprep_exam_attempts', {
+            p_user: user.id,
+            p_submission: submissionId,
+            p_attempts: examAttempts,
+        });
         if (progressErr) {
             if (/free_tier/i.test(progressErr.message || '') || progressErr.code === '23514') {
                 return res.status(402).json({ error: 'paywall', paywall: true, limit: await getFreeTierCeiling() });
             }
+            if (/stale_question/i.test(progressErr.message || '')) {
+                return res.status(409).json({
+                    error: 'One or more questions changed while this exam was open. Reload before submitting.',
+                    stale_question: true,
+                });
+            }
+            if (/submission_conflict/i.test(progressErr.message || '')) {
+                return res.status(409).json({
+                    error: 'This exam submission id was already used for a different question set.',
+                });
+            }
             throw progressErr;
         }
-
-        const insertedIds = new Set((inserted || []).map((row) => String(row.question_id)));
-        await Promise.all(gradedAnswers.map(async ({ questionId, grade }) => {
-            if (!insertedIds.has(questionId)) return;
-            const quality = grade.isCorrect
-                ? (grade.confidence === 'high' ? 5 : grade.confidence === 'medium' ? 4 : 3)
-                : (grade.confidence === 'high' ? 0 : 2);
-            const { error } = await supabase.rpc('sm2_review', {
-                p_user: user.id,
-                p_question: questionId,
-                p_quality: quality,
-            });
-            if (error) reportOperationalError('grade-batch.sm2', error, { questionId });
-        }));
+        if (!Array.isArray(atomicRows) || atomicRows.length !== questionIds.length) {
+            throw new Error('The atomic exam write returned an incomplete result.');
+        }
 
         // A retry must return the answers that won the idempotent insert, not a
         // newly supplied body that the database correctly ignored.
         const { data: persisted, error: persistedError } = await supabase
             .from(PROGRESS_TABLE)
-            .select('question_id, selected_label, is_correct')
+            .select('question_id, selected_label, is_correct, answer_revision')
             .eq('user_id', user.id)
             .eq('submission_id', submissionId);
         if (persistedError) throw persistedError;
@@ -4224,6 +4561,7 @@ app.post('/api/user/cosmetics', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
+    if (!(await requireBoardPrepLifecycle(user, res))) return;
     const b = req.body || {};
     const upd = {};
     if ('title' in b) upd.selected_title = String(b.title || '').trim().slice(0, 40) || null;
@@ -4248,7 +4586,7 @@ app.post('/api/user/cosmetics', async (req, res) => {
 app.get('/api/user/profile', profileLimiter, async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!supabase) return res.json({ profile: null });
+    if (!supabase) return res.status(503).json({ error: 'Account service is temporarily unavailable.' });
 
     try {
         const { data: storedProfile, error } = await supabase
@@ -4290,8 +4628,18 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                     p_user: user.id,
                     p_served_statuses: SERVE_FILLER ? null : SERVED_STATUSES,
                 }),
-                supabase.from('user_flags').select('question_id').eq('user_id', user.id),
-                supabase.from('user_flashcards').select('question_id').eq('user_id', user.id),
+                fetchAllPostgrestRows((from, to) => supabase.from('user_flags')
+                    .select('question_id')
+                    .eq('user_id', user.id)
+                    .order('question_id', { ascending: true })
+                    .range(from, to))
+                    .then((data) => ({ data, error: null }), (error) => ({ data: [], error })),
+                fetchAllPostgrestRows((from, to) => supabase.from('user_flashcards')
+                    .select('question_id')
+                    .eq('user_id', user.id)
+                    .order('question_id', { ascending: true })
+                    .range(from, to))
+                    .then((data) => ({ data, error: null }), (error) => ({ data: [], error })),
                 fetchAllPostgrestRows((from, to) => supabase.from('review_state')
                     .select('question_id, due_at')
                     .eq('user_id', user.id)
@@ -4318,6 +4666,11 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
             .map((row) => row.question_id);
         const rawCred = profile?.credential || null;
         const gradDate = profile?.graduation_date || null;
+        const storedTargetExamDate = profile?.target_exam_date || null;
+        const coherentTargetExamDate = isValidProfileDate(storedTargetExamDate)
+            && (!isValidProfileDate(gradDate) || storedTargetExamDate >= gradDate)
+            ? storedTargetExamDate
+            : null;
         let credCode = rawCred;
         if (rawCred) { const u = rawCred.trim().toUpperCase(); credCode = u.startsWith('SAA') ? 'SAA' : u.startsWith('CAA') ? 'CAA' : rawCred; }
         if (lifecycleStage === 'applicant' || lifecycleStage === 'incoming_student') credCode = null;
@@ -4336,7 +4689,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const adaptivePlan = buildAdaptiveStudyPlan({
             now: planNow,
             timezoneOffset: tzOffset,
-            targetExamDate: profile?.target_exam_date,
+            targetExamDate: coherentTargetExamDate,
             totalQuestions: Number(readinessBasis.total) || 0,
             answeredQuestions: Number(stats.answered) || 0,
             answeredToday: Number(learning.answered_today) || 0,
@@ -4406,7 +4759,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 needs_program: needsProgram,
                 review_prompt_due,
                 training_program: profile?.training_program || '',
-                target_exam_date: profile?.target_exam_date || '',
+                target_exam_date: coherentTargetExamDate || '',
                 applicant_progress: sanitizeApplicantProgress(profile?.applicant_progress),
                 study_goal: profile?.study_goal || null,
                 theme: profile?.theme || null,
@@ -4451,7 +4804,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         });
     } catch (err) {
         reportOperationalError('profile.load', err);
-        return res.status(500).json({ profile: null });
+        return res.status(500).json({ error: 'Could not load your account.' });
     }
 });
 
@@ -4518,7 +4871,7 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     try {
         const { data: current, error: currentError } = await supabase
             .from(PROFILE_TABLE)
-            .select('lifecycle_stage, credential, graduation_date, training_program')
+            .select('lifecycle_stage, credential, matriculation_date, graduation_date, target_exam_date, training_program')
             .eq('user_id', user.id)
             .maybeSingle();
         if (currentError) throw currentError;
@@ -4529,6 +4882,8 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         const effectiveStage = update.lifecycle_stage || currentStage;
         const effectiveGraduation = Object.prototype.hasOwnProperty.call(update, 'graduation_date')
             ? update.graduation_date : current?.graduation_date || null;
+        const effectiveTargetExam = Object.prototype.hasOwnProperty.call(update, 'target_exam_date')
+            ? update.target_exam_date : current?.target_exam_date || null;
         const effectiveProgram = Object.prototype.hasOwnProperty.call(update, 'training_program')
             ? update.training_program : normalizeTrainingProgram(current?.training_program);
         if (effectiveStage === 'applicant') {
@@ -4540,6 +4895,9 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
             update.leaderboard_opt_in = false;
         } else if (effectiveStage === 'student') {
             if (!effectiveGraduation) return res.status(400).json({ error: 'Current AA students must add a valid expected graduation date.' });
+            if (effectiveGraduation <= productDateKey()) {
+                return res.status(400).json({ error: 'Expected graduation must be a future date.' });
+            }
             if (!isReviewUser(user) && !effectiveProgram) return res.status(400).json({ error: 'Please select your AA program.' });
             if (update.credential && update.credential !== 'SAA') {
                 return res.status(409).json({ error: 'Student accounts use the SAA credential until their graduation date.' });
@@ -4553,6 +4911,13 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
             update.credential = 'CAA';
         } else if (Object.prototype.hasOwnProperty.call(update, 'credential')) {
             return res.status(409).json({ error: 'Select where you are in your AA journey first.' });
+        }
+        if (effectiveTargetExam && effectiveGraduation && effectiveTargetExam < effectiveGraduation) {
+            return res.status(400).json({ error: 'The target board date cannot be before graduation.' });
+        }
+        if (Object.prototype.hasOwnProperty.call(update, 'target_exam_date')
+            && effectiveTargetExam && effectiveTargetExam <= productDateKey()) {
+            return res.status(400).json({ error: 'The target board date must be in the future.' });
         }
         const { data: savedProfile, error } = await supabase.from(PROFILE_TABLE)
             .update(update).eq('user_id', user.id).select('user_id');
@@ -4641,8 +5006,8 @@ app.post('/api/user/lifecycle', profileLimiter, async (req, res) => {
             if (lifecycle.stage !== 'applicant') return res.status(409).json({ error: 'Your account is no longer in the applicant stage.' });
             const snoozeUntil = req.body?.snooze_until;
             if (!isValidProfileDate(snoozeUntil)) return res.status(400).json({ error: 'Choose a valid reminder date.' });
-            const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
-            const latest = new Date(now.getTime() + 730 * 86400000).toISOString().slice(0, 10);
+            const tomorrow = productDateOffset(1, now);
+            const latest = productDateOffset(730, now);
             if (snoozeUntil < tomorrow || snoozeUntil > latest) {
                 return res.status(400).json({ error: 'Choose a date within the next two years.' });
             }
@@ -4952,19 +5317,34 @@ app.post('/api/user/note', async (req, res) => {
 app.get('/api/user/notebook', async (req, res) => {
     const user = await getUserFromToken(req);
     if (!user) return res.status(401).json({ error: 'Authentication required.' });
-    if (!supabase) return res.json({ notes: [], flagged: [] });
+    if (!supabase) return res.status(503).json({ error: 'Notebook service is temporarily unavailable.' });
     if (!await requireBoardPrepLifecycle(user, res)) return;
     try {
-        const { data: notes, error: notesError } = await supabase.from('user_notes').select('question_id, note, updated_at').eq('user_id', user.id);
-        if (notesError) throw notesError;
-        const { data: flags, error: flagsError } = await supabase.from('user_flags').select('question_id').eq('user_id', user.id);
-        if (flagsError) throw flagsError;
+        const [notes, flags] = await Promise.all([
+            fetchAllPostgrestRows((from, to) => supabase.from('user_notes')
+                .select('question_id, note, updated_at')
+                .eq('user_id', user.id)
+                .order('question_id', { ascending: true })
+                .range(from, to)),
+            fetchAllPostgrestRows((from, to) => supabase.from('user_flags')
+                .select('question_id')
+                .eq('user_id', user.id)
+                .order('question_id', { ascending: true })
+                .range(from, to)),
+        ]);
         const ids = Array.from(new Set([...(notes || []).map((n) => n.question_id), ...(flags || []).map((f) => f.question_id)]));
         const qmap = {};
         if (ids.length) {
-            const { data: qs, error: questionError } = await supabase.from('questions').select('id, category, domain_name, stem').in('id', ids);
-            if (questionError) throw questionError;
-            (qs || []).forEach((q) => { qmap[String(q.id)] = { category: q.category || q.domain_name || 'General', stem: q.stem || '' }; });
+            const chunks = [];
+            for (let index = 0; index < ids.length; index += 100) chunks.push(ids.slice(index, index + 100));
+            const groups = await Promise.all(chunks.map(async (chunk) => {
+                const { data, error } = await applyServedFilter(
+                    supabase.from('questions').select('id, category, domain_name, stem').in('id', chunk)
+                );
+                if (error) throw error;
+                return data || [];
+            }));
+            groups.flat().forEach((q) => { qmap[String(q.id)] = { category: q.category || q.domain_name || 'General', stem: q.stem || '' }; });
         }
         const ctx = (id) => qmap[String(id)] || { category: '', stem: '' };
         const noteList = (notes || []).filter((n) => (n.note || '').trim())
@@ -4980,16 +5360,47 @@ app.get('/api/user/notebook', async (req, res) => {
 
 app.post('/api/feedback', feedbackLimiter, async (req, res) => {
     if (!supabase) return res.status(500).json({ error: 'Not configured.' });
-    const user = await getUserFromToken(req);
-    const kind = (req.body?.kind || 'suggestion').toString().slice(0, 40);
+    await getUserFromToken(req); // Resolve the session for auth rate-limiting without storing identity.
+    const requestedKind = String(req.body?.kind || 'suggestion');
+    const kind = ['suggestion', 'bug', 'question_report'].includes(requestedKind)
+        ? requestedKind
+        : 'suggestion';
     const message = (req.body?.message || '').toString().trim();
     if (!message) return res.status(400).json({ error: 'A message is required.' });
+    if (message.length > 4000) return res.status(413).json({ error: 'Feedback must be 4,000 characters or fewer.' });
     // Feedback is deliberately ANONYMOUS — we do not store or surface who sent it,
     // so users feel free to be candid. (Auth is still checked for rate-limit purposes.)
     const email = 'anonymous';
     try {
+        let questionId = null;
+        let answerRevision = null;
+        if (kind === 'question_report') {
+            questionId = String(req.body?.questionId || '').trim();
+            answerRevision = Number(req.body?.answerRevision);
+            if (!/^[A-Za-z0-9._:-]{1,160}$/.test(questionId)
+                || !Number.isSafeInteger(answerRevision)
+                || answerRevision < 1) {
+                return res.status(400).json({ error: 'This question report is missing its revision context.' });
+            }
+            const { data: current, error: questionError } = await applyServedFilter(
+                supabase.from('questions')
+                    .select('id, answer_revision')
+                    .eq('id', questionId)
+                    .eq('answer_revision', answerRevision)
+            ).maybeSingle();
+            if (questionError) throw questionError;
+            if (!current) {
+                return res.status(409).json({
+                    error: 'This question was updated before the report arrived. Reload it and report the current version if the issue remains.',
+                });
+            }
+        }
         const { error } = await supabase.from('user_suggestions').insert({
             user_email: email,
+            kind,
+            question_id: questionId,
+            answer_revision: answerRevision,
+            status: 'pending',
             suggestion_text: `[${kind}] ${message}`.slice(0, 4000),
         });
         if (error) throw error;
@@ -5208,38 +5619,34 @@ app.post('/api/mobile-purchases/apple-notifications', providerWebhookLimiter, as
         const sourceReference = String(transaction.originalTransactionId || transaction.transactionId || '');
         if (!sourceReference) return res.status(400).json({ error: 'Notification has no transaction reference.' });
 
-        if (type === NotificationTypeV2.REFUND_REVERSED) {
-            // Notification delivery is unordered. Re-fetch the transaction from
-            // Apple before reactivating so a stale reversal cannot override a
-            // newer refund or revocation.
-            if (!validUuid(transaction.appAccountToken)) {
-                reportOperationalError('apple.entitlement.unmatched', new Error('An Apple refund reversal did not match an account.'), { notificationType: type });
-                return res.status(200).end();
+        if ([NotificationTypeV2.REFUND_REVERSED, NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE].includes(type)) {
+            // Apple can deliver notifications out of order. Resolve the transaction's
+            // current provider state before mutating access so an older refund cannot
+            // override a newer reversal (or vice versa).
+            const current = await fetchAppleTransactionPayload(String(transaction.transactionId || ''));
+            if (current.bundleId !== MOBILE_APP_BUNDLE_ID
+                || current.productId !== MOBILE_PREMIUM_PRODUCT_ID
+                || current.type !== AppleProductType.NON_CONSUMABLE) {
+                return res.status(400).json({ error: 'Transaction is not for MACPrep full access.' });
             }
-            const entitlement = await verifyApplePurchase(
-                transaction.appAccountToken,
-                String(transaction.transactionId || '')
-            );
-            await syncProviderEntitlement({
-                userId: transaction.appAccountToken,
+            const currentReference = String(current.originalTransactionId || current.transactionId || sourceReference);
+            const status = current.revocationDate
+                ? (type === NotificationTypeV2.REVOKE ? 'revoked' : 'refunded')
+                : 'active';
+            const matched = await setEntitlementStatus({
                 source: 'apple',
-                sourceReference: entitlement.transactionId,
-                productId: entitlement.productId,
-                status: 'active',
-                metadata: { notification_uuid: notification.notificationUUID || null },
-                allowReactivate: true,
+                sourceReference: currentReference,
+                status,
             });
-        } else if ([NotificationTypeV2.REFUND, NotificationTypeV2.REVOKE].includes(type)) {
-            const status = type === NotificationTypeV2.REFUND ? 'refunded' : 'revoked';
-            const matched = await setEntitlementStatus({ source: 'apple', sourceReference, status });
-            if (!matched && validUuid(transaction.appAccountToken)) {
+            if (!matched && validUuid(current.appAccountToken)) {
                 await syncProviderEntitlement({
-                    userId: transaction.appAccountToken,
+                    userId: current.appAccountToken,
                     source: 'apple',
-                    sourceReference,
-                    productId: transaction.productId,
+                    sourceReference: currentReference,
+                    productId: current.productId,
                     status,
                     metadata: { notification_uuid: notification.notificationUUID || null },
+                    allowReactivate: status === 'active',
                 });
             } else if (!matched) {
                 reportOperationalError('apple.entitlement.unmatched', new Error('An Apple status event did not match an account.'), { notificationType: type });
@@ -5316,7 +5723,8 @@ app.post('/api/mobile-purchases/google-notifications', providerWebhookLimiter, a
                 productId: entitlement.productId,
                 metadata: { pubsub_message_id: req.body?.message?.messageId || null },
             });
-            await acknowledgeGooglePlayPurchase(publisher, token, purchase.acknowledgementState);
+            const acknowledged = await acknowledgeGooglePlayPurchase(publisher, token, purchase.acknowledgementState);
+            if (!acknowledged) throw new Error('Google Play purchase acknowledgement is pending.');
         } else if (voided?.purchaseToken && Number(voided.productType) === 2) {
             const token = String(voided.purchaseToken);
             if (!/^[A-Za-z0-9._~-]{16,2048}$/.test(token)) return res.status(400).json({ error: 'Invalid purchase token.' });
@@ -5432,6 +5840,33 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
         // request carries no Origin (Stripe requires absolute success/cancel URLs).
         const base = safeBaseUrl(req);
 
+        const { data: reusable, error: reusableError } = await supabase
+            .from(STRIPE_CHECKOUT_TABLE)
+            .select('session_id, checkout_url, expires_at')
+            .eq('user_id', user.id)
+            .eq('price_id', priceId)
+            .maybeSingle();
+        if (reusableError) throw reusableError;
+        if (reusable && Date.parse(reusable.expires_at) > Date.now() + 60 * 1000) {
+            try {
+                const existing = await stripe.checkout.sessions.retrieve(reusable.session_id);
+                const owner = existing.client_reference_id || existing.metadata?.user_id || null;
+                if (existing.status === 'open'
+                    && existing.payment_status === 'unpaid'
+                    && owner === user.id
+                    && existing.url?.startsWith('https://')) {
+                    return res.json({ url: existing.url, reused: true });
+                }
+            } catch (error) {
+                reportOperationalError('stripe.checkout-reuse', error, { sessionId: reusable.session_id });
+            }
+            const { error: staleError } = await supabase.from(STRIPE_CHECKOUT_TABLE)
+                .delete()
+                .eq('user_id', user.id)
+                .eq('price_id', priceId);
+            if (staleError) throw staleError;
+        }
+
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
@@ -5461,7 +5896,18 @@ app.post('/api/create-checkout-session', checkoutLimiter, async (req, res) => {
             idempotencyKey: stripeCheckoutIdempotencyKey(user.id, priceId),
         });
 
-        res.json({ url: session.url });
+        if (!session.url || !session.expires_at) throw new Error('Stripe did not return a reusable Checkout Session.');
+        const { error: saveError } = await supabase.from(STRIPE_CHECKOUT_TABLE).upsert({
+            user_id: user.id,
+            price_id: priceId,
+            session_id: session.id,
+            checkout_url: session.url,
+            expires_at: new Date(session.expires_at * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,price_id' });
+        if (saveError) throw saveError;
+
+        res.json({ url: session.url, reused: false });
     } catch (err) {
         reportOperationalError('stripe.checkout-create', err);
         res.status(500).json({ error: 'Could not start checkout. Please try again.' });
@@ -5547,6 +5993,7 @@ app.use((err, req, res, next) => {
 process.on('unhandledRejection', (reason) => {
     console.error('UnhandledRejection:', reason);
     Sentry.captureException(reason);
+    Sentry.flush(2000).finally(() => process.exit(1));
 });
 process.on('uncaughtException', (err) => {
     console.error('UncaughtException:', err && err.stack ? err.stack : err);
