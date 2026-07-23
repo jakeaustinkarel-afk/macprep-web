@@ -306,7 +306,21 @@
         a11yEnhanceNav();
         // A11y (WCAG 2.4.2 / 2.4.3): update the title, announce the route, and move focus into the
         // new view so VoiceOver/keyboard users aren't stranded on the old control.
-        const _vn = { applicant: 'Application journey', professional: 'Professional resources', dashboard: 'Dashboard', notebook: 'Notebook', leaderboard: 'Leaderboard', achievements: 'Achievements', profile: 'Profile', feedback: 'Feedback', quiz: 'Study session', login: 'Welcome' }[view] || 'MACPrep';
+        const _vn = {
+            applicant: 'Application journey',
+            professional: 'Professional resources',
+            dashboard: 'Dashboard',
+            notebook: 'Notebook',
+            leaderboard: 'Leaderboard',
+            achievements: 'Achievements',
+            profile: 'Profile',
+            feedback: 'Feedback',
+            quiz: 'Study session',
+            admin: 'Admin review',
+            'review-queue': 'Items to review',
+            'cohort-codes': 'Cohort code generator',
+            login: 'Welcome',
+        }[view] || 'MACPrep';
         document.title = (authed || view !== 'login') ? `${_vn} — MACPrep` : 'MACPrep — NCCAA Board Review for CAAs & SAAs';
         try {
             const _vc = $(view + '-view');
@@ -1164,9 +1178,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 50;
+    const WHATS_NEW_VERSION = 51;
     const WHATS_NEW = [
-        { tag: 'Fix', date: 'Jul 23', title: 'Study progress that stays accurate', desc: 'Study-session retries can no longer duplicate attempts or grade against a question that changed after the session began. Recommended, diagnostic, and mock sessions now use current question revisions, due reviews, unseen coverage, and the intended exam-domain mix; saved study actions, reminders, reports, sign-out, and purchase recovery also wait for server confirmation before showing success. App loading and keyboard navigation are more resilient as well. Available on the web and current MACPrep mobile shell; improved Android purchase recovery and launcher resources are prepared for the next Android build. No action is required.' },
+        { tag: 'Fix', date: 'Jul 23', title: 'Study progress that stays accurate', desc: 'Study-session retries can no longer duplicate attempts or grade against a question that changed after the session began. Recommended, diagnostic, and mock sessions now use current question revisions, due reviews, unseen coverage, and the intended exam-domain mix; saved study actions, reminders, reports, sign-out, and purchase recovery also wait for server confirmation before showing success. App loading and keyboard navigation are more resilient, including accurate page titles for each admin workspace. Available on the web and current MACPrep mobile shell; improved Android purchase recovery and launcher resources are prepared for the next Android build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Permanent account deletion confirms your current password, and study and print views apply tighter content handling. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Your account follows your school start date', desc: 'Applicants who have already accepted an offer can now add their program, matriculation date, and expected graduation date while creating an account. MACPrep keeps the applicant information workspace open until matriculation, then automatically opens the SAA dashboard and its 25-question free trial; full premium access still requires the normal purchase, program code, or existing entitlement. Applicants who have not committed receive one gentle in-app check-in every 30 days, never stacked with the review prompt, and can pause reminders until a future application cycle. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
