@@ -18,6 +18,7 @@ import { initializeApp as fbInitApp, cert as fbCert, getApps as fbGetApps } from
 import { getMessaging as fbGetMessaging } from 'firebase-admin/messaging';
 import apn from '@parse/node-apn';
 import { fetchAllPostgrestRows } from './lib/postgrest-pagination.mjs';
+import { publicAAProgramDirectory } from './lib/aa-program-directory.mjs';
 import { validateQuestionForPublication } from './lib/question-validation.mjs';
 import { buildAdaptiveStudyPlan, MAX_ADAPTIVE_PLAN_DAYS } from './lib/study-plan.mjs';
 import { normalizeTeachingDebrief, validateTeachingDebrief } from './lib/teaching-debrief.mjs';
@@ -1126,7 +1127,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'lifecycle-capabilities-20260723.1',
+        build: 'applicant-information-20260723.1',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
@@ -1182,6 +1183,13 @@ app.get('/api/config', (req, res) => {
         nativePurchaseBridgeMinVersion: 1,
         nativePremiumProductId: MOBILE_PREMIUM_PRODUCT_ID,
     });
+});
+
+// Public, sanitized CAAHEP snapshot for the applicant information workspace.
+// Program-director names and contact details are intentionally excluded.
+app.get('/api/public/aa-programs', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+    res.json(publicAAProgramDirectory());
 });
 
 // Public live count of published questions — powers the landing "X+ questions

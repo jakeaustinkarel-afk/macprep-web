@@ -16,6 +16,14 @@ test('the HTTP surface serves public assets and denies repository internals', as
     assert.match(health.headers.get('cache-control') || '', /no-store/);
     assert.equal((await health.json()).ok, true);
 
+    const directory = await fetch(`${base}/api/public/aa-programs`);
+    assert.equal(directory.status, 200);
+    assert.match(directory.headers.get('cache-control') || '', /public/);
+    const directoryPayload = await directory.json();
+    assert.equal(directoryPayload.verifiedOn, '2026-07-23');
+    assert.equal(directoryPayload.programs.length, 25);
+    assert.doesNotMatch(JSON.stringify(directoryPayload), /programDirector|email|phone|address/i);
+
     const crossSiteMutation = await fetch(`${base}/api/event`, {
         method: 'POST',
         headers: {

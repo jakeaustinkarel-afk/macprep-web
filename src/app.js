@@ -1056,8 +1056,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 46;
+    const WHATS_NEW_VERSION = 47;
     const WHATS_NEW = [
+        { tag: 'New', date: 'Jul 23', title: 'Applicant facts you can verify', desc: 'The free applicant workspace now starts with sourced facts about CAA education, clinical training, day-to-day practice, certification, and every current CAAHEP program listing. Program cards show accreditation facts and include applicant statistics only with a source-linked, program-published profile and a clear verification date; unavailable figures are labeled instead of estimated. The private application tracker remains available, and Aspiring CAA is now linked throughout MACPrep for independent admissions guidance from Sarah Whitfield. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'The right workspace for every stage', desc: 'MACPrep now uses a server-issued capability map to shape each signed-in experience. Applicants and incoming students see application planning; SAAs see board-prep tools; practicing CAAs keep board review and gain a focused professional-resources workspace. The owner admin account can open every lifecycle surface without changing its practicing-CAA profile, while direct navigation and protected APIs keep regular accounts inside their current stage. An unused mobile asset generator with unresolved build-only advisories was removed, and release checks now audit the exact locked dependency graphs for web and mobile. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Improved', date: 'Jul 22', title: 'Your roadmap now reaches months, not weeks', desc: 'The adaptive calendar now builds an exam-anchored roadmap of up to six months instead of stopping after 14 days. It shifts from foundation to reinforcement, focused review, and final review as test day approaches; phase jumps make the full timeline easy to navigate while one week stays in focus. The plan keeps recalculating from unseen coverage, due reviews, recent misses, and weakest domains. Available on the web and current MACPrep mobile shell. Set your exam date in Profile to anchor the roadmap.' },
         { tag: 'New', date: 'Jul 22', title: 'MACPrep now starts before school', desc: 'Applicants can create a free account and use a focused dashboard for application steps, program and prerequisite tracking, shadowing preparation, interview questions, and financial or relocation planning. After committing, add your program and dates; the same account opens the SAA study experience on your matriculation date, then moves into the practicing CAA experience on graduation day so professional and CME resources arrive at the right time. Lifecycle changes never alter premium access. Available on the web and current MACPrep mobile shell. Some older accounts may be asked once to choose their current stage.' },
@@ -3299,6 +3300,8 @@
         ['submitted', 'Submitted'], ['interview', 'Interview'],
         ['accepted', 'Accepted'], ['closed', 'Not pursuing'],
     ];
+    let applicantDirectoryData = null;
+    let applicantDirectoryPromise = null;
     function isoDateOffset(days) { const d = new Date(Date.now() + days * 86400000); return d.toISOString().slice(0, 10); }
     function displayDate(value) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return '';
@@ -3315,17 +3318,17 @@
         const incoming = p.lifecycle_stage === 'incoming_student';
         const adminView = !!p.is_admin;
         const first = (p.full_name || '').trim().split(/\s+/)[0] || '';
-        if ($('applicant-kicker')) $('applicant-kicker').textContent = adminView ? 'ADMIN ACCESS' : incoming ? 'INCOMING STUDENT' : 'APPLICATION JOURNEY';
+        if ($('applicant-kicker')) $('applicant-kicker').textContent = adminView ? 'ADMIN ACCESS' : incoming ? 'INCOMING STUDENT' : 'APPLICANT INFORMATION';
         if ($('applicant-greeting')) $('applicant-greeting').textContent = adminView
-            ? 'Applicant workspace'
+            ? 'Applicant information hub'
             : incoming
             ? `${first ? `${first}, y` : 'Y'}ou are on your way`
-            : `${first ? `${first}, y` : 'Y'}our path to AA school`;
+            : `${first ? `${first}, e` : 'E'}xplore the CAA path with facts you can verify`;
         if ($('applicant-subtitle')) $('applicant-subtitle').textContent = adminView
-            ? 'Use the same workspace an aspiring AA sees without changing your CAA account stage.'
+            ? 'Review the same sourced information and private planning tools an applicant receives without changing your CAA account stage.'
             : incoming
             ? 'Use this time to prepare for the transition. Your student dashboard opens automatically when school begins.'
-            : 'Keep the moving pieces in one calm, private workspace.';
+            : 'Public facts, original sources, and a private place to organize your own research.';
         const commitTop = $('applicant-commit-top');
         if (commitTop) {
             commitTop.classList.toggle('hidden', adminView);
@@ -3336,14 +3339,14 @@
         if (hero) {
             if (adminView) {
                 const done = APPLICANT_TASKS.filter(([key]) => progress.tasks && progress.tasks[key]).length;
-                hero.innerHTML = `<div><div class="applicant-kicker">ADMIN PREVIEW</div><h3>See exactly what aspiring students receive</h3><p class="sub">The tracker remains fully usable for quality checks, but commitment and lifecycle actions stay attached to real applicant accounts.</p><div class="applicant-hero-meta"><span>All lifecycle surfaces enabled</span><span>${done} of ${APPLICANT_TASKS.length} sample steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div>`;
+                hero.innerHTML = `<div><div class="applicant-kicker">ADMIN PREVIEW</div><h3>See the applicant experience without changing roles</h3><p class="sub">The public facts, source links, program directory, and private tracker remain fully usable for quality checks. Commitment actions stay attached to real applicant accounts.</p><div class="applicant-hero-meta"><span>All lifecycle surfaces enabled</span><span>${done} of ${APPLICANT_TASKS.length} sample steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div>`;
             } else if (incoming) {
                 const start = displayDate(p.matriculation_date);
                 const days = p.matriculation_date ? Math.max(0, Math.ceil((Date.parse(`${p.matriculation_date}T12:00:00`) - Date.now()) / 86400000)) : null;
-                hero.innerHTML = `<div><div class="applicant-kicker">COMMITMENT RECORDED</div><h3>${escapeHtml(p.training_program || 'Your AA program')}</h3><p class="sub">Your application tracker stays available while you prepare. On ${escapeHtml(start || 'your matriculation date')}, your account will enter the student experience automatically.</p><div class="applicant-hero-meta"><span>${days == null ? 'Start date pending' : days === 0 ? 'Student tools open today' : `${days} day${days === 1 ? '' : 's'} until matriculation`}</span>${p.graduation_date ? `<span>Expected graduation ${escapeHtml(displayDate(p.graduation_date))}</span>` : ''}</div></div><button class="btn ghost" type="button" onclick="MACPrep.openCommitmentModal()">Update details</button>`;
+                hero.innerHTML = `<div><div class="applicant-kicker">COMMITMENT RECORDED</div><h3>${escapeHtml(p.training_program || 'Your AA program')}</h3><p class="sub">Your application tracker stays available while you prepare. On ${escapeHtml(start || 'your matriculation date')}, your account will enter the student experience automatically.</p><div class="applicant-hero-meta"><span>${days == null ? 'Start date pending' : days === 0 ? 'Student tools open today' : `${days} day${days === 1 ? '' : 's'} until matriculation`}</span>${p.graduation_date ? `<span>Expected graduation ${escapeHtml(displayDate(p.graduation_date))}</span>` : ''}</div></div>`;
             } else {
                 const done = APPLICANT_TASKS.filter(([key]) => progress.tasks && progress.tasks[key]).length;
-                hero.innerHTML = `<div><div class="applicant-kicker">YOUR APPLICATION HOME</div><h3>Build a clear plan, one decision at a time</h3><p class="sub">MACPrep keeps this workspace free. Track your own progress here, then verify requirements and deadlines with each program before you apply.</p><div class="applicant-hero-meta"><span>${done} of ${APPLICANT_TASKS.length} planning steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div><button class="btn" type="button" onclick="MACPrep.openCommitmentModal()">I committed to a program</button>`;
+                hero.innerHTML = `<div><div class="applicant-kicker">FACTS FIRST</div><h3>Understand the profession before anyone tells you how to apply</h3><p class="sub">MACPrep keeps this information hub free. Start with official career, education, certification, and program sources; use the private tracker only to organize your own research.</p><div class="applicant-hero-meta"><span>Dated public sources</span><span>${done} of ${APPLICANT_TASKS.length} private tracker steps complete</span><span>${(progress.programs || []).length} program${(progress.programs || []).length === 1 ? '' : 's'} tracked</span></div></div>`;
             }
         }
         if ($('applicant-cycle')) $('applicant-cycle').value = progress.target_cycle || '';
@@ -3359,6 +3362,126 @@
             return `<div class="applicant-prereq-name">${escapeHtml(label)}</div><select data-app-prereq="${key}" aria-label="${escapeHtml(label)} status">${APPLICANT_PREREQ_STATES.map(([value, text]) => `<option value="${value}" ${current === value ? 'selected' : ''}>${text}</option>`).join('')}</select>`;
         }).join('');
         renderApplicantPrograms(progress.programs || []);
+        loadApplicantProgramDirectory();
+    }
+
+    async function loadApplicantProgramDirectory() {
+        if (applicantDirectoryData) { renderApplicantProgramDirectory(); return; }
+        if (applicantDirectoryPromise) return applicantDirectoryPromise;
+        applicantDirectoryPromise = (async () => {
+            try {
+                const { resp, data } = await apiJSON('/api/public/aa-programs');
+                if (!resp.ok || !data || !Array.isArray(data.programs)) throw new Error('Program directory unavailable.');
+                applicantDirectoryData = {
+                    verifiedOn: /^\d{4}-\d{2}-\d{2}$/.test(data.verifiedOn || '') ? data.verifiedOn : '',
+                    sourceUrl: safeUrl(data.sourceUrl) || 'https://www.caahep.org/students/find-an-accredited-program',
+                    programs: data.programs.slice(0, 100).map((program) => ({
+                        id: Number(program.id) || 0,
+                        institution: String(program.institution || '').slice(0, 180),
+                        program: String(program.program || '').slice(0, 180),
+                        city: String(program.city || '').slice(0, 80),
+                        state: String(program.state || '').slice(0, 8).toUpperCase(),
+                        accreditationStatus: ['Initial', 'Continuing'].includes(program.accreditationStatus) ? program.accreditationStatus : 'Current',
+                        initialAccreditationDate: /^\d{4}-\d{2}-\d{2}$/.test(program.initialAccreditationDate || '') ? program.initialAccreditationDate : '',
+                        programUrl: safeUrl(program.programUrl) || '',
+                        outcomesUrl: safeUrl(program.outcomesUrl) || '',
+                        admissionsProfile: program.admissionsProfile && safeUrl(program.admissionsProfile.sourceUrl)
+                            ? {
+                                reportingPeriod: String(program.admissionsProfile.reportingPeriod || '').slice(0, 120),
+                                sourceUrl: safeUrl(program.admissionsProfile.sourceUrl),
+                                stats: Array.isArray(program.admissionsProfile.stats)
+                                    ? program.admissionsProfile.stats.slice(0, 12).map((stat) => ({
+                                        label: String(stat.label || '').slice(0, 80),
+                                        value: String(stat.value || '').slice(0, 40),
+                                    })).filter((stat) => stat.label && stat.value)
+                                    : [],
+                            }
+                            : null,
+                    })).filter((program) => program.id && program.institution && program.state),
+                };
+                const stateSelect = $('applicant-directory-state');
+                if (stateSelect) {
+                    const current = stateSelect.value;
+                    const states = Array.from(new Set(applicantDirectoryData.programs.map((program) => program.state))).sort();
+                    stateSelect.innerHTML = '<option value="">All locations</option>' + states.map((stateName) => `<option value="${escapeHtml(stateName)}">${escapeHtml(stateName)}</option>`).join('');
+                    if (states.includes(current)) stateSelect.value = current;
+                }
+                const verified = $('applicant-directory-verified');
+                if (verified) verified.textContent = applicantDirectoryData.verifiedOn
+                    ? `VERIFIED ${displayDate(applicantDirectoryData.verifiedOn).toUpperCase()}`
+                    : 'SOURCE LINKED';
+                renderApplicantProgramDirectory();
+            } catch (error) {
+                const summary = $('applicant-directory-summary');
+                const list = $('applicant-directory-list');
+                if (summary) summary.textContent = 'The embedded directory could not load.';
+                if (list) list.innerHTML = '<div class="applicant-directory-empty">Open the CAAHEP program finder below for the current official list.</div>';
+            } finally {
+                applicantDirectoryPromise = null;
+            }
+        })();
+        return applicantDirectoryPromise;
+    }
+
+    function filterApplicantDirectory() {
+        renderApplicantProgramDirectory();
+    }
+
+    function renderApplicantProgramDirectory() {
+        const list = $('applicant-directory-list'), summary = $('applicant-directory-summary');
+        if (!list || !summary || !applicantDirectoryData) return;
+        const query = (($('applicant-directory-search') && $('applicant-directory-search').value) || '').trim().toLowerCase();
+        const stateName = (($('applicant-directory-state') && $('applicant-directory-state').value) || '').trim().toUpperCase();
+        const all = applicantDirectoryData.programs;
+        const visible = all.filter((program) => {
+            if (stateName && program.state !== stateName) return false;
+            if (!query) return true;
+            return [program.institution, program.program, program.city, program.state].join(' ').toLowerCase().includes(query);
+        });
+        const publishedProfiles = all.filter((program) => program.admissionsProfile && program.admissionsProfile.stats.length).length;
+        summary.textContent = `${visible.length} of ${all.length} current CAAHEP listings · ${publishedProfiles} with a source-linked, program-published applicant profile`;
+        if (!visible.length) {
+            list.innerHTML = '<div class="applicant-directory-empty">No programs match this search.</div>';
+            return;
+        }
+        list.innerHTML = visible.map((program) => {
+            const profile = program.admissionsProfile && program.admissionsProfile.stats.length ? program.admissionsProfile : null;
+            const stats = profile ? `<div class="applicant-admissions-stats">${profile.stats.map((stat) => `<div><strong>${escapeHtml(stat.value)}</strong><span>${escapeHtml(stat.label)}</span></div>`).join('')}</div>` : '';
+            const admissions = profile
+                ? `<div class="applicant-admissions"><div class="applicant-admissions-head"><div><small>PROGRAM-PUBLISHED APPLICANT PROFILE</small><strong>${escapeHtml(profile.reportingPeriod)}</strong></div><a href="${escapeHtml(profile.sourceUrl)}" target="_blank" rel="noopener">Verify statistics at the source</a></div>${stats}</div>`
+                : '<div class="applicant-admissions"><p class="applicant-admissions-missing"><strong>Applicant profile:</strong> not available from the CAAHEP listing, and MACPrep has not yet verified a source-linked official profile for this program. Use the official program link for its current requirements and any school-published figures.</p></div>';
+            const outcomes = program.outcomesUrl && program.outcomesUrl !== program.programUrl
+                ? `<a href="${escapeHtml(program.outcomesUrl)}" target="_blank" rel="noopener">Published outcomes</a>` : '';
+            return `<details class="applicant-directory-row">
+                <summary>
+                    <span class="applicant-directory-title"><strong>${escapeHtml(program.institution)}</strong><span>${escapeHtml(program.city)}, ${escapeHtml(program.state)}</span></span>
+                    <span class="applicant-directory-status"><span>${escapeHtml(program.accreditationStatus)} accreditation</span></span>
+                    <span class="applicant-directory-caret" aria-hidden="true">›</span>
+                </summary>
+                <div class="applicant-directory-body">
+                    <div class="applicant-directory-meta">
+                        <div><small>DEGREE</small><span>${escapeHtml(program.program)}</span></div>
+                        <div><small>INITIAL ACCREDITATION</small><span>${escapeHtml(displayDate(program.initialAccreditationDate) || 'See CAAHEP')}</span></div>
+                        <div><small>ADMISSIONS DATA COVERAGE</small><span>${profile ? 'Source-linked official profile included' : 'No verified profile included yet'}</span></div>
+                    </div>
+                    ${admissions}
+                    <div class="applicant-directory-actions">
+                        ${program.programUrl ? `<a href="${escapeHtml(program.programUrl)}" target="_blank" rel="noopener">Official program site</a>` : ''}
+                        ${outcomes}
+                        <button class="btn ghost" type="button" onclick="MACPrep.trackApplicantDirectoryProgram(${program.id})">Add to my tracker</button>
+                    </div>
+                </div>
+            </details>`;
+        }).join('');
+    }
+
+    function trackApplicantDirectoryProgram(programId) {
+        const program = applicantDirectoryData && applicantDirectoryData.programs.find((entry) => entry.id === Number(programId));
+        const input = $('applicant-program-name');
+        if (!program || !input) return;
+        input.value = program.institution;
+        if ($('applicant-program-status')) $('applicant-program-status').value = 'researching';
+        addApplicantProgram();
     }
 
     function renderProfessionalResources() {
@@ -6096,7 +6219,7 @@
         reviewMod, reviewModAct, reviewModAdd,
         gotoQuestion, prevQuestion, submitExam, redeemCode, generateVouchers, beginVoucherRename, cancelVoucherRename, renameVoucherGroup, copyCodes, loadLeaderboard, saveLeaderboardSettings, saveLeaderboardName, lbSetTab, dashLbSetTab, openNamePrompt, closeNamePrompt, saveNamePrompt, copyReferral,
         onCredChange, onCredModalChange, maybePromptCredential, openCredentialPrompt, closeCredentialPrompt, saveCredentialPrompt, onProfCredChange, onCpProgramChange, onSignupProgramChange, onProfProgramChange,
-        renderApplicantDashboard, toggleApplicantTask, addApplicantProgram, removeApplicantProgram, saveApplicantProgress,
+        renderApplicantDashboard, filterApplicantDirectory, trackApplicantDirectoryProgram, toggleApplicantTask, addApplicantProgram, removeApplicantProgram, saveApplicantProgress,
         openCommitmentModal, closeCommitmentModal, onCommitProgramChange, submitCommitment,
         applicantStillApplying, pauseApplicantCycle, closeApplicantCheckIn,
         submitReviewPrompt, snoozeReviewPrompt, setTitleAuto,
