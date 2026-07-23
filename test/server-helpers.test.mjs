@@ -814,7 +814,7 @@ test('reported stale-layout attempts are repaired and future grading uses choice
     assert.match(migration, /persistent fetal bradycardia/);
     assert.match(server, /function answerChoiceId/);
     assert.match(server, /assertCurrentChoiceIdentity\(q, req\.body\)/);
-    assert.match(server, /build: 'security-hardening-20260723\.1'/);
+    assert.match(server, /build: 'security-hardening-20260723\.3'/);
     assert.match(browser, /choiceId: currentQ\.choices\?\.\[selectedIndex\]\?\.id/);
     assert.match(browser, /answerRevision: currentQ\.answer_revision/);
     assert.match(landing, /choiceId:q\.choices\[sel\]&&q\.choices\[sel\]\.id/);

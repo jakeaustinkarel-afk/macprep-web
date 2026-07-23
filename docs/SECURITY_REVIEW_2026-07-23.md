@@ -112,6 +112,12 @@ repository still require owner verification.
 
 - Root and mobile dependency audits: zero known vulnerabilities at all
   severities.
+- CodeQL's regex, clear-text logging, incomplete escaping, redirect, and DOM-XSS
+  findings were repaired and rescanned. Its remaining missing-rate-limit
+  findings point either to routes carrying MACPrep's custom limiter middleware
+  or to allowlisted static/404 handlers; the upstream query recognizes named
+  third-party limiter packages but not this custom implementation. Those alerts
+  remain visible rather than being silently dismissed.
 - Gitleaks worktree and full-history scans completed. Current tracked source has
   no live credential files; ignored local credentials and historical findings
   were classified separately.

@@ -1101,20 +1101,15 @@ function htmlFileForCleanPath(requestPath) {
 }
 
 // ---------------------------------------------------------------------------
-// Clean URLs — 301 /foo.html → /foo (canonical, shareable, SEO-friendly) and
-// serve /foo from foo.html. Old .html links keep working via the redirect, so
-// no traffic is lost. Query strings are preserved; #hash is client-side only.
+// Clean URLs — register every legacy redirect from the static allowlist so no
+// request-derived value can ever become a Location header. Query strings on old
+// `.html` URLs are intentionally dropped; #hash is client-side only.
 // ---------------------------------------------------------------------------
-app.get(/\.html$/i, (req, res, next) => {
-    if (req.path.startsWith('/api/')) return next();
-    const relative = normalizedPublicPath(req.path);
-    if (!PUBLIC_HTML_FILES.has(relative)) return next();
-    const clean = req.path.replace(/\/index\.html$/i, '/').replace(/\.html$/i, '') || '/';
-    // Redirect only to the allowlisted canonical path. Query strings on legacy
-    // `.html` URLs are intentionally dropped so user input can never influence
-    // the Location target.
-    res.redirect(301, clean);
-});
+for (const relative of PUBLIC_HTML_FILES) {
+    const legacyPath = `/${relative}`;
+    const cleanPath = relative === 'index.html' ? '/' : `/${relative.slice(0, -5)}`;
+    app.get(legacyPath, (_req, res) => res.redirect(301, cleanPath));
+}
 app.use((req, res, next) => {
     if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api/') || path.extname(req.path)) return next();
     const file = htmlFileForCleanPath(req.path);
@@ -1236,7 +1231,7 @@ app.get('/api/health', async (req, res) => {
     res.status(ok ? 200 : 503).json({
         ok,
         service: 'macprep',
-        build: 'security-hardening-20260723.2',
+        build: 'security-hardening-20260723.3',
         auth_endpoint: '/api/authenticate',
         supabase: database === 'reachable',
         database,
