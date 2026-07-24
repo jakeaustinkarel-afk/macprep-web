@@ -39,6 +39,7 @@ import {
     shouldReportDatabaseHealthFailure,
     stripeCheckoutIdempotencyKey,
     summarizeProductUsage,
+    targetExamDateError,
     trustedBaseUrl,
     validateAppleTransactionPayload,
     validateGooglePurchasePayload,
@@ -251,6 +252,26 @@ test('registration separates lifecycle stage, credential, and program requiremen
         today: '2027-08-15',
     }), 'Expected graduation must be a future date.');
     assert.equal(productDateKey('2027-08-15T03:30:00Z'), '2027-08-14');
+});
+
+test('target board dates may precede formal graduation but must remain future dates', async () => {
+    const today = '2027-07-24';
+    const targetExamDate = '2027-09-30';
+    const graduationDate = '2027-12-15';
+    assert.ok(targetExamDate < graduationDate);
+    assert.equal(targetExamDateError(targetExamDate, today), '');
+    assert.equal(targetExamDateError('', today), '');
+    assert.equal(targetExamDateError('2027-02-30', today), 'Enter a valid target board date.');
+    assert.equal(targetExamDateError(today, today), 'The target board date must be in the future.');
+
+    const server = await readFile(fileURLToPath(new URL('../src/server.mjs', import.meta.url)), 'utf8');
+    assert.doesNotMatch(server, /target board date cannot be before graduation/i);
+    assert.doesNotMatch(server, /examDate\s*&&\s*gradDate\s*&&\s*examDate\s*<\s*gradDate/);
+    assert.doesNotMatch(server, /effectiveTargetExam\s*&&\s*effectiveGraduation\s*&&\s*effectiveTargetExam\s*<\s*effectiveGraduation/);
+    assert.doesNotMatch(server, /targetExamDate\s*&&\s*targetExamDate\s*<\s*graduationDate/);
+    assert.doesNotMatch(server, /storedTargetExamDate\s*>=\s*gradDate/);
+    assert.match(server, /targetExamDate:\s*validTargetExamDate/);
+    assert.ok((server.match(/targetExamDateError\(/g) || []).length >= 4);
 });
 
 test('async Express handlers forward promise rejections to the error middleware', async () => {

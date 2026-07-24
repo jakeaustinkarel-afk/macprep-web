@@ -544,6 +544,13 @@ export function registrationProfileError({
     return '';
 }
 
+export function targetExamDateError(value, today = productDateKey()) {
+    if (value === '' || value === null || value === undefined) return '';
+    if (!isValidProfileDate(value)) return 'Enter a valid target board date.';
+    if (value <= today) return 'The target board date must be in the future.';
+    return '';
+}
+
 const DAY_MS = 86400000;
 export function applicantCheckInDue({
     lifecycleStage,
@@ -2933,9 +2940,8 @@ app.post('/api/authenticate', authLimiter, async (req, res) => {
                 trainingProgram,
             });
             if (profileError) return res.status(400).json({ success: false, error: profileError });
-            if (examDate && gradDate && examDate < gradDate) {
-                return res.status(400).json({ success: false, error: 'The target board date cannot be before graduation.' });
-            }
+            const examDateError = targetExamDateError(req.body?.target_exam_date);
+            if (examDateError) return res.status(400).json({ success: false, error: examDateError });
             const signupLifecycle = resolveSignupLifecycleStage(requestedLifecycle, matriculationDate);
             const credential = lifecycleCredential(signupLifecycle);
             const { data, error } = await supabaseAuth.auth.signUp({
@@ -4702,8 +4708,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const rawCred = profile?.credential || null;
         const gradDate = profile?.graduation_date || null;
         const storedTargetExamDate = profile?.target_exam_date || null;
-        const coherentTargetExamDate = isValidProfileDate(storedTargetExamDate)
-            && (!isValidProfileDate(gradDate) || storedTargetExamDate >= gradDate)
+        const validTargetExamDate = isValidProfileDate(storedTargetExamDate)
             ? storedTargetExamDate
             : null;
         let credCode = rawCred;
@@ -4724,7 +4729,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
         const adaptivePlan = buildAdaptiveStudyPlan({
             now: planNow,
             timezoneOffset: tzOffset,
-            targetExamDate: coherentTargetExamDate,
+            targetExamDate: validTargetExamDate,
             totalQuestions: Number(readinessBasis.total) || 0,
             answeredQuestions: Number(stats.answered) || 0,
             answeredToday: Number(learning.answered_today) || 0,
@@ -4794,7 +4799,7 @@ app.get('/api/user/profile', profileLimiter, async (req, res) => {
                 needs_program: needsProgram,
                 review_prompt_due,
                 training_program: profile?.training_program || '',
-                target_exam_date: coherentTargetExamDate || '',
+                target_exam_date: validTargetExamDate || '',
                 applicant_progress: sanitizeApplicantProgress(profile?.applicant_progress),
                 study_goal: profile?.study_goal || null,
                 theme: profile?.theme || null,
@@ -4882,9 +4887,9 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         update.training_program = trainingProgram;
     }
     if (Object.prototype.hasOwnProperty.call(b, 'target_exam_date')) {
-        if (b.target_exam_date === '' || b.target_exam_date === null) update.target_exam_date = null;
-        else if (isValidProfileDate(b.target_exam_date)) update.target_exam_date = b.target_exam_date;
-        else return res.status(400).json({ error: 'Enter a valid target exam date.' });
+        const examDateError = targetExamDateError(b.target_exam_date);
+        if (examDateError) return res.status(400).json({ error: examDateError });
+        update.target_exam_date = b.target_exam_date || null;
     }
     if (Object.prototype.hasOwnProperty.call(b, 'graduation_date')) {
         if (b.graduation_date === '' || b.graduation_date === null) update.graduation_date = null;
@@ -4906,7 +4911,7 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
     try {
         const { data: current, error: currentError } = await supabase
             .from(PROFILE_TABLE)
-            .select('lifecycle_stage, credential, matriculation_date, graduation_date, target_exam_date, training_program')
+            .select('lifecycle_stage, credential, matriculation_date, graduation_date, training_program')
             .eq('user_id', user.id)
             .maybeSingle();
         if (currentError) throw currentError;
@@ -4917,8 +4922,6 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
         const effectiveStage = update.lifecycle_stage || currentStage;
         const effectiveGraduation = Object.prototype.hasOwnProperty.call(update, 'graduation_date')
             ? update.graduation_date : current?.graduation_date || null;
-        const effectiveTargetExam = Object.prototype.hasOwnProperty.call(update, 'target_exam_date')
-            ? update.target_exam_date : current?.target_exam_date || null;
         const effectiveProgram = Object.prototype.hasOwnProperty.call(update, 'training_program')
             ? update.training_program : normalizeTrainingProgram(current?.training_program);
         if (effectiveStage === 'applicant') {
@@ -4946,13 +4949,6 @@ app.post('/api/user/profile', profileLimiter, async (req, res) => {
             update.credential = 'CAA';
         } else if (Object.prototype.hasOwnProperty.call(update, 'credential')) {
             return res.status(409).json({ error: 'Select where you are in your AA journey first.' });
-        }
-        if (effectiveTargetExam && effectiveGraduation && effectiveTargetExam < effectiveGraduation) {
-            return res.status(400).json({ error: 'The target board date cannot be before graduation.' });
-        }
-        if (Object.prototype.hasOwnProperty.call(update, 'target_exam_date')
-            && effectiveTargetExam && effectiveTargetExam <= productDateKey()) {
-            return res.status(400).json({ error: 'The target board date must be in the future.' });
         }
         const { data: savedProfile, error } = await supabase.from(PROFILE_TABLE)
             .update(update).eq('user_id', user.id).select('user_id');
@@ -5069,8 +5065,8 @@ app.post('/api/user/lifecycle', profileLimiter, async (req, res) => {
             if (!isValidProfileDate(matriculationDate)) return res.status(400).json({ error: 'Add a valid matriculation date.' });
             if (!isValidProfileDate(graduationDate)) return res.status(400).json({ error: 'Add a valid expected graduation date.' });
             if (graduationDate <= matriculationDate) return res.status(400).json({ error: 'Graduation must be after matriculation.' });
-            if (targetExamDate && !isValidProfileDate(targetExamDate)) return res.status(400).json({ error: 'Add a valid target board date.' });
-            if (targetExamDate && targetExamDate < graduationDate) return res.status(400).json({ error: 'The target board date cannot be before graduation.' });
+            const examDateError = targetExamDateError(targetExamDate);
+            if (examDateError) return res.status(400).json({ error: examDateError });
             const nextStage = dateHasArrived(matriculationDate) ? 'student' : 'incoming_student';
             const update = {
                 lifecycle_stage: nextStage,

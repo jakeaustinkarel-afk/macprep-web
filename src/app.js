@@ -1188,8 +1188,9 @@
     }
 
     // ---- "What's New" in-app changelog + unread dot. Bump WHATS_NEW_VERSION when adding entries.
-    const WHATS_NEW_VERSION = 52;
+    const WHATS_NEW_VERSION = 53;
     const WHATS_NEW = [
+        { tag: 'Fix', date: 'Jul 24', title: 'Board dates can come before graduation', desc: 'Students can now save the board date their program actually uses, even when testing happens before formal graduation. The adaptive calendar and daily study plan anchor to that exam date, while the account still moves into the practicing CAA experience on the saved graduation date so professional and CME timing remains intact. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 23', title: 'Unused now means no repeats', desc: 'Custom quizzes set to Unused now exclude questions you have answered or starred before, even if a question was revised after your earlier attempt. If fewer unused questions match the selected specialty and difficulty, MACPrep starts with only those remaining questions instead of silently filling the session with repeats. Available on the web and current MACPrep mobile shell; no action is required.' },
         { tag: 'Fix', date: 'Jul 23', title: 'Study progress that stays accurate', desc: 'Study-session retries can no longer duplicate attempts or grade against a question that changed after the session began. Recommended, diagnostic, and mock sessions now use current question revisions, due reviews, unseen coverage, and the intended exam-domain mix; saved study actions, reminders, reports, sign-out, and purchase recovery also wait for server confirmation before showing success. App loading and keyboard navigation are more resilient, including accurate page titles for each admin workspace. Available on the web and current MACPrep mobile shell; improved Android purchase recovery and launcher resources are prepared for the next Android build. No action is required.' },
         { tag: 'Improved', date: 'Jul 23', title: 'Stronger safeguards for access and purchases', desc: 'Account access, question content, and cohort codes now stay behind stricter server-only boundaries. Permanent account deletion confirms your current password, and study and print views apply tighter content handling. Web and Store purchases perform stronger provider and retry checks before changing access, and the app will not start a Store purchase when server verification is unavailable. Automated dependency and code-security scans now run every week as well. Available on the web and current MACPrep mobile shell; safer Apple transaction completion is prepared for the next iOS build. No action is required.' },
@@ -3397,6 +3398,7 @@
                 <input id="cp-grad" type="date" value="${p.graduation_date || ''}" style="${inp}">
                 <label class="mono" style="${lbl}">EXAM DATE <span style="text-transform:none;letter-spacing:0;">(optional)</span></label>
                 <input id="cp-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
+                <div class="sub" style="font-size:10.5px;margin:-7px 0 12px;">Use your program's actual testing date, even when it comes before formal graduation.</div>
             </div>
             <div id="cp-program-wrap" class="${pre === 'applicant' || !pre ? 'hidden' : ''}">
                 <label class="mono" style="${lbl}">AA PROGRAM</label>
@@ -3750,6 +3752,7 @@
             <div id="commit-program-other-wrap" class="hidden"><label for="commit-program-other">Program name</label><input id="commit-program-other" type="text" maxlength="120" placeholder="Program / institution name" style="${inp}"></div>
             <div class="grid cols-2"><div><label for="commit-matriculation">Expected matriculation date</label><input id="commit-matriculation" type="date" value="${p.matriculation_date || ''}" style="${inp}"></div><div><label for="commit-graduation">Expected graduation date</label><input id="commit-graduation" type="date" value="${p.graduation_date || ''}" style="${inp}"></div></div>
             <label for="commit-exam">Target board date <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></label><input id="commit-exam" type="date" value="${p.target_exam_date || ''}" style="${inp}">
+            <div class="sub" style="font-size:10.5px;margin:-7px 0 12px;">Use your program's actual testing date, even when it comes before formal graduation.</div>
             <div style="display:flex;gap:10px;"><button class="btn ghost" type="button" onclick="MACPrep.closeCommitmentModal()">Cancel</button><button class="btn" id="commit-save" type="button" style="flex:1;" onclick="MACPrep.submitCommitment()">Save commitment</button></div><div id="commit-msg" class="mono" style="margin-top:9px;text-align:center;font-size:11px;color:var(--bad);"></div>
         </div>`;
         document.body.appendChild(wrap); onCommitProgramChange();
